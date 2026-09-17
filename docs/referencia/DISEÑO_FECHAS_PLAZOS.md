@@ -406,7 +406,7 @@ Estos controles son de integridad administrativa, no de plazo. Deben decidirse e
 
 ---
 
-### 3.2 Catálogo de plazos — CERRADO (campo_fecha 2026-04-19, condiciones_plazo #341 2026-04-30, camino SFTT #785 2026-08-17, niveles SOLICITUD/TAREA #788 2026-08-19)
+### 3.2 Catálogo de plazos — CERRADO (campo_fecha 2026-04-19, condiciones_plazo #341 2026-04-30, camino SFTT #785 2026-08-17, niveles SOLICITUD/TAREA #788 2026-08-19, FASE finalizadora ADR-048/#892 2026-09-17)
 
 > **Decisión:** Tabla separada `catalogo_plazos`, administrable por el Supervisor.
 
@@ -467,15 +467,24 @@ nivel más de profundidad. La longitud codifica el nivel:
 | Nivel de la fila | Segmentos | Forma |
 |---|---|---|
 | SOLICITUD | 2 | `<expediente>/<siglas>` |
+| FASE (finalizadora) | 3 | `<expediente>/<siglas>/<fase>` |
 | TAREA | 5 | `<expediente>/<siglas>/<fase>/<tramite>/<tarea>` |
 
-> **FASE y TRAMITE no son niveles de fila desde #788** — ninguno de los dos
-> porta fecha administrativa (§2.bis), así que un plazo no puede identificarse
-> por Fase o Trámite: `CheckConstraint tipo_elemento IN ('SOLICITUD','TAREA')`
-> lo hace explícito en BD. Sus posiciones (segmentos 3 y 4) siguen existiendo
-> dentro del camino de 5 segmentos de una TAREA, como **ancestros** — la
-> cascada del formulario sigue pidiendo fase y trámite al dar de alta una
-> tarea, lo que desaparece es que sean niveles seleccionables por sí solos.
+> **TRAMITE no es nivel de fila desde #788** — no porta fecha administrativa
+> (§2.bis), así que un plazo no puede identificarse por Trámite:
+> `CheckConstraint tipo_elemento IN ('SOLICITUD','FASE','TAREA')` lo hace
+> explícito en BD. Su posición (segmento 4) sigue existiendo dentro del camino
+> de 5 segmentos de una TAREA, como **ancestro** — la cascada del formulario
+> sigue pidiendo trámite al dar de alta una tarea, lo que no tiene es alta
+> propia como nivel.
+>
+> **FASE volvió a ser nivel de fila en ADR-048 (#892), acotada a fases
+> finalizadoras** (`RESOLUCION_DUP`/`RESOLUCION_AAP`/`RESOLUCION_AAC`,
+> ADR-046/047): a diferencia de toda fase anterior, esas SÍ son el acto —la
+> autorización o la declaración— no taxonomía, y desde que existen tienen su
+> propia fecha administrativa (`Fase.documento_resultado_id`). El
+> `CheckConstraint` solo exige el nivel; que la hoja sea finalizadora lo valida
+> el CRUD, no la BD (no puede: cruzaría a `tipos_fases`).
 
 **Invariante:** el último segmento nunca es `ANY` — es el tipo del elemento
 evaluado, siempre conocido. Una fila con hoja `ANY` no identificaría nada.
@@ -483,7 +492,8 @@ evaluado, siempre conocido. Una fila con hoja `ANY` no identificaría nada.
 ```
 ANY/ANY/ANY/REQUERIMIENTO_SUBSANACION/ESPERAR_PLAZO   -- el plazo de subsanación
 ANY/ANY/ANY/ANUNCIO_BOE/ESPERAR_PLAZO                 -- el de exposición en BOE
-ANY/AAP/RESOLUCION                                    -- resolución de una AAP
+ANY/AAP                                               -- resolución (SOLICITUD) de una AAP
+ANY/ANY/RESOLUCION_DUP                                -- resolución (FASE) de la DUP, ADR-048
 ```
 
 `tipo_elemento` se conserva pese a ser derivable de la longitud: es el prefiltro
@@ -500,22 +510,26 @@ crear el problema que #785 resolvió.
 
 `campo_fecha` no es código — es **configuración de dominio administrable por el Supervisor**. La legislación fija el valor y la unidad del plazo; también fija *desde qué momento* empieza a contar. Ese momento tiene un reflejo en BDDAT (algún `Documento.fecha_administrativa` accesible desde el elemento ESFTT). El Supervisor lo define en el catálogo; puede corregirlo sin tocar código si la norma cambia.
 
-**Vocabulario cerrado desde #788.** Solo hay dos portadores de fecha
-administrativa en BDDAT (§2.bis): la Solicitud, por `documento_solicitud_id`,
-y la Tarea, por sus vínculos `documentos_tarea` (ADR-010). Fase y Trámite son
-taxonomía ESFTT, no figuras jurídicas — ninguna norma les fija plazo propio, y
-las dos indirecciones que existían antes (`fk: documento_resultado_id` en
-Fase; `via_tarea_tipo` en Trámite, para bajar a su tarea hija) eran la huella
-de filas declaradas en el nivel equivocado, no formas legítimas del
-vocabulario: una fila que necesita trepar o bajar para encontrar su ancla
-está mal ubicada. `campo_fecha` no es extensible — no hay un tercer portador
-de fecha al que apuntar.
+**Vocabulario cerrado desde #788, ampliado por ADR-048 sin sintaxis nueva.**
+Solo hay dos portadores de fecha administrativa *propia* en BDDAT (§2.bis): la
+Solicitud, por `documento_solicitud_id`, y la Tarea, por sus vínculos
+`documentos_tarea` (ADR-010). Trámite es taxonomía ESFTT, no figura jurídica —
+ninguna norma le fija plazo propio, y la indirección que existía antes
+(`via_tarea_tipo`, para bajar a su tarea hija) era la huella de filas
+declaradas en el nivel equivocado. Fase también lo era, con una excepción
+acotada desde ADR-048: una fase **finalizadora** (`RESOLUCION_DUP`/AAP/AAC) es
+el acto, no taxonomía, aunque sigue sin FK propia a `documento_solicitud_id`
+— su disparo se resuelve subiendo a `Fase.solicitud` (FK real,
+`Fase.solicitud_id`, no una indirección de las que #788 retiró). `campo_fecha`
+no gana un tercer literal de vocabulario: sigue siendo `fk` o `rol`, solo
+cambia desde qué objeto se resuelve el `fk`.
 
 El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Referencias por nivel:
 
 | Nivel | Referencia al documento de inicio | Referencia al de cumplimiento (#778) |
 |---|---|---|
 | `SOLICITUD` | `fk: documento_solicitud_id` — sin alternativa | `fk: documento_cierre_id` — sin alternativa |
+| `FASE` (finalizadora, ADR-048) | `fk: documento_solicitud_id` — resuelto vía `Fase.solicitud` | **NULL a propósito** — sin cierre propio por fase todavía (issue pendiente de abrir); el plazo no alcanza `CUMPLIDO` |
 | `TAREA` | `rol: CONSUMIDO` o `rol: PRODUCIDO` (vínculo en `documentos_tarea`, ADR-010), con `tipo_documento` opcional | ídem, o **nada** — y entonces el plazo no alcanza `CUMPLIDO` |
 
 > **Cada plazo se abre y se cierra en el mismo sitio (ADR-041 §D).** La estructura
@@ -582,6 +596,14 @@ El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Refer
 > pertenece al nivel SOLICITUD, no FASE. #788 lo confirma: las 11 filas de
 > RESOLUCION migran de FASE a SOLICITUD (§5.2), y el nivel FASE queda
 > prohibido por el `CheckConstraint`.
+>
+> **No contradicho por ADR-048 (#892).** Cuando ADR-046/047 crean
+> `RESOLUCION_DUP`/`RESOLUCION_AAP`/`RESOLUCION_AAC` como fases que SÍ son el
+> acto (no taxonomía), el argumento de #788 —"Fase no porta fecha, no puede
+> tener plazo"— deja de aplicarles: desde que existen, sí portan fecha
+> (`documento_resultado_id`). #892 no revierte la migración de #788 ni las 11
+> filas de SOLICITUD: añade tres filas de FASE, nuevas y aditivas, acotadas a
+> esas tres fases. Detalle completo en `docs/decisiones/ADR-048-plazo-fase-finalizadora.md`.
 
 #### §3.2.1 Condiciones de aplicabilidad — `_seleccionar_catalogo` (#341)
 

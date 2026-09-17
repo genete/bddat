@@ -11,20 +11,24 @@ Dos cascadas independientes, ambas gobernadas por el nivel ESFTT y ambas
 renderizadas por `_campo_fecha_macro.html`:
 
 1. Camino SFTT (#785) — DÓNDE está el plazo en el árbol. Un select por nivel; el
-   nivel elegido decide cuántos segmentos se piden (SOLICITUD 2, TAREA 5 — FASE y
-   TRAMITE no son niveles seleccionables desde #788, aunque sus ancestros siguen
-   pidiéndose como segmentos intermedios de una TAREA). Los ancestros admiten
-   `ANY`; la hoja es obligatoria y nunca `ANY`, porque es el tipo del elemento
-   evaluado y siempre se conoce. Sustituye al antiguo select único de
-   `tipo_elemento_codigo`, que no distinguía dos puntos distintos del árbol con
-   el mismo literal.
+   nivel elegido decide cuántos segmentos se piden (SOLICITUD 2, FASE 3, TAREA 5
+   — TRAMITE no es nivel seleccionable desde #788, aunque sigue pidiéndose como
+   segmento intermedio de una TAREA; FASE volvió a serlo en ADR-048, acotada a
+   fases finalizadoras: la hoja debe tener `es_finalizadora=True`). Los
+   ancestros admiten `ANY`; la hoja es obligatoria y nunca `ANY`, porque es el
+   tipo del elemento evaluado y siempre se conoce. Sustituye al antiguo select
+   único de `tipo_elemento_codigo`, que no distinguía dos puntos distintos del
+   árbol con el mismo literal.
 
 2. `campo_fecha` (DISEÑO_FECHAS_PLAZOS.md §3.2) — DESDE QUÉ documento se computa.
-   Vocabulario cerrado desde #788: SOLICITUD es fija (su único FK a documentos),
-   TAREA pide el rol (consumido/producido) y, opcionalmente, el tipo de
-   documento que desempata cuando dos tareas del mismo tipo conviven en un
-   trámite (las dos esperas de los `ANUNCIO_*`). FASE y TRAMITE ya no portan
-   fecha — no hay filas de esos niveles ni forma de crearlas.
+   Vocabulario cerrado desde #788, ampliado por ADR-048 sin sintaxis nueva:
+   SOLICITUD y FASE son fijos (mismo disparo, la entrada de la solicitud — FASE
+   lo hereda vía `Fase.solicitud`), TAREA pide el rol (consumido/producido) y,
+   opcionalmente, el tipo de documento que desempata cuando dos tareas del
+   mismo tipo conviven en un trámite (las dos esperas de los `ANUNCIO_*`).
+   TRAMITE sigue sin portar fecha — no hay filas de ese nivel ni forma de
+   crearlas. El cumplimiento de FASE queda fijo a NULL (issue de cierre propio
+   por fase pendiente de abrir).
 
 El bloque visible lo decide el servidor según el nivel actual (edición) o el
 valor por defecto del select (alta); el JS de `catalogo-plazos-cascada.js` solo
@@ -86,11 +90,14 @@ _TIPO_MODELO = {
     'TAREA':     (TipoTarea, 'codigo'),
 }
 
-# Niveles con plazo posible (#788): los únicos dos portadores de fecha
-# administrativa. FASE y TRAMITE son taxonomía ESFTT, no figuras jurídicas, y
-# el CheckConstraint de catalogo_plazos ya los rechaza — esta validación da el
-# error legible antes de llegar ahí.
-_NIVELES_VALIDOS = {'SOLICITUD', 'TAREA'}
+# Niveles con plazo posible: SOLICITUD y TAREA portan fecha administrativa
+# propia (#788); FASE entró en ADR-048, acotada a fases finalizadoras —
+# RESOLUCION_DUP/AAP/AAC son el acto, no taxonomía. TRAMITE sigue fuera y el
+# CheckConstraint de catalogo_plazos ya lo rechaza — esta validación da el
+# error legible antes de llegar ahí. Que la hoja FASE sea finalizadora lo
+# exige _construir_camino, no este set (el constraint de BD no distingue
+# fases entre sí).
+_NIVELES_VALIDOS = {'SOLICITUD', 'FASE', 'TAREA'}
 
 # Camino SFTT (#785): un segmento por nivel del árbol, de fuera a dentro. La
 # longitud del camino codifica el nivel del elemento evaluado, así que el nivel
@@ -106,9 +113,10 @@ _SEGMENTOS_CAMINO = [
     ('camino_tramite',    'TRAMITE',   'tipo de trámite'),
     ('camino_tarea',      'TAREA',     'tipo de tarea'),
 ]
-# Solo los dos niveles con plazo posible (#788): FASE y TRAMITE no portan fecha
-# administrativa y quedan fuera del CheckConstraint de catalogo_plazos.
-_SEGMENTOS_POR_NIVEL = {'SOLICITUD': 2, 'TAREA': 5}
+# Los niveles con plazo posible: TRAMITE no porta fecha administrativa y queda
+# fuera del CheckConstraint de catalogo_plazos (#788); FASE sí, acotada a
+# finalizadoras (ADR-048).
+_SEGMENTOS_POR_NIVEL = {'SOLICITUD': 2, 'FASE': 3, 'TAREA': 5}
 _UNIDADES_VALIDAS = {'DIAS_HABILES', 'DIAS_NATURALES', 'MESES', 'ANOS'}
 _ROLES_VALIDOS = {'CONSUMIDO', 'PRODUCIDO'}
 
@@ -307,8 +315,15 @@ def _construir_camino(tipo_elemento: str):
 
         if valor != 'ANY' and nivel_tipo:
             modelo, attr = _TIPO_MODELO[nivel_tipo]
-            if not modelo.query.filter_by(**{attr: valor}).first():
+            row = modelo.query.filter_by(**{attr: valor}).first()
+            if not row:
                 return None, f'El {etiqueta} «{valor}» no existe en el catálogo.'
+            if es_hoja and nivel_tipo == 'FASE' and not row.es_finalizadora:
+                return None, (
+                    f'La fase «{valor}» no es finalizadora: solo una fase que '
+                    'formaliza un acto (RESOLUCION_DUP, RESOLUCION_AAP, '
+                    'RESOLUCION_AAC...) puede tener plazo propio (ADR-048).'
+                )
 
         if '/' in valor:
             return None, f'El {etiqueta} no puede contener «/».'
@@ -370,14 +385,16 @@ def _parse_fecha_opcional(valor_raw):
 def _construir_campo_fecha(tipo_elemento: str):
     """Traduce la selección en cascada del formulario al JSON de campo_fecha.
 
-    Vocabulario cerrado de dos ramas desde #788: no hay un tercer portador de
-    fecha al que apuntar, así que no es extensible. `_NIVELES_VALIDOS` ya
-    descarta FASE y TRAMITE antes de llegar aquí — sin rama para ellos.
+    Vocabulario cerrado desde #788, ampliado por ADR-048 sin sintaxis nueva:
+    `_NIVELES_VALIDOS` ya descarta TRAMITE antes de llegar aquí — sin rama
+    para él.
 
     Devuelve (campo_fecha_dict, error_msg_o_None).
     """
-    if tipo_elemento == 'SOLICITUD':
-        # Único FK a documentos en Solicitud — sin selección posible (§3.2).
+    if tipo_elemento in ('SOLICITUD', 'FASE'):
+        # Único disparo posible: la fecha de entrada de la solicitud — propia
+        # en SOLICITUD, heredada vía Fase.solicitud en FASE (ADR-048 §B). Sin
+        # selección posible en ninguno de los dos (§3.2).
         return {'fk': 'documento_solicitud_id'}, None
 
     if tipo_elemento == 'TAREA':
@@ -408,6 +425,10 @@ def _construir_campo_cumplimiento(tipo_elemento: str):
     - En SOLICITUD el ancla es `documento_cierre_id`, no `documento_solicitud_id`:
       uno marca el inicio del plazo para resolver y notificar, el otro el fin.
       Fijo, sin selección posible, igual que su gemelo.
+    - En FASE queda NULL a propósito (ADR-048 §B): `documento_resultado_id` es
+      la fecha de dictar, no de notificar, y la fase no tiene hoy un cierre
+      propio equivalente a `documento_cierre_id` — issue pendiente de abrir.
+      Sin selección posible: el formulario ni la ofrece en este nivel.
     - En TAREA el rol puede quedar vacío, y eso no es un formulario a medio
       rellenar: una entrada sin señalador de cumplimiento nunca alcanza CUMPLIDO,
       que es justo lo que hace falta en TABLON_AYUNTAMIENTOS (#416), donde el
@@ -417,6 +438,9 @@ def _construir_campo_cumplimiento(tipo_elemento: str):
     """
     if tipo_elemento == 'SOLICITUD':
         return {'fk': 'documento_cierre_id'}, None
+
+    if tipo_elemento == 'FASE':
+        return None, None
 
     if tipo_elemento == 'TAREA':
         rol = (request.form.get('campo_cumplimiento_rol') or '').strip().upper()

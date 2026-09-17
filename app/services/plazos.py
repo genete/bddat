@@ -16,19 +16,32 @@ distintas: gana el cumplimiento → llegó lo que se esperaba; gana el vencimien
 se agotó el plazo concedido y el procedimiento prosigue (art. 22.1.d in fine);
 gana hoy → el plazo sigue corriendo.
 
-Dos entradas, no cuatro literales de nivel (#788, ADR-041 §G):
+Tres entradas, no cuatro literales de nivel (#788 + excepción de ADR-048, ADR-041 §G):
 
     obtener_estado_plazo_tarea(tarea)          el plazo de una tarea
+    obtener_estado_plazo_fase(fase)            el plazo de una fase finalizadora
     obtener_estado_plazo_solicitud(solicitud)  el plazo de la solicitud, que ya
                                                incluye la suspensión
 
-Solo la Solicitud y la Tarea portan fecha administrativa —la primera por
+Solo la Solicitud y la Tarea portan fecha administrativa propia —la primera por
 `documento_solicitud_id`, la segunda por `documentos_tarea` (ADR-010)—, así que
-solo ellas pueden tener plazo. La Fase y el Trámite son taxonomía ESFTT, no
-figuras jurídicas: los plazos legales se enganchan a actos, y los actos son
-solicitudes y tareas. Una función llamada «plazo de un trámite» reintroduciría
-por la puerta de atrás el nivel que #788 eliminó, así que no existe: bajar de un
-trámite a su tarea de espera es navegación del árbol (`Tramite.tarea_espera`).
+#788 dejó fuera a la Fase y al Trámite: taxonomía ESFTT, no figuras jurídicas,
+los plazos legales se enganchan a actos. ADR-048 reabre esa exclusión, pero solo
+para la Fase finalizadora: `RESOLUCION_DUP`/`RESOLUCION_AAP`/`RESOLUCION_AAC`
+(ADR-046/047) no son taxonomía, son el acto mismo — la autorización o la
+declaración con su propio artículo. El disparo hereda la fecha de la solicitud
+contenedora (`_resolver_campo_fecha` sube a `fase.solicitud` cuando el atributo
+no está en la propia fase); el cumplimiento queda sin resolver a propósito
+(`campo_fecha_cumplimiento=NULL`, issue de cierre propio por fase pendiente de
+abrir) — el plazo de fase nunca alcanza CUMPLIDO, solo EN_PLAZO/VENCIDO, mismo
+patrón que TABLON_AYUNTAMIENTOS. No hay suspensión a nivel FASE: art. 22 habla
+del plazo del procedimiento, y extenderlo por acto es alcance de esa misma
+issue futura, no de esto.
+
+El Trámite sigue fuera: una función «plazo de un trámite» reintroduciría por la
+puerta de atrás el nivel que #788 eliminó para él — bajar de un trámite a su
+tarea de espera sigue siendo navegación del árbol (`Tramite.tarea_espera`), no
+una entrada de este servicio.
 
 La suspensión no es un mecanismo aparte (#778):
     Es el plazo de un tercero visto desde la solicitud, y la propia ley lo dice
@@ -121,11 +134,12 @@ _TIPO_CODIGO_ATTR = {
 # Nº de segmentos del camino ESFTT por nivel (#785). El matching exige longitud
 # idéntica, igual que en motor_reglas, así que la longitud codifica el nivel.
 #
-# Solo los dos niveles que portan fecha (#788). Los dos diccionarios de arriba
-# SÍ conservan sus entradas de FASE y TRAMITE: no son niveles de fila, los usa
-# compilar_camino para construir los segmentos de ascendencia del camino de 5
-# segmentos de una tarea.
-_SEGMENTOS_CAMINO = {'SOLICITUD': 2, 'TAREA': 5}
+# Los niveles que portan fecha (#788) más la excepción acotada de ADR-048: FASE
+# entra con 3 segmentos (<expediente>/<siglas>/<fase>), pero solo hay filas de
+# catálogo para fases finalizadoras — RESOLUCION_DUP/AAP/AAC son el acto, no
+# taxonomía. TRAMITE sigue sin entrada: compilar_camino la usa solo para subir
+# la ascendencia del camino de 5 segmentos de una tarea, nunca como nivel de fila.
+_SEGMENTOS_CAMINO = {'SOLICITUD': 2, 'FASE': 3, 'TAREA': 5}
 
 
 @dataclass
@@ -231,6 +245,56 @@ def obtener_estado_plazo_tarea(tarea, ctx=None, variables=None) -> EstadoPlazo:
     hoy = _hoy()
     inhabiles = _obtener_inhabiles_bd(disparo, hoy + timedelta(days=_margen_dias([entrada])))
     medida = _medir(tarea, entrada, disparo, inhabiles, hoy)
+
+    estado, dias = _leer_estado(medida, hoy, inhabiles)
+    return EstadoPlazo(
+        estado=estado,
+        efecto=_efecto(entrada),
+        fecha_limite=medida.vencimiento,
+        dias_restantes=dias,
+        fecha_disparo=medida.disparo,
+        fecha_cumplimiento=medida.cumplimiento,
+        fecha_parada=medida.parada,
+        **_metadatos_entrada(entrada),
+    )
+
+
+def obtener_estado_plazo_fase(fase, ctx=None, variables=None) -> EstadoPlazo:
+    """
+    Estado del plazo legal de una fase finalizadora (ADR-048, excepción acotada
+    a #788 — ver docstring del módulo).
+
+    Solo hay entradas de catálogo para fases finalizadoras (RESOLUCION_DUP,
+    RESOLUCION_AAP, RESOLUCION_AAC): una fase taxonómica (CONSULTAS,
+    ADMISIBILIDAD...) no tiene camino que case y devuelve SIN_PLAZO sin
+    necesidad de comprobar aquí `tipo_fase.es_finalizadora` — el catálogo es el
+    filtro, no el código (mismo criterio que el resto del servicio).
+
+    Sin suspensión (a diferencia de `obtener_estado_plazo_solicitud`): el
+    art. 22 suspende el plazo del procedimiento, y extenderlo por acto es
+    alcance de la issue de cierre propio por fase, no de esta.
+
+    Args:
+        fase:      Instancia ORM de Fase. None o dict → SIN_PLAZO sin tocar BD.
+        ctx:       ExpedienteContext. Construye variables internamente.
+        variables: Dict de variables pre-construido. Tiene precedencia sobre ctx.
+    """
+    if fase is None or isinstance(fase, dict):
+        return _SIN_PLAZO
+    if _get_tipo_elemento_codigo(fase, 'FASE') is None:
+        return _SIN_PLAZO
+
+    entrada = _seleccionar_catalogo(fase, 'FASE', _variables_de(ctx, variables))
+    if entrada is None:
+        return _SIN_PLAZO
+
+    disparo = _resolver_campo_fecha(fase, entrada.campo_fecha or {})
+    if disparo is None:
+        return _SIN_PLAZO
+
+    hoy = _hoy()
+    inhabiles = _obtener_inhabiles_bd(disparo, hoy + timedelta(days=_margen_dias([entrada])))
+    medida = _medir(fase, entrada, disparo, inhabiles, hoy)
 
     estado, dias = _leer_estado(medida, hoy, inhabiles)
     return EstadoPlazo(
@@ -633,10 +697,14 @@ def compilar_camino(elemento, tipo_elemento: str) -> Optional[str]:
     se casa contra `catalogo_plazos.camino`:
 
         TAREA      → 'Distribucion/AAP/ANALISIS_SOLICITUD/REQUERIMIENTO_SUBSANACION/ESPERAR_PLAZO'
+        FASE       → 'ANY/ANY/RESOLUCION_DUP'
         SOLICITUD  → 'Distribucion/AAP'
 
-    Un tipo_elemento sin plazo posible (FASE, TRAMITE) devuelve None: no hay
-    longitud de camino que le corresponda desde #788.
+    Un tipo_elemento sin plazo posible (TRAMITE) devuelve None: no hay longitud
+    de camino que le corresponda. FASE sí compila desde ADR-048 (excepción
+    acotada a #788, ver docstring del módulo) — el filtro a solo finalizadoras
+    lo hace el catálogo (sin fila para una fase taxonómica, SIN_PLAZO), no esta
+    función.
 
     Nunca produce 'ANY': eso es comodín del patrón, no de la realidad (mismo
     principio que assembler._compilar_sujeto). Un eslabón que no se puede
@@ -793,11 +861,13 @@ def _resolver_campo_fecha(elemento, campo_fecha: dict) -> Optional[date]:
       {'fk': 'documento_cierre_id'}                          → ídem, ancla de cierre (#778)
       {'rol': 'CONSUMIDO'|'PRODUCIDO'[, 'tipo_documento']}   → Tarea, por vínculo (ADR-010)
 
-    No es extensible: no hay un tercer portador de fecha al que apuntar. Lo que
-    había antes —el parche que trepaba de la fase a su solicitud y la indirección
-    `via_tarea_tipo` que bajaba de un trámite a su tarea— era la huella de filas
-    declaradas en niveles que no llegan a ningún documento; con la fila en su
-    nivel, ambas sobran.
+    ADR-048 no añade un tercer portador: una Fase finalizadora sigue sin FK
+    propia a `documento_solicitud_id`, así que su disparo se resuelve subiendo
+    a `elemento.solicitud` cuando el atributo no está en la propia fase —no es
+    la indirección `via_tarea_tipo` que #788 retiró (esa bajaba de trámite a
+    tarea; esta sube de fase a la solicitud que ya la contiene por FK real,
+    `Fase.solicitud_id`). El vocabulario sigue siendo el mismo `{'fk': ...}`,
+    solo cambia de qué objeto se lee.
 
     Lo usan los dos señaladores de la entrada, el del disparo (`campo_fecha`) y el
     del cumplimiento (`campo_fecha_cumplimiento`): el vocabulario es el mismo
@@ -813,7 +883,13 @@ def _resolver_campo_fecha(elemento, campo_fecha: dict) -> Optional[date]:
     else:
         fk_col = campo_fecha.get('fk', '')
         rel_name = fk_col[:-3] if fk_col.endswith('_id') else fk_col
-        doc = getattr(elemento, rel_name, None) if rel_name else None
+        if not rel_name:
+            doc = None
+        elif hasattr(elemento, rel_name):
+            doc = getattr(elemento, rel_name)
+        else:
+            solicitud = getattr(elemento, 'solicitud', None)
+            doc = getattr(solicitud, rel_name, None) if solicitud is not None else None
 
     return _fecha_doc_admin(doc)
 

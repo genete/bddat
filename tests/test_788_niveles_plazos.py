@@ -1,19 +1,27 @@
 """
-Tests issue #788 — `catalogo_plazos` solo admite los niveles que portan fecha.
+Tests issue #788 — `catalogo_plazos` solo admite los niveles que portan fecha
+— y su excepción acotada de ADR-048 (#892).
 
-Un plazo necesita fecha de inicio, y en BDDAT solo hay dos portadores de fecha
+Un plazo necesita fecha de inicio. Desde #788 solo hay dos portadores de fecha
 administrativa: la Solicitud (`documento_solicitud_id`) y la Tarea
-(`documentos_tarea`, ADR-010). Fase y Trámite son taxonomía ESFTT, no figuras
-jurídicas: ninguna norma les fija plazo propio.
+(`documentos_tarea`, ADR-010) — Fase y Trámite son taxonomía ESFTT, no figuras
+jurídicas, ninguna norma les fija plazo propio. ADR-048 reabre esa exclusión
+para la Fase, pero acotada a fases FINALIZADORAS (`RESOLUCION_DUP`/AAP/AAC,
+ADR-046/047): esas sí son el acto, no taxonomía, y desde que existen tienen su
+propia fecha administrativa (`documento_resultado_id`). Trámite sigue excluido
+sin excepción.
 
 Bloques:
-  A) Niveles         — FASE y TRAMITE devuelven SIN_PLAZO sin tocar BD.
+  A) Niveles         — TRAMITE devuelve SIN_PLAZO sin tocar BD; FASE sí compila
+                       camino y consulta el catálogo (ADR-048).
   B) tipo_documento  — predicado de candidatura y filtro al resolver la fecha.
   C) Suspensiones    — solo se calculan en el nivel SOLICITUD.
   D) Trámite → tarea — `Tramite.tarea_espera` baja al ESPERAR_PLAZO (#778: es
                        navegación del árbol, no interfaz del servicio de plazos).
-  E) Con BD          — la tabla no tiene filas de FASE/TRAMITE y el
-                       CheckConstraint impide volver a ponerlas.
+  E) Con BD          — TRAMITE sigue sin filas y el CheckConstraint lo impide;
+                       FASE admite filas, pero solo para fases finalizadoras.
+  F) FASE (ADR-048)  — disparo heredado de la solicitud, cumplimiento NULL a
+                       propósito, sin suspensión.
 """
 from datetime import date
 from types import SimpleNamespace
@@ -46,6 +54,25 @@ def _tarea(codigo='ESPERAR_PLAZO', consumidos=(), producido=None,
     t.tramite.fase.solicitud.tipo_solicitud = MagicMock(siglas=siglas)
     t.tramite.fase.solicitud.expediente.tipo_expediente = MagicMock(tipo=tipo_expediente)
     return t
+
+
+def _fase(codigo='RESOLUCION_DUP', siglas='AAC+DUP', tipo_expediente='Distribucion',
+          documento_solicitud=None, documento_resultado=None):
+    """Fase finalizadora con ascendencia de strings reales (para compilar_camino)
+    y SIN `documento_solicitud` propio — a diferencia de Solicitud, Fase no
+    tiene esa FK, así que el mock debe negarla explícitamente (`del`) para que
+    `hasattr` sea fiel a la ORM real y ejercite la indirección de ADR-048
+    (`_resolver_campo_fecha` sube a `Fase.solicitud`) en vez de colarse por la
+    auto-vivificación de atributos de MagicMock.
+    """
+    f = MagicMock()
+    f.tipo_fase = MagicMock(codigo=codigo)
+    f.solicitud.tipo_solicitud = MagicMock(siglas=siglas)
+    f.solicitud.expediente.tipo_expediente = MagicMock(tipo=tipo_expediente)
+    f.solicitud.documento_solicitud = documento_solicitud
+    f.documento_resultado = documento_resultado
+    del f.documento_solicitud
+    return f
 
 
 def _entrada(camino, campo_fecha, orden=10, entrada_id=1,
@@ -85,26 +112,25 @@ def _catalogo_mockeado(entradas):
 
 class TestNivelesSinPlazo:
 
-    @pytest.mark.parametrize('nivel', ['FASE', 'TRAMITE'])
-    def test_nivel_sin_fecha_devuelve_sin_plazo(self, nivel):
-        """La firma los sigue aceptando —los consumidores despachan por
-        duck-typing— pero no hay camino que compilar para ellos."""
+    def test_tramite_sin_fecha_devuelve_sin_plazo(self):
+        """La firma lo sigue aceptando —los consumidores despachan por
+        duck-typing— pero no hay camino que compilar: TRAMITE no porta fecha
+        administrativa, sin excepción (#788, no lo toca ADR-048)."""
         from app.services.plazos import compilar_camino
-        assert compilar_camino(MagicMock(), nivel) is None
+        assert compilar_camino(MagicMock(), 'TRAMITE') is None
 
-    @pytest.mark.parametrize('nivel', ['FASE', 'TRAMITE'])
-    def test_no_se_consulta_el_catalogo(self, nivel):
+    def test_no_se_consulta_el_catalogo_para_tramite(self):
         """Sale antes de tocar BD: no es un catálogo vacío, es que no aplica."""
         from app.services.plazos import _seleccionar_catalogo
 
         with patch('app.models.catalogo_plazos.CatalogoPlazo') as MockCP:
-            resultado = _seleccionar_catalogo(MagicMock(), nivel, {})
+            resultado = _seleccionar_catalogo(MagicMock(), 'TRAMITE', {})
 
         assert resultado is None
         MockCP.query.options.assert_not_called()
 
     def test_tarea_y_solicitud_si_compilan_camino(self):
-        """Control: los dos niveles con plazo sí producen camino, y de la
+        """Control: los niveles con plazo sí producen camino, y de la
         longitud que les toca."""
         from app.services.plazos import compilar_camino
 
@@ -117,6 +143,23 @@ class TestNivelesSinPlazo:
         solicitud.tipo_solicitud = MagicMock(siglas='AAP')
         solicitud.expediente.tipo_expediente = MagicMock(tipo='Distribucion')
         assert compilar_camino(solicitud, 'SOLICITUD') == 'Distribucion/AAP'
+
+    def test_fase_finalizadora_si_compila_camino(self):
+        """ADR-048: FASE compila con 3 segmentos — excepción acotada a #788."""
+        from app.services.plazos import compilar_camino
+
+        assert compilar_camino(_fase(), 'FASE') == 'Distribucion/AAC+DUP/RESOLUCION_DUP'
+
+    def test_fase_si_consulta_el_catalogo(self):
+        """A diferencia de TRAMITE, FASE sí llega a preguntar por su entrada —
+        el filtro a solo finalizadoras lo hace el catálogo (sin fila para una
+        fase taxonómica), no esta función."""
+        from app.services.plazos import _seleccionar_catalogo
+
+        with _catalogo_mockeado([]):
+            resultado = _seleccionar_catalogo(_fase(), 'FASE', {})
+
+        assert resultado is None  # sin entradas → SIN_PLAZO, pero SÍ consultó
 
 
 # ---------------------------------------------------------------------------
@@ -327,17 +370,32 @@ class TestBajarDelTramiteASuEspera:
 
 class TestCatalogoEnBD:
 
-    def test_no_quedan_filas_de_fase_ni_de_tramite(self, app_ctx):
+    def test_no_quedan_filas_de_tramite(self, app_ctx):
+        """TRAMITE sigue sin fecha administrativa, sin excepción (ADR-048 solo
+        toca FASE)."""
         from app.models.catalogo_plazos import CatalogoPlazo
-        residuales = (
-            CatalogoPlazo.query
-            .filter(CatalogoPlazo.tipo_elemento.in_(['FASE', 'TRAMITE']))
-            .all()
-        )
+        residuales = CatalogoPlazo.query.filter_by(tipo_elemento='TRAMITE').all()
         assert residuales == [], (
-            f'Filas en niveles sin fecha: '
-            f'{[(e.id, e.tipo_elemento, e.camino) for e in residuales]}'
+            f'Filas en TRAMITE, nivel sin fecha: '
+            f'{[(e.id, e.camino) for e in residuales]}'
         )
+
+    def test_filas_de_fase_solo_apuntan_a_finalizadoras(self, app_ctx):
+        """ADR-048: la hoja de una fila FASE debe ser una fase finalizadora —
+        el constraint de BD no lo exige (no puede, cruza tabla), lo exige el
+        catálogo de hecho. Esta prueba es la salvaguarda equivalente a nivel
+        de datos, ya que el CRUD por sí solo no cubre migraciones ni SQL suelto."""
+        from app.models.catalogo_plazos import CatalogoPlazo
+        from app.models.tipos_fases import TipoFase
+
+        for fila in CatalogoPlazo.query.filter_by(tipo_elemento='FASE', activo=True).all():
+            codigo_fase = fila.hoja
+            tipo_fase = TipoFase.query.filter_by(codigo=codigo_fase).first()
+            assert tipo_fase is not None, f'Fila {fila.id}: fase «{codigo_fase}» no existe'
+            assert tipo_fase.es_finalizadora, (
+                f'Fila {fila.id}: «{codigo_fase}» no es finalizadora — '
+                'ADR-048 solo autoriza plazo de fase para el acto, no para taxonomía'
+            )
 
     def test_campo_fecha_usa_el_vocabulario_cerrado(self, app_ctx):
         """`via_tarea_tipo` era la indirección que bajaba de un trámite a su
@@ -347,16 +405,25 @@ class TestCatalogoEnBD:
             cf = fila.campo_fecha or {}
             assert 'via_tarea_tipo' not in cf, f'Fila {fila.id} conserva via_tarea_tipo'
             claves = set(cf)
-            if fila.tipo_elemento == 'SOLICITUD':
+            if fila.tipo_elemento in ('SOLICITUD', 'FASE'):
                 assert claves == {'fk'}, f'Fila {fila.id}: {cf}'
                 assert cf['fk'] == 'documento_solicitud_id', f'Fila {fila.id}: {cf}'
             else:
                 assert claves <= {'rol', 'tipo_documento'}, f'Fila {fila.id}: {cf}'
                 assert cf.get('rol') in ('CONSUMIDO', 'PRODUCIDO'), f'Fila {fila.id}: {cf}'
 
+    def test_campo_fecha_cumplimiento_de_fase_es_null(self, app_ctx):
+        """ADR-048 §B: sin cierre propio por fase todavía, a propósito."""
+        from app.models.catalogo_plazos import CatalogoPlazo
+        for fila in CatalogoPlazo.query.filter_by(tipo_elemento='FASE', activo=True).all():
+            assert fila.campo_fecha_cumplimiento is None, (
+                f'Fila {fila.id}: campo_fecha_cumplimiento debería ser NULL '
+                '(issue de cierre propio por fase, pendiente de abrir)'
+            )
+
     def test_longitud_del_camino_coincide_con_el_nivel(self, app_ctx):
         from app.models.catalogo_plazos import CatalogoPlazo
-        esperado = {'SOLICITUD': 2, 'TAREA': 5}
+        esperado = {'SOLICITUD': 2, 'FASE': 3, 'TAREA': 5}
         for fila in CatalogoPlazo.query.filter_by(activo=True).all():
             segmentos = len((fila.camino or '').split('/'))
             assert segmentos == esperado[fila.tipo_elemento], (
@@ -364,10 +431,11 @@ class TestCatalogoEnBD:
                 f'segmentos: {fila.camino}'
             )
 
-    def test_constraint_rechaza_nivel_fase(self, app_ctx):
-        """El CRUD valida para dar error legible; el constraint cubre lo que
-        escribe sin pasar por él — una migración de seed o un test, que son las
-        dos vías por las que entraron los incidentes reales de esta tabla."""
+    def test_constraint_rechaza_nivel_tramite(self, app_ctx):
+        """TRAMITE sigue prohibido sin excepción. El CRUD valida para dar error
+        legible; el constraint cubre lo que escribe sin pasar por él — una
+        migración de seed o un test, que son las dos vías por las que entraron
+        los incidentes reales de esta tabla."""
         import sqlalchemy.exc
         from app import db
         from app.models.catalogo_plazos import CatalogoPlazo
@@ -377,12 +445,102 @@ class TestCatalogoEnBD:
         assert efecto is not None, 'Seed de efectos_plazo no encontrado'
 
         db.session.add(CatalogoPlazo(
-            tipo_elemento='FASE',
-            camino='ANY/ANY/TEST_788',
-            campo_fecha={'fk': 'documento_resultado_id'},
+            tipo_elemento='TRAMITE',
+            camino='ANY/ANY/ANY/TEST_788',
+            campo_fecha={'rol': 'CONSUMIDO'},
             plazo_valor=1,
             plazo_unidad='MESES',
             efecto_vencimiento_id=efecto.id,
         ))
         with pytest.raises(sqlalchemy.exc.IntegrityError):
             db.session.flush()
+
+    def test_constraint_admite_nivel_fase(self, app_ctx):
+        """ADR-048: el constraint ya no rechaza FASE en sí — la restricción a
+        finalizadoras la impone el catálogo (test_filas_de_fase_solo_apuntan_a_finalizadoras),
+        no el CheckConstraint (no puede: cruzaría a tipos_fases)."""
+        from app import db
+        from app.models.catalogo_plazos import CatalogoPlazo
+        from app.models.efectos_plazo import EfectoPlazo
+
+        efecto = EfectoPlazo.query.filter_by(codigo='NINGUNO').first()
+        assert efecto is not None, 'Seed de efectos_plazo no encontrado'
+
+        db.session.add(CatalogoPlazo(
+            tipo_elemento='FASE',
+            camino='ANY/ANY/TEST_892',
+            campo_fecha={'fk': 'documento_solicitud_id'},
+            plazo_valor=1,
+            plazo_unidad='MESES',
+            efecto_vencimiento_id=efecto.id,
+        ))
+        db.session.flush()   # no debe lanzar — app_ctx hace rollback al terminar
+
+
+# ---------------------------------------------------------------------------
+# F) FASE finalizadora (ADR-048) — disparo heredado, cumplimiento NULL, sin suspensión
+# ---------------------------------------------------------------------------
+
+class TestFaseFinalizadora:
+
+    def test_disparo_hereda_la_fecha_de_la_solicitud(self):
+        """`_resolver_campo_fecha` sube a `Fase.solicitud` porque la fase no
+        tiene `documento_solicitud` propio — no es la indirección `via_tarea_tipo`
+        que #788 retiró, sube por una FK real (`Fase.solicitud_id`)."""
+        from app.services.plazos import _resolver_campo_fecha
+
+        fase = _fase(documento_solicitud=_doc(date(2026, 3, 1)))
+        fecha = _resolver_campo_fecha(fase, {'fk': 'documento_solicitud_id'})
+        assert fecha == date(2026, 3, 1)
+
+    def test_sin_documento_solicitud_no_hay_disparo(self):
+        from app.services.plazos import _resolver_campo_fecha
+
+        fase = _fase(documento_solicitud=None)
+        assert _resolver_campo_fecha(fase, {'fk': 'documento_solicitud_id'}) is None
+
+    def test_obtener_estado_plazo_fase_sin_entrada_de_catalogo(self):
+        """Fase taxonómica (sin fila de catálogo que case) → SIN_PLAZO."""
+        from app.services.plazos import obtener_estado_plazo_fase
+
+        with _catalogo_mockeado([]):
+            resultado = obtener_estado_plazo_fase(_fase(codigo='CONSULTAS'))
+
+        assert resultado.estado == 'SIN_PLAZO'
+
+    def test_obtener_estado_plazo_fase_calcula_vencimiento(self):
+        """Control: con entrada aplicable, calcula igual que TAREA/SOLICITUD —
+        misma medida única (ADR-041), solo cambia de dónde sale el disparo."""
+        from app.services.plazos import obtener_estado_plazo_fase
+
+        fase = _fase(codigo='RESOLUCION_DUP', siglas='DUP',
+                     documento_solicitud=_doc(date(2026, 1, 12)))
+        entrada = _entrada('ANY/ANY/RESOLUCION_DUP', {'fk': 'documento_solicitud_id'},
+                           plazo_valor=6, plazo_unidad='MESES')
+
+        with _catalogo_mockeado([entrada]), \
+             patch('app.services.plazos._hoy', return_value=date(2026, 3, 1)), \
+             patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()):
+            resultado = obtener_estado_plazo_fase(fase)
+
+        assert resultado.estado == 'EN_PLAZO'
+        # 12 ene + 6 meses = 12 jul (domingo) → prorroga al primer hábil (art. 30.5)
+        assert resultado.fecha_limite == date(2026, 7, 13)
+        assert resultado.fecha_cumplimiento is None           # ADR-048 §B: NULL a propósito
+
+    def test_obtener_estado_plazo_fase_no_calcula_suspensiones(self):
+        """El plazo de fase no es suspendible (ADR-048 §B): a diferencia de
+        `obtener_estado_plazo_solicitud`, no recorre causas de suspensión."""
+        from app.services.plazos import obtener_estado_plazo_fase
+
+        fase = _fase(documento_solicitud=_doc(date(2026, 1, 12)))
+        entrada = _entrada('ANY/ANY/RESOLUCION_DUP', {'fk': 'documento_solicitud_id'},
+                           plazo_valor=6, plazo_unidad='MESES')
+
+        with _catalogo_mockeado([entrada]), \
+             patch('app.services.plazos._hoy', return_value=date(2026, 3, 1)), \
+             patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()), \
+             patch('app.services.plazos._causas_suspension') as mock_susp:
+            obtener_estado_plazo_fase(fase)
+
+        mock_susp.assert_not_called()

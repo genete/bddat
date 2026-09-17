@@ -17,7 +17,8 @@
  * ningún evento de "fragmento cargado".
  *
  * Contrato (_campo_fecha_macro.html):
- *   [data-nivel-select]         select de tipo_elemento (SOLICITUD/TAREA, #788)
+ *   [data-nivel-select]         select de tipo_elemento (SOLICITUD/FASE/TAREA — FASE
+ *                                acotada a fases finalizadoras, ADR-048)
  *   [data-nivel-block="NIVEL"]  bloque de campo_fecha específico de ese nivel
  *   [data-camino-seg="N"]       segmento N del camino SFTT (#785), 1..5
  *   [data-camino-req="N"]       asterisco de obligatorio del segmento N
@@ -47,7 +48,7 @@
 (function () {
   'use strict';
 
-  var SEGMENTOS_POR_NIVEL = { SOLICITUD: 2, TAREA: 5 };
+  var SEGMENTOS_POR_NIVEL = { SOLICITUD: 2, FASE: 3, TAREA: 5 };
 
   function _syncCampoFecha(form, nivel) {
     form.querySelectorAll('[data-nivel-block]').forEach(function (bloque) {

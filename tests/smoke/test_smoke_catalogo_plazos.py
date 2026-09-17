@@ -1,21 +1,23 @@
 """Smoke test — catálogo de plazos legales (/catalogo_plazos/, #632).
 
-Cubre listado (acceso universal, 4 roles), alta en los dos niveles ESFTT con
-plazo posible (SOLICITUD/TAREA — cascada de campo_fecha), edición (incluye
-condiciones anidadas con el operador BETWEEN, exclusivo de este catálogo
-frente a items_tecnicos/admin_requisitos) y baja lógica (activar/desactivar),
-restringidas a SUPERVISOR/ADMIN — mismo patrón que items_tecnicos (#594).
+Cubre listado (acceso universal, 4 roles), alta en los niveles ESFTT con
+plazo posible (SOLICITUD/FASE finalizadora/TAREA — cascada de campo_fecha),
+edición (incluye condiciones anidadas con el operador BETWEEN, exclusivo de
+este catálogo frente a items_tecnicos/admin_requisitos) y baja lógica
+(activar/desactivar), restringidas a SUPERVISOR/ADMIN — mismo patrón que
+items_tecnicos (#594).
 
 Sin tests de "eliminar": la baja física está fuera de alcance del issue.
 
-#788 retiró las altas de nivel FASE y TRAMITE: la tabla ya no los admite —hay
-CheckConstraint— porque no portan fecha administrativa y por tanto no pueden
-tener plazo. El formulario ya no los ofrece (punto 5 del alcance de #788): el
-select de nivel del listado solo pinta Solicitud y Tarea. Los dos smoke tests
-de rechazo cubren la vía que sí sigue abierta — un POST directo al endpoint,
-sin pasar por el formulario — con el mismo criterio que el CheckConstraint de
-BD: el CRUD da el error legible, la constraint cubre lo que le llega sin pasar
-por él.
+#788 retiró las altas de nivel FASE y TRAMITE: no portan fecha administrativa
+y por tanto no pueden tener plazo. ADR-048 (#892) reabre FASE, acotada a fases
+finalizadoras — el CheckConstraint ya lo admite, y el CRUD exige además que la
+hoja del camino sea `tipos_fases.es_finalizadora=True` (el constraint no
+puede cruzar a esa tabla). TRAMITE sigue excluido sin excepción. El smoke test
+de rechazo cubre la vía que sigue abierta para TRAMITE — un POST directo al
+endpoint, sin pasar por el formulario — con el mismo criterio que el
+CheckConstraint de BD: el CRUD da el error legible, la constraint cubre lo que
+le llega sin pasar por él.
 
 Estos tests corren contra la BD real de desarrollo (mismo patrón que el resto
 de la suite, ver conftest._login_as) — el fixture autouse de abajo borra al
@@ -80,16 +82,22 @@ def test_listado_accesible_administrativo(usuario_administrativo):
     assert r.status_code == 200
 
 
-def test_listado_no_ofrece_niveles_sin_plazo(usuario_supervisor):
-    """#788 punto 5: el select de nivel del modal de alta solo ofrece Solicitud
-    y Tarea — Fase y Trámite no portan fecha administrativa y no son niveles
-    seleccionables. `value="FASE"`/`value="TRAMITE"` no aparecen en ningún otro
-    select de la página (los de tipos_fase/tipos_tramite usan sus propios
-    códigos, no el literal del nivel)."""
+def test_listado_no_ofrece_nivel_tramite(usuario_supervisor):
+    """TRAMITE no porta fecha administrativa y no es nivel seleccionable —sin
+    excepción, ADR-048 no lo toca—. `value="TRAMITE"` no aparece en ningún
+    otro select de la página (los de tipos_tramite usan sus propios códigos,
+    no el literal del nivel)."""
     r = usuario_supervisor.get('/catalogo_plazos/', follow_redirects=True)
     assert r.status_code == 200
-    assert b'value="FASE"' not in r.data
     assert b'value="TRAMITE"' not in r.data
+
+
+def test_listado_si_ofrece_nivel_fase(usuario_supervisor):
+    """ADR-048 (#892): FASE vuelve a ser nivel seleccionable, acotado a fases
+    finalizadoras — el select de nivel del modal de alta ya lo pinta."""
+    r = usuario_supervisor.get('/catalogo_plazos/', follow_redirects=True)
+    assert r.status_code == 200
+    assert b'value="FASE"' in r.data
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +130,30 @@ def _datos_maestros_solicitud(app):
         if tipo is None or efecto is None:
             pytest.skip('Faltan datos maestros (tipos_solicitudes / efectos_plazo) en esta BD')
         return tipo.siglas, efecto.id
+
+
+def _datos_maestros_fase_finalizadora(app):
+    """Código de fase finalizadora SIN entrada activa a nivel FASE, más un
+    efecto — mismo criterio que `_datos_maestros_solicitud`/`_tarea`: elegir
+    una libre en vez de picar con la primera y chocar con #786."""
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        from app.models.tipos_fases import TipoFase
+        from app.models.efectos_plazo import EfectoPlazo
+        caminos_ocupados = {
+            camino for (camino,) in CatalogoPlazo.query
+            .filter_by(tipo_elemento='FASE', activo=True)
+            .with_entities(CatalogoPlazo.camino).all()
+        }
+        tipo_fase = next(
+            (t for t in TipoFase.query.filter_by(es_finalizadora=True).order_by(TipoFase.id).all()
+             if f'ANY/ANY/{t.codigo}' not in caminos_ocupados),
+            None,
+        )
+        efecto = EfectoPlazo.query.first()
+        if tipo_fase is None or efecto is None:
+            pytest.skip('Faltan datos maestros (tipos_fases finalizadoras / efectos_plazo) en esta BD')
+        return tipo_fase.codigo, efecto.id
 
 
 def _datos_maestros_tarea(app):
@@ -174,6 +206,58 @@ def test_supervisor_puede_crear_nivel_solicitud(usuario_supervisor, app):
         assert creado.activo is True
         assert creado.campo_fecha == {'fk': 'documento_solicitud_id'}
         assert creado.condiciones == []
+
+
+def test_supervisor_puede_crear_nivel_fase_finalizadora(usuario_supervisor, app):
+    """ADR-048 (#892): FASE es nivel seleccionable, acotado a finalizadoras —
+    campo_fecha se fija solo, sin selección (hereda de la solicitud)."""
+    codigo_fase, efecto_id = _datos_maestros_fase_finalizadora(app)
+    r = usuario_supervisor.post('/catalogo_plazos/crear', data={
+        'tipo_elemento': 'FASE',
+        'camino_fase': codigo_fase,
+        'plazo_valor': '6',
+        'plazo_unidad': 'MESES',
+        'efecto_vencimiento_id': str(efecto_id),
+        'norma_origen': 'Nivel fase finalizadora (#892 smoke)',
+        'orden': '999',
+    }, follow_redirects=False)
+    assert r.status_code == 302
+
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        creado = CatalogoPlazo.query.filter_by(norma_origen='Nivel fase finalizadora (#892 smoke)').first()
+        assert creado is not None
+        assert creado.tipo_elemento == 'FASE'
+        assert creado.camino == f'ANY/ANY/{codigo_fase}'
+        assert creado.campo_fecha == {'fk': 'documento_solicitud_id'}
+        assert creado.campo_fecha_cumplimiento is None
+
+
+def test_crear_nivel_fase_no_finalizadora_es_rechazado(usuario_supervisor, app):
+    """ADR-048: el CRUD exige que la hoja FASE sea finalizadora — el
+    CheckConstraint por sí solo no distingue una fase taxonómica de un acto."""
+    with app.app_context():
+        from app.models.tipos_fases import TipoFase
+        from app.models.efectos_plazo import EfectoPlazo
+        tipo_fase = TipoFase.query.filter_by(es_finalizadora=False).first()
+        efecto = EfectoPlazo.query.first()
+        if tipo_fase is None or efecto is None:
+            pytest.skip('Faltan datos maestros (tipos_fases no finalizadora / efectos_plazo) en esta BD')
+        codigo_fase, efecto_id = tipo_fase.codigo, efecto.id
+
+    r = usuario_supervisor.post('/catalogo_plazos/crear', data={
+        'tipo_elemento': 'FASE',
+        'camino_fase': codigo_fase,
+        'plazo_valor': '1',
+        'plazo_unidad': 'MESES',
+        'efecto_vencimiento_id': str(efecto_id),
+        'norma_origen': 'Fase no finalizadora (#892 smoke)',
+    }, follow_redirects=False)
+    assert r.status_code == 200, 'Debe re-renderizar el formulario con el error, no redirigir'
+
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        assert CatalogoPlazo.query.filter_by(norma_origen='Fase no finalizadora (#892 smoke)').first() is None
 
 
 def test_supervisor_puede_crear_nivel_tarea(usuario_supervisor, app):
@@ -369,12 +453,13 @@ def test_crear_con_tipo_inexistente_es_rechazado(usuario_supervisor, app):
         assert CatalogoPlazo.query.filter_by(norma_origen='Tipo inexistente (#632 smoke)').first() is None
 
 
-@pytest.mark.parametrize('nivel_sin_plazo', ['FASE', 'TRAMITE'])
-def test_crear_nivel_sin_plazo_es_rechazado(usuario_supervisor, app, nivel_sin_plazo):
-    """#788: aunque el formulario ya no ofrece FASE/TRAMITE, el endpoint debe
-    rechazarlos con un error legible si llegan igual (POST directo, no por la
+def test_crear_nivel_tramite_es_rechazado(usuario_supervisor, app):
+    """#788: aunque el formulario ya no ofrece TRAMITE, el endpoint debe
+    rechazarlo con un error legible si llega igual (POST directo, no por la
     UI) — no un 500 del CheckConstraint. Mismo criterio que la BD: el CRUD da
-    el error legible, la constraint cubre lo que le llega sin pasar por él."""
+    el error legible, la constraint cubre lo que le llega sin pasar por él.
+    FASE ya no entra aquí — ADR-048 la admite para finalizadoras, ver
+    test_crear_nivel_fase_no_finalizadora_es_rechazado para su propio rechazo."""
     with app.app_context():
         from app.models.efectos_plazo import EfectoPlazo
         efecto = EfectoPlazo.query.first()
@@ -383,18 +468,18 @@ def test_crear_nivel_sin_plazo_es_rechazado(usuario_supervisor, app, nivel_sin_p
         efecto_id = efecto.id
 
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
-        'tipo_elemento': nivel_sin_plazo,
+        'tipo_elemento': 'TRAMITE',
         'plazo_valor': '1',
         'plazo_unidad': 'MESES',
         'efecto_vencimiento_id': str(efecto_id),
-        'norma_origen': f'Nivel {nivel_sin_plazo} rechazado (#788 smoke)',
+        'norma_origen': 'Nivel TRAMITE rechazado (#788 smoke)',
     }, follow_redirects=False)
     assert r.status_code == 200, 'Debe re-renderizar el formulario con el error, no un 500'
 
     with app.app_context():
         from app.models.catalogo_plazos import CatalogoPlazo
         assert CatalogoPlazo.query.filter_by(
-            norma_origen=f'Nivel {nivel_sin_plazo} rechazado (#788 smoke)'
+            norma_origen='Nivel TRAMITE rechazado (#788 smoke)'
         ).first() is None
 
 

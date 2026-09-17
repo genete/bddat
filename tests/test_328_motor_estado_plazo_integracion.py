@@ -6,10 +6,12 @@ Verifica la cadena completa:
     → evaluar(accion, sujeto, variables)  # motor evalúa ReglaMotor condicionada en estado_plazo
     → EvaluacionResult bloqueado/permitido
 
-El elemento con plazo es la tarea ESPERAR_PLAZO de la separata desde #788: la
-fase no porta fecha administrativa y por tanto no puede tener plazo. Lo que se
-prueba aquí no cambia — que el estado calculado llega al motor y condiciona el
-efecto—, solo el nivel al que se calcula.
+El elemento con plazo es la tarea ESPERAR_PLAZO de la separata desde #788: una
+fase taxonómica (como CONSULTAS, aquí) no porta fecha administrativa y por
+tanto no puede tener plazo — la excepción de ADR-048 es solo para fases
+finalizadoras (RESOLUCION_DUP/AAP/AAC), que no intervienen en este test. Lo que
+se prueba aquí no cambia — que el estado calculado llega al motor y condiciona
+el efecto—, solo el nivel al que se calcula.
 
 Nota sobre el sujeto: `_compilar_sujeto` para en el trámite (4 segmentos), así
 que la regla de una tarea se escribe contra `.../<fase>/<tramite>`. Es
