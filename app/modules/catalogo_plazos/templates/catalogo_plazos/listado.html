@@ -195,9 +195,10 @@
         }).join('<span class="text-secondary opacity-50">/</span>') + '</span>';
     }
 
-    // Solo SOLICITUD y TAREA tienen plazo posible desde #788 — Fase y Trámite
-    // no portan fecha administrativa y la tabla no tiene filas de esos niveles.
-    const NIVEL_LABEL = { SOLICITUD: 'Solicitud', TAREA: 'Tarea' };
+    // SOLICITUD y TAREA tienen plazo posible desde #788; FASE se sumó en
+    // ADR-048, acotada a fases finalizadoras. Trámite sigue sin fecha
+    // administrativa y la tabla no tiene filas de ese nivel.
+    const NIVEL_LABEL = { SOLICITUD: 'Solicitud', FASE: 'Fase', TAREA: 'Tarea' };
 
     new SelectorFiltro('#sf-estado', [
         { v: 'true',  t: 'Activos'   },
@@ -206,6 +207,7 @@
 
     new SelectorFiltro('#sf-nivel', [
         { v: 'SOLICITUD', t: 'Solicitud' },
+        { v: 'FASE',      t: 'Fase' },
         { v: 'TAREA',     t: 'Tarea' }
     ], { label: 'Nivel', name: 'nivel' });
 

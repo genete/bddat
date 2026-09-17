@@ -4,25 +4,30 @@
 
    1. camino_sftt   — DÓNDE está el plazo en el árbol (#785). Un select por nivel
                       ESFTT; los ancestros admiten «cualquiera» (ANY), la hoja no.
-                      El nivel elegido decide cuántos segmentos se piden. Solo
-                      SOLICITUD (2) y TAREA (5) son niveles seleccionables desde
-                      #788 — Fase y Trámite siguen pidiéndose como ancestros de
-                      una tarea (posiciones 3 y 4 del camino), pero no como nivel
-                      de la fila: ninguno de los dos porta fecha administrativa.
+                      El nivel elegido decide cuántos segmentos se piden.
+                      SOLICITUD (2), FASE (3, acotada a finalizadoras — ADR-048)
+                      y TAREA (5) son niveles seleccionables; Trámite sigue
+                      pidiéndose como ancestro de una tarea (posición 4 del
+                      camino) pero no como nivel de la fila: no porta fecha
+                      administrativa (#788).
    2. campo_fecha   — DESDE QUÉ documento se computa (DISEÑO_FECHAS_PLAZOS §3.2).
                       Vocabulario cerrado: SOLICITUD es fija (su único FK a
-                      documentos); TAREA pide el rol (consumido/producido) y,
-                      opcionalmente, el tipo de documento que desempata cuando
-                      dos tareas del mismo tipo conviven en un trámite — su
-                      desplegable sale de `tramites_tareas_documentos` (#346),
-                      filtrado por el trámite y la tarea ya elegidos en
-                      camino_sftt y por el rol elegido aquí mismo (§2.3).
+                      documentos); FASE es la misma fk, heredada de la solicitud
+                      que la contiene (ADR-048 §B, sin selección posible); TAREA
+                      pide el rol (consumido/producido) y, opcionalmente, el
+                      tipo de documento que desempata cuando dos tareas del
+                      mismo tipo conviven en un trámite — su desplegable sale de
+                      `tramites_tareas_documentos` (#346), filtrado por el
+                      trámite y la tarea ya elegidos en camino_sftt y por el rol
+                      elegido aquí mismo (§2.3).
    3. campo_cumplimiento — CON QUÉ documento se cierra (#778). Mismo vocabulario
                       y mismo marcado que el anterior (macro `senalador`
-                      compartida), con dos diferencias: el rol admite «ninguno»
-                      —sin señalador el plazo nunca alcanza CUMPLIDO, que es lo
-                      correcto en TABLON_AYUNTAMIENTOS— y en SOLICITUD el FK es
-                      el de cierre, no el de la solicitud.
+                      compartida), con matices: el rol admite «ninguno» —sin
+                      señalador el plazo nunca alcanza CUMPLIDO, que es lo
+                      correcto en TABLON_AYUNTAMIENTOS—, en SOLICITUD el FK es
+                      el de cierre (no el de la solicitud), y en FASE queda fijo
+                      a NULL sin selección: no hay hoy cierre propio por fase
+                      (issue pendiente de abrir, ADR-048 §B).
 
    Compartidos por el modal de alta (listado.html) y el fragmento de edición
    (_editar_fragmento.html) para no duplicar el marcado.
@@ -34,9 +39,10 @@
    que aquí, pero embebido como JSON en listado.html.
 #}
 
-{# Segmentos del camino por nivel: la longitud codifica el nivel ESFTT. Solo los
-   dos niveles con plazo posible (#788) — ver _NIVELES_VALIDOS en routes.py. #}
-{% set SEGMENTOS_POR_NIVEL = {'SOLICITUD': 2, 'TAREA': 5} %}
+{# Segmentos del camino por nivel: la longitud codifica el nivel ESFTT. Los
+   niveles con plazo posible (#788 + FASE finalizadora, ADR-048) — ver
+   _NIVELES_VALIDOS en routes.py. #}
+{% set SEGMENTOS_POR_NIVEL = {'SOLICITUD': 2, 'FASE': 3, 'TAREA': 5} %}
 
 
 {% macro camino_sftt(id_prefix, nivel_actual, camino_actual,
@@ -52,6 +58,7 @@
         </label>
         <select class="form-select form-select-sm" id="{{ id_prefix }}_nivel" name="tipo_elemento" data-nivel-select required>
             <option value="SOLICITUD" {% if nivel_actual == 'SOLICITUD' %}selected{% endif %}>Solicitud</option>
+            <option value="FASE"      {% if nivel_actual == 'FASE' %}selected{% endif %}>Fase (finalizadora)</option>
             <option value="TAREA"     {% if nivel_actual == 'TAREA' %}selected{% endif %}>Tarea</option>
         </select>
         <div class="form-text">
@@ -163,7 +170,7 @@
 #}
 {% macro senalador(id_prefix, name_prefix, titulo, nivel_actual, fk_solicitud, ayuda_solicitud,
                    cf_rol, cf_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map,
-                   obligatorio=true) %}
+                   obligatorio=true, fk_fase=none, ayuda_fase=none) %}
 <div class="row g-2 mt-1">
     <div class="col-12">
         <label class="form-label fw-semibold small">{{ titulo }}</label>
@@ -174,6 +181,16 @@
         <input type="hidden" name="{{ name_prefix }}_fk" value="{{ fk_solicitud }}"
                {% if nivel_actual != 'SOLICITUD' %}disabled{% endif %}>
         <div class="form-text">{{ ayuda_solicitud }}</div>
+    </div>
+
+    {# ---- FASE finalizadora — hereda el disparo de su solicitud, o sin cierre
+           propio todavía (ADR-048 §B); sin selección posible en ningún caso ---- #}
+    <div class="col-12" data-nivel-block="FASE" {% if nivel_actual != 'FASE' %}style="display:none"{% endif %}>
+        {% if fk_fase %}
+        <input type="hidden" name="{{ name_prefix }}_fk" value="{{ fk_fase }}"
+               {% if nivel_actual != 'FASE' %}disabled{% endif %}>
+        {% endif %}
+        <div class="form-text">{{ ayuda_fase }}</div>
     </div>
 
     {# ---- TAREA — rol + tipo de documento opcional (desempate, §2.3) ---- #}
@@ -223,7 +240,9 @@
 {% macro campo_fecha(id_prefix, nivel_actual, cf_fk, cf_rol, cf_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map) %}
 {{ senalador(id_prefix, 'campo_fecha', 'Inicio del cómputo', nivel_actual,
              'documento_solicitud_id', 'Fecha administrativa del documento de solicitud.',
-             cf_rol, cf_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map) }}
+             cf_rol, cf_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map,
+             fk_fase='documento_solicitud_id',
+             ayuda_fase='Fecha administrativa del documento de solicitud — heredada de la solicitud que contiene esta fase (ADR-048 §B): las dos fases finalizadoras de una misma solicitud arrancan su plazo el mismo día.') }}
 {% endmacro %}
 
 
@@ -232,5 +251,6 @@
              'documento_cierre_id',
              'Certificado de cierre de la solicitud: acredita que hubo notificación —o intento acreditado— a todos los interesados (art. 40.4 LPACAP).',
              cc_rol, cc_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map,
-             obligatorio=false) }}
+             obligatorio=false,
+             ayuda_fase='Sin cierre propio por fase todavía (issue pendiente de abrir, ADR-048 §B): el plazo de esta fase solo puede estar en curso o vencido, nunca cumplido.') }}
 {% endmacro %}
