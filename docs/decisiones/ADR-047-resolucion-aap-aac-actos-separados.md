@@ -20,9 +20,17 @@ necesario** resolver por separado: la AAP puede llegar a su plazo (art. 128, 3 m
 todavía pendiente —organismos reticentes en las consultas propias de la AAC, con más plazo (art.
 131.7)—, y forzar un acto único obligaría a elegir entre retrasar indebidamente la AAP o resolver la
 AAC sin contenido. Ninguna de las dos es correcta, y ninguna la exige la norma: son dos
-autorizaciones distintas que solo comparten tramitación por conveniencia procedimental. **La cita
-exacta de qué artículo autoriza tramitarlas juntas queda pendiente de leer** (ver §Lo que este ADR
-no decide) — no se ha inventado ninguna en este documento.
+autorizaciones distintas que solo comparten tramitación por conveniencia procedimental.
+
+**Cita normativa confirmada** (leída en sesión 2026-09-17): LSE art. 53.1, párrafo de cierre — "La
+tramitación y resolución de autorizaciones definidas en los párrafos a) y b) del apartado 1 del
+presente artículo **podrán** efectuarse de manera consecutiva, coetánea o conjunta." Es una facultad,
+no un mandato, y "consecutiva" es precisamente resolver AAP y AAC por separado. El RD 1955/2000
+confirma la misma lectura por estructura: AAP (Sección 1.ª, resolución propia en art. 128) y AAC
+(Sección 2.ª, resolución propia en art. 131.7) son dos procedimientos con acto resolutorio distinto,
+y su art. 131.1 párr. 2 contempla expresamente el caso de una instalación con AAP ya resuelta cuya
+AAC se tramita solo bajo la Sección 2.ª. Ninguna de las dos normas exige resolución única ni ata la
+tramitación/resolución al modo en que se presentó la solicitud.
 
 El modelo de hoy no lo permite representar. Los tres sitios que asumen acto único:
 
@@ -151,9 +159,6 @@ de forma correcta mientras "AAC resuelta sin AAP" no sea representable en el ár
   de #887, pero se decide en el issue de implementación.
 - **Si otras combinaciones de `tipos_solicitudes` tienen el mismo problema.** No se ha encontrado
   ninguna otra en esta sesión, pero no se ha hecho un barrido exhaustivo de todo el catálogo.
-- **La cita normativa exacta** de qué artículo autoriza tramitar `AAP+AAC` conjuntamente pero
-  resolverlas por separado — pendiente de leer con `/boe` antes de sembrar cualquier migración
-  (mismo criterio que #887 aplicó antes de fijar su cita).
 
 ---
 
