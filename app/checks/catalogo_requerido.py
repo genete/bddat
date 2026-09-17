@@ -180,6 +180,7 @@ def _validar_finalizadoras_con_regla() -> List[str]:
         from app.models.motor_reglas import ReglaMotor
         from app.services.informe_instruccion import (
             _FASES_FINALIZADORAS_POR_SIGLAS, _FASE_FINALIZADORA_DEFECTO,
+            _CODIGOS_RESOLUCION_PARTIDA,
         )
 
         finalizadoras = {
@@ -202,9 +203,14 @@ def _validar_finalizadoras_con_regla() -> List[str]:
             pass
         return []
 
-    conocidas_por_emisor = {
-        codigo for fases in _FASES_FINALIZADORAS_POR_SIGLAS.values() for codigo in fases
-    } | {_FASE_FINALIZADORA_DEFECTO}
+    conocidas_por_emisor = (
+        {codigo for fases in _FASES_FINALIZADORAS_POR_SIGLAS.values() for codigo in fases}
+        | {_FASE_FINALIZADORA_DEFECTO}
+        # RESOLUCION_AAP/RESOLUCION_AAC nunca son VALOR del dict de arriba — se
+        # deciden en tiempo de ejecución (ADR-047 §B, #918), no por lookup
+        # estático — así que se declaran aquí a propósito.
+        | set(_CODIGOS_RESOLUCION_PARTIDA)
+    )
 
     avisos: List[str] = []
     for codigo in sorted(finalizadoras - nombradas):

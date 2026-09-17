@@ -125,15 +125,22 @@ _FASE_FINALIZADORA_DEFECTO = 'RESOLUCION'
 # si ya existe RESOLUCION_AAP o RESOLUCION_AAC, esas; si no hay elección todavía,
 # conjunta por defecto (RESOLUCION), mismo criterio que el resto de la creación de
 # fases en el árbol (nadie fuerza la elección antes de tiempo).
+#
+# Por eso mismo RESOLUCION_AAP/RESOLUCION_AAC no aparecen como VALOR en ningún
+# dict — el guardián de app/checks/catalogo_requerido.py que vigila "toda fase
+# finalizadora está en el mapa" no las vería y avisaría en falso; se le declara
+# aquí la excepción, junto al propio código que la crea (#918).
 _SIGLAS_RESOLUCION_PARTIBLE = {'AAP+AAC', 'AAP+AAC+DUP'}
+_CODIGOS_RESOLUCION_PARTIDA = ('RESOLUCION_AAP', 'RESOLUCION_AAC')
 
 
 def _codigos_resolucion_autorizacion(solicitud) -> list[str]:
     """RESOLUCION (conjunta) o RESOLUCION_AAP/RESOLUCION_AAC (partida, las que
     ya consten creadas) — #918, ADR-047 §B. Sin elección todavía, conjunta."""
     existentes = {f.tipo_fase.codigo for f in solicitud.fases if f.tipo_fase}
-    partida = [c for c in ('RESOLUCION_AAP', 'RESOLUCION_AAC') if c in existentes]
+    partida = [c for c in _CODIGOS_RESOLUCION_PARTIDA if c in existentes]
     return partida if partida else ['RESOLUCION']
+
 
 # Cómo se llama cada tipo de tarea dentro de una frase. `TipoTarea.nombre` es una
 # descripción, no un nombre —«Revisión técnica o jurídica de documentación con
