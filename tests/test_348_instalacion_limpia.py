@@ -42,7 +42,8 @@ class TestCatalogoBaseTrasUpgrade:
     def test_tipos_fases(self, app_ctx):
         from app.models.tipos_fases import TipoFase
         # +2 en #914: RESOLUCION_DUP, DATOS_CATASTRALES (ADR-046)
-        assert TipoFase.query.count() == 11
+        # +2 en #918: RESOLUCION_AAP, RESOLUCION_AAC (ADR-047)
+        assert TipoFase.query.count() == 13
 
     def test_tipos_tramites(self, app_ctx):
         from app.models.tipos_tramites import TipoTramite

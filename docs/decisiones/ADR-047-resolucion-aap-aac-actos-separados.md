@@ -20,9 +20,17 @@ necesario** resolver por separado: la AAP puede llegar a su plazo (art. 128, 3 m
 todavía pendiente —organismos reticentes en las consultas propias de la AAC, con más plazo (art.
 131.7)—, y forzar un acto único obligaría a elegir entre retrasar indebidamente la AAP o resolver la
 AAC sin contenido. Ninguna de las dos es correcta, y ninguna la exige la norma: son dos
-autorizaciones distintas que solo comparten tramitación por conveniencia procedimental. **La cita
-exacta de qué artículo autoriza tramitarlas juntas queda pendiente de leer** (ver §Lo que este ADR
-no decide) — no se ha inventado ninguna en este documento.
+autorizaciones distintas que solo comparten tramitación por conveniencia procedimental.
+
+**Cita normativa confirmada** (leída en sesión 2026-09-17): LSE art. 53.1, párrafo de cierre — "La
+tramitación y resolución de autorizaciones definidas en los párrafos a) y b) del apartado 1 del
+presente artículo **podrán** efectuarse de manera consecutiva, coetánea o conjunta." Es una facultad,
+no un mandato, y "consecutiva" es precisamente resolver AAP y AAC por separado. El RD 1955/2000
+confirma la misma lectura por estructura: AAP (Sección 1.ª, resolución propia en art. 128) y AAC
+(Sección 2.ª, resolución propia en art. 131.7) son dos procedimientos con acto resolutorio distinto,
+y su art. 131.1 párr. 2 contempla expresamente el caso de una instalación con AAP ya resuelta cuya
+AAC se tramita solo bajo la Sección 2.ª. Ninguna de las dos normas exige resolución única ni ata la
+tramitación/resolución al modo en que se presentó la solicitud.
 
 El modelo de hoy no lo permite representar. Los tres sitios que asumen acto único:
 
@@ -108,10 +116,15 @@ elegido el camino partido.
 reutilizar `tiene_aac_resuelta_favorable` para #891 (§E): AAP y AAC son ahora fases hermanas de la
 misma solicitud cuando se resuelve partido.
 
-**Cita normativa pendiente de leer** (igual criterio que §Contexto): no se fija artículo en este
-ADR. Candidatos a revisar con `/boe` antes de sembrar la migración: arts. 121-131 RD 1955/2000 (la
-relación anteproyecto→proyecto de ejecución) y LPACAP art. 88.2 (congruencia de la resolución con lo
-solicitado e instruido).
+**Cita normativa confirmada** (leída en sesión 2026-09-17): RD 1955/2000 arts. 128.4, 130.1 y 131.1
+párr. 2. La Sección 2.ª del Título VII (aprobación de proyecto de ejecución, AAC) está construida
+normativamente como una fase que sigue a la AAP ya resuelta, no paralela a ella: el art. 128.4 fija
+el plazo, contado desde el otorgamiento de la AAP, dentro del cual debe solicitarse la aprobación del
+proyecto de ejecución, con caducidad de la AAP si no se solicita a tiempo; el art. 130.1 atribuye esa
+solicitud a "el peticionario o **el titular de la autorización**" (la AAP ya otorgada); y el art.
+131.1 párr. 2 regula expresamente el caso de tramitación bajo la Sección 2.ª cuando "la instalación
+**cuenta con una resolución de autorización administrativa previa**". No hace falta acudir a LPACAP
+art. 88.2 — el fundamento sectorial específico basta.
 
 ---
 
@@ -151,9 +164,6 @@ de forma correcta mientras "AAC resuelta sin AAP" no sea representable en el ár
   de #887, pero se decide en el issue de implementación.
 - **Si otras combinaciones de `tipos_solicitudes` tienen el mismo problema.** No se ha encontrado
   ninguna otra en esta sesión, pero no se ha hecho un barrido exhaustivo de todo el catálogo.
-- **La cita normativa exacta** de qué artículo autoriza tramitar `AAP+AAC` conjuntamente pero
-  resolverlas por separado — pendiente de leer con `/boe` antes de sembrar cualquier migración
-  (mismo criterio que #887 aplicó antes de fijar su cita).
 
 ---
 

@@ -1,6 +1,6 @@
 # Estructura Expediente-Solicitud-Fase (ESF)
 
-**Versión:** 2.4 | **Fecha:** 2026-09-14
+**Versión:** 2.5 | **Fecha:** 2026-09-17
 
 Fuente de verdad de qué fases aplican a cada combinación (tipo_solicitud × tipo_expediente). El JSON `ESTRUCTURA_ESF.json` es derivado de este documento; en caso de discrepancia prevalece este MD.
 
@@ -113,7 +113,9 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `AAU_AAUS_INTEGRADA` | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ |
 | `CONSULTA_OPERADOR_SISTEMA` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `RECONOCIMIENTO_INTERESADO` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
-| `RESOLUCION` | ✅⁷ | ✅⁷ | ✅⁷ | ✅⁷ | ✅⁷ | ✅⁷ | ✅⁷ |
+| `RESOLUCION` | 🔀⁸ | 🔀⁸ | 🔀⁸ | 🔀⁸ | 🔀⁸ | 🔀⁸ | 🔀⁸ |
+| `RESOLUCION_AAP` | 🔀⁸ | 🔀⁸ | 🔀⁸ | 🔀⁸ | 🔀⁸ | 🔀⁸ | 🔀⁸ |
+| `RESOLUCION_AAC` | 🔀⁸ | 🔀⁸ | 🔀⁸ | 🔀⁸ | 🔀⁸ | 🔀⁸ | 🔀⁸ |
 
 ¹ Trámite `COMUNICACION_INICIO` obligatorio — acredita Hito 1 (RD-ley 23/2020 art. 1.2 in fine).  
 ² Solo si `proyecto.ia.siglas ∈ {AAU, AAUS}`.  
@@ -121,7 +123,8 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 ⁴ Suprimible si `requiere_dup = false` AND `proyecto.ia.siglas ∉ {AAU, AAUS}` (DL 26/2021 DF 4ª). Suprimible también para instalaciones con tensión ≤ 30 kV + líneas subterráneas (con CT interior o solas) + suelo urbano/urbanizable (Decreto 9/2011 DA 1ª).  
 ⁵ Solo si el instrumento ambiental se tramita externamente al procedimiento sustantivo.  
 ⁶ Solo si el instrumento ambiental se tramita integrado en el procedimiento sustantivo.  
-⁷ La publicación de la resolución en BOP (art. 128.3 RD 1955/2000) se suprime adicionalmente si tensión ≤ 30 kV + líneas subterráneas (con CT interior o solas) + suelo urbano/urbanizable (Decreto 9/2011 DA 1ª).
+⁷ La publicación de la resolución en BOP (art. 128.3 RD 1955/2000) se suprime adicionalmente si tensión ≤ 30 kV + líneas subterráneas (con CT interior o solas) + suelo urbano/urbanizable (Decreto 9/2011 DA 1ª).  
+⁸ `RESOLUCION` (conjunta) o `RESOLUCION_AAP`+`RESOLUCION_AAC` (partida) son alternativas mutuamente excluyentes: exactamente una debe ocurrir, nunca ninguna ni las dos — elección del técnico, no regla de motor (ADR-047 §B). Si se elige partida, `RESOLUCION_AAC` no puede elaborarse sin `RESOLUCION_AAP` finalizada favorable (ADR-047 §F). La supresión de publicación en BOP de la nota ⁷ aplica igual a `RESOLUCION_AAP` (`RESOLUCION_AAC` no publica en BOP en ningún caso, art. 131.8 RD 1955/2000).
 
 ---
 
@@ -141,7 +144,9 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `AAU_AAUS_INTEGRADA` | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | 🚫 | 🚫 |
 | `CONSULTA_OPERADOR_SISTEMA` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `RECONOCIMIENTO_INTERESADO` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
-| `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | 🚫 |
+| `RESOLUCION` | 🔀⁹ | 🔀⁹ | 🔀⁹ | 🔀⁹ | 🔀⁹ | 🔀⁹ | 🚫 | 🚫 |
+| `RESOLUCION_AAP` | 🔀⁹ | 🔀⁹ | 🔀⁹ | 🔀⁹ | 🔀⁹ | 🔀⁹ | 🚫 | 🚫 |
+| `RESOLUCION_AAC` | 🔀⁹ | 🔀⁹ | 🔀⁹ | 🔀⁹ | 🔀⁹ | 🔀⁹ | 🚫 | 🚫 |
 | `RESOLUCION_DUP` | ✅⁸ | ✅⁸ | ✅⁸ | ✅⁸ | ✅⁸ | ✅⁸ | 🚫 | 🚫 |
 
 ¹ Trámite `COMUNICACION_INICIO` obligatorio — acredita Hito 1 (RD-ley 23/2020 art. 1.2 in fine).  
@@ -151,7 +156,8 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 ⁵ Solo si el instrumento ambiental se tramita externamente al procedimiento sustantivo.  
 ⁶ Solo si el instrumento ambiental se tramita integrado en el procedimiento sustantivo.  
 ⁷ Obligatoria: media el acceso a datos catastrales de titularidad necesarios para redactar el RBDA (art. 143.3.e RD 1955/2000). Previa a `CONSULTAS`/`INFORMACION_PUBLICA` de esta solicitud. Dos caminos según si el promotor dispone o no de acceso directo al Catastro (ADR-046 §F; detalle en `DISEÑO_RESOLUCION_DUP.md` §2).  
-⁸ Convive como fase hermana de `RESOLUCION`: resuelve el acto de declaración de utilidad pública; `RESOLUCION` resuelve la autorización conjunta AAP+AAC (ADR-046 §A-B).
+⁸ Convive como fase hermana de la resolución de la autorización, sea `RESOLUCION` (conjunta) o `RESOLUCION_AAP`/`RESOLUCION_AAC` (partida, nota ⁹): resuelve el acto de declaración de utilidad pública; la otra resuelve la autorización AAP+AAC (ADR-046 §A-B).  
+⁹ `RESOLUCION` (conjunta) o `RESOLUCION_AAP`+`RESOLUCION_AAC` (partida) son alternativas mutuamente excluyentes: exactamente una debe ocurrir, nunca ninguna ni las dos — elección del técnico, no regla de motor (ADR-047 §B). Si se elige partida, `RESOLUCION_AAC` no puede elaborarse sin `RESOLUCION_AAP` finalizada favorable (ADR-047 §F).
 
 ---
 

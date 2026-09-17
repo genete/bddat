@@ -736,3 +736,94 @@ def _(ctx) -> bool:
         if fase.tipo_fase_id == tipo_fase.id and fase.reformado_id == reformado_id_nueva:
             return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# Exclusión mutua RESOLUCION vs. RESOLUCION_AAP/RESOLUCION_AAC (#918, ADR-047 §B)
+# ---------------------------------------------------------------------------
+
+@variable('existe_resolucion_conjunta')
+def _(ctx) -> bool:
+    """
+    True si la solicitud en contexto ya tiene una fase `RESOLUCION` (acto
+    conjunto de AAP+AAC).
+
+    Sostiene la mitad de la exclusión mutua de ADR-047 §B: no se puede crear
+    `RESOLUCION_AAP` ni `RESOLUCION_AAC` si ya se resolvió por el camino
+    conjunto. Solo dispara al crear fase (`ctx.fase is None`), mismo criterio
+    de guarda que `version_ya_cubierta` — con una fase ya existente en
+    contexto (crear trámite, auditar) devuelve False.
+    """
+    solicitud = ctx.solicitud
+    if solicitud is None or ctx.fase is not None:
+        return False
+    return any(f.tipo_fase and f.tipo_fase.codigo == 'RESOLUCION' for f in solicitud.fases)
+
+
+@variable('existe_resolucion_partida')
+def _(ctx) -> bool:
+    """
+    True si la solicitud en contexto ya tiene una fase `RESOLUCION_AAP` o
+    `RESOLUCION_AAC` (acto partido, cualquiera de las dos mitades).
+
+    Sostiene la otra mitad de la exclusión mutua de ADR-047 §B: no se puede
+    crear `RESOLUCION` conjunta si ya se ha elegido el camino partido, aunque
+    solo se haya creado una de las dos mitades todavía — no hace falta que
+    estén las dos, ni que la creada esté favorable (eso es la regla de orden
+    de §F, ancla distinta). Solo dispara al crear fase (`ctx.fase is None`).
+    """
+    solicitud = ctx.solicitud
+    if solicitud is None or ctx.fase is not None:
+        return False
+    return any(
+        f.tipo_fase and f.tipo_fase.codigo in ('RESOLUCION_AAP', 'RESOLUCION_AAC')
+        for f in solicitud.fases
+    )
+
+
+# ---------------------------------------------------------------------------
+# Regla de orden AAP→AAC (#918, ADR-047 §F)
+# ---------------------------------------------------------------------------
+
+@variable('tiene_aap_favorable_misma_solicitud')
+def _(ctx) -> bool:
+    """
+    True si la fase en contexto tiene una fase hermana `RESOLUCION_AAP` en la
+    misma solicitud, finalizada con resultado favorable.
+
+    Sostiene la regla de orden de ADR-047 §F: `RESOLUCION_AAC` no puede
+    elaborarse sin que `RESOLUCION_AAP` conste favorable. Ancla real:
+    `crear_tramite` (bloquea abrir `ELABORACION` bajo `RESOLUCION_AAC`), no
+    la tarea `ELABORAR` — el motor no compila sujeto a nivel de tarea
+    (`_compilar_sujeto` llega hasta trámite, `ExpedienteContext` no
+    distingue tipo_tarea en absoluto). Decisión explícita con Carlos,
+    2026-09-17: parar un paso antes —no dejar abrir la elaboración— es
+    equivalente en la práctica a bloquear su cierre, y evita construir
+    plumbing nuevo en el motor. Mismo hueco que #891 dejaría en
+    `RESOLUCION_DUP.ELABORACION` (ADR-046 §E) — no se toca aquí, es de su
+    propio issue.
+
+    Solo dispara con una fase existente en contexto (`ctx.fase`, presente en
+    `crear_tramite`): usa `fase.solicitud`, no `ctx.solicitud` — ese último
+    es None en este contexto porque el dict de `crear_tramite`
+    (`{'fase', 'tipo_tramite'}`) no lleva clave `'solicitud'` (#895).
+
+    A diferencia de `tiene_solicitud_aap_favorable` (excluye la solicitud
+    actual, mira otras del expediente), aquí AAP y AAC son fases hermanas de
+    la MISMA solicitud — mismo motivo que llevó a no reutilizar
+    `tiene_aac_resuelta_favorable` para #891.
+    """
+    fase = ctx.fase
+    if fase is None:
+        return False
+    solicitud = fase.solicitud
+    if solicitud is None:
+        return False
+    for f in solicitud.fases:
+        if (f.tipo_fase
+                and f.tipo_fase.codigo == 'RESOLUCION_AAP'
+                and f.finalizada
+                and f.resultado_fase
+                and f.resultado_fase.codigo in RESULTADO_FASE_FAVORABLE_CODIGOS):
+            return True
+    return False

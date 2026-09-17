@@ -1,9 +1,9 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-09-14 (#914 — añade REQUERIMIENTO_RBDA_DEFINITIVA a RESOLUCION_DUP)
+> Última sincronización: 2026-09-17 (#918 — añade RESOLUCION_AAP, RESOLUCION_AAC)
 
-**Versión:** 6.5 | **Fecha:** 2026-09-14
+**Versión:** 6.6 | **Fecha:** 2026-09-17
 
 Este documento es la versión legible por humanos del JSON estructural. El JSON es la fuente de verdad para código e IA; este MD es la referencia de consulta rápida.
 
@@ -226,3 +226,28 @@ aparte (#778, no fijado todavía).
 **Bloqueos de motor:** duplicado quirúrgico de los 5 de `RESOLUCION` (sujeto `ANY/ANY/RESOLUCION_DUP`) — `organismos_todos_terminados`, `fase_ip_finalizada`, `tramite_requerimiento_sin_respuesta`, `instrumento_ambiental=AAU`, `solicitud_tiene_cert_fin_instruccion`. Más la regla de orden de #891 (no resolver DUP sin AAC previa aprobada en `AAP+DUP`), anclada en `ELABORACION.ELABORAR` (ADR-046 §E). No se hereda de `RESOLUCION` — se duplica deliberadamente (decisión ADR-046 §E, alternativa de herencia descartada).
 
 **Plazo:** propio, 6 meses (art. 148.1 RD 1955/2000) — converge con #892, no fijado en esta alta.
+
+---
+
+### RESOLUCION_AAP
+*Resolución finalizadora del acto de AAP cuando `AAP+AAC`(`+DUP`) se resuelve partida en vez de conjunta (ADR-047 §A). `RESOLUCION` conserva su código y significado para el acto conjunto; `RESOLUCION_AAP`/`RESOLUCION_AAC` son la alternativa, elección del técnico, mutuamente excluyente con `RESOLUCION` (ver `ESTRUCTURA_ESF.md`).*
+
+| Trámite | Patrón | Tareas indicativas |
+|---|---|---|
+| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION de la solicitud) |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR |
+| `PUBLICACION` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO |
+
+Mismo código de trámite `ELABORACION` que `RESOLUCION` — colisión de nombre de fichero resuelta vía `nombres_documentos.py:_SUSTITUCIONES` (#918). **Bloqueos de motor:** duplicado quirúrgico de los 5 de `RESOLUCION` (sujeto `ANY/ANY/RESOLUCION_AAP`), más exclusión mutua con `RESOLUCION` al `CREAR` la fase (condición `existe_resolucion_conjunta`, ADR-047 §B). Publica (art. 128.3 RD 1955/2000) igual que `RESOLUCION`, a diferencia de `RESOLUCION_AAC`.
+
+---
+
+### RESOLUCION_AAC
+*Resolución finalizadora del acto de AAC cuando `AAP+AAC`(`+DUP`) se resuelve partida en vez de conjunta (ADR-047 §A). Solo elaborable con `RESOLUCION_AAP` de la misma solicitud finalizada favorable (ADR-047 §F).*
+
+| Trámite | Patrón | Tareas indicativas |
+|---|---|---|
+| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION de la solicitud) |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR |
+
+Sin `PUBLICACION`: a diferencia de `RESOLUCION_AAP`, el art. 131.8 RD 1955/2000 solo exige notificar, no publicar (#918). Mismo código de trámite `ELABORACION` que `RESOLUCION` — colisión resuelta vía `nombres_documentos.py:_SUSTITUCIONES`. **Bloqueos de motor:** duplicado quirúrgico de los 5 de `RESOLUCION` (sujeto `ANY/ANY/RESOLUCION_AAC`); exclusión mutua con `RESOLUCION` al `CREAR` la fase (condición `existe_resolucion_conjunta`). Más la **regla de orden AAP→AAC** (ADR-047 §F, RD 1955/2000 arts. 128.4/130.1/131.1 párr. 2): `RESOLUCION_AAP` de la misma solicitud debe constar finalizada favorable. Por límite del motor —no compila sujeto a nivel de tarea—, la regla ancla en `CREAR` el trámite `ELABORACION` (sujeto `ANY/RESOLUCION_AAC/ELABORACION`), **no** en la tarea `ELABORAR` como el resto de reglas de orden de este documento.
