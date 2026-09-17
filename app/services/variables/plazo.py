@@ -2,11 +2,13 @@
 Variables de tipo 'plazo' — delegan en plazos.py para obtener el estado
 del plazo legal asociado al elemento en contexto.
 
-Solo dos niveles portan fecha administrativa y por tanto pueden tener plazo
-(#788): la Solicitud y la Tarea. Desde #778 el servicio lo dice en su propia
-interfaz —una función por cada uno— y aquí se elige cuál llamar, en vez de pasar
-un literal de nivel y dejar que el servicio responda «sin plazo» a los otros dos.
-Fase y Trámite se resuelven aquí mismo, sin tocar el servicio ni la BD.
+Tres niveles pueden tener plazo: la Solicitud y la Tarea, que portan fecha
+administrativa propia (#788), y la Fase finalizadora, excepción acotada de
+ADR-048 — RESOLUCION_DUP/AAP/AAC son el acto, no taxonomía. Desde #778 el
+servicio lo dice en su propia interfaz —una función por cada uno— y aquí se
+elige cuál llamar, en vez de pasar un literal de nivel y dejar que el servicio
+responda «sin plazo» a los que no aplican. El Trámite se resuelve aquí mismo,
+sin tocar el servicio ni la BD.
 """
 from __future__ import annotations
 
@@ -23,8 +25,11 @@ def _resolver_elemento(ctx):
       Tramite   → tiene 'fase', NO tiene 'tramites'
       Tarea     → tiene 'tramite'
 
-    Fase y Trámite se identifican igualmente —el contexto puede traerlos— pero
-    devuelven nivel None: no hay plazo que buscarles.
+    Trámite se identifica igual —el contexto puede traerlo— pero devuelve nivel
+    None: no hay plazo que buscarle. Fase devuelve 'FASE' siempre: el filtro a
+    solo finalizadoras lo hace el catálogo (sin fila para una fase taxonómica,
+    `obtener_estado_plazo_fase` devuelve SIN_PLAZO), no esta función — mismo
+    criterio que el resto del servicio de plazos.
     """
     obj = ctx._objeto
     if obj is None or isinstance(obj, dict):
@@ -32,9 +37,9 @@ def _resolver_elemento(ctx):
     if hasattr(obj, 'fases') and not hasattr(obj, 'solicitud'):
         return obj, 'SOLICITUD'
     if hasattr(obj, 'solicitud') and hasattr(obj, 'tramites'):
-        return obj, None            # Fase — taxonomía ESFTT, no figura jurídica
+        return obj, 'FASE'
     if hasattr(obj, 'fase') and not hasattr(obj, 'tramites'):
-        return obj, None            # Trámite — ídem
+        return obj, None            # Trámite — taxonomía ESFTT, no figura jurídica
     if hasattr(obj, 'tramite'):
         return obj, 'TAREA'
     return None, None
@@ -48,6 +53,8 @@ def _estado_plazo(ctx):
     from app.services import plazos
     if nivel == 'SOLICITUD':
         return plazos.obtener_estado_plazo_solicitud(elemento, ctx=ctx)
+    if nivel == 'FASE':
+        return plazos.obtener_estado_plazo_fase(elemento, ctx=ctx)
     return plazos.obtener_estado_plazo_tarea(elemento, ctx=ctx)
 
 
