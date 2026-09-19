@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fecha de notificación y efectos (LPACAP)</title>
+<style>
+  :root { color-scheme: light; --ink:#1b1f24; --muted:#5b6470; --line:#d8dee6; --bg:#ffffff; --soft:#f5f7fa; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.55 "Segoe UI", Arial, sans-serif; color:var(--ink); background:var(--bg); }
+  .wrap { max-width:1180px; margin:0 auto; padding:0 24px; }
+  h1 { font-size:26px; margin:28px 0 4px; }
+  h2 { font-size:19px; margin:34px 0 10px; }
+  .sub { color:var(--muted); margin:0 0 18px; }
+  .idea { background:var(--soft); border:1px solid var(--line); border-left:5px solid #2563eb; border-radius:8px; padding:14px 18px; margin:14px 0; }
+  .idea p { margin:6px 0; }
+  .fa { color:#15803d; font-weight:700; } .fb { color:#c2410c; font-weight:700; }
+  .leyenda { display:flex; flex-wrap:wrap; gap:8px 14px; margin:10px 0 6px; font-size:13px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; }
+  .chip i { display:inline-block; width:18px; height:14px; border-radius:3px; border:1.6px solid; }
+  .barra { display:flex; gap:6px; align-items:center; margin:8px 0; }
+  .barra button { border:1px solid var(--line); background:#fff; border-radius:6px; padding:4px 10px; cursor:pointer; font:inherit; }
+  .barra button:hover { background:var(--soft); }
+  #marco { border:1px solid var(--line); border-radius:8px; overflow:auto; max-height:88vh; background:#fff; padding:10px; cursor:grab; user-select:none; }
+  #marco.arrastrando { cursor:grabbing; }
+  #estado { color:var(--muted); padding:20px; }
+  table { border-collapse:collapse; width:100%; font-size:14px; margin:8px 0 4px; }
+  th, td { border:1px solid var(--line); padding:7px 10px; vertical-align:top; text-align:left; }
+  th { background:var(--soft); }
+  td.c { white-space:nowrap; font-weight:700; }
+  .si { color:#15803d; font-weight:600; } .no { color:#8a94a3; }
+  ol.abiertos li { margin:6px 0; }
+  .nota { color:var(--muted); font-size:13px; }
+  details { margin:14px 0; } pre { background:var(--soft); border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; font-size:12px; }
+  code { background:var(--soft); padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Fecha de notificación y sus efectos</h1>
+  <p class="sub">Capítulo II «Eficacia de los actos» del Título III de la Ley 39/2015 (arts. 37-46), más los artículos de los que cuelgan sus efectos.
+     Diagrama <b>agnóstico</b>: solo conceptos de la ley, sin ningún sistema concreto. Fuente: texto consolidado vigente (BOE-A-2015-10565); art. 46 de la Ley 29/1998 (BOE-A-1998-16718) para el plazo contencioso-administrativo.</p>
+
+  <div class="idea">
+    <p><b>Idea central: no existe UNA «fecha de notificación».</b> La ley maneja dos fechas distintas, construidas con los mismos hitos, para dos efectos separados:</p>
+    <p><span class="fa">FA · cumplimiento del deber de notificar</span> — cuándo la Administración cumple <i>su</i> obligación (le importa a ella: plazo máximo, silencio, caducidad).</p>
+    <p><span class="fb">FB · notificación frente al interesado</span> — cuándo la notificación surte efecto sobre el administrado (le importa a él: eficacia, plazos que corren contra él, recursos, firmeza).</p>
+    <p>Cuando ambas existen, <b>FA ≤ FB</b>: todo lo que fija FB también satisface el art. 40.4. Y hay <b>una FA y una FB por cada interesado</b> (40.1).</p>
+  </div>
+
+  <div class="leyenda">
+    <span class="chip"><i style="background:#dbeafe;border-color:#2563eb"></i>Hito con fecha (F0-F7)</span>
+    <span class="chip"><i style="background:#fff6d6;border-color:#b58900"></i>Decisión</span>
+    <span class="chip"><i style="background:#eef2f7;border-color:#5b6b82"></i>Actuación</span>
+    <span class="chip"><i style="background:#d7f3e3;border-color:#15803d"></i>FA y efectos para la Administración</span>
+    <span class="chip"><i style="background:#ffe4c7;border-color:#c2410c"></i>FB y efectos para el administrado</span>
+    <span class="chip"><i style="background:#fde8e8;border-color:#b91c1c;border-style:dashed"></i>⚠ La ley no lo resuelve o es lectura mía</span>
+    <span class="chip">Línea discontinua = «alimenta a FA»</span>
+  </div>
+
+  <div class="barra">
+    <button id="menos" title="Reducir">−</button>
+    <button id="mas" title="Ampliar">+</button>
+    <button id="cien">100 %</button>
+    <button id="inicio" title="Volver al acto dictado, al principio del diagrama">Inicio</button>
+    <button id="ajustar">Ajustar al ancho</button>
+    <span class="nota">Arrastra con el ratón para desplazarte · Ctrl + rueda para ampliar o reducir.</span>
+  </div>
+  <div id="marco"><div id="estado">Cargando diagrama… (necesita conexión a cdn.jsdelivr.net; si no aparece, abre este fichero en un navegador normal)</div><div id="diagrama"></div></div>
+  <noscript><p>Este diagrama necesita JavaScript.</p></noscript>
+
+  <h2>Los hitos (fechas) y para qué cuenta cada uno</h2>
+  <table>
+    <thead><tr><th>Código</th><th>Hito</th><th>Qué es, según la ley</th><th>Art.</th><th>¿Alimenta FA?</th><th>¿Alimenta FB?</th></tr></thead>
+    <tbody>
+      <tr><td class="c">F0</td><td>Fecha del acto</td><td>Día en que se dicta la resolución o acto. Punto de partida del límite de 10 días para cursar la notificación.</td><td>39.1, 40.2</td><td class="no">—</td><td class="no">— (la eficacia puede quedar demorada, 39.2)</td></tr>
+      <tr><td class="c">F1</td><td>Curso</td><td>Primer acto de notificación (puesta a disposición o primer intento). Debe darse dentro de los 10 días siguientes a F0 (días hábiles, 30.2). <i>La ley no define «cursar»: es lectura mía.</i></td><td>40.2</td><td class="no">— (se compara con F0 + 10)</td><td class="no">—</td></tr>
+      <tr><td class="c">F2</td><td>Puesta a disposición</td><td>Electrónica: en la sede o en la dirección electrónica habilitada única. En papel: <b>también</b> en la sede, para acceso voluntario. Va acompañada de un aviso al dispositivo o correo comunicado, cuya falta no invalida.</td><td>43.1, 42.1, 41.6</td><td class="si">Sí — «se entenderá cumplida» la obligación del 40.4 (43.3)</td><td class="no">No — no equivale a acceso</td></tr>
+      <tr><td class="c">F3</td><td>Intentos en papel</td><td>1.er intento y 2.º intento, con constancia en el expediente de día y hora.</td><td>42.2, 40.4</td><td class="si">Sí — «intento de notificación debidamente acreditado»</td><td class="no">No — un intento infructuoso no la practica</td></tr>
+      <tr><td class="c">F4</td><td>Acceso o entrega</td><td>La notificación se entiende practicada: acceso a su contenido en sede (43.2) o entrega en el domicilio (42.2).</td><td>43.2, 42.2</td><td class="si">Sí</td><td class="si">Sí</td></tr>
+      <tr><td class="c">F5</td><td>Rechazo</td><td>Expreso (41.5) o presunto: 10 días naturales desde F2 sin acceder, solo si la notificación electrónica es obligatoria o expresamente elegida (43.2). Se hace constar y se da por efectuado el trámite.</td><td>41.5, 43.2</td><td class="si">Sí</td><td class="si">Sí — «trámite efectuado»</td></tr>
+      <tr><td class="c">F6</td><td>Publicación</td><td>Anuncio en el BOE por notificación infructuosa (44) o publicación en diario oficial (45). Solo en los casos 45.1.a y 45.1.b la ley le da «los efectos de la notificación».</td><td>44, 45, 46</td><td class="si">Sí</td><td class="si">Sí</td></tr>
+      <tr><td class="c">F7</td><td>Conocimiento o recurso</td><td>Actuación del interesado que supone conocimiento del contenido y alcance del acto, o interposición de cualquier recurso. Solo aplica a la notificación que contiene el texto íntegro pero omite algo más del art. 40.2.</td><td>40.3</td><td class="no">— (no hace falta: FA ya se cumplió)</td><td class="si">Sí, y sustituye a F4-F6</td></tr>
+      <tr><td class="c fa">FA</td><td>Cumplimiento del deber de notificar</td><td>La primera fecha que reúne lo que exige el 40.4 (texto íntegro + intento acreditado), o el 43.3 para la puesta a disposición.</td><td>40.4, 43.3</td><td colspan="2" class="no">Resultado, no hito. Sirve para el plazo máximo (21.2), silencio (24) y caducidad (25).</td></tr>
+      <tr><td class="c fb">FB</td><td>Notificación frente al interesado</td><td>La primera entre F4, F5 y F6 cuando hay varios cauces (41.7); F7 si la notificación es defectuosa (40.3).</td><td>41.7, 40.3</td><td colspan="2" class="no">Resultado, no hito. Sirve para eficacia (39.2), cómputo de plazos (30) y recursos (122, 124, LJCA 46).</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Cuatro casos para ver que FA y FB no coinciden</h2>
+  <p class="nota">Día 0 = F2 o 1.er intento, según el caso. Ilustrativos y según mi lectura del texto; los días son naturales salvo que se indique otra cosa.</p>
+  <table>
+    <thead><tr><th>Caso</th><th class="fa">FA (Administración)</th><th class="fb">FB (interesado)</th><th>Lo que enseña</th></tr></thead>
+    <tbody>
+      <tr><td>1 · Electrónica obligatoria; el interesado nunca accede</td><td>Día 0: puesta a disposición (43.3)</td><td>≈ Día 10: rechazo presunto (43.2). Sus plazos corren desde el día siguiente (30.3)</td><td>La Administración ya cumplió 10 días antes de que la notificación surta efecto.</td></tr>
+      <tr><td>2 · Papel: 1.er intento día 0 y 2.º día 2, ambos infructuosos; anuncio en el BOE el día 30; no accede a la sede</td><td>Día 0: intento debidamente acreditado (40.4)</td><td>Día 30: publicación (44). Plazos desde el día 31</td><td>El anuncio no cierra el cumplimiento: cuenta el intento acreditado.</td></tr>
+      <tr><td>3 · Igual que el 2, pero el interesado accede voluntariamente a la copia en sede el día 5 <span class="nota">(⚠ lectura de 41.7 + 42.1 + 43.2)</span></td><td>Día 0: intento acreditado</td><td>Día 5: acceso, primer cauce en producirse (41.7). Plazos desde el día 6</td><td>La copia obligatoria en sede (42.1) puede adelantar FB sin esperar al anuncio.</td></tr>
+      <tr><td>4 · Entrega el día 3 con texto íntegro pero sin indicar recursos; el interesado recurre el día 12</td><td>Día 3: texto íntegro + entrega (40.4)</td><td>Día 12: recurso (40.3). Plazos desde el día 13</td><td>Una notificación defectuosa cumple para la Administración pero no corre contra el interesado.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Lo que la ley no resuelve (o donde mi lectura va más allá del texto)</h2>
+  <ol class="abiertos">
+    <li><b>Consecuencia de cursar pasados los 10 días (40.2).</b> El texto fija el plazo pero no anuda efecto expreso a su incumplimiento.</li>
+    <li><b>A quién hay que notificar para dar por cumplido el plazo máximo</b> (21.2, 40.4): a todos los interesados afectados o solo al solicitante. El 24.1 dice que el vencimiento del plazo máximo «sin haberse notificado resolución expresa» legitima «al interesado o interesados» para entenderla estimada por silencio; el texto no aclara si habla solo del solicitante o de todos. No hay sentencia directa; véase el <a href="NORMATIVA_NOTIFICACION_CUMPLIMIENTO_PLAZO.md">informe de jurisprudencia</a>.</li>
+    <li><b>Puesta a disposición en sede de una notificación en papel (42.1) frente al 43.3.</b> Lectura literal: el 43.3 no distingue el cauce, así que también cumpliría el 40.4. Está ubicado en el artículo de las notificaciones electrónicas. Sin precedente localizado: el Supremo formula la regla del 43.3 solo para notificaciones practicadas por medios electrónicos (<a href="NORMATIVA_NOTIFICACION_CUMPLIMIENTO_PLAZO.md">informe de jurisprudencia</a>, §6).</li>
+    <li><b>Notificación sin texto íntegro.</b> El 40.3 solo cubre las que sí lo contienen, y el 40.4 no las da por suficientes: el efecto no está regulado.</li>
+    <li><b>Somera indicación (art. 46).</b> No dice desde cuándo surte efectos: desde la publicación o desde la comparecencia con «constancia de tal conocimiento».</li>
+    <li><b>Cómputo exacto del rechazo presunto.</b> «Cuando hayan transcurrido diez días naturales desde la puesta a disposición»: F5 ≈ F2 + 10, con los plazos del interesado desde el día siguiente (30.3). La unión de 43.2 («se entenderá rechazada») con el efecto del 41.5 («dando por efectuado el trámite») es lectura mía.</li>
+    <li><b>Notificación electrónica ni obligatoria ni elegida.</b> El 43.2 solo prevé rechazo presunto para las obligatorias o elegidas; para las demás no hay efecto previsto por falta de acceso.</li>
+    <li><b>«Cursar».</b> No está definido (F1 es lectura mía).</li>
+  </ol>
+
+  <details><summary>Código Mermaid del diagrama (para llevarlo a otro documento)</summary><pre id="codigo"></pre></details>
+</div>
+
+<script type="text/plain" id="fuente">
+flowchart TD
+
+%% ===================== 1 · ORIGEN Y DEBER DE NOTIFICAR =====================
+ACTO["<b>ACTO O RESOLUCIÓN DICTADO</b><br/><b>F0</b> · fecha del acto<br/>Se presume válido y eficaz desde que se dicta,<br/>salvo que se disponga otra cosa (39.1)"]:::fecha
+D1{"¿Afecta a derechos o intereses<br/>de algún interesado? (40.1)"}:::dec
+NO40["No nace el deber de notificar<br/>del art. 40.1"]:::acto
+D2{"¿Procede la PUBLICACIÓN? (45.1)<br/>norma del procedimiento · interés público ·<br/>pluralidad indeterminada · selectivo o concurrencia"}:::dec
+PUB["<b>PUBLICACIÓN</b> en el diario oficial (45.3)<br/><b>F6</b> · fecha de publicación<br/>Solo en los casos 45.1.a y 45.1.b surte los efectos de la notificación<br/>Mismo contenido que el 40.2 y aplica el 40.3 (45.2)<br/>Si es adicional a la individual (45.1.a), no la sustituye"]:::fecha
+CURSO["<b>CURSAR la notificación a CADA interesado afectado</b><br/><b>F1</b> · primer acto de notificación: ≤ 10 días hábiles desde F0 (40.2, 30.2)<br/>Contenido: texto íntegro · si pone fin a la vía administrativa ·<br/>recursos procedentes · órgano · plazo para interponerlos (40.2)<br/>Con varios destinatarios cabe proteger datos personales (40.5)"]:::acto
+
+ACTO --> D1
+D1 -->|"No"| NO40
+D1 -->|"Sí"| D2
+D2 -->|"Sí"| PUB
+D2 -->|"No"| CURSO
+PUB -.->|"si es adicional"| CURSO
+
+%% ===================== 2 · ELECCIÓN DEL CAUCE =====================
+D3{"¿Interesado OBLIGADO a recibirla por medios electrónicos<br/>(14.2, 14.3, 41.1) o que la ha ELEGIDO (14.1, 41.1, 41.3)?"}:::dec
+D4{"¿Excepción a lo electrónico?<br/>comparecencia espontánea que pide notificación personal (41.1.a) ·<br/>entrega directa por empleado público (41.1.b) ·<br/>elementos no electronizables o cheques (41.2)"}:::dec
+
+CURSO --> D3
+D3 -->|"Sí"| D4
+D3 -->|"No: por defecto papel"| PAPEL
+D4 -->|"Sí"| PAPEL
+D4 -->|"No"| ELEC
+D3 -.->|"opción de la Administración (41.1 preferente)"| ELEC
+
+%% ===================== 3 · CAUCE ELECTRÓNICO =====================
+subgraph S_ELEC["CAUCE ELECTRÓNICO — art. 43"]
+  ELEC["Notificación por comparecencia en la sede electrónica<br/>o en la dirección electrónica habilitada única (43.1)"]:::acto
+  E1["<b>PUESTA A DISPOSICIÓN</b><br/><b>F2</b> · fecha y hora<br/>Aviso al dispositivo o correo comunicado (41.6):<br/>su falta NO invalida la notificación"]:::fecha
+  D6{"¿Accede el interesado o su representante<br/>debidamente identificado? (43.1)"}:::dec
+  E2["<b>ACCESO</b> · la notificación se entiende PRACTICADA en ese momento (43.2)<br/><b>F4</b> · fecha y hora de acceso<br/>Se le ofrece recibir el resto por medios electrónicos (42.3)"]:::fecha
+  D7{"¿La notificación electrónica es obligatoria<br/>o expresamente elegida? (43.2)"}:::dec
+  D8{"¿Han transcurrido 10 días naturales<br/>desde F2 sin acceder? (43.2)"}:::dec
+  E3["Se <b>ENTIENDE RECHAZADA</b> (43.2)<br/><b>F5</b> · fecha del rechazo presunto<br/>Se hace constar y se da por efectuado el trámite (41.5)"]:::fecha
+  E4["⚠ Sin presunción de rechazo: la ley solo la prevé si es obligatoria o elegida.<br/>Sin acceso no consta notificación practicada por este cauce"]:::gap
+end
+ELEC --> E1
+E1 --> D6
+D6 -->|"Sí"| E2
+D6 -->|"No"| D7
+D7 -->|"Sí"| D8
+D8 -->|"No: sigue corriendo"| D6
+D8 -->|"Sí"| E3
+D7 -->|"No"| E4
+
+%% ===================== 4 · CAUCE EN PAPEL =====================
+subgraph S_PAPEL["CAUCE EN PAPEL — art. 42"]
+  PAPEL["Notificación en el domicilio del interesado (42.2)"]:::acto
+  P0["<b>ADEMÁS, TODA notificación en papel se pone a disposición en la sede electrónica</b>,<br/>para acceso voluntario (42.1) · <b>F2'</b> · fecha y hora de puesta a disposición<br/>Sin presunción de rechazo: el 43.2 exige obligatoria o elegida"]:::fecha
+  D9{"En el domicilio: ¿se hace cargo el interesado o persona<br/>mayor de 14 años que haga constar su identidad? (42.2)"}:::dec
+  D10{"¿Recibe la notificación<br/>o la rechaza? (41.5)"}:::dec
+  P1["<b>ENTREGA</b> · notificación PRACTICADA<br/><b>F4</b> · fecha y hora de entrega"]:::fecha
+  P2["<b>RECHAZO expreso</b> (41.5)<br/>Se hacen constar las circunstancias del intento y el medio;<br/>se da por efectuado el trámite y sigue el procedimiento<br/><b>F5</b> · fecha del rechazo"]:::fecha
+  I1["<b>1.er INTENTO infructuoso</b><br/>Se hace constar en el expediente día y hora (42.2)<br/><b>F3a</b>"]:::fecha
+  I2["<b>2.º INTENTO</b>: una sola vez, en hora distinta, dentro de los 3 días siguientes (42.2)<br/>1.º antes de las 15 h → 2.º después, y viceversa, con ≥ 3 h de diferencia<br/><b>F3b</b>"]:::fecha
+  D11{"¿Se hace cargo alguien<br/>en el 2.º intento?"}:::dec
+end
+PAPEL --> P0
+PAPEL --> D9
+D9 -->|"Sí"| D10
+D10 -->|"Recibe"| P1
+D10 -->|"Rechaza"| P2
+D9 -->|"No"| I1
+I1 --> I2
+I2 --> D11
+D11 -->|"Sí"| D10
+P0 -.->|"si el interesado accede (voluntario)"| E2
+
+%% ===================== 5 · INFRUCTUOSA Y ANUNCIOS =====================
+subgraph S_INF["NOTIFICACIÓN INFRUCTUOSA Y ANUNCIOS — arts. 44 y 46"]
+  INF["<b>NOTIFICACIÓN INFRUCTUOSA</b> (44)<br/>interesados desconocidos · se ignora el lugar de notificación ·<br/>intentada y no practicada"]:::acto
+  D12{"¿Lesiona derechos o intereses legítimos<br/>publicar el contenido? (46)"}:::dec
+  SOM["Solo una somera indicación del contenido y del lugar donde comparecer,<br/>en el plazo que se fije, para conocer el contenido íntegro<br/>y dejar constancia de tal conocimiento (46)"]:::acto
+  G46["⚠ La ley no dice desde cuándo surte efectos en este caso:<br/>desde la publicación o desde la comparecencia"]:::gap
+  ANU["<b>ANUNCIO en el «Boletín Oficial del Estado»</b> (44; DA 3.ª)<br/><b>F6</b> · fecha de publicación<br/>Previo y facultativo: boletín de la Comunidad Autónoma o de la Provincia,<br/>tablón del Ayuntamiento del último domicilio, Consulado (44)"]:::fecha
+end
+D11 -->|"No"| INF
+INF --> D12
+D12 -->|"No: contenido íntegro"| ANU
+D12 -->|"Sí"| SOM
+SOM --> ANU
+SOM -.-> G46
+
+%% ===================== 6 · VARIOS CAUCES, VALIDEZ Y DEFECTOS =====================
+MULTI["<b>VARIOS CAUCES para el mismo interesado</b> (41.7)<br/>Fecha de notificación = la del cauce que se produzca en primer lugar<br/>Cada interesado tiene sus propias fechas (40.1)"]:::acto
+VAL["<b>Requisito de validez, sea cual sea el medio</b> (41.1)<br/>Constancia de: envío o puesta a disposición · recepción o acceso ·<br/>fechas y horas · contenido íntegro · identidad de remitente y destinatario<br/>La acreditación se incorpora al expediente"]:::acto
+D13{"¿Contiene el TEXTO ÍNTEGRO<br/>de la resolución? (40.3, 40.4)"}:::dec
+D14{"¿Contiene también el resto del 40.2?<br/>vía administrativa · recursos · órgano · plazo"}:::dec
+DEF["<b>NOTIFICACIÓN DEFECTUOSA</b> (40.3)<br/>Surte efecto desde <b>F7</b>: la fecha en que el interesado realiza<br/>actuaciones que supongan conocimiento del contenido y alcance,<br/>o interpone cualquier recurso"]:::fecha
+GTX["⚠ Sin texto íntegro: el 40.3 no la cubre y el 40.4 no la da por suficiente.<br/>La ley no regula su efecto"]:::gap
+
+E2 --> MULTI
+E3 --> MULTI
+P1 --> MULTI
+P2 --> MULTI
+ANU --> MULTI
+PUB --> MULTI
+MULTI --> VAL
+VAL --> D13
+D13 -->|"No"| GTX
+D13 -->|"Sí"| D14
+D14 -->|"No: defectuosa"| DEF
+
+%% ===================== 7 · LAS DOS FECHAS =====================
+FA["<b>FA · FECHA DE CUMPLIMIENTO DEL DEBER DE NOTIFICAR</b> (Administración)<br/>La primera fecha que reúna los requisitos del 40.4:<br/>puesta a disposición F2 (43.3) · intento debidamente acreditado F3 (40.4) ·<br/>o notificación practicada F4, rechazo F5, publicación F6<br/>Siempre que se notifique el texto íntegro de la resolución (40.4)"]:::fa
+FB["<b>FB · FECHA DE NOTIFICACIÓN FRENTE AL INTERESADO</b> (efectos sobre el administrado)<br/>La primera entre acceso o entrega F4 · rechazo F5 · publicación F6 (41.7)<br/>Si es defectuosa: F7 (40.3)<br/>NO cuentan la mera puesta a disposición F2 ni los intentos infructuosos F3"]:::fb
+
+E1 -.->|"43.3"| FA
+I1 -.->|"40.4"| FA
+I2 -.->|"40.4"| FA
+P0 -.->|"43.3, lectura literal"| FA
+MULTI -.->|"F4, F5, F6"| FA
+D14 -->|"Sí: completa"| FB
+DEF --> FB
+
+%% ===================== 8 · EFECTOS =====================
+subgraph S_EFA["EFECTOS PARA LA ADMINISTRACIÓN — se miden desde FA"]
+  A1["<b>Cursar en 10 días</b>: F1 ≤ F0 + 10 días hábiles (40.2)<br/>⚠ La ley no fija consecuencia expresa si se incumple"]:::efa
+  A2["<b>Notificar dentro del plazo máximo del procedimiento</b> (21.2)<br/>Contado (21.3): de oficio, desde el acuerdo de iniciación ·<br/>a solicitud, desde su entrada en el registro electrónico<br/>Se entiende cumplido si FA cae dentro del plazo (40.4, 43.3)"]:::efa
+  A3["Si FA cae fuera del plazo máximo:<br/>a solicitud → silencio administrativo, estimatorio o desestimatorio según la norma (24.1, 24.4)<br/>de oficio → desestimación por silencio o caducidad, según el caso (25.1)"]:::efa
+  A4["Rechazo (F5): se hace constar y se da por efectuado<br/>el trámite; el procedimiento sigue (41.5)"]:::efa
+  A5["⚠ ¿A quién hay que notificar para dar por cumplido el plazo:<br/>a todos los afectados o basta al solicitante? La ley no lo precisa<br/>(24.1: el silencio legitima «al interesado o interesados»; no aclara si son solo el solicitante o todos)"]:::gap
+end
+subgraph S_EFB["EFECTOS PARA EL ADMINISTRADO — se miden desde FB"]
+  B1["<b>Eficacia del acto</b>: demorada hasta la notificación o publicación<br/>cuando esté supeditada a ella (39.2) → ejecutividad (38, 98)"]:::efb
+  B2["<b>Cómputo de sus plazos</b>: desde el día siguiente a FB (30.3, 30.4); por horas, desde la hora y minuto de FB (30.1)<br/>Días hábiles salvo ley que diga naturales, y entonces debe constar en la notificación (30.2)<br/>Si el último día es inhábil, pasa al primer hábil siguiente (30.5)"]:::efb
+  B3["<b>Plazos que corren</b>: trámites 10 días (73.1) · audiencia 10 a 15 días (82.2)<br/>recurso de alzada 1 mes (122.1) · reposición 1 mes (124.1)<br/>contencioso-administrativo 2 meses (46.1 Ley 29/1998)"]:::efb
+  B4["<b>Firmeza</b>: transcurrido el plazo de alzada sin recurrir,<br/>la resolución es firme a todos los efectos (122.1)"]:::efb
+  B5["<b>Suspensión del plazo máximo</b> del procedimiento: desde que se notifica el requerimiento<br/>hasta su cumplimiento (22.1.a) o desde que se notifica el acuerdo<br/>de actuaciones complementarias (22.2.b)"]:::efb
+end
+FA --> A2
+A2 --> A3
+A2 -.-> A5
+CURSO -.->|"F1"| A1
+E3 -.-> A4
+P2 -.-> A4
+FB --> B1
+FB --> B2
+B2 --> B3
+B3 --> B4
+FB --> B5
+
+%% ===================== ESTILOS =====================
+classDef acto fill:#eef2f7,stroke:#5b6b82,color:#1b1f24,stroke-width:1.2px;
+classDef dec fill:#fff6d6,stroke:#b58900,color:#1b1f24,stroke-width:1.2px;
+classDef fecha fill:#dbeafe,stroke:#2563eb,color:#0b1f4d,stroke-width:1.6px;
+classDef fa fill:#d7f3e3,stroke:#15803d,color:#0b2e17,stroke-width:2.4px;
+classDef fb fill:#ffe4c7,stroke:#c2410c,color:#3b1503,stroke-width:2.4px;
+classDef efa fill:#ecfaf2,stroke:#15803d,color:#0b2e17,stroke-width:1.2px;
+classDef efb fill:#fff1e0,stroke:#c2410c,color:#3b1503,stroke-width:1.2px;
+classDef gap fill:#fde8e8,stroke:#b91c1c,color:#3b0a0a,stroke-width:1.4px,stroke-dasharray:5 4;
+</script>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  const fuente = document.getElementById('fuente').textContent;
+  document.getElementById('codigo').textContent = fuente.trim();
+  const estado = document.getElementById('estado');
+  try {
+    mermaid.initialize({
+      startOnLoad: false, securityLevel: 'loose', theme: 'base',
+      flowchart: { htmlLabels: true, curve: 'basis', nodeSpacing: 40, rankSpacing: 60, padding: 14, wrappingWidth: 640, useMaxWidth: false },
+      themeVariables: { fontFamily: '"Segoe UI", Arial, sans-serif', fontSize: '15px', lineColor: '#5b6470' }
+    });
+    const { svg } = await mermaid.render('flujo_notificacion', fuente);
+    document.getElementById('diagrama').innerHTML = svg;
+    estado.remove();
+    const el = document.querySelector('#diagrama svg');
+    const vb = el.viewBox.baseVal;
+    const marco = document.getElementById('marco');
+    let esc = 1;
+    const aplicar = () => { el.style.maxWidth = 'none'; el.setAttribute('width', vb.width * esc); el.setAttribute('height', vb.height * esc); };
+    // Cambia la escala manteniendo fijo el punto (cx, cy) de la pantalla, para que el zoom no «salte».
+    const zoom = (nuevo, cx, cy) => {
+      nuevo = Math.min(3, Math.max(0.1, nuevo));
+      const r = el.getBoundingClientRect();
+      const x = (cx - r.left) / esc, y = (cy - r.top) / esc;   // punto bajo el cursor, en unidades del SVG
+      esc = nuevo; aplicar();
+      const r2 = el.getBoundingClientRect();
+      marco.scrollLeft += r2.left + x * esc - cx;
+      marco.scrollTop += r2.top + y * esc - cy;
+    };
+    const centro = () => { const m = marco.getBoundingClientRect(); return [m.left + m.width / 2, m.top + m.height / 2]; };
+    aplicar();
+    // Centra la vista en el primer nodo (el acto dictado) en vez de dejar la esquina vacía del lienzo.
+    const inicio = el.querySelector('[id*="flowchart-ACTO-"]');
+    const ira = (nodo) => {
+      const a = nodo.getBoundingClientRect(), m = marco.getBoundingClientRect();
+      marco.scrollLeft += (a.left + a.width / 2) - (m.left + m.width / 2);
+      marco.scrollTop += a.top - m.top - 16;
+    };
+    if (inicio) ira(inicio);
+    document.getElementById('inicio').onclick = () => { if (inicio) { zoom(1, ...centro()); ira(inicio); } };
+    document.getElementById('mas').onclick = () => zoom(esc * 1.25, ...centro());
+    document.getElementById('menos').onclick = () => zoom(esc / 1.25, ...centro());
+    document.getElementById('cien').onclick = () => zoom(1, ...centro());
+    document.getElementById('ajustar').onclick = () => { zoom((marco.clientWidth - 24) / vb.width, ...centro()); marco.scrollTo(0, 0); };
+
+    // Arrastrar con el ratón para desplazar el diagrama, sin usar las barras de scroll.
+    let arrastre = null;
+    marco.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      arrastre = { x: e.clientX, y: e.clientY, sl: marco.scrollLeft, st: marco.scrollTop };
+      marco.setPointerCapture(e.pointerId);
+      marco.classList.add('arrastrando');
+    });
+    marco.addEventListener('pointermove', (e) => {
+      if (!arrastre) return;
+      marco.scrollLeft = arrastre.sl - (e.clientX - arrastre.x);
+      marco.scrollTop = arrastre.st - (e.clientY - arrastre.y);
+    });
+    const soltar = () => { arrastre = null; marco.classList.remove('arrastrando'); };
+    marco.addEventListener('pointerup', soltar);
+    marco.addEventListener('pointercancel', soltar);
+    // Ctrl + rueda (o pellizco en el trackpad) amplía; sin Ctrl la rueda sigue desplazando la página.
+    marco.addEventListener('wheel', (e) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      zoom(esc * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX, e.clientY);
+    }, { passive: false });
+  } catch (e) {
+    estado.textContent = 'No se pudo renderizar el diagrama (' + e.message + '). El código Mermaid está en el desplegable inferior.';
+  }
+</script>
+</body>
+</html>

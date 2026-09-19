@@ -48,6 +48,8 @@ Consultar cuando se trabaja ese subsistema. No cargar por defecto.
 - [NORMATIVA_MAPA_PROCEDIMENTAL.md](referencia/NORMATIVA_MAPA_PROCEDIMENTAL.md)
 - [NORMATIVA_LEGISLACION_AT.md](referencia/NORMATIVA_LEGISLACION_AT.md)
 - [NORMATIVA_SOLICITUDES.md](referencia/NORMATIVA_SOLICITUDES.md)
+- [NORMATIVA_NOTIFICACION_FECHAS_EFECTOS.html](referencia/NORMATIVA_NOTIFICACION_FECHAS_EFECTOS.html) — diagrama de flujo agnóstico de la notificación (LPACAP arts. 37-46): hitos, las dos fechas (cumplimiento y efectos) y qué produce cada una; se abre en navegador
+- [NORMATIVA_NOTIFICACION_CUMPLIMIENTO_PLAZO.md](referencia/NORMATIVA_NOTIFICACION_CUMPLIMIENTO_PLAZO.md) — jurisprudencia y doctrina sobre a quién hay que notificar para dar por cumplido el plazo de resolver y notificar (solicitante o todos los interesados); sin precedente directo, confianza media
 - [normas_catalog.csv](referencia/normas_catalog.csv) — catálogo de normas indexadas
 - [normas/](referencia/normas/) — textos consolidados extraídos (BOE/BOJA)
 
