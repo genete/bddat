@@ -5,6 +5,7 @@
 **Issue:** #778
 **Se apoya en:** ADR-002 (el ESFTT no almacena fechas), ADR-010 (documento vinculado a la tarea con rol)
 **No enmienda ningún ADR anterior.**
+**Enmendado por:** ADR-048 (nota: el nivel FASE se admite acotado a fases finalizadoras) y **ADR-049 §E** (2026-09-22): el plazo de resolver es del **acto**, no de la solicitud, y su cumplimiento se calcula de la notificación al titular en lugar de anclarse a `documento_cierre_id` (§D bis). La cita del art. 21.3.b de §D bis debe leerse **21.2** (el 21.3.b solo fija desde cuándo se cuenta el plazo).
 
 ---
 
@@ -188,6 +189,8 @@ Art. 21.3.b: el plazo es para «resolver **y notificar**». Y el art. 40.4 fija 
 > máximo de duración de los procedimientos, será suficiente la notificación que contenga,
 > cuando menos, el texto íntegro de la resolución, así como **el intento de notificación
 > debidamente acreditado**»
+
+*Nota ADR-049, 2026-09-22: el plazo máximo para **notificar** la resolución lo fija el art. 21.2; el 21.3.b solo dice desde cuándo se cuenta. Además el plazo es del acto y no se ancla a `documento_cierre_id`: ver ADR-049 §E.*
 
 Eso descarta `Fase(RESOLUCION).documento_resultado_id` como ancla de cierre: es la
 resolución, y su fecha es la de dictar, anterior a la de notificar. Usarla daría a la

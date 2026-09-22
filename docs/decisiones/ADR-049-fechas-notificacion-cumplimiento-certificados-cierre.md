@@ -1,11 +1,11 @@
 # ADR-049 — Las dos fechas de una notificación, el cumplimiento del plazo de resolver y los certificados de cierre
 
-**Estado:** Propuesta — decisiones de diseño tomadas el 19-20/09/2026; redacción pendiente de revisión por Carlos
+**Estado:** Propuesta — decisiones de diseño tomadas el 19-20/09/2026 y revisadas el 21-22/09/2026 tras el cambio de paradigma «el plazo es del acto» (§E); redacción pendiente de revisión por Carlos
 **Fecha:** 2026-09-21
 **Depende de:** ADR-034 (tabla `notificaciones`) · ADR-036 (sellado de fase cerrada) · ADR-041 (plazos y suspensiones, medida única) · ADR-043 (`CERT_FIN_INSTRUCCION`) · ADR-046 y ADR-047 (fases `RESOLUCION_*`) · ADR-048 (plazo de fase finalizadora)
-**Enmienda:** ADR-034 (§1, §5 y el `CHECK` de `resultado`) · ADR-008 · ADR-041 §D bis (el plazo de la solicitud ya no se ancla a `documento_cierre_id`) · ADR-048 §B (el cumplimiento de fase deja de ser `NULL`) · `DISEÑO_FECHAS_PLAZOS` (§3.2 y §5.1) · `TIPOS_DOCUMENTOS_CATALOGO` · `MODELO_ESTADOS_SEMAFORO`
+**Enmienda:** ADR-034 (§1, §5 y el `CHECK` de `resultado`) · ADR-008 · ADR-041 §D bis (el plazo de resolver es del acto y ya no se ancla a `documento_cierre_id`) · ADR-048 §A–§C (las filas de nivel FASE de `catalogo_plazos` se retiran: el plazo es del acto, no de la fase) · `DISEÑO_FECHAS_PLAZOS` (§3.2 y §5.1) · `TIPOS_DOCUMENTOS_CATALOGO` · `MODELO_ESTADOS_SEMAFORO`
 **Origen:** #921 y #801 (superados: se cierran y se sustituyen por los issues de `PRE-ADR-notificacion-cumplimiento-certificados-cierre.md` §7)
-**Material de trabajo:** [`docs/diseño/PRE-ADR-notificacion-cumplimiento-certificados-cierre.md`](../diseño/PRE-ADR-notificacion-cumplimiento-certificados-cierre.md) (tablas completas, afecciones y alternativas) · base legal en `docs/referencia/NORMATIVA_NOTIFICACION_FECHAS_EFECTOS.html` y `NORMATIVA_NOTIFICACION_CUMPLIMIENTO_PLAZO.md`
+**Material de trabajo:** [`docs/diseño/PRE-ADR-notificacion-cumplimiento-certificados-cierre.md`](../diseño/PRE-ADR-notificacion-cumplimiento-certificados-cierre.md) (tablas completas, afecciones y alternativas) · base legal en `docs/referencia/NORMATIVA_NOTIFICACION_FECHAS_EFECTOS.html` y `NORMATIVA_NOTIFICACION_CUMPLIMIENTO_PLAZO.md`. **El pre-ADR queda congelado:** donde difiera de este ADR (el plazo del acto, las siete filas, el reparto de N2 en N2 y N2b) manda este ADR; y la lista real de issues es la de los propios issues, no la tabla de su §7
 
 ---
 
@@ -19,6 +19,8 @@
 4. **El certificado de cierre mezcla dos preguntas** con fechas y momentos distintos: «¿se notificó al titular a tiempo?» y «¿está hecho todo lo obligatorio?».
 
 Además, #921 llevaba dentro el mecanismo de notificación multi-destinatario, que `RESOLUCION_DUP` necesita (ADR-046 §C) y que nada implementa todavía.
+
+**Cambio de paradigma (21/09/2026).** Al diseñar cómo medir el cumplimiento apareció que el plazo de resolver no es de la solicitud (supuesto heredado de #788) ni de la fase finalizadora (ADR-048), sino de cada **acto**. Una solicitud `AAP+AAC+DUP` pide tres autorizaciones, cada una con su artículo, su plazo (3, 3 y 6 meses) y su fase resolutora; un plazo del contenedor no puede ser correcto para actos con plazos distintos. Ver §E.
 
 ---
 
@@ -81,16 +83,20 @@ Un único servicio (`services/notificaciones.py`) lee `Documento.fecha_administr
 - **Mapeo de estados de Notifica-PNT:** Leída → CORRECTA; Rechazada y Rechazada por transcurso de plazo → RECHAZADA; **Caducada → INCORRECTA con aviso**, que el usuario pasa a RECHAZADA si consta que el interesado (o su representado) estaba obligado (14.2) o eligió lo electrónico; si el destinatario tiene NIF de entidad la obligación es cierta (14.2.a y b) y el parser propone RECHAZADA directamente. Anulada y No entregada **no entran en BDDAT**: se reintenta la notificación. Hoy el registro es manual; el parser completo se implementará después.
 - **Verificado en 12 justificantes reales:** «Rechazada por transcurso de plazo» sale siempre con «Obligado a relacionarse electrónicamente: Sí» y «Caducada» siempre con «No»; el desenlace se registra siempre el día 11 de calendario (10 días naturales, no hábiles). El check de obligado lo marca el administrativo y a veces se olvida (una SL y una comunidad de bienes con «No»), así que «Caducada» **no prueba** que el destinatario no estuviera obligado.
 
-### E — El cumplimiento del plazo se calcula
+### E — El plazo de resolver es del acto y su cumplimiento se calcula
 
 El cumplimiento se separa del certificado de cierre. Alternativas descartadas: un solo certificado con la fecha del titular (no quita la falsa alarma de «vencido»: solo puede emitirse con todo hecho) y dos certificados con gesto sin distinguir su momento.
 
-- El cumplimiento depende **solo** de que exista, vinculado a la tarea `NOTIFICAR` del trámite `NOTIFICACION` de la fase, el documento correspondiente (regla de C). No lee `resultado`.
-- **Cómo lo lee el motor:** clave nueva y explícita del vocabulario de `catalogo_plazos`, `campo_fecha_cumplimiento = {"calculado": "documento_cumplimiento"}`, para que `fk` siga significando clave foránea real. Rama nueva en `plazos._resolver_campo_fecha`. Las **14 filas** de `catalogo_plazos` (11 SOLICITUD, no previstas en #921; 3 FASE) pasan a esa clave (migración de datos). Las filas SOLICITUD siguen alimentando `obtener_estado_plazo_solicitud` (ADR-048 §C).
-- `documento_cumplimiento`: en una fase finalizadora, el más antiguo de los documentos de cumplimiento del titular; en la solicitud, el más tardío entre sus fases finalizadoras.
+**La unidad del plazo es el acto**, no la solicitud ni la fase. Un acto es cada tipo atómico de la solicitud (`Solicitud.tipos_simples`: `AAP+AAC` son dos actos aunque se resuelvan juntos en una `RESOLUCION`; `AE_DEFINITIVA+AAT`, dos actos de 1 y 3 meses). Es un valor derivado, sin tabla. El plazo corre *desde* el escrito de la solicitud pero es *de* cada acto, y existe desde el día 1, antes de que exista la fase que lo resuelve (la finalizadora nace al final de la instrucción). La solicitud es un contenedor: no cumple ni incumple; la fase es el vehículo que resuelve uno o varios actos.
+
+- **Qué fase resuelve cada acto** es un invariante en código con una sola fuente (`actos_solicitud`), de la que también se alimenta `informe_instruccion` para saber contra qué fases audita el certificado de fin de instrucción.
+- El cumplimiento de un acto depende **solo** de que exista, vinculado a la tarea `NOTIFICAR` del trámite `NOTIFICACION` de la fase que lo resuelve, el documento correspondiente (regla de C). No lee `resultado`. Cada acto es independiente (sin agregación entre actos) y una misma notificación cumple el plazo de todos los actos que resuelve su fase, cada uno contra el suyo.
+- **Cómo lo lee el motor:** clave nueva y explícita del vocabulario de `catalogo_plazos`, `campo_fecha_cumplimiento = {"calculado": "documento_cumplimiento"}`, para que `fk` siga significando clave foránea real. Rama nueva en `plazos._resolver_campo_fecha`, que solo acepta los nombres de una lista cerrada. **Siete filas** de `catalogo_plazos` —las atómicas de nivel SOLICITUD: `AAP`, `AAC`, `DUP`, `AAT`, `AE_PROVISIONAL`, `AE_DEFINITIVA` y `CIERRE`— pasan a esa clave (migración de datos). Las cuatro filas de combinación (`AAP+AAC`, `AAP+AAC+DUP`, `AAC+DUP`, `AE_DEFINITIVA+AAT`) y las tres de nivel FASE son consecuencia del supuesto «una solicitud = un acto» (las de combinación esconden que la DUP son 6 meses y la AAT 3): se retiran en un issue posterior, que también renombra el nivel SOLICITUD a ACTO. Hasta entonces `obtener_estado_plazo_solicitud` sigue leyéndolas.
+- `documento_cumplimiento` es una propiedad del **acto**: el más antiguo de los documentos de cumplimiento del titular en la fase que lo resuelve. No hay propiedad en la solicitud ni en la fase.
 - **Cadena completa:** sin certificado emitido se calcula en directo; con `CERT_CUMPLIMIENTO_FASE` emitido, el certificado guarda el `documento_id` elegido y quien pinta lo lee sin buscar. El plazo compara la fecha de ese documento con la fecha límite y da `CUMPLIDO`, cumplido fuera de plazo o `VENCIDO`. **Ese resultado nunca se guarda: se pinta siempre.**
-- **Costes asumidos:** el plazo ya no apunta a un documento guardado sino que recorre fase → trámite → tarea → documento mientras no hay sello (reinterpreta el criterio de ADR-041 §D bis de anclar con FK y no navegar); y la valoración del art. 40.4 deja de ser un gesto explícito para quedar implícita en subir el documento correcto.
-- **Fila `NOTIFICAR` (40.2) del catálogo:** no se toca (dato de catálogo, hoy dormida; se reevalúa si al mostrarla en la interfaz el aviso miente o no sirve).
+- **Costes asumidos:** el plazo ya no apunta a un documento guardado sino que recorre acto → fase → trámite → tarea → documento mientras no hay sello (reinterpreta el criterio de ADR-041 §D bis de anclar con FK y no navegar); y la valoración del art. 40.4 deja de ser un gesto explícito para quedar implícita en subir el documento correcto.
+- **Fila `NOTIFICAR` (40.2) del catálogo:** no se toca (dato de catálogo, hoy dormida; se reevalúa si al mostrarla en la interfaz el aviso miente o no sirve). Toda notificación debe cursarse en 10 días desde que se dicta el acto (art. 40.2), obligación distinta del plazo de resolver (21.2); la fecha de cumplimiento de C sirve a las dos. Queda sin decidir que esa fila cierra hoy con el documento producido por la tarea, que probablemente no es la fecha en que se *cursó* la notificación (hallazgo H15 del issue de N2).
+- **La suspensión (art. 22) es por acto** y la trata #796; mientras tanto el plazo del acto ya trae los datos de suspensión en «sin suspender», de modo que #796 solo los rellena.
 
 ### F — Certificados
 
@@ -107,7 +113,7 @@ El cumplimiento se separa del certificado de cierre. Alternativas descartadas: u
 | Qué protege | El documento citado, su vínculo con la tarea y la tarea (la fase sigue abierta) | Nada nuevo: el sellado de ADR-036 |
 
 - **`CERT_CIERRE_FASE` ocupa `documento_resultado_id`**: no hay `Fase.documento_cierre_id`. Siguen tal cual `finalizada`, `PDTE_CIERRE` y ADR-036. `reabrir_fase` pasa a deshacer el certificado con justificación. En las fases no finalizadoras no existe el de cumplimiento; extender el de cierre a ellas es posterior.
-- **`CERT_CIERRE_SOLICITUD` no sella nada, solo cuenta sellos.** Si falta el de alguna fase finalizadora no se genera y se informa; si están todos, se genera y su PDF se vincula a `Solicitud.documento_cierre_id`. Se mantiene aunque el plazo lo den las fases: deja constancia escrita y tiene uso posterior como consumido de otras solicitudes. `CERT_FIN_INSTRUCCION` también se mantiene.
+- **`CERT_CIERRE_SOLICITUD` no sella nada, solo cuenta sellos.** Si falta el de alguna fase finalizadora no se genera y se informa; si están todos, se genera, **enumera por acto** (fecha de solicitud, fecha de resolución, plazo y cumplimiento sí/no, según §E) y su PDF se vincula a `Solicitud.documento_cierre_id`. Se mantiene aunque el plazo lo den las fases: deja constancia escrita y tiene uso posterior como consumido de otras solicitudes. `CERT_FIN_INSTRUCCION` también se mantiene.
 - **El certificado guarda solo el `documento_id`, no su fecha** (una sola fuente). El documento citado queda **protegido por completo** (fecha, tipo, fichero, desvinculación, borrado) mientras algún certificado emitido lo cite: el CRUD de documentos pregunta al servicio de certificados «¿me usa algún certificado?». Un `documento_id` dentro de un JSON no es clave foránea, así que lo protege ese servicio.
 - **El certificado no tiene fecha propia:** su `Documento` va con `fecha_administrativa` nula, como los diagnósticos; el momento de emisión consta en `certificados.generado_en`.
 - **Tabla (opción B).** Los certificados nuevos nacen en `certificados` ampliada (`tipo`, `fase_id`, índices únicos con tipo). Como máximo un certificado emitido por tipo y elemento. **El borrador no se guarda** (se calcula y se muestra); al emitir se guardan el PDF y `datos`. `CERT_FIN_INSTRUCCION` sigue en `certificados_fase` (su única ocupante) con su mecanismo propio y su sello (#838), que funcionan; unificarlo en `certificados` es un issue aparte.
@@ -123,16 +129,16 @@ Cambian solo los plazos que se notifican al titular por NOTIFICA o POSTAL: `REQU
 
 ## Consecuencias
 
-- **BD:** `notificaciones` sin las dos fechas y con destinatario; `tipos_documentos` con cinco tipos nuevos (tres justificantes y los dos certificados de fase); `tramites_tareas_documentos` con clave sustituta; `certificados` ampliada; 14 filas de `catalogo_plazos` a `calculado`.
-- **Backend:** servicio de fechas, propiedad `documento_cumplimiento`, rama `calculado` en `plazos.py`, módulo de sellos, servicios de cumplimiento y cierre (fase y solicitud), `Tramite.finalizado` y `_estado_notificar` aceptan RECHAZADA, contrato de `NOTIFICAR` (consume también los justificantes previos), autorrelleno del pool por tipo. Lista completa en el pre-ADR §6.
+- **BD:** `notificaciones` sin las dos fechas y con destinatario; `tipos_documentos` con cinco tipos nuevos (tres justificantes y los dos certificados de fase); `tramites_tareas_documentos` con clave sustituta; `certificados` ampliada; 7 filas de `catalogo_plazos` (las atómicas, de acto) a `calculado`, y la retirada posterior de las 4 combinaciones y las 3 filas de nivel FASE.
+- **Backend:** servicio de fechas, el acto (`actos_solicitud`: fuente única de qué fase resuelve cada acto, con la propiedad `documento_cumplimiento`), rama `calculado` en `plazos.py` y plazo por acto (`plazos_de_la_solicitud`, una entrada por acto), módulo de sellos, servicios de cumplimiento y cierre (fase y solicitud), `Tramite.finalizado` y `_estado_notificar` aceptan RECHAZADA, contrato de `NOTIFICAR` (consume también los justificantes previos), autorrelleno del pool por tipo. Lista completa en los issues (el pre-ADR §6 está congelado y desfasado en lo del acto).
 - **Documentación a corregir:** `DISEÑO_FECHAS_PLAZOS` §5.1 (`NOTIFICACION_DIAS` mezcla el 40.2 con el plazo máximo del 21.2); las citas del 21.3.b, que solo fija desde cuándo se cuenta el plazo, cuando lo de «notificarse la resolución» está en el 21.2 (ADR-041 §D bis, docstring de `Solicitud.documento_cierre_id`, #801, #921); `MODELO_ESTADOS_SEMAFORO` («plazo de lectura»); `NORMATIVA_PLAZOS` §1.1 («BDDAT las aplica siempre que concurren» contradice el «se podrá suspender», #796 y la práctica).
-- **Issues:** los de la tabla del pre-ADR §7 (N1 a N9, más #568 ampliado y los existentes) sustituyen a #921 y #801.
+- **Issues:** los de la cadena del pre-ADR §7 (N1 a N9, más #568 ampliado y los existentes) sustituyen a #921 y #801, con N2 partido en N2 (aditivo) y N2b (retira lo antiguo y renombra el nivel SOLICITUD a ACTO), #796 ampliado (suspensión por acto) y #922 reescrito (barras por acto).
 
 ---
 
 ## Lo que este ADR no decide
 
-- **La suspensión del plazo (art. 22).** El 22.1 dice «se podrá suspender» y el 22.1.d exige comunicar petición y recepción a los interesados. Lo trata #796 y, en la práctica, no se suspende; el código sigue infiriendo la suspensión de cuatro filas del catálogo (`suspende = true`) como dejó dicho ADR-041. Lo decidido aquí vale para cuando se modele: la suspensión del 22.1.a arranca en la fecha de efectos del requerimiento y dura el menor entre el cumplimiento y el plazo concedido.
+- **La suspensión del plazo (art. 22).** El 22.1 dice «se podrá suspender» y el 22.1.d exige comunicar petición y recepción a los interesados. Lo trata #796 (por acto) y, en la práctica, no se suspende; el código sigue infiriendo la suspensión de cuatro filas del catálogo (`suspende = true`) como dejó dicho ADR-041. Lo decidido aquí vale para cuando se modele: la suspensión del 22.1.a arranca en la fecha de efectos del requerimiento y dura el menor entre el cumplimiento y el plazo concedido.
 - **Si el art. 30.5 (último día inhábil, prórroga al primer hábil) se aplica al plazo de 10 días naturales del 43.2.** La plataforma Notifica-PNT no lo prorroga nunca (7 de las 12 muestras tenían el 10.º día en fin de semana). Es práctica de la plataforma, no criterio jurídico.
 - **Cómo se liga cada justificante final a su destinatario** en el caso multi-destinatario, ni si sus justificantes individuales cuelgan de la tarea como consumidos del certificado múltiple.
 - **Si se pueden seguir vinculando consumidos** cuando ya están todos los tipos de entrada del catálogo (hoy `editar_tarea` no lo limita).
@@ -146,6 +152,7 @@ Cambian solo los plazos que se notifican al titular por NOTIFICA o POSTAL: `REQU
 
 - **Rol `ACREDITA` en `documentos_tarea`** y **vínculo propio documento↔`notificaciones`**: mezclan significado con flujo o cuelgan el documento de otra entidad.
 - **Certificado único con la fecha del titular** y **dos certificados sin distinguir momento** (E).
+- **El plazo de resolver en la solicitud** (un plazo único del contenedor) **o en la fase** (E): miden mal cuando los actos tienen plazos distintos (la DUP contra los 3 meses de la AAC), y la fase no existe durante la instrucción, que es cuando el reloj ya corre.
 - **Entrada polimórfica en el catálogo** (pierde la exactitud de `RESOLUCION`) y **no declarar los tipos** (el radar de huérfanos deja de ayudar).
 - **`Fase.documento_cierre_id` como columna nueva** (#921): se reutiliza `documento_resultado_id`.
 - **Certificado de solicitud que sella la reapertura de fases**, y **guardar la fecha además del `documento_id`** en el certificado: retiradas.

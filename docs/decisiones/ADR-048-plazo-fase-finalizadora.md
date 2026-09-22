@@ -6,6 +6,7 @@
 **Enmienda:** `app/services/plazos.py` (docstring del módulo, #788) · `app/models/catalogo_plazos.py` (CheckConstraint, comentarios) · `docs/referencia/DISEÑO_FECHAS_PLAZOS.md` · `docs/decisiones/ADR-041-plazos-y-suspensiones-medida-unica.md` (nota) · `docs/referencia/NORMATIVA_PLAZOS.md` §2.2
 **Origen:** Issue #892 — al ir a dar plazo propio a `RESOLUCION_DUP`/`RESOLUCION_AAP`/`RESOLUCION_AAC` (converge con ADR-046 §Consecuencias y ADR-047, tarea pendiente de #918) se encontró que #788 excluyó explícitamente el nivel FASE de `catalogo_plazos`, con un `CheckConstraint` puesto a propósito para impedir la vuelta. Sesión 2026-09-17.
 **Issues:** #892 (implementación) · #921 (cierre propio por fase) · #922 (UI del plazo de fase)
+**Enmendado por:** ADR-049 §E (2026-09-22) — el plazo de resolver es del **acto** (tipo atómico de la solicitud), no de la fase finalizadora: las tres filas de nivel FASE de este ADR, idénticas a las atómicas `DUP`, `AAP` y `AAC`, se retiran en un issue posterior, y el cumplimiento de fase deja de plantearse como `NULL` o como cierre propio por fase. Lo que sigue se conserva como historia de #892.
 
 ---
 
