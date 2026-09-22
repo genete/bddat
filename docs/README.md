@@ -20,6 +20,7 @@ Documentos operativos estables. Leer cuando se trabaja en ese área.
 Documentos vivos: se actualizan a medida que avanza el trabajo, no se congelan.
 
 - [MATRIZ_COBERTURA_BDDAT.md](diseño/MATRIZ_COBERTURA_BDDAT.md) — panorama de cobertura por necesidad; fuente de qué falta y dónde mirar para elegir el próximo foco (ADR-031)
+- [ESTADO_ADR049.md](diseño/ESTADO_ADR049.md) — cadena de issues de ADR-049 (fechas de notificación, cumplimiento del plazo, certificados de cierre): orden, capa y estado de cada uno
 - [DETALLE_NECESIDADES_BDDAT.md](diseño/DETALLE_NECESIDADES_BDDAT.md) — catálogo de necesidades: qué es cada una y quién la necesita
 - [DECISIONES_UI.md](diseño/DECISIONES_UI.md) — estado del revamping de interfaz
 - [INVENTARIO_BACKEND.md](diseño/INVENTARIO_BACKEND.md) — inventario de modelos, servicios y rutas
