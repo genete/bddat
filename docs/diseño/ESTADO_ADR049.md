@@ -21,7 +21,7 @@
 | — | **#927** | Entradas múltiples en `tramites_tareas_documentos` — bloqueado por N1; hace falta antes de N5, en paralelo a la cadena principal | Backend | Abierto |
 | 3 | **#930 (N2)** | El plazo es del acto; cumplimiento calculado | Backend | Creado |
 | 4 | **#931 (N2b)** | Retira filas y funciones antiguas del catálogo; renombra `SOLICITUD` → `ACTO` | Backend | Creado |
-| 5 | **#796** | Suspensión del art. 22, ahora por acto (a ampliar) | Backend | Abierto, preexistente |
+| 5 | **#796** | Suspensión del art. 22, ahora por acto | Backend | Diseño fijado (22/09/2026); pendiente de implementar en M3 |
 | 6 | **#922** | Barras de plazo en el árbol/inspector (a reescribir por acto) | Frontend | Abierto, preexistente |
 | 7 | **N3** | Amplía `certificados` (columnas `tipo`, `fase_id`) — infraestructura para N4 | Backend | Sin crear, sin número |
 | 8 | **N4** | `CERT_CUMPLIMIENTO_FASE`: congela el cálculo del cumplimiento | Backend | Sin crear, sin número |
@@ -36,10 +36,11 @@
 
 **N3, N4, N5 y N6 no tienen todavía número ni borrador** — solo el nombre que les da el pre-ADR §7.3 (congelado, orientativo). Ninguno se ha estudiado en un hilo de trabajo.
 
-- N3 y N4 dependen de cómo quede #796 (la suspensión) y de que exista ya el plazo por acto (existe desde N2).
+- ~~N3 y N4 dependen de cómo quede #796~~ — resuelto: #796 fija que solo la causa a) (22.1.a, `REQUERIMIENTO_SUBSANACION`) suspende, automática e inferida como hoy; la causa d) (informes/consultas a organismos) deja de inferirse porque en la práctica no se acuerda ni se comunica. N3 y N4 ya no tienen incertidumbre de diseño pendiente de #796; solo necesitan que exista el plazo por acto (existe desde N2).
 - N5 depende de #927.
-- N6 depende de N3, N4 y N5, y de que #796 modele la suspensión (el certificado no debe sellar un «NO» sin declarar las suspensiones consideradas).
+- N6 depende de N3, N4 y N5. Ya no depende de que #796 modele un acuerdo de suspensión: con solo causa a) activa, el certificado no tiene que declarar suspensiones de informes que nunca llegan a existir jurídicamente.
 
 ## Historial de esta tabla
 
 - **22/09/2026** — Creada tras cerrar el hilo de N2/N2b. Refleja el estado justo después de crear #930 y #931.
+- **22/09/2026** — #796: criterio de suspensión fijado (solo causa a) suspende; causa d) no se implementa, queda como mejora de procedimiento futura sin issue de motor). Sin cambios de código: escrito en el propio issue. Desbloquea el diseño de N3/N4/N6.
