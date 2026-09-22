@@ -251,14 +251,38 @@ def _nombre_original_pool(documento: Documento, nombre_actual: str) -> str:
     return nombre_actual
 
 
-def _destino_sin_colision(directorio_abs: str, nombre: str, documento_id: int, origen_abs: str) -> str:
-    """Ruta destino en directorio_abs para `nombre`; si ya existe un fichero DISTINTO
-    del propio origen, sufija con el id del documento (#667) para no pisarlo."""
+def _destino_sin_colision(directorio_abs: str, nombre: str, documento: Documento, origen_abs: str) -> str:
+    """Ruta destino en directorio_abs para `nombre`. Si ya existe un fichero DISTINTO
+    del propio origen:
+
+    - mismo contenido (MD5 coincide) → se reutiliza: dos `Documento` que comparten
+      fichero (duplicado exacto, ADR-032 §4) también lo comparten fuera del pool
+      (#926). El MD5 se toma de `documento.hash_md5` si ya está calculado (viene
+      de multipart) o se calcula del propio origen (registro in situ, #666 no lo
+      tiene).
+    - contenido distinto → se sufija con el id del documento (#667) para no pisarlo.
+    """
     destino = os.path.join(directorio_abs, nombre)
-    if os.path.exists(destino) and os.path.normpath(destino) != os.path.normpath(origen_abs):
-        base_nombre, ext = os.path.splitext(nombre)
-        destino = os.path.join(directorio_abs, f'{base_nombre}_{documento_id}{ext}')
-    return destino
+    if not os.path.exists(destino) or os.path.normpath(destino) == os.path.normpath(origen_abs):
+        return destino
+
+    hash_documento = documento.hash_md5 or _hash_md5_fichero(origen_abs)
+    if _hash_md5_fichero(destino) == hash_documento:
+        return destino
+
+    base_nombre, ext = os.path.splitext(nombre)
+    return os.path.join(directorio_abs, f'{base_nombre}_{documento.id}{ext}')
+
+
+def _otro_documento_comparte_url(documento_id: int, url: str) -> bool:
+    """True si algún OTRO `Documento` (distinto de documento_id) sigue apuntando a
+    `url` (#926): duplicado exacto del pool (ADR-032 §4) que aún no se ha movido —
+    no hay que borrar un fichero que ese otro documento todavía necesita."""
+    return (
+        Documento.query
+        .filter(Documento.id != documento_id, Documento.url == url)
+        .first() is not None
+    )
 
 
 def mover_a_esftt(documento: Documento, tarea: Tarea) -> bool:
@@ -274,7 +298,9 @@ def mover_a_esftt(documento: Documento, tarea: Tarea) -> bool:
       llamadas repetidas para el mismo documento/tarea).
 
     Patrón seguro (ADR-032 §3): copiar a destino → actualizar Documento.url y
-    hacer commit → borrar origen solo tras commit exitoso. Si el commit falla,
+    hacer commit → borrar origen solo tras commit exitoso, y solo si ningún OTRO
+    Documento sigue apuntando a ese mismo origen (#926: dos filas que comparten
+    fichero por ser duplicado exacto, ADR-032 §4). Si el commit falla,
     Documento.url no llega a apuntar al destino y el origen sigue intacto.
     """
     if '://' in (documento.url or ''):
@@ -290,19 +316,21 @@ def mover_a_esftt(documento: Documento, tarea: Tarea) -> bool:
     if directorio_actual_rel == directorio_destino_rel:
         return False  # ya está en su sitio
 
+    url_origen = documento.url
     origen_abs = documento.ruta_absoluta()
     directorio_destino_abs = os.path.normpath(
         os.path.join(base, directorio_destino_rel.replace('/', os.sep)))
     os.makedirs(directorio_destino_abs, exist_ok=True)
 
     nombre = _nombre_original_pool(documento, os.path.basename(documento.url))
-    destino_abs = _destino_sin_colision(directorio_destino_abs, nombre, documento.id, origen_abs)
+    destino_abs = _destino_sin_colision(directorio_destino_abs, nombre, documento, origen_abs)
 
     shutil.copy2(origen_abs, destino_abs)
     documento.url = os.path.relpath(destino_abs, base).replace(os.sep, '/')
     db.session.commit()
 
-    if os.path.normpath(origen_abs) != os.path.normpath(destino_abs):
+    if (os.path.normpath(origen_abs) != os.path.normpath(destino_abs)
+            and not _otro_documento_comparte_url(documento.id, url_origen)):
         os.remove(origen_abs)
 
     return True
@@ -319,7 +347,8 @@ def mover_a_pool(documento: Documento, expediente) -> bool:
     caller (editar_tarea) ya lo tiene calculado.
 
     No-op (devuelve False) si documento.url no es esquema local, o si ya está
-    en pool/. Mismo patrón seguro copiar→commit→borrar.
+    en pool/. Mismo patrón seguro copiar→commit→borrar, y misma comprobación de
+    fichero compartido con otro Documento antes de borrar el origen (#926).
     """
     if '://' in (documento.url or ''):
         return False
@@ -330,18 +359,20 @@ def mover_a_pool(documento: Documento, expediente) -> bool:
         raise RuntimeError('FILESYSTEM_BASE no está configurado')
 
     directorio_pool_abs = ruta_pool_documento(expediente)
+    url_origen = documento.url
     origen_abs = documento.ruta_absoluta()
     if os.path.normpath(os.path.dirname(origen_abs)) == os.path.normpath(directorio_pool_abs):
         return False  # ya está en pool
 
     nombre = os.path.basename(documento.url)
-    destino_abs = _destino_sin_colision(directorio_pool_abs, nombre, documento.id, origen_abs)
+    destino_abs = _destino_sin_colision(directorio_pool_abs, nombre, documento, origen_abs)
 
     shutil.copy2(origen_abs, destino_abs)
     documento.url = os.path.relpath(destino_abs, base).replace(os.sep, '/')
     db.session.commit()
 
-    if os.path.normpath(origen_abs) != os.path.normpath(destino_abs):
+    if (os.path.normpath(origen_abs) != os.path.normpath(destino_abs)
+            and not _otro_documento_comparte_url(documento.id, url_origen)):
         os.remove(origen_abs)
 
     return True
