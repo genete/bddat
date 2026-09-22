@@ -23,7 +23,7 @@
 | 4 | **#931 (N2b)** | Retira filas y funciones antiguas del catálogo; renombra `SOLICITUD` → `ACTO` | Backend | Creado |
 | 5 | **#796** | Suspensión del art. 22, ahora por acto | Backend | Diseño fijado (22/09/2026); pendiente de implementar en M3 |
 | 6 | **#922** | Barras de plazo en el árbol/inspector (a reescribir por acto) | Frontend | Abierto, preexistente |
-| 7 | **N3** | Amplía `certificados` (columnas `tipo`, `fase_id`) — infraestructura para N4 | Backend | Sin crear, sin número |
+| 7 | **#932 (N3)** | Amplía `certificados` (columnas `tipo`, `fase_id`) — infraestructura para N4 | Backend | Creado |
 | 8 | **N4** | `CERT_CUMPLIMIENTO_FASE`: congela el cálculo del cumplimiento | Backend | Sin crear, sin número |
 | 9 | **N5** | Notificación multi-destinatario (`Tarea.notificacion` → lista) | Backend | Sin crear, sin número |
 | 10 | **#568** | Edicto tras notificación infructuosa (art. 44) | Backend | Abierto, preexistente |
@@ -34,13 +34,15 @@
 
 ## Huecos por definir
 
-**N3, N4, N5 y N6 no tienen todavía número ni borrador** — solo el nombre que les da el pre-ADR §7.3 (congelado, orientativo). Ninguno se ha estudiado en un hilo de trabajo.
+**N4, N5 y N6 no tienen todavía número ni borrador** — solo el nombre que les da el pre-ADR §7.3 (congelado, orientativo). Ninguno se ha estudiado en un hilo de trabajo.
 
-- ~~N3 y N4 dependen de cómo quede #796~~ — resuelto: #796 fija que solo la causa a) (22.1.a, `REQUERIMIENTO_SUBSANACION`) suspende, automática e inferida como hoy; la causa d) (informes/consultas a organismos) deja de inferirse porque en la práctica no se acuerda ni se comunica. N3 y N4 ya no tienen incertidumbre de diseño pendiente de #796; solo necesitan que exista el plazo por acto (existe desde N2).
+- ~~N3 y N4 dependen de cómo quede #796~~ — resuelto: #796 fija que solo la causa a) (22.1.a, `REQUERIMIENTO_SUBSANACION`) suspende, automática e inferida como hoy; la causa d) (informes/consultas a organismos) deja de inferirse porque en la práctica no se acuerda ni se comunica. N4 ya no tiene incertidumbre de diseño pendiente de #796; solo necesita que exista el plazo por acto (existe desde N2). #932 (N3) resultó no depender de #796 en absoluto — es infraestructura de esquema pura.
+- **#932 (N3) ya está diseñado y creado**: añade `tipo` y `fase_id` a `certificados`, backfill de las dos filas existentes, backref `Fase.certificados_cumplimiento` (sin chocar con `Fase.certificados` de `CertificadoFase`). Bloquea a N4.
 - N5 depende de #927.
-- N6 depende de N3, N4 y N5. Ya no depende de que #796 modele un acuerdo de suspensión: con solo causa a) activa, el certificado no tiene que declarar suspensiones de informes que nunca llegan a existir jurídicamente.
+- N6 depende de N3 (#932), N4 y N5. Ya no depende de que #796 modele un acuerdo de suspensión: con solo causa a) activa, el certificado no tiene que declarar suspensiones de informes que nunca llegan a existir jurídicamente.
 
 ## Historial de esta tabla
 
 - **22/09/2026** — Creada tras cerrar el hilo de N2/N2b. Refleja el estado justo después de crear #930 y #931.
 - **22/09/2026** — #796: criterio de suspensión fijado (solo causa a) suspende; causa d) no se implementa, queda como mejora de procedimiento futura sin issue de motor). Sin cambios de código: escrito en el propio issue. Desbloquea el diseño de N3/N4/N6.
+- **22/09/2026** — #932 (N3) diseñado y creado: `tipo`/`fase_id` en `certificados`, alternativa mínima frente a endurecer índices existentes (descartado, prematuro) o unificar con `certificados_fase` (descartado, issue aparte del ADR). Bloquea a N4.
