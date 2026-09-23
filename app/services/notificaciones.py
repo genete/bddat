@@ -185,6 +185,31 @@ def canal_de_tipo(codigo: str) -> Optional[str]:
     return CANAL_POR_TIPO_DOC.get(codigo)
 
 
+def fecha_sugerida(tipo_doc_codigo: Optional[str], parseo) -> Optional[date]:
+    """Fecha administrativa que el pool propone al subir un justificante de
+    Notifica ya parseado (#928 §10). Cada tipo lleva la fecha de SU hito — el
+    defecto de ADR-049 §G era proponer la puesta a disposición para el
+    justificante final:
+
+    - `JUSTIFICANTE_NOTIFICA_DISPOSICION` → la puesta a disposición (art. 43.3).
+    - `JUSTIFICANTE_NOTIFICA` → la lectura, única fecha de desenlace que lee el
+      parser hoy (`None` en rechazada/caducada hasta el parser completo).
+    - cualquier otro tipo, o parseo no reconocido → `None`.
+
+    El parser completo futuro solo toca este lado: el frontend se limita a
+    poner el valor que recibe.
+    """
+    if parseo is None or not parseo.reconocido:
+        return None
+    if tipo_doc_codigo == 'JUSTIFICANTE_NOTIFICA_DISPOSICION':
+        instante = parseo.fecha_puesta_disposicion
+    elif tipo_doc_codigo == 'JUSTIFICANTE_NOTIFICA':
+        instante = parseo.fecha_lectura
+    else:
+        return None
+    return instante.date() if instante is not None else None
+
+
 def resultados_validos(canal: str) -> tuple:
     """Resultados admisibles para `canal` (D6: `RECHAZADA` solo en `NOTIFICA`
     y `POSTAL` — en `BANDEJA`/`SIR` «no consta ningún rechazo», ADR-049 §D)."""

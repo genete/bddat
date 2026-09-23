@@ -42,6 +42,7 @@ from app.services.detalle_nodo import info_apertura_documento
 from app.services.parser_justificante_notifica import (
     parsear_justificante_notifica, parsear_justificante_notifica_zip,
 )
+from app.services.notificaciones import fecha_sugerida
 from app.services.assembler import build_sujeto
 from app.services.reformados import (
     RAMA_PRINCIPAL,
@@ -887,8 +888,11 @@ def pool_parsear_justificante(id):
     propio Documento) — no escribe nada en `notificaciones` (eso ocurre en el
     hook de `editar_tarea` al vincular el documento a la tarea NOTIFICAR).
 
-    Multipart: 'fichero'. Nunca 404/422 por contenido no reconocido — mismo
-    contrato que el parser (#655): devuelve `{reconocido: false}`.
+    Multipart: 'fichero' y, opcional, 'tipo_doc_codigo' (el tipo elegido).
+    Nunca 404/422 por contenido no reconocido — mismo contrato que el parser
+    (#655): devuelve `{reconocido: false}`. Además del parseo devuelve
+    `fecha_sugerida` (AAAA-MM-DD o null, #928 §10): la fecha que corresponde
+    al tipo elegido, decidida en el servidor (`notificaciones.fecha_sugerida`).
     """
     expediente = Expediente.query.get_or_404(id)
     resultado = verificar_acceso_expediente(expediente, 'subir_documento')
@@ -905,7 +909,10 @@ def pool_parsear_justificante(id):
     else:
         parseo = parsear_justificante_notifica(fichero.stream)
 
-    return jsonify(parseo.to_dict())
+    payload = parseo.to_dict()
+    sugerida = fecha_sugerida(request.form.get('tipo_doc_codigo'), parseo)
+    payload['fecha_sugerida'] = sugerida.isoformat() if sugerida else None
+    return jsonify(payload)
 
 
 @bp.route('/<int:id>/documentos/<int:doc_id>/fichero')
