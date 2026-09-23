@@ -53,15 +53,19 @@ CANAL = 'NOTIFICA'
 
 _NS_ENIDOCMETA = 'http://administracionelectronica.gob.es/ENI/XSD/v1.0/documento-e/metadatos'
 
-# Traduce el texto libre de "Estado:" al binario CORRECTA/INCORRECTA que
-# exige el CHECK de `notificaciones.resultado` (ADR-008).
+# Traduce el texto libre de "Estado:" a un valor de `notificaciones.resultado`
+# (#928, D13). Es una PROPUESTA: el usuario la confirma al guardar (D2).
+#   - Rechazada (expresa, art. 41.5) y Rechazada por transcurso de plazo
+#     (43.2 p. 2) dan la notificación por efectuada → RECHAZADA. La clave antigua
+#     «Rechazada por plazo» no era el texto real del justificante.
+#   - Anulada / No entregada → None: no son estados que entren en BDDAT.
 MAPA_RESULTADO = {
     'Leída': 'CORRECTA',
+    'Rechazada': 'RECHAZADA',
+    'Rechazada por transcurso de plazo': 'RECHAZADA',
     'Caducada': 'INCORRECTA',
-    'Rechazada': 'INCORRECTA',
-    'Rechazada por plazo': 'INCORRECTA',
-    'Anulada': 'INCORRECTA',
-    'No entregada': 'INCORRECTA',
+    'Anulada': None,
+    'No entregada': None,
 }
 
 

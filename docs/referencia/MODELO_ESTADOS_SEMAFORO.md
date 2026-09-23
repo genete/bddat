@@ -1,8 +1,8 @@
 # Modelo de estados-semáforo y decoradores del nodo ESFTT
 
 **Estado:** Vigente
-**Fecha:** 2026-05-30 (actualizado 2026-07-23 — nuevo estado `PENDIENTE_RESULTADO_NOTIFICACION`, ADR-034/#657/#658)
-**Relacionado:** #500 (vista de árbol), #558 (núcleo unificado), ADR-016, ADR-034,
+**Fecha:** 2026-05-30 (actualizado 2026-07-23 — nuevo estado `PENDIENTE_RESULTADO_NOTIFICACION`, ADR-034/#657/#658; 2026-09-23 — `RECHAZADA`, justificantes previos y nuevo estado `PENDIENTE_SEDE`, ADR-049/#928)
+**Relacionado:** #500 (vista de árbol), #558 (núcleo unificado), ADR-016, ADR-034, ADR-049,
 `app/services/estado_dominio.py` (núcleo), `app/services/seguimiento.py`,
 mockup `docs/mockups/Mockup_Nodo_Arbol.html`.
 **Supera:** §4.1–§4.4 de `docs/historial/ANALISIS_LISTADO_INTELIGENTE.md` (histórico; allí
@@ -40,7 +40,7 @@ Ordenados por urgencia; la prioridad de §5 es coherente con esta escala (#558).
 | Color | Significado |
 |---|---|
 | 🔴 Rojo | Acción del tramitador (incl. notificación agotada → procede boletín) |
-| 🟠 Naranja | Gestión nuestra: cerrar fase / 2.º intento de notificación |
+| 🟠 Naranja | Gestión nuestra: cerrar fase / repetir la notificación / puesta a disposición en sede |
 | 🟡 Amarillo | Espera interna que no depende del tramitador (firma); paraliza si falta |
 | 🔵 Azul | Espera de un externo ajeno a la administración (destinatario, boletín) |
 | ⚪ Gris | Espera pasiva (plazo legal, respuesta de administrado u organismo) |
@@ -74,18 +74,26 @@ el **único producido**. Requiere el tipo de documento `BORRADOR_FIRMA` (§11). 
 firma lo hace el usuario; se automatizará con scheduler + Playwright (futuro).
 
 ### NOTIFICAR  *(absorbe el azul de la antigua PUBLICAR)*
-Usa el modelo `Notificacion` (`resultado` CORRECTA|INCORRECTA|NULL, `numero_intento` 1|2 —
-LPACAP), anclado a `tarea_id` (ADR-034, #657/#658 — corrige ADR-008): la fila puede existir
-sin documento producido (camino A, "Registrar envío") y sin resultado mientras se espera el
-justificante definitivo.
+Usa el modelo `Notificacion` (`resultado` CORRECTA|RECHAZADA|INCORRECTA|NULL, `numero_intento`
+1|2, este último solo en POSTAL), anclado a `tarea_id` (ADR-034, #657/#658 — corrige ADR-008).
+Desde ADR-049 (#928) la fila nace al vincular el primer justificante con canal —previo o final—
+y el resultado lo fija el usuario. "Documento que notificar" son los consumidos que **no** son
+un justificante previo (`documentos_a_notificar`: la puesta a disposición en Notifica, el 1.er
+intento postal y la sede también se vinculan como consumidos, pero no cuentan).
+`RECHAZADA` da la notificación por efectuada igual que `CORRECTA` (art. 41.5).
 | Situación | Estado | Color |
 |---|---|---|
-| sin documento firmado que notificar | PENDIENTE_TRAMITAR | 🔴 |
-| documento presente, sin fila `Notificacion` | PENDIENTE_NOTIFICAR | 🔵 |
-| fila `Notificacion` con `resultado IS NULL` (envío registrado, falta el definitivo) | PENDIENTE_RESULTADO_NOTIFICACION | 🔵 |
-| `Notificacion` CORRECTA | FIN | 🟢 |
-| INCORRECTA, `numero_intento = 1` (queda 2º intento) | NOTIFICACION_FALLIDA | 🟠 |
+| sin documento que notificar | PENDIENTE_TRAMITAR | 🔴 |
+| documento presente, sin fila `Notificacion` (falta el justificante) | PENDIENTE_NOTIFICAR | 🔵 |
+| fila con `resultado IS NULL`, o CORRECTA/RECHAZADA sin el justificante final producido | PENDIENTE_RESULTADO_NOTIFICACION | 🔵 |
+| CORRECTA/RECHAZADA con producido, POSTAL sin `JUSTIFICANTE_SEDE` ni `sede_justificacion` (art. 42.1) | PENDIENTE_SEDE | 🟠 |
+| CORRECTA/RECHAZADA con producido y sede puesta, justificada o no aplicable | FIN | 🟢 |
+| INCORRECTA, `numero_intento = 1` (no practicada: repetirla) | NOTIFICACION_FALLIDA | 🟠 |
 | INCORRECTA, `numero_intento = 2` (agotada → procede edicto) | NOTIFICACION_AGOTADA | 🔴 |
+
+La sede pendiente impide dar el trámite por finalizado (`Tramite.finalizado`), y por tanto
+cerrar la fase sin justificación (el bloqueo es forzable, #723); no impide abrir el
+`ESPERAR_PLAZO` del mismo trámite (ADR-049, D18 de #928).
 
 ### ESPERAR_PLAZO  *(estado de plazo vía `services/plazos.obtener_estado_plazo_tarea`)*
 | Situación | Estado | Color |
@@ -137,11 +145,12 @@ prioridad**; cada proyección acumula su propio contador.
 | 4 | NOTIFICACION_AGOTADA | 🔴 |
 | 5 | PENDIENTE_CERRAR | 🟠 |
 | 6 | NOTIFICACION_FALLIDA | 🟠 |
-| 7 | PENDIENTE_FIRMA | 🟡 |
-| 8 | PENDIENTE_NOTIFICAR | 🔵 |
-| 9 | PENDIENTE_RESULTADO_NOTIFICACION | 🔵 |
-| 10 | PENDIENTE_PLAZOS | ⚪ |
-| 11 | FIN | 🟢 |
+| 7 | PENDIENTE_SEDE | 🟠 |
+| 8 | PENDIENTE_FIRMA | 🟡 |
+| 9 | PENDIENTE_NOTIFICAR | 🔵 |
+| 10 | PENDIENTE_RESULTADO_NOTIFICACION | 🔵 |
+| 11 | PENDIENTE_PLAZOS | ⚪ |
+| 12 | FIN | 🟢 |
 
 `PENDIENTE_SUBSANAR` no es del núcleo: es el relabel de `PENDIENTE_PLAZOS` en la pista SOL
 del seguimiento (mismo gris).

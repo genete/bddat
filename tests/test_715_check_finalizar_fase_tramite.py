@@ -14,6 +14,8 @@ Cada función cubre dos motivos de bloqueo independientes:
 """
 import pytest
 
+from app.services.reloj_simulado import hoy
+
 
 class TestCheckFinalizarFase:
 
@@ -35,7 +37,7 @@ class TestCheckFinalizarFase:
         tramite = arbol_esftt.tramite(fase, 'NOTIFICACION')
         tarea = arbol_esftt.tarea(tramite, 'NOTIFICAR')
         doc = arbol_esftt.documento(fase.solicitud.expediente_id,
-                                     'JUSTIFICANTE_NOTIFICA', f'{tarea.id}-notif')
+                                     'JUSTIFICANTE_NOTIFICA', f'{tarea.id}-notif', fecha=hoy())
         arbol_esftt.vincular(tarea, doc, 'PRODUCIDO')
         arbol_esftt.notificacion(tarea, resultado='INCORRECTA')
 
@@ -51,7 +53,7 @@ class TestCheckFinalizarFase:
         tramite = arbol_esftt.tramite(fase, 'NOTIFICACION')
         tarea = arbol_esftt.tarea(tramite, 'NOTIFICAR')
         doc = arbol_esftt.documento(fase.solicitud.expediente_id,
-                                     'JUSTIFICANTE_NOTIFICA', f'{tarea.id}-ok')
+                                     'JUSTIFICANTE_NOTIFICA', f'{tarea.id}-ok', fecha=hoy())
         arbol_esftt.vincular(tarea, doc, 'PRODUCIDO')
         arbol_esftt.notificacion(tarea, resultado='CORRECTA')
 
@@ -85,7 +87,7 @@ class TestCheckFinalizarTramite:
         tramite = arbol_esftt.tramite(fase, 'NOTIFICACION')
         tarea = arbol_esftt.tarea(tramite, 'NOTIFICAR')
         doc = arbol_esftt.documento(fase.solicitud.expediente_id,
-                                     'JUSTIFICANTE_NOTIFICA', f'{tarea.id}-notif')
+                                     'JUSTIFICANTE_NOTIFICA', f'{tarea.id}-notif', fecha=hoy())
         arbol_esftt.vincular(tarea, doc, 'PRODUCIDO')
         arbol_esftt.notificacion(tarea, resultado='INCORRECTA')
 
@@ -101,7 +103,7 @@ class TestCheckFinalizarTramite:
         tramite = arbol_esftt.tramite(fase, 'NOTIFICACION')
         tarea = arbol_esftt.tarea(tramite, 'NOTIFICAR')
         doc = arbol_esftt.documento(fase.solicitud.expediente_id,
-                                     'JUSTIFICANTE_NOTIFICA', f'{tarea.id}-ok')
+                                     'JUSTIFICANTE_NOTIFICA', f'{tarea.id}-ok', fecha=hoy())
         arbol_esftt.vincular(tarea, doc, 'PRODUCIDO')
         arbol_esftt.notificacion(tarea, resultado='CORRECTA')
 

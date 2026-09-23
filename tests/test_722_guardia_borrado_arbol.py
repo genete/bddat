@@ -16,7 +16,6 @@ Ejes que cubren:
     (a diferencia de los bloqueos del motor de reglas).
   - Camino limpio (sin hijos, sin evidencia) permite borrar en cada nivel.
 """
-from datetime import date
 
 import pytest
 
@@ -93,8 +92,7 @@ class TestBorrarTarea:
         from app import db
 
         _, _, _, tarea = _fase_con_tramite_y_tarea('REQUERIMIENTO_SUBSANACION', 'NOTIFICAR')
-        db.session.add(Notificacion(tarea_id=tarea.id, canal='NOTIFICA',
-                                    fecha_puesta_disposicion=date.today()))
+        db.session.add(Notificacion(tarea_id=tarea.id, canal='NOTIFICA'))
         db.session.flush()
 
         res = svc.borrar_tarea(tarea)

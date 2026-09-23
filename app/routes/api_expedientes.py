@@ -13,7 +13,6 @@ CAMBIOS v2.1: Añadido campo 'codigo' ("AT-{numero_at}") a serialización del li
               para compatibilidad con ScrollInfinito genérico (Opción B, Issue #61).
 """
 
-from datetime import date
 from flask import Blueprint, request, jsonify, url_for
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
@@ -42,7 +41,7 @@ from app.services import mutaciones_arbol as svc
 from app.services import consultas_organismos as svc_consultas
 from app.utils.api_respuestas import leer_bypass
 from app.utils.formularios import leer_json
-from app.services.assembler import build
+from app.services.assembler import build, build_sujeto
 from app.services.requisitos import evaluar_requisitos
 from app.services.items_tecnicos import evaluar_items_tecnicos
 from app.services.consolidacion_defectos import consolidar_defectos
@@ -56,9 +55,8 @@ from app.services.invariantes_esftt import check_invariante
 from app.services import bitacora as bitacora_svc
 from app.services import mensajes_internos as servicio_mensajes
 from app.models.notificaciones import Notificacion
-from app.services.parser_justificante_notifica import (
-    parsear_justificante_notifica, parsear_justificante_notifica_zip,
-)
+from app.services import notificaciones as notif_svc
+from app.services.estado_dominio import estado_tarea
 from app.utils.permisos import verificar_acceso_expediente, tiene_permiso
 
 # Trámites cuya tarea ANALIZAR lleva las secciones extendidas del contenedor
@@ -2104,11 +2102,9 @@ def solicitar_alta_catalogo(expediente_id, tarea_id):
 
 
 # =============================================================================
-# ENDPOINT 12: Contenedor de la tarea NOTIFICAR (#657/#658/#712, ADR-034)
+# ENDPOINT 12: Contenedor de la tarea NOTIFICAR (#657/#658/#712, ADR-034;
+# rehecho en #928 — ADR-049 §B: las fechas salen de los documentos)
 # =============================================================================
-
-_CANALES_VALIDOS = {'NOTIFICA', 'BANDEJA', 'SIR', 'POSTAL'}
-_RESULTADOS_VALIDOS = {'CORRECTA', 'INCORRECTA'}
 
 
 def _resolver_tarea_notificar(expediente, tarea_id):
@@ -2121,27 +2117,63 @@ def _resolver_tarea_notificar(expediente, tarea_id):
 
 
 def _notificacion_json(notif: Notificacion) -> dict:
+    """Una fila de `notificaciones`. Sin fechas (#928): las calcula
+    `services.notificaciones` y van aparte, en `fechas` del payload."""
     return {
         'id': notif.id,
         'canal': notif.canal,
         'identificador_envio': notif.identificador_envio,
-        'fecha_puesta_disposicion': notif.fecha_puesta_disposicion.isoformat()
-            if notif.fecha_puesta_disposicion else None,
         'resultado': notif.resultado,
-        'fecha_resultado': notif.fecha_resultado.isoformat() if notif.fecha_resultado else None,
         'numero_intento': notif.numero_intento,
         'observaciones': notif.observaciones,
         'documento_id': notif.documento_id,
+        'sede_justificacion': notif.sede_justificacion,
+        'destinatario': None,  # hueco para N5 (una fila por destinatario)
     }
 
 
-def _parsear_fecha_iso(valor) -> date | None:
-    if not valor:
-        return None
-    try:
-        return date.fromisoformat(valor)
-    except ValueError:
-        return None
+def _fecha_notificacion_json(fn) -> dict | None:
+    return {'fecha': fn.fecha.isoformat(), 'documento_id': fn.documento.id} if fn else None
+
+
+def _es_notificacion_del_titular(tarea) -> bool:
+    """[N2] La NOTIFICAR del trámite NOTIFICACION de una fase finalizadora: la
+    notificación de la resolución al titular, cuyo cumplimiento cierra el plazo
+    máximo para resolver y notificar."""
+    tramite = tarea.tramite
+    fase = tramite.fase
+    return (tramite.tipo_tramite is not None and tramite.tipo_tramite.codigo == 'NOTIFICACION'
+            and fase.tipo_fase is not None and bool(fase.tipo_fase.es_finalizadora))
+
+
+def _notificar_payload(tarea) -> dict:
+    """Payload del contenedor NOTIFICAR (#928, «Huecos para el frontend»).
+    `notificaciones` es una lista de 0 ó 1 elementos hasta N5."""
+    notif = tarea.notificacion
+    doc = tarea.documento_producido
+    sede = notif_svc.estado_sede(tarea)
+    return {
+        'notificaciones': [_notificacion_json(notif)] if notif else [],
+        'documento_producido': {'id': doc.id, 'nombre': _nombre_documento(doc)} if doc else None,
+        'justificantes_previos': [
+            {
+                'id': d.id,
+                'nombre': _nombre_documento(d),
+                'tipo_doc_codigo': d.tipo_doc.codigo if d.tipo_doc else None,
+                'fecha_administrativa': d.fecha_administrativa.isoformat()
+                    if d.fecha_administrativa else None,
+            }
+            for d in notif_svc.justificantes_previos(tarea)
+        ],
+        'fechas': {
+            'cumplimiento': _fecha_notificacion_json(notif_svc.fecha_cumplimiento(tarea)),
+            'efectos': _fecha_notificacion_json(notif_svc.fecha_efectos(tarea)),
+        },
+        'es_notificacion_del_titular': _es_notificacion_del_titular(tarea),
+        'sede': {'aplica': sede is not None, 'estado': sede},
+        'estado': estado_tarea(tarea),
+        'resultados_validos': list(notif_svc.resultados_validos(notif.canal)) if notif else [],
+    }
 
 
 @api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/notificar',
@@ -2149,11 +2181,8 @@ def _parsear_fecha_iso(valor) -> date | None:
 @login_required
 def get_notificar(expediente_id, tarea_id):
     """
-    GET .../nodo/tarea/<tarea_id>/notificar — payload del contenedor de #657.
-
-    {notificacion: {canal, identificador_envio, fecha_puesta_disposicion,
-     resultado, fecha_resultado, numero_intento, observaciones, documento_id}|null,
-     documento_producido: {id, nombre}|null}
+    GET .../nodo/tarea/<tarea_id>/notificar — payload del contenedor de #657,
+    rehecho en #928: ver `_notificar_payload`.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     denegado = verificar_acceso_expediente(expediente)
@@ -2165,57 +2194,7 @@ def get_notificar(expediente_id, tarea_id):
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
 
-    doc = tarea.documento_producido
-    return jsonify({
-        'notificacion': _notificacion_json(tarea.notificacion) if tarea.notificacion else None,
-        'documento_producido': {'id': doc.id, 'nombre': _nombre_documento(doc)} if doc else None,
-    }), 200
-
-
-@api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/notificar',
-              methods=['POST'])
-@login_required
-def post_notificar(expediente_id, tarea_id):
-    """
-    POST .../nodo/tarea/<tarea_id>/notificar — "Registrar puesta a disposición"
-    (camino A, ADR-034 §6).
-
-    Body JSON: {canal, identificador_envio?, fecha_puesta_disposicion}. Upsert
-    por tarea_id: si ya existe fila (p.ej. creada por el hook de editar_tarea,
-    #657/#658), actualiza estos tres campos sin tocar resultado/fecha_resultado/
-    numero_intento/observaciones — "Registrar notificación" (PATCH) es la acción
-    que los gestiona.
-    """
-    expediente = Expediente.query.get_or_404(expediente_id)
-    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
-        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
-
-    try:
-        tarea = _resolver_tarea_notificar(expediente, tarea_id)
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 404
-
-    data = request.get_json(silent=True) or {}
-    canal = data.get('canal')
-    if canal not in _CANALES_VALIDOS:
-        return jsonify({'error': 'canal debe ser NOTIFICA, BANDEJA, SIR o POSTAL'}), 422
-
-    fecha_puesta = _parsear_fecha_iso(data.get('fecha_puesta_disposicion'))
-    if fecha_puesta is None:
-        return jsonify({'error': 'fecha_puesta_disposicion es obligatoria (AAAA-MM-DD)'}), 422
-
-    identificador_envio = (data.get('identificador_envio') or '').strip() or None
-
-    notif = Notificacion.query.filter_by(tarea_id=tarea.id).first()
-    if notif is None:
-        notif = Notificacion(tarea_id=tarea.id)
-        db.session.add(notif)
-    notif.canal = canal
-    notif.identificador_envio = identificador_envio
-    notif.fecha_puesta_disposicion = fecha_puesta
-    db.session.commit()
-
-    return jsonify({'ok': True, 'notificacion': _notificacion_json(notif)}), 200
+    return jsonify(_notificar_payload(tarea)), 200
 
 
 @api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/notificar',
@@ -2223,23 +2202,25 @@ def post_notificar(expediente_id, tarea_id):
 @login_required
 def patch_notificar(expediente_id, tarea_id):
     """
-    PATCH .../nodo/tarea/<tarea_id>/notificar — "Registrar notificación" (camino B
-    manual, ADR-034 §6/SIR). Body JSON: {resultado, fecha_resultado, numero_intento,
-    observaciones?, documento_id?}.
+    PATCH .../nodo/tarea/<tarea_id>/notificar — "Registrar notificación"
+    (#657/#712; rehecho en #928, §6 del issue).
 
-    `documento_id` (#712, acto 3 del flujo de dos actos, opcional): vincula ese
-    documento del pool como Producido de la tarea ANTES de persistir los campos
-    de resultado — reutiliza `svc.editar_tarea` (mismo mecanismo de movimiento
-    físico y del hook de cotejo que usa la Despensa, sin duplicarlo), sustituyendo
-    el producido anterior si lo había. El hook puede auto-rellenar resultado/
-    fecha_resultado al vincular (si el documento es parseable) pero los valores
-    del body de esta misma llamada se persisten justo después y ganan siempre —
-    son los que el usuario ya revisó/corrigió en el formulario, no un re-parseo.
+    Body JSON, todas las claves opcionales con la semántica de `leer_json`
+    (ausente conserva; `null` vacía — #832/#834): `resultado`,
+    `numero_intento`, `observaciones`, `identificador_envio`,
+    `sede_justificacion`, `documento_id`, `notificacion_id`.
 
-    Sin `documento_id`, requiere fila previa (creada por "Registrar puesta a
-    disposición" o por el hook automático al vincular un justificante parseable)
-    — 422 si no existe: fecha_puesta_disposicion es NOT NULL y este endpoint no
-    la conoce, así que no puede crear la fila desde cero.
+    - `documento_id` (#712, acto 3): atajo para vincular ese documento del pool
+      como PRODUCIDO vía `svc.editar_tarea` (mismo movimiento físico y hook que
+      la Despensa). Solo justificantes FINALES; un previo se vincula como
+      consumido desde la Despensa. `null` no desvincula (es un atajo de
+      vinculación, no de edición de vínculos).
+    - `notificacion_id`: hueco para N5 (una fila por destinatario). En N1 es
+      opcional y, si viene, debe ser la única fila de la tarea.
+
+    La fila nace al vincular el primer justificante con canal (hook de
+    `editar_tarea`), así que sin fila y sin `documento_id` → 422. Todo se valida
+    ANTES de vincular: un 422 no deja la vinculación hecha a medias.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -2251,95 +2232,113 @@ def patch_notificar(expediente_id, tarea_id):
         return jsonify({'error': str(e)}), 404
 
     data = request.get_json(silent=True) or {}
+    notif = tarea.notificacion
 
-    advertencia_vinculo = None
+    notificacion_id = data.get('notificacion_id')
+    if notificacion_id is not None and (notif is None or notif.id != notificacion_id):
+        return jsonify({'error': 'La notificación indicada no pertenece a esta tarea'}), 422
+
+    # --- documento_id: validar y deducir el canal y la ejecución resultantes ---
+    doc = None
     documento_id = data.get('documento_id')
     if documento_id is not None:
         doc = Documento.query.get(documento_id)
         if not doc or doc.expediente_id != expediente.id:
             return jsonify({'error': 'Documento no válido para este expediente'}), 422
         tipo_codigo = doc.tipo_doc.codigo if doc.tipo_doc else None
-        if tipo_codigo not in svc.MAPA_CANAL_POR_TIPO_DOC:
-            return jsonify({'error': 'El documento no es un justificante de notificación (JUSTIFICANTE_*)'}), 422
+        if tipo_codigo not in notif_svc.JUSTIFICANTES_FINALES:
+            return jsonify({
+                'error': 'Solo se puede fijar como producido un justificante final '
+                         '(Notifica, postal, bandeja, SIR o anuncio publicado). Un '
+                         'justificante previo se vincula como consumido.',
+            }), 422
+    canal_doc = notif_svc.canal_de_tipo(doc.tipo_doc.codigo) if doc and doc.tipo_doc else None
 
+    if notif is None and canal_doc is None:
+        return jsonify({
+            'error': 'Sin notificación registrada',
+            'motivo': 'Vincula primero un justificante (puesta a disposición o acuse).',
+        }), 422
+
+    canal = canal_doc or notif.canal
+    ejecutada = doc is not None or tarea.ejecutada
+
+    # --- Campos: leer_json (ausente conserva, null vacía) y validar ---
+    actual = notif or Notificacion(numero_intento=1)
+    resultado = leer_json(data, 'resultado', actual.resultado)
+    if resultado is not None:
+        validos = notif_svc.resultados_validos(canal)
+        if resultado not in validos:
+            return jsonify({
+                'error': f'resultado debe ser uno de {", ".join(validos)} para el canal {canal}',
+            }), 422
+        if resultado in notif_svc.RESULTADOS_EFECTUADA and not ejecutada:
+            return jsonify({
+                'error': f'Un resultado {resultado} exige el justificante final vinculado '
+                         'como producido de la tarea',
+            }), 422
+
+    numero_intento = leer_json(data, 'numero_intento', actual.numero_intento)
+    intentos_validos = (1, 2) if canal == 'POSTAL' else (1,)
+    if numero_intento not in intentos_validos:
+        return jsonify({
+            'error': 'numero_intento debe ser 1 o 2' if canal == 'POSTAL'
+                     else f'numero_intento solo puede ser 1 en el canal {canal}',
+        }), 422
+
+    observaciones = (leer_json(data, 'observaciones', actual.observaciones) or '').strip() or None
+
+    identificador_envio = (leer_json(data, 'identificador_envio', actual.identificador_envio)
+                           or '').strip() or None
+    if identificador_envio and len(identificador_envio) > 30:
+        return jsonify({'error': 'identificador_envio admite 30 caracteres como máximo'}), 422
+
+    sede_justificacion = (leer_json(data, 'sede_justificacion', actual.sede_justificacion)
+                          or '').strip() or None
+    if sede_justificacion and canal != 'POSTAL':
+        return jsonify({
+            'error': 'La justificación de sede solo aplica a la notificación postal (art. 42.1 LPACAP)',
+        }), 422
+
+    # --- Vinculación (si procede) y escritura ---
+    advertencia_vinculo = None
+    if doc is not None:
         consumidos_ids = [v.documento_id for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO']
         res_vinculo = svc.editar_tarea(
             tarea, documentos_consumidos_ids=consumidos_ids,
-            documento_producido_id=documento_id, notas=tarea.notas,
+            documento_producido_id=doc.id, notas=tarea.notas,
         )
         if res_vinculo.bloqueo:
             return _bloqueo_422(res_vinculo)
         if not res_vinculo.ok:
             return jsonify({'error': res_vinculo.error}), 422
         advertencia_vinculo = res_vinculo.advertencia
+        notif = Notificacion.query.filter_by(tarea_id=tarea.id).first()
 
-    notif = Notificacion.query.filter_by(tarea_id=tarea.id).first()
-    if notif is None:
-        return jsonify({
-            'error': 'Sin envío registrado',
-            'motivo': 'Registra la puesta a disposición antes de registrar la notificación.',
-        }), 422
-
-    resultado = data.get('resultado')
-    if resultado not in _RESULTADOS_VALIDOS:
-        return jsonify({'error': 'resultado debe ser CORRECTA o INCORRECTA'}), 422
-
-    fecha_resultado = _parsear_fecha_iso(data.get('fecha_resultado'))
-    if fecha_resultado is None:
-        return jsonify({'error': 'fecha_resultado es obligatoria (AAAA-MM-DD)'}), 422
-
-    numero_intento = data.get('numero_intento')
-    if numero_intento not in (1, 2):
-        return jsonify({'error': 'numero_intento debe ser 1 o 2'}), 422
-
+    sede_cambia = sede_justificacion != notif.sede_justificacion
     notif.resultado = resultado
-    notif.fecha_resultado = fecha_resultado
     notif.numero_intento = numero_intento
-    # Ausente vs vacío (#834, #832): clave ausente conserva; presente vacía a propósito.
-    notif.observaciones = (leer_json(data, 'observaciones', notif.observaciones) or '').strip() or None
+    notif.observaciones = observaciones
+    notif.identificador_envio = identificador_envio
+    notif.sede_justificacion = sede_justificacion
+    if sede_cambia:
+        # Constancia en bitácora que exige ADR-049 §C: no poner a disposición
+        # en sede una notificación en papel se justifica, no se calla.
+        bitacora_svc.registrar(
+            current_user.id, 'ALTERAR', 'notificaciones', notif.id,
+            detalle={
+                'accion': 'JUSTIFICAR_SEDE',
+                'texto': sede_justificacion,
+                'sujeto': build_sujeto(expediente, tarea.tramite),
+            },
+        )
     db.session.commit()
 
-    payload = {'ok': True, 'notificacion': _notificacion_json(notif)}
+    payload = _notificar_payload(tarea)
+    payload['ok'] = True
     if advertencia_vinculo:
         payload['advertencia'] = advertencia_vinculo
     return jsonify(payload), 200
-
-
-@api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/notificar/parsear',
-              methods=['POST'])
-@login_required
-def post_notificar_parsear(expediente_id, tarea_id):
-    """
-    POST .../notificar/parsear — parseo transitorio del justificante de puesta a
-    disposición (camino A, ADR-034 §1): recibe el PDF/ZIP en memoria, lo parsea
-    y devuelve los datos extraídos SIN persistir nada ni guardar el fichero — el
-    usuario verifica/corrige en el formulario antes de confirmar con POST
-    .../notificar. Solo NOTIFICA tiene parser hoy (#655).
-
-    Multipart: 'fichero'. Respuesta: el `.to_dict()` del parser (incluye
-    `reconocido`); `{reconocido: false}` si no es un justificante NOTIFICA
-    reconocible (nunca 422 — es un intento especulativo).
-    """
-    expediente = Expediente.query.get_or_404(expediente_id)
-    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
-        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
-
-    try:
-        _resolver_tarea_notificar(expediente, tarea_id)
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 404
-
-    fichero = request.files.get('fichero')
-    if not fichero or not fichero.filename:
-        return jsonify({'error': 'Ningún fichero recibido'}), 400
-
-    nombre = fichero.filename.lower()
-    if nombre.endswith('.zip'):
-        resultado = parsear_justificante_notifica_zip(fichero.stream)
-    else:
-        resultado = parsear_justificante_notifica(fichero.stream)
-
-    return jsonify(resultado.to_dict()), 200
 
 
 @api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/notificar/parsear_documento',
@@ -2347,17 +2346,21 @@ def post_notificar_parsear(expediente_id, tarea_id):
 @login_required
 def post_notificar_parsear_documento(expediente_id, tarea_id):
     """
-    POST .../notificar/parsear_documento — preview del justificante DEFINITIVO
-    (#712, acto 1 del flujo de dos actos): a diferencia de .../notificar/parsear
-    (fichero transitorio sin subir), aquí el documento YA está en el pool del
-    expediente — se lee de disco por `documento_id`, se parsea con la misma
-    lógica que usa el hook de vinculación (`parsear_documento_notifica`), y NO
-    se persiste nada ni se vincula como Producido — eso lo hace el PATCH
-    .../notificar (acto 3) cuando el usuario confirma.
+    POST .../notificar/parsear_documento — preview de un justificante del pool
+    (#712, acto 1 del flujo de dos actos): se lee de disco por `documento_id`,
+    se parsea con la misma lógica que el hook de vinculación
+    (`parsear_documento_notifica`) y NO se persiste nada ni se vincula — eso lo
+    hace el PATCH .../notificar (acto 3) cuando el usuario confirma.
 
-    Body JSON: {documento_id}. Solo NOTIFICA tiene parser (#655): para el
-    resto de canales responde `{reconocido: false, canal}` sin intentar nada
-    — el usuario rellena a mano (mismo criterio que ADR-034 §"SIR").
+    Body JSON: {documento_id}. Admite los seis justificantes con canal (los dos
+    de Notifica comparten parser) y `ANUNCIO_PUBLICADO` (#928). Añade
+    `resultado_sugerido` — el parser **propone**, el usuario decide (D2):
+      - `JUSTIFICANTE_NOTIFICA` reconocido: el del parseo (`MAPA_RESULTADO`).
+      - `JUSTIFICANTE_BANDEJA`, `JUSTIFICANTE_SIR`, `ANUNCIO_PUBLICADO`:
+        `CORRECTA` (recepción o publicación, sin rechazo posible; D1).
+      - resto: `null`.
+    Sin parser (todo salvo Notifica) responde `{reconocido: false, canal,
+    resultado_sugerido}` — el usuario rellena a mano.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -2376,16 +2379,31 @@ def post_notificar_parsear_documento(expediente_id, tarea_id):
 
     tipo_codigo = doc.tipo_doc.codigo if doc.tipo_doc else None
     canal = svc.MAPA_CANAL_POR_TIPO_DOC.get(tipo_codigo)
-    if canal is None:
+    if canal is None and tipo_codigo != 'ANUNCIO_PUBLICADO':
         return jsonify({'error': 'El documento no es un justificante de notificación (JUSTIFICANTE_*)'}), 422
 
+    sin_parseo = {
+        'reconocido': False, 'canal': canal,
+        'resultado_sugerido': _RESULTADO_SUGERIDO_SIN_PARSER.get(tipo_codigo),
+    }
     if canal != 'NOTIFICA':
-        return jsonify({'reconocido': False, 'canal': canal}), 200
+        return jsonify(sin_parseo), 200
 
     resultado = svc.parsear_documento_notifica(doc)
     if resultado is None:
-        return jsonify({'reconocido': False, 'canal': canal}), 200
+        return jsonify(sin_parseo), 200
 
     payload = resultado.to_dict()
     payload['canal'] = canal
+    # La puesta a disposición no tiene desenlace: su parseo no propone resultado.
+    payload['resultado_sugerido'] = (resultado.resultado if tipo_codigo == 'JUSTIFICANTE_NOTIFICA'
+                                     else None)
     return jsonify(payload), 200
+
+
+# Recepción (bandeja, SIR) o publicación (anuncio): sin rechazo posible (D1, D6).
+_RESULTADO_SUGERIDO_SIN_PARSER = {
+    'JUSTIFICANTE_BANDEJA': 'CORRECTA',
+    'JUSTIFICANTE_SIR': 'CORRECTA',
+    'ANUNCIO_PUBLICADO': 'CORRECTA',
+}

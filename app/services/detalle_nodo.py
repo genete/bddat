@@ -409,8 +409,18 @@ def _detalle_tarea(exp, tarea_id: int) -> dict:
     )
 
     documentos = []
-    for doc in ta.documentos_consumidos:
-        documentos.append(_serializar_documento(exp.id, doc, 'CONSUMIDO'))
+    if codigo == 'NOTIFICAR':
+        # #928 N1 §8: los consumidos de una NOTIFICAR son de dos clases — lo que
+        # se notifica y los justificantes previos (presupuesto del final).
+        for doc in ta.documentos_a_notificar:
+            documentos.append({**_serializar_documento(exp.id, doc, 'CONSUMIDO'),
+                               'subrol': 'A_NOTIFICAR'})
+        for doc in ta.justificantes_previos:
+            documentos.append({**_serializar_documento(exp.id, doc, 'CONSUMIDO'),
+                               'subrol': 'JUSTIFICANTE_PREVIO'})
+    else:
+        for doc in ta.documentos_consumidos:
+            documentos.append(_serializar_documento(exp.id, doc, 'CONSUMIDO'))
     producido = ta.documento_producido
     if producido is not None:
         documentos.append(_serializar_documento(exp.id, producido, 'PRODUCIDO'))

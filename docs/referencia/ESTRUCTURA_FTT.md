@@ -1,9 +1,9 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-09-17 (#918 — añade RESOLUCION_AAP, RESOLUCION_AAC)
+> Última sincronización: 2026-09-23 (#928 — COMUNICACION_INICIO → COMUNICACION_INICIO_ADMISION; destinatario del NOTIFICAR en las notas del JSON)
 
-**Versión:** 6.6 | **Fecha:** 2026-09-17
+**Versión:** 6.6 | **Fecha:** 2026-09-23
 
 Este documento es la versión legible por humanos del JSON estructural. El JSON es la fuente de verdad para código e IA; este MD es la referencia de consulta rápida.
 
@@ -65,11 +65,11 @@ Los patrones son orientativos y combinables (p.ej. `A+C` = ANALIZAR → ELABORAR
 ### ANÁLISIS_SOLICITUD
 *Verificación de documentación, admisibilidad y análisis técnico en acto único. Fusiona REGISTRO_SOLICITUD + ADMISIBILIDAD + ANALISIS_TECNICO (v5.5). Ver `DISEÑO_ANALISIS_SOLICITUD.md`.*
 
-| Trámite | Patrón | Tareas indicativas |
-|---|---|---|
-| `ANALISIS_DOCUMENTAL` | A | ANALIZAR |
-| `REQUERIMIENTO_SUBSANACION` | C+A | ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR |
-| `COMUNICACION_INICIO` | B | ELABORAR → NOTIFICAR | Obligatoria para Renovable (Hito 1 RD-ley 23/2020 art. 1.2). Opcional para otros tipos. |
+| Trámite | Patrón | Tareas indicativas | Nota |
+|---|---|---|---|
+| `ANALISIS_DOCUMENTAL` | A | ANALIZAR | — |
+| `REQUERIMIENTO_SUBSANACION` | C+A | ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR | Se notifica al titular |
+| `COMUNICACION_INICIO_ADMISION` | B | ELABORAR → NOTIFICAR | Renombrado desde `COMUNICACION_INICIO` (#776). Plazo máximo y silencio (art. 21.4 LPACAP) y, para Renovable, admisión a trámite (Hito 1 RD-ley 23/2020 art. 1.2, obligatoria); opcional para otros tipos. Se notifica al titular |
 
 ---
 
@@ -79,10 +79,10 @@ Los patrones son orientativos y combinables (p.ej. `A+C` = ANALIZAR → ELABORAR
 | Trámite | Patrón | Tareas indicativas | Nota |
 |---|---|---|---|
 | `SOLICITUD_CATASTRALES` | A | ANALIZAR | Condicional: solo camino con mediación catastral |
-| `REQUERIMIENTO_CATASTRALES` | C+A | ELABORAR → NOTIFICAR → EP → ANALIZAR | Condicional y repetible: solo si el diagnóstico previo es desfavorable |
-| `REMISION_ACUERDO_DATOS` | C | ELABORAR → NOTIFICAR → EP | Condicional: solo camino con mediación catastral. EP espera la RBDA remitida por el promotor |
+| `REQUERIMIENTO_CATASTRALES` | C+A | ELABORAR → NOTIFICAR → EP → ANALIZAR | Condicional y repetible: solo si el diagnóstico previo es desfavorable. Se notifica al titular |
+| `REMISION_ACUERDO_DATOS` | C | ELABORAR → NOTIFICAR → EP | Condicional: solo camino con mediación catastral. El acuerdo de cesión se notifica al titular (promotor). EP espera la RBDA remitida por el promotor |
 | `ANALISIS_RBDA` | A | ANALIZAR | Siempre (con o sin mediación previa) |
-| `TOMA_RAZON_RBDA` | B | ELABORAR → NOTIFICAR | Siempre. Cierra la fase, anuncia inicio de IP/consultas |
+| `TOMA_RAZON_RBDA` | B | ELABORAR → NOTIFICAR | Siempre. Cierra la fase, anuncia inicio de IP/consultas. Se notifica al titular |
 
 **Dos caminos:** con mediación catastral (el promotor no tiene acceso directo al Catastro) corren los cinco trámites; sin mediación (p. ej. operadoras con acceso directo) se salta `SOLICITUD_CATASTRALES`/`REQUERIMIENTO_CATASTRALES`/`REMISION_ACUERDO_DATOS` y solo corren `ANALISIS_RBDA` → `TOMA_RAZON_RBDA`. Camino elegido libremente por el tramitador, sin regla de motor (candidato de regla futura, no implementado: bloquear `CREAR ANALISIS_RBDA` sin `RBDA`/`RBDA_DIRECCIONES` en el pool).
 
@@ -120,6 +120,8 @@ Los patrones son orientativos y combinables (p.ej. `A+C` = ANALIZAR → ELABORAR
 
 Tareas indicativas en los tres trámites: ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR
 
+Destinatario del NOTIFICAR: en `CONSULTA_SEPARATA`, cada organismo por su canal correspondiente; en `CONSULTA_TRASLADO_TITULAR`, el titular.
+
 ---
 
 ### INFORMACION_PUBLICA
@@ -135,7 +137,7 @@ Tareas indicativas en los tres trámites: ELABORAR → NOTIFICAR → ESPERAR_PLA
 | `TABLON_AYUNTAMIENTOS` | C (sin ELABORAR) | NOTIFICAR → EP | Certificado llega en EP.documento_producido |
 | `PORTAL_TRANSPARENCIA` | C | ELABORAR → NOTIFICAR → EP | Patrón C (#371, elimina PUBLICAR) |
 | `ANUNCIO_TITULAR` | B | ELABORAR → NOTIFICAR | Notificación al titular sobre publicación IP (#369) |
-| `RECEPCION_ALEGACION` | A+C | ANALIZAR → ELABORAR → NOTIFICAR → EP | ANALIZAR clasifica al alegante |
+| `RECEPCION_ALEGACION` | A+C | ANALIZAR → ELABORAR → NOTIFICAR → EP | ANALIZAR clasifica al alegante. El traslado de la alegación (NOTIFICAR) se dirige al titular |
 | `ANALISIS_ALEGACIONES` | A | ANALIZAR | Resultado referenciado en plantilla de resolución |
 
 *EP=ESPERAR_PLAZO*
@@ -187,21 +189,21 @@ aparte (#778, no fijado todavía).
 ### RECONOCIMIENTO_INTERESADO
 *Resolución sobre condición de interesado (art. 4 LPACAP). Fase finalizadora exclusiva de solicitudes tipo INTERESADO.*
 
-| Trámite | Patrón | Tareas indicativas |
-|---|---|---|
-| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR |
-| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR |
+| Trámite | Patrón | Tareas indicativas | Nota |
+|---|---|---|---|
+| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR | — |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Se notifica al solicitante que pidió el reconocimiento de interesado |
 
 ---
 
 ### RESOLUCION
 *Resolución finalizadora de la solicitud.*
 
-| Trámite | Patrón | Tareas indicativas |
-|---|---|---|
-| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION — #373) |
-| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR |
-| `PUBLICACION` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO |
+| Trámite | Patrón | Tareas indicativas | Nota |
+|---|---|---|---|
+| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION — #373) | — |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Se notifica al titular u otro interesado, según la solicitud |
+| `PUBLICACION` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO | — |
 
 ---
 
@@ -212,7 +214,7 @@ aparte (#778, no fijado todavía).
 |---|---|---|---|
 | `REQUERIMIENTO_RBDA_DEFINITIVA` | C | ELABORAR → NOTIFICAR → EP | Obligatorio y exclusivo de esta fase, previo a `ELABORACION`. Plazo 10 días (genérico LPACAP). Requiere RBDA definitiva (solo parcelas a expropiar, propietarios, DNI, direcciones) o confirmación de la ya publicada |
 | `ELABORACION` | B (sin NOTIFICAR) | ELABORAR | Consume `RBDA_DEFINITIVA`. Mismo código de trámite que `RESOLUCION.ELABORACION` — colisión resuelta vía `nombres_documentos.py:_SUSTITUCIONES` |
-| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Solicitante |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Titular (promotor), que es quien solicitó la DUP |
 | `NOTIFICACION_ORGANISMOS` | B (solo NOTIFICAR) | NOTIFICAR | `interesados_expediente.tipo_origen IN ('ORGANISMO_CONSULTADO', 'MEDIO_AMBIENTE')` |
 | `NOTIFICACION_INTERESADOS` | B (solo NOTIFICAR) | NOTIFICAR | `interesados_expediente.tipo_origen IN ('DUP', 'INTERESADO_RECONOCIDO')` |
 | `PUBLICACION_BOP` | F+F | NOTIFICAR → EP → EP | Una instancia por provincia afectada |
@@ -232,11 +234,11 @@ aparte (#778, no fijado todavía).
 ### RESOLUCION_AAP
 *Resolución finalizadora del acto de AAP cuando `AAP+AAC`(`+DUP`) se resuelve partida en vez de conjunta (ADR-047 §A). `RESOLUCION` conserva su código y significado para el acto conjunto; `RESOLUCION_AAP`/`RESOLUCION_AAC` son la alternativa, elección del técnico, mutuamente excluyente con `RESOLUCION` (ver `ESTRUCTURA_ESF.md`).*
 
-| Trámite | Patrón | Tareas indicativas |
-|---|---|---|
-| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION de la solicitud) |
-| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR |
-| `PUBLICACION` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO |
+| Trámite | Patrón | Tareas indicativas | Nota |
+|---|---|---|---|
+| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION de la solicitud) | — |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Se notifica al titular u otro interesado, según la solicitud |
+| `PUBLICACION` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO | — |
 
 Mismo código de trámite `ELABORACION` que `RESOLUCION` — colisión de nombre de fichero resuelta vía `nombres_documentos.py:_SUSTITUCIONES` (#918). **Bloqueos de motor:** duplicado quirúrgico de los 5 de `RESOLUCION` (sujeto `ANY/ANY/RESOLUCION_AAP`), más exclusión mutua con `RESOLUCION` al `CREAR` la fase (condición `existe_resolucion_conjunta`, ADR-047 §B). Publica (art. 128.3 RD 1955/2000) igual que `RESOLUCION`, a diferencia de `RESOLUCION_AAC`.
 
@@ -245,9 +247,9 @@ Mismo código de trámite `ELABORACION` que `RESOLUCION` — colisión de nombre
 ### RESOLUCION_AAC
 *Resolución finalizadora del acto de AAC cuando `AAP+AAC`(`+DUP`) se resuelve partida en vez de conjunta (ADR-047 §A). Solo elaborable con `RESOLUCION_AAP` de la misma solicitud finalizada favorable (ADR-047 §F).*
 
-| Trámite | Patrón | Tareas indicativas |
-|---|---|---|
-| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION de la solicitud) |
-| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR |
+| Trámite | Patrón | Tareas indicativas | Nota |
+|---|---|---|---|
+| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION de la solicitud) | — |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Sin PUBLICACION: el art. 131.8 RD 1955/2000 solo exige notificar (#918). Se notifica al titular u otro interesado, según la solicitud |
 
 Sin `PUBLICACION`: a diferencia de `RESOLUCION_AAP`, el art. 131.8 RD 1955/2000 solo exige notificar, no publicar (#918). Mismo código de trámite `ELABORACION` que `RESOLUCION` — colisión resuelta vía `nombres_documentos.py:_SUSTITUCIONES`. **Bloqueos de motor:** duplicado quirúrgico de los 5 de `RESOLUCION` (sujeto `ANY/ANY/RESOLUCION_AAC`); exclusión mutua con `RESOLUCION` al `CREAR` la fase (condición `existe_resolucion_conjunta`). Más la **regla de orden AAP→AAC** (ADR-047 §F, RD 1955/2000 arts. 128.4/130.1/131.1 párr. 2): `RESOLUCION_AAP` de la misma solicitud debe constar finalizada favorable. Por límite del motor —no compila sujeto a nivel de tarea—, la regla ancla en `CREAR` el trámite `ELABORACION` (sujeto `ANY/RESOLUCION_AAC/ELABORACION`), **no** en la tarea `ELABORAR` como el resto de reglas de orden de este documento.

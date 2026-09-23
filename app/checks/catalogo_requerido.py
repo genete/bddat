@@ -68,7 +68,11 @@ REGISTROS_REQUERIDOS: dict = {
                       'MODELO_SOLICITUD',
                       # #885 — la ingesta lo resuelve por código para saber si el documento
                       # que entra puede abrir un reformado de proyecto (ADR-044 §C)
-                      'DOC_PROYECTO'],
+                      'DOC_PROYECTO',
+                      # #928 (N1, ADR-049 §B) — services/notificaciones.py y el hook de
+                      # NOTIFICAR los resuelven por código (cumplimiento/efectos/sede)
+                      'JUSTIFICANTE_NOTIFICA_DISPOSICION', 'JUSTIFICANTE_POSTAL_1ER',
+                      'JUSTIFICANTE_SEDE'],
     # Rol usa 'nombre' como identificador estable — anclado en PERMISOS (app/utils/permisos.py)
     'Rol': ['ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'],
 }

@@ -67,8 +67,9 @@ RESULTADO_FASE_FAVORABLE_CODIGOS = frozenset({'FAVORABLE', 'FAVORABLE_CONDICIONA
 
 def es_documento_critico(doc) -> bool:
     """True si `doc` es evidencia de un acto ya comunicado hacia fuera (#738):
-    los 9 tipos `JUSTIFICANTE_*` del catálogo (4 de notificación + 5 de
-    publicación BOE/BOP/BOJA/PRENSA/PORTAL, `TIPOS_DOCUMENTOS_CATALOGO.md`),
+    los tipos `JUSTIFICANTE_*` del catálogo (14 desde #928: 7 de notificación
+    —incluidos los previos de ADR-049 y el de sede—, 6 de publicación
+    BOE/BOP/BOJA/PRENSA/PORTAL/TABLON y el de pago de tasa; `TIPOS_DOCUMENTOS_CATALOGO.md`),
     detectados por prefijo — no hace falta mantener una lista, cualquier
     justificante nuevo del catálogo ya sigue esa convención de nombre.
 
@@ -262,12 +263,14 @@ def _check_crear_esperar_plazo(tramite_id: int) -> Optional[EvaluacionResult]:
     tienen `ESPERAR_PLAZO` tienen `NOTIFICAR` antes (verificado en
     `tramites_tareas`), así que no hace falta acotarlo por tipo.
 
-    "Completa" con el mismo criterio que `Tramite.finalizado`: documento
-    producido **y** `Notificacion.resultado = CORRECTA`. Un resultado INCORRECTA
-    —caducada, rechazada, no entregada (`parser_justificante_notifica.MAPA_
-    RESULTADO`)— no es un acto de comunicación consumado en este modelo: queda 2º
-    intento o procede edicto (`estado_dominio._estado_notificar`), y no hay
-    todavía notificación desde la que contar.
+    "Completa" = `notificacion_efectuada` (#928): documento producido **y**
+    resultado CORRECTA o RECHAZADA (art. 41.5: el rechazo da el trámite por
+    efectuado). Un resultado INCORRECTA —caducada, no practicada— no es un acto
+    de comunicación consumado: queda repetirla o procede edicto
+    (`estado_dominio._estado_notificar`), y no hay notificación desde la que
+    contar. A diferencia de `Tramite.finalizado`, la sede pendiente (art. 42.1)
+    **no** bloquea aquí (D18): el plazo del interesado arranca en los efectos y
+    no depende de ella.
 
     **Todas**, no "alguna": los cuatro `ANUNCIO_*` tienen dos `ESPERAR_PLAZO`, y
     un trámite puede llegar a tener más de una `NOTIFICAR` instanciada. Sin
@@ -292,10 +295,9 @@ def _check_crear_esperar_plazo(tramite_id: int) -> Optional[EvaluacionResult]:
             'así que créela y complétela antes.'
         )
 
-    pendiente = next(
-        (t for t in notificar if not t.ejecutada or t.resultado != 'CORRECTA'),
-        None,
-    )
+    from app.services.notificaciones import notificacion_efectuada
+
+    pendiente = next((t for t in notificar if not notificacion_efectuada(t)), None)
     if pendiente is None:
         return None
 
@@ -1368,7 +1370,12 @@ def _check_finalizar_tarea(tarea_id: int) -> Optional[EvaluacionResult]:
     if codigo in _TIPOS_REQUIEREN_DOC_PRODUCIDO and not tarea.ejecutada:
         return _bloquear('Falta el documento producido. Asócielo antes de finalizar la tarea.')
 
-    if codigo in _TIPOS_REQUIEREN_DOC_USADO and not tarea.documentos_consumidos:
+    # NOTIFICAR: un justificante previo consumido no es "el documento de entrada"
+    # (#928 N1 §8) — sin esto, una NOTIFICAR con solo la puesta a disposición
+    # pasaría el check.
+    entradas = (tarea.documentos_a_notificar if codigo == 'NOTIFICAR'
+                else tarea.documentos_consumidos)
+    if codigo in _TIPOS_REQUIEREN_DOC_USADO and not entradas:
         return _bloquear('Falta el documento de entrada. Asócielo antes de finalizar la tarea.')
 
     return None

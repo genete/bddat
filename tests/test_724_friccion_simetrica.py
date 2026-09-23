@@ -23,8 +23,6 @@ rollback por SAVEPOINT) porque ambos criterios navegan relaciones reales
 no hace falta catálogo real de requisitos/ítems técnicos para probar el
 emparejamiento por id, solo su forma (ver consolidacion_defectos.py).
 """
-import datetime
-
 import pytest
 
 
@@ -63,7 +61,7 @@ def _montar_fase(codigo_fase, specs):
 
         if spec.get('notificado'):
             notificar = arbol.tarea(tramite, 'NOTIFICAR')
-            arbol.notificacion(notificar, fecha=datetime.date(2026, 7, 20))
+            arbol.notificacion(notificar)
 
         tarea = arbol.tarea(tramite, 'ANALIZAR')
         tareas_analizar.append(tarea)

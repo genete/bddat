@@ -19,10 +19,60 @@ def test_modelo_en_all():
     assert 'TramiteTareaDocumento' in m.__all__
 
 
-def test_pk_compuesta():
+def test_pk_id():
+    """PK compuesta -> id autoincremental (#928, N1): admite varias filas
+    ENTRADA distintas en el mismo (tramite, orden_tarea, rol)."""
     from app.models.tramites_tareas_documentos import TramiteTareaDocumento
     pk_cols = {c.name for c in TramiteTareaDocumento.__table__.primary_key.columns}
-    assert pk_cols == {'tipo_tramite_id', 'orden_tarea', 'rol'}
+    assert pk_cols == {'id'}
+
+
+def test_indice_unico_impide_duplicado_exacto(app_ctx):
+    """El índice único funcional ocupa el lugar de la antigua PK compuesta
+    como guarda de duplicados: no dos filas del mismo (tramite, orden, rol)
+    con el mismo tipo_documento_id."""
+    from app import db
+    from sqlalchemy.exc import IntegrityError
+    from app.models.tramites_tareas_documentos import TramiteTareaDocumento
+
+    fila = db.session.query(TramiteTareaDocumento).filter(
+        TramiteTareaDocumento.rol == 'ENTRADA',
+        TramiteTareaDocumento.tipo_documento_id.isnot(None),
+    ).first()
+    assert fila is not None, 'la semilla debe traer alguna fila ENTRADA con tipo_documento_id'
+
+    duplicado = TramiteTareaDocumento(
+        tipo_tramite_id=fila.tipo_tramite_id, orden_tarea=fila.orden_tarea,
+        rol=fila.rol, tipo_documento_id=fila.tipo_documento_id, obligatorio=False,
+    )
+    db.session.add(duplicado)
+    with pytest.raises(IntegrityError):
+        db.session.flush()
+    db.session.rollback()
+
+
+def test_indice_unico_permite_varias_entradas_distintas(app_ctx):
+    """NOTIFICACION.NOTIFICAR ya tiene ENTRADA=RESOLUCION (obligatorio); añadir
+    una ENTRADA distinta (JUSTIFICANTE_SEDE, opcional) en el mismo paso no
+    choca — es justo lo que añadió la migración 928b para los 12 trámites
+    cuyo NOTIFICAR va al titular."""
+    from app import db
+    from app.models.tramites_tareas_documentos import TramiteTareaDocumento
+    from app.models.tipos_tramites import TipoTramite
+    from app.models.tipos_documentos import TipoDocumento
+
+    tipo_tramite = TipoTramite.query.filter_by(codigo='NOTIFICACION').first()
+    tipo_doc = TipoDocumento.query.filter_by(codigo='JUSTIFICANTE_NOTIFICA_DISPOSICION').first()
+    assert tipo_tramite is not None and tipo_doc is not None, (
+        'la semilla debe traer NOTIFICACION y JUSTIFICANTE_NOTIFICA_DISPOSICION'
+    )
+
+    filas = TramiteTareaDocumento.query.filter_by(
+        tipo_tramite_id=tipo_tramite.id, orden_tarea=1, rol='ENTRADA',
+    ).all()
+    codigos = {f.tipo_documento.codigo if f.tipo_documento else None for f in filas}
+    assert 'RESOLUCION' in codigos
+    assert 'JUSTIFICANTE_NOTIFICA_DISPOSICION' in codigos
 
 
 def test_tipo_documento_id_nullable():

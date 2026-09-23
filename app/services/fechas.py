@@ -43,3 +43,68 @@ def fecha_administrativa_valida(fecha: Optional[date], hoy: Optional[date] = Non
         from app.services.reloj_simulado import hoy as hoy_del_sistema
         hoy = hoy_del_sistema()
     return fecha <= hoy
+
+
+# Tipos de documento cuya fecha_administrativa es obligatoria (#928, N1 §4;
+# precedente #885, antes solo DOC_PROYECTO). Sin fecha no aportan ninguna y el
+# fallo sería silencioso (P1: «si el hecho no tiene documento, no hay
+# fecha»). Invariante de completitud del dato, hardcode deliberado — no vive
+# en `tipos_documentos` (ni regla de motor ni dato de catálogo) porque no
+# admite excepción por expediente ni por usuario, a diferencia de una regla
+# del motor o un dato de catálogo (ver [[feedback_invariante_vs_regla_motor]]
+# en la memoria del proyecto).
+TIPOS_FECHA_OBLIGATORIA = frozenset({
+    'DOC_PROYECTO',
+    'JUSTIFICANTE_NOTIFICA_DISPOSICION',
+    'JUSTIFICANTE_NOTIFICA',
+    'JUSTIFICANTE_POSTAL_1ER',
+    'JUSTIFICANTE_POSTAL',
+    'JUSTIFICANTE_BANDEJA',
+    'JUSTIFICANTE_SIR',
+    'JUSTIFICANTE_SEDE',
+})
+
+_MENSAJES_FECHA_OBLIGATORIA = {
+    'DOC_PROYECTO': (
+        'Un documento de proyecto necesita fecha administrativa: es la que '
+        'ordena las versiones del proyecto y decide a cuál pertenece cada '
+        'documento.'
+    ),
+    'JUSTIFICANTE_NOTIFICA_DISPOSICION': (
+        'Un justificante de puesta a disposición (Notifica-PNT) necesita '
+        'fecha administrativa: es la fecha de cumplimiento del deber de '
+        'notificar.'
+    ),
+    'JUSTIFICANTE_NOTIFICA': (
+        'Un justificante de Notifica-PNT necesita fecha administrativa: es '
+        'la fecha de efectos frente al interesado.'
+    ),
+    'JUSTIFICANTE_POSTAL_1ER': (
+        'Un acuse del primer intento de notificación postal necesita fecha '
+        'administrativa: es la fecha de ese intento.'
+    ),
+    'JUSTIFICANTE_POSTAL': (
+        'Un justificante de notificación postal necesita fecha '
+        'administrativa: es la fecha de efectos frente al interesado.'
+    ),
+    'JUSTIFICANTE_BANDEJA': (
+        'Un justificante de BandeJA necesita fecha administrativa: es la '
+        'fecha de recepción, única y de efectos.'
+    ),
+    'JUSTIFICANTE_SIR': (
+        'Un justificante de SIR/ARIES necesita fecha administrativa: es la '
+        'fecha de recepción, única y de efectos.'
+    ),
+    'JUSTIFICANTE_SEDE': (
+        'Un justificante de puesta a disposición en sede electrónica '
+        'necesita fecha administrativa: es la fecha de esa puesta a '
+        'disposición.'
+    ),
+}
+
+
+def mensaje_fecha_obligatoria(codigo: str) -> str:
+    """Mensaje de error para un `codigo` de `TIPOS_FECHA_OBLIGATORIA` — un
+    mensaje por tipo, no uno genérico, porque cada uno dice qué fecha exacta
+    hace falta y por qué (#928, N1 §4)."""
+    return _MENSAJES_FECHA_OBLIGATORIA[codigo]

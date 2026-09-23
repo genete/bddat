@@ -66,7 +66,8 @@ class TestCatalogoBaseTrasUpgrade:
     def test_tipos_documentos(self, app_ctx):
         from app.models.tipos_documentos import TipoDocumento
         # +10 en #914: 8 del diseño original + 2 de REQUERIMIENTO_RBDA_DEFINITIVA
-        assert TipoDocumento.query.count() == 74
+        # +3 en #928 (N1): JUSTIFICANTE_NOTIFICA_DISPOSICION, JUSTIFICANTE_POSTAL_1ER, JUSTIFICANTE_SEDE
+        assert TipoDocumento.query.count() == 77
 
 
 class TestCodigosQueElCodigoEspera:

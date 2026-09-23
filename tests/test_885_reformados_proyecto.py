@@ -422,7 +422,8 @@ def test_solo_se_revierte_el_ultimo_corte(puerta):
 
     respuesta = puerta.editar(primero, abre_reformado=False)
 
-    assert respuesta.status_code == 500
+    # 422, no 500 (#928): el ValueError del invariante es un error del cliente.
+    assert respuesta.status_code == 422
     assert 'último reformado' in respuesta.get_json()['error']
     assert puerta.corte(primero) is not None
     assert puerta.corte(segundo) is not None

@@ -284,21 +284,23 @@ def producir_diagnostico(client, exp_id, tarea_analizar_id, etiqueta, resultado=
 def notificar(tarea_notif, doc_consumido_id, doc_justificante_id, fecha, etiqueta,
               canal='NOTIFICA'):
     """Cierra NOTIFICAR de verdad — vincula el justificante como PRODUCIDO
-    y registra la Notificacion (ADR-034) con resultado CORRECTA.
+    y fija el resultado CORRECTA de su Notificacion (ADR-034/ADR-049).
 
-    El hook automático (_hook_657_notificar_resultado, mutaciones_arbol.py)
-    no basta aquí: solo actúa sobre justificantes NOTIFICA parseables de
-    verdad (parsear_documento_notifica). Un PDF dummy nunca lo es, así que
-    replica a mano el "Registrar puesta a disposición" + "Registrar
-    notificación" manuales (api_expedientes.py POST+PATCH
-    /nodo/tarea/<id>/notificar) — sin esto la tarea queda en
-    PENDIENTE_NOTIFICAR (#814, hallazgo de revisión) y, desde #823, el
-    ESPERAR_PLAZO siguiente ni siquiera podría crearse: el invariante de
-    precedencia exige la NOTIFICAR del trámite completa (producido y
-    `Notificacion.resultado = CORRECTA`).
+    Desde #928 el hook de `editar_tarea` (`_hook_notificar`) crea la fila al
+    vincular cualquier justificante con canal —parseable o no—, pero nunca
+    escribe `resultado`: lo fija el usuario (PATCH /nodo/tarea/<id>/notificar).
+    Aquí se replica ese PATCH — sin él la tarea queda en
+    PENDIENTE_RESULTADO_NOTIFICACION y, desde #823, el ESPERAR_PLAZO
+    siguiente ni siquiera podría crearse: el invariante de precedencia exige
+    la NOTIFICAR del trámite efectuada (`notificacion_efectuada`).
+
+    `fecha` ya no se escribe (#928: `notificaciones` no guarda fechas; salen
+    de la `fecha_administrativa` del justificante, que el llamador fija al
+    subirlo). Se conserva en la firma para no tocar los llamadores.
 
     `canal`: NOTIFICA para el titular; SIR es el canal entre administraciones,
-    el que corresponde a las comunicaciones a organismos.
+    el que corresponde a las comunicaciones a organismos. Debe coincidir con
+    el tipo del justificante: el hook deriva el canal del tipo de documento.
     """
     from app.models.notificaciones import Notificacion
     from app.services import mutaciones_arbol as svc
@@ -307,15 +309,11 @@ def notificar(tarea_notif, doc_consumido_id, doc_justificante_id, fecha, etiquet
                            documento_producido_id=doc_justificante_id, notas=None),
           f'vincular producido NOTIFICAR {etiqueta}')
     notif = Notificacion.query.filter_by(tarea_id=tarea_notif.id).first()
-    if notif is None:
-        notif = Notificacion(tarea_id=tarea_notif.id)
-        db.session.add(notif)
-    notif.documento_id = doc_justificante_id
-    notif.canal = canal
-    notif.fecha_puesta_disposicion = fecha
+    if notif is None or notif.canal != canal:
+        print(f"ABORTADO al notificar {etiqueta}: el hook no creó la notificación "
+              f"con canal {canal} (¿tipo del justificante {doc_justificante_id}?)")
+        sys.exit(1)
     notif.resultado = 'CORRECTA'
-    notif.fecha_resultado = fecha
-    notif.numero_intento = 1
     db.session.commit()
 
 
