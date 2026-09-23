@@ -134,8 +134,7 @@ Existe además un **expediente.heredado** booleano que marca expedientes legacy 
 
 ### 2.2 Estado por pista del listado de seguimiento (`services/seguimiento.py`)
 
-Proyección por **pista** (SOL, CONSULTAS, MA, IP, RES) del núcleo `services/estado_dominio.py` (#558). Cada pista devuelve un `EstadoPista(codigo, color, count, nota)`. Vocabulario y prioridad canónicos (1 = más urgente, coherente con el color):
-`PENDIENTE_TRAMITAR` (🔴) > `PENDIENTE_ESTUDIO` (🔴) > `PENDIENTE_REDACTAR` (🔴) > `NOTIFICACION_AGOTADA` (🔴) > `PENDIENTE_CERRAR` (🟠) > `NOTIFICACION_FALLIDA` (🟠) > `PENDIENTE_FIRMA` (🟡) > `PENDIENTE_NOTIFICAR` (🔵) > `PENDIENTE_PLAZOS` (⚪) > `FIN` (🟢).
+Proyección por **pista** (SOL, CONSULTAS, MA, IP, RES) del núcleo `services/estado_dominio.py` (#558). Cada pista devuelve un `EstadoPista(codigo, color, count, nota)`. El vocabulario de estados y su prioridad canónica viven en [`MODELO_ESTADOS_SEMAFORO.md`](../referencia/MODELO_ESTADOS_SEMAFORO.md) §5 — no se copian aquí (la copia anterior se desfasó dos veces: #657 y #928).
 La familia de notificar comparte la etiqueta "NOTIFICAR" (lo que escala es el color). `PENDIENTE_SUBSANAR` es el relabel de `PENDIENTE_PLAZOS` en la pista SOL.
 
 Insumo directo para reemplazar la hoja Calc "pendiente de *".
