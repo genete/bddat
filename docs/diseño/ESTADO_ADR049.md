@@ -14,11 +14,11 @@
 
 ## Cadena, en orden
 
-| Orden | Issue | Qué es | Capa | Estado (22/09/2026) |
+| Orden | Issue | Qué es | Capa | Estado (23/09/2026) |
 |---|---|---|---|---|
-| 1 | **#926** | Bug: dos `Documento` con el mismo fichero rompen `mover_a_esftt` — prerrequisito de N1 | Backend | Abierto |
-| 2 | **#928 (N1)** | Las fechas de notificación solo salen de documentos | Backend | Abierto, no mergeado |
-| — | **#927** | Entradas múltiples en `tramites_tareas_documentos` — bloqueado por N1; hace falta antes de N5, en paralelo a la cadena principal | Backend | Abierto |
+| 1 | **#926** | Bug: dos `Documento` con el mismo fichero rompen `mover_a_esftt` — prerrequisito de N1 | Backend | Cerrado (PR #933) |
+| 2 | **#928 (N1)** | Las fechas de notificación solo salen de documentos | Backend | Cerrado (PR #934) |
+| — | **#927** | Entradas múltiples en `tramites_tareas_documentos` — desbloqueado por N1; hace falta antes de N5, en paralelo a la cadena principal | Backend | Abierto, siguiente |
 | 3 | **#930 (N2)** | El plazo es del acto; cumplimiento calculado | Backend | Creado |
 | 4 | **#931 (N2b)** | Retira filas y funciones antiguas del catálogo; renombra `SOLICITUD` → `ACTO` | Backend | Creado |
 | 5 | **#796** | Suspensión del art. 22, ahora por acto | Backend | Diseño fijado (22/09/2026); pendiente de implementar en M3 |
@@ -46,3 +46,4 @@
 - **22/09/2026** — Creada tras cerrar el hilo de N2/N2b. Refleja el estado justo después de crear #930 y #931.
 - **22/09/2026** — #796: criterio de suspensión fijado (solo causa a) suspende; causa d) no se implementa, queda como mejora de procedimiento futura sin issue de motor). Sin cambios de código: escrito en el propio issue. Desbloquea el diseño de N3/N4/N6.
 - **22/09/2026** — #932 (N3) diseñado y creado: `tipo`/`fase_id` en `certificados`, alternativa mínima frente a endurecer índices existentes (descartado, prematuro) o unificar con `certificados_fase` (descartado, issue aparte del ADR). Bloquea a N4.
+- **23/09/2026** — #926 y #928 (N1) cerrados. Orden acordado: #927 y luego #930 (N2).

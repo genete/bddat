@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** Cerrada la fase de diseño de **ADR-049** (fechas de notificación, cumplimiento del plazo, certificados de cierre) — sustituye a #921 y #801. Toda la cadena de issues, en qué orden y qué depende de qué, en `docs/diseño/ESTADO_ADR049.md` (documento vivo). Sin cambios en código: `app/` sigue en el estado de #892 (PR #923, último merge).
+**Hecho:** **#928 (N1 de ADR-049)** mergeado (PR #934): las fechas de notificación salen solo de documentos; `notificaciones` sin fechas, con `RECHAZADA` y sede (`PENDIENTE_SEDE`). El `NotificarEditor` no registra puesta a disposición ni resultado hasta **#929** (asumido, D12). Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** Implementar la cadena desde el principio: **#926** (bug prerrequisito de N1), luego **#928 (N1)** y el resto en el orden de `docs/diseño/ESTADO_ADR049.md`.
+**Próximo:** **#927** (entradas múltiples de `REMISION_ACUERDO_DATOS.ELABORAR` y `ANALISIS_RBDA.ANALIZAR`, desbloqueado por N1) y luego **#930 (N2)**, siguiente de la cadena principal.
 
 ---
 
