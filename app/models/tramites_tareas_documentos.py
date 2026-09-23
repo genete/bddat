@@ -8,12 +8,22 @@ class TramiteTareaDocumento(db.Model):
 
     tipo_documento_id = NULL significa polimórfico: en runtime acepta
     cualquier tipo válido para ese rol. Ver plan #346 §3.
+
+    PK: `id` autoincremental (#928, N1) — antes era la compuesta
+    (tipo_tramite_id, orden_tarea, rol), que solo admitía una fila por paso.
+    El índice único funcional `uq_ttd_paso_tipo_documento` ocupa su lugar como
+    guarda de duplicados: impide dos filas del mismo (tramite, orden, rol) con
+    el mismo `tipo_documento_id` (o dos polimórficas, vía `COALESCE(…, 0)`),
+    pero admite varias filas ENTRADA distintas en el mismo paso — el
+    documento a notificar y los justificantes previos de NOTIFICAR conviven
+    ahí.
     """
     __tablename__ = 'tramites_tareas_documentos'
     __table_args__ = (
-        db.PrimaryKeyConstraint(
-            'tipo_tramite_id', 'orden_tarea', 'rol',
-            name='pk_ttd'
+        db.Index(
+            'uq_ttd_paso_tipo_documento',
+            'tipo_tramite_id', 'orden_tarea', 'rol', db.text('COALESCE(tipo_documento_id, 0)'),
+            unique=True,
         ),
         db.ForeignKeyConstraint(
             ['tipo_tramite_id', 'orden_tarea'],
@@ -21,6 +31,13 @@ class TramiteTareaDocumento(db.Model):
             name='fk_ttd_tramite_tarea',
         ),
         {'schema': 'public'}
+    )
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True,
+        autoincrement=True,
+        comment='Identificador único autogenerado (#928, sustituye a la PK compuesta)'
     )
 
     tipo_tramite_id = db.Column(

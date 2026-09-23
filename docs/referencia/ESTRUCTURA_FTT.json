@@ -3,7 +3,7 @@
     "version": "6.6",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-09-17",
+    "fecha_actualizacion": "2026-09-23",
     "ref_diseño": [
       "docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md",
       "docs/referencia/DISEÑO_CONSULTAS_ORGANISMOS.md",
@@ -101,15 +101,15 @@
           "descripcion": "Escrito de requerimiento con los defectos detectados. El titular aporta documentación subsanada. ANALIZAR final evalúa si la subsanación es correcta.",
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO", "ANALIZAR"],
           "patron": "C+A",
-          "nota": "Recepción de documentación subsanada queda en ESPERAR_PLAZO.documento_producido. Si persisten defectos, motor puede habilitar nuevo REQUERIMIENTO_SUBSANACION. Ver DISEÑO_ANALISIS_SOLICITUD.md §3."
+          "nota": "Recepción de documentación subsanada queda en ESPERAR_PLAZO.documento_producido. Si persisten defectos, motor puede habilitar nuevo REQUERIMIENTO_SUBSANACION. Ver DISEÑO_ANALISIS_SOLICITUD.md §3. Se notifica al titular."
         },
         {
-          "codigo": "COMUNICACION_INICIO",
-          "nombre": "Comunicación de Inicio",
-          "descripcion": "Comunicación al titular del número de expediente e inicio del procedimiento. Solo si no hay defectos en ANALISIS_DOCUMENTAL.",
+          "codigo": "COMUNICACION_INICIO_ADMISION",
+          "nombre": "Comunicación de Inicio y Admisión a Trámite",
+          "descripcion": "Comunicación al titular del número de expediente, inicio del procedimiento y, cuando aplica (renovables RD-ley 23/2020), admisión a trámite. Solo si no hay defectos en ANALISIS_DOCUMENTAL.",
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR"],
           "patron": "B",
-          "nota": "Obligatoria para tipo_expediente Renovable: la notificación de admisión a trámite de la AAP es el documento con el que el promotor acredita el Hito 1 ante el gestor de red (RD-ley 23/2020 art. 1.2 in fine). Opcional para los demás tipos según política organizativa."
+          "nota": "Renombrado desde COMUNICACION_INICIO (#776): el mismo escrito cumple dos propósitos — informar del plazo máximo y el silencio (art. 21.4 LPACAP, universal) y, para renovables, acreditar el Hito 1 de admisión a trámite de la AAP (RD-ley 23/2020 art. 1.2 in fine, obligatoria en ese caso; opcional para los demás según política organizativa). Produce OFICIO_INICIO_ADMISION. Se notifica al titular."
         }
       ]
     },
@@ -132,7 +132,7 @@
           "descripcion": "Requerimiento de subsanación al promotor cuando el diagnóstico de SOLICITUD_CATASTRALES (o de una ronda anterior) resulta desfavorable. Repetible.",
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO", "ANALIZAR"],
           "patron": "C+A",
-          "nota": "Condicional: solo si SOLICITUD_CATASTRALES o la ronda anterior es desfavorable. Consume el DIAGNOSTICO de la ronda previa. Produce OFICIO_REQUERIMIENTO_CATASTRALES + justificante genérico + DIAGNOSTICO de la ronda."
+          "nota": "Condicional: solo si SOLICITUD_CATASTRALES o la ronda anterior es desfavorable. Consume el DIAGNOSTICO de la ronda previa. Produce OFICIO_REQUERIMIENTO_CATASTRALES + justificante genérico + DIAGNOSTICO de la ronda. Se notifica al titular."
         },
         {
           "codigo": "REMISION_ACUERDO_DATOS",
@@ -140,7 +140,7 @@
           "descripcion": "Elaboración y remisión del acuerdo de cesión de datos catastrales; espera de la RBDA remitida por el promotor.",
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "C",
-          "nota": "Condicional: solo camino con mediación catastral. Consume XML_DE_CATASTRO + DR_DATOS_CATASTRALES conforme + el DIAGNOSTICO favorable que habilita el trámite (de SOLICITUD_CATASTRALES si no hubo defectos, o de la última ronda de REQUERIMIENTO_CATASTRALES). ELABORAR produce ACUERDO_CESION_CATASTRALES. ESPERAR_PLAZO espera la RBDA remitida por el promotor (regla de recepción v6.3: el producido único es el registro de entrada; RBDA + RBDA_DIRECCIONES entran como anexos al pool)."
+          "nota": "Condicional: solo camino con mediación catastral. Consume XML_DE_CATASTRO + DR_DATOS_CATASTRALES conforme + el DIAGNOSTICO favorable que habilita el trámite (de SOLICITUD_CATASTRALES si no hubo defectos, o de la última ronda de REQUERIMIENTO_CATASTRALES). ELABORAR produce ACUERDO_CESION_CATASTRALES. ESPERAR_PLAZO espera la RBDA remitida por el promotor (regla de recepción v6.3: el producido único es el registro de entrada; RBDA + RBDA_DIRECCIONES entran como anexos al pool). El acuerdo de cesión se notifica al titular (promotor)."
         },
         {
           "codigo": "ANALISIS_RBDA",
@@ -156,7 +156,7 @@
           "descripcion": "Toma de razón de la RBDA. Cierra la fase y anuncia el inicio de información pública/consultas de la solicitud.",
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR"],
           "patron": "B",
-          "nota": "Siempre (con o sin mediación previa). Produce OFICIO_TOMA_RAZON_RBDA + justificante genérico. Cierra DATOS_CATASTRALES."
+          "nota": "Siempre (con o sin mediación previa). Produce OFICIO_TOMA_RAZON_RBDA + justificante genérico. Cierra DATOS_CATASTRALES. Se notifica al titular."
         }
       ]
     },
@@ -224,7 +224,7 @@
           "patron": "C+A",
           "plazo_legal": "30 días (15 si existe AAP previa y tramitación es AAC sin DUP)",
           "resultado_analizar": ["sin_respuesta", "conformidad", "oposicion", "reparos_organismo", "condicionado"],
-          "nota": "Sin respuesta: resultado sin_respuesta (conformidad tácita). ANALIZAR actualiza estado del registro organismos_expediente. Ver DISEÑO_CONSULTAS_ORGANISMOS.md."
+          "nota": "Sin respuesta: resultado sin_respuesta (conformidad tácita). ANALIZAR actualiza estado del registro organismos_expediente. Ver DISEÑO_CONSULTAS_ORGANISMOS.md. Notificación de la separata a cada organismo por su canal correspondiente."
         },
         {
           "codigo": "CONSULTA_TRASLADO_TITULAR",
@@ -234,7 +234,7 @@
           "patron": "C+A",
           "plazo_legal": "15 días",
           "resultado_analizar": ["sin_respuesta", "conformidad", "reparos_titular"],
-          "nota": "Sin respuesta en AAP: activa audiencia previa a archivo. En AAC equivale a aceptación tácita de condicionados. Ver DISEÑO_CONSULTAS_ORGANISMOS.md."
+          "nota": "Sin respuesta en AAP: activa audiencia previa a archivo. En AAC equivale a aceptación tácita de condicionados. Ver DISEÑO_CONSULTAS_ORGANISMOS.md. Se notifica al titular."
         },
         {
           "codigo": "CONSULTA_TRASLADO_ORGANISMO",
@@ -323,7 +323,7 @@
           "descripcion": "Análisis de alegación individual y traslado al titular para respuesta",
           "tareas_indicativas": ["ANALIZAR", "ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "A+C",
-          "nota": "ANALIZAR clasifica al alegante/interesado."
+          "nota": "ANALIZAR clasifica al alegante/interesado. El traslado de la alegación (NOTIFICAR) se dirige al titular."
         },
         {
           "codigo": "ANALISIS_ALEGACIONES",
@@ -453,7 +453,8 @@
           "nombre": "Notificación de resolución de reconocimiento",
           "descripcion": "Notificación al solicitante del reconocimiento o denegación de la condición de interesado.",
           "tareas_indicativas": ["NOTIFICAR"],
-          "patron": "B (solo NOTIFICAR)"
+          "patron": "B (solo NOTIFICAR)",
+          "nota": "Se notifica al solicitante que pidió el reconocimiento de interesado."
         }
       ]
     },
@@ -477,7 +478,7 @@
           "descripcion": "Notificación a interesados de la resolución adoptada",
           "tareas_indicativas": ["NOTIFICAR"],
           "patron": "B (solo NOTIFICAR)",
-          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION."
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Se notifica al titular u otro interesado, según la solicitud."
         },
         {
           "codigo": "PUBLICACION",
@@ -517,7 +518,8 @@
           "nombre": "Notificación de Resolución de DUP al solicitante",
           "descripcion": "Notificación al solicitante de la resolución de DUP adoptada.",
           "tareas_indicativas": ["NOTIFICAR"],
-          "patron": "B (solo NOTIFICAR)"
+          "patron": "B (solo NOTIFICAR)",
+          "nota": "Se notifica al titular (promotor), que es quien solicitó la DUP."
         },
         {
           "codigo": "NOTIFICACION_ORGANISMOS",
@@ -581,7 +583,7 @@
           "descripcion": "Notificación a interesados de la resolución de AAP adoptada.",
           "tareas_indicativas": ["NOTIFICAR"],
           "patron": "B (solo NOTIFICAR)",
-          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION."
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Se notifica al titular u otro interesado, según la solicitud."
         },
         {
           "codigo": "PUBLICACION",
@@ -613,7 +615,7 @@
           "descripcion": "Notificación a interesados de la resolución de AAC adoptada.",
           "tareas_indicativas": ["NOTIFICAR"],
           "patron": "B (solo NOTIFICAR)",
-          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Sin PUBLICACION: a diferencia de RESOLUCION_AAP, el art. 131.8 RD 1955/2000 solo exige notificar, no publicar (#918)."
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Sin PUBLICACION: a diferencia de RESOLUCION_AAP, el art. 131.8 RD 1955/2000 solo exige notificar, no publicar (#918). Se notifica al titular u otro interesado, según la solicitud."
         }
       ]
     }

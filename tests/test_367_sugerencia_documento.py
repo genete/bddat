@@ -55,6 +55,16 @@ def _fila_catalogo_exacta(rol):
         if hermana is not None and hermana.tipo_documento_id is not None \
                 and hermana.tipo_documento_id != fila.tipo_documento_id:
             continue  # rol hermano exacto y distinto -> ambiguo para tarea recién creada
+        otra_exacta_mismo_rol = TramiteTareaDocumento.query.filter(
+            TramiteTareaDocumento.tipo_tramite_id == fila.tipo_tramite_id,
+            TramiteTareaDocumento.orden_tarea == fila.orden_tarea,
+            TramiteTareaDocumento.rol == rol,
+            TramiteTareaDocumento.id != fila.id,
+            TramiteTareaDocumento.tipo_documento_id.isnot(None),
+            TramiteTareaDocumento.tipo_documento_id != fila.tipo_documento_id,
+        ).first()
+        if otra_exacta_mismo_rol is not None:
+            continue  # otra fila exacta del mismo rol en el mismo paso -> ambiguo (#928, N1 §2)
         slot = TramiteTarea.query.filter_by(
             tipo_tramite_id=fila.tipo_tramite_id, orden=fila.orden_tarea).first()
         if slot is None:
@@ -220,6 +230,16 @@ class TestEndpointSugerenciaDocumento:
                 if hermana is not None and hermana.tipo_documento_id is not None \
                         and hermana.tipo_documento_id != candidata.tipo_documento_id:
                     continue
+                otra_exacta_mismo_rol = TramiteTareaDocumento.query.filter(
+                    TramiteTareaDocumento.tipo_tramite_id == candidata.tipo_tramite_id,
+                    TramiteTareaDocumento.orden_tarea == candidata.orden_tarea,
+                    TramiteTareaDocumento.rol == rol_catalogo,
+                    TramiteTareaDocumento.id != candidata.id,
+                    TramiteTareaDocumento.tipo_documento_id.isnot(None),
+                    TramiteTareaDocumento.tipo_documento_id != candidata.tipo_documento_id,
+                ).first()
+                if otra_exacta_mismo_rol is not None:
+                    continue  # otra fila exacta del mismo rol en el mismo paso -> ambiguo (#928, N1 §2)
                 candidata_slot = TramiteTarea.query.filter_by(
                     tipo_tramite_id=candidata.tipo_tramite_id, orden=candidata.orden_tarea).first()
                 if candidata_slot is None:
