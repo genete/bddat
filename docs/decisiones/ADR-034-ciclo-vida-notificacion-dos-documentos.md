@@ -5,6 +5,7 @@
 **Issues:** #657, #658
 **Corrige/amplía:** ADR-008 (tabla `notificaciones` como documento vitaminado)
 **Relacionado:** #655 (parser de justificante Notifica-PNT), ADR-005 (patrón documento vitaminado), ADR-032 (ingesta de documentos)
+**Enmendado por:** ADR-049 §B/§C/§D (#928, 2026-09-23). §1 se revierte: el justificante de puesta a disposición **sí** es un `Documento` (`JUSTIFICANTE_NOTIFICA_DISPOSICION`, vinculado como `CONSUMIDO` de la `NOTIFICAR`), y desaparecen el «Registrar puesta a disposición» y el parseo transitorio (`POST …/notificar` y `…/notificar/parsear`). §5 se retira: `notificaciones` ya no guarda `fecha_puesta_disposicion` ni `fecha_resultado`; las fechas de cumplimiento y de efectos se calculan desde `documentos.fecha_administrativa` (`app/services/notificaciones.py`). §4/§7: `resultado` admite `RECHAZADA` (`CHECK (resultado IS NULL OR resultado IN ('CORRECTA','RECHAZADA','INCORRECTA'))`), que da la notificación por efectuada (art. 41.5); se añaden `sede_justificacion` y `CHECK (canal = 'POSTAL' OR numero_intento = 1)`. §6: queda un solo camino de escritura — el hook de `editar_tarea` crea la fila al vincular el primer justificante con canal y **nunca escribe `resultado`** (lo fija el usuario; el parser solo lo propone). Lo que sigue se conserva como historia de #657/#658.
 
 ---
 

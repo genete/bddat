@@ -3,6 +3,7 @@
 **Estado:** Adoptada
 **Fecha:** 2026-05-17
 **Issue:** #418
+**Enmendado por:** ADR-034 (la tabla se ancla por `tarea_id`, no es vitaminado de documento) y ADR-049 (#928, 2026-09-23): la fila ya no guarda ninguna fecha —la «fecha del intento» de este ADR sale de la `fecha_administrativa` de los justificantes del expediente— y `resultado` admite `RECHAZADA`. Lo que sigue se conserva como historia de #418.
 
 ---
 

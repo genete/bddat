@@ -3,6 +3,9 @@
 > Documento de trabajo para el issue #337. Ampliado en #914 (RESOLUCION_DUP/DATOS_CATASTRALES, ADR-046).
 > Recoge los tipos de documento que producen o incorporan las tareas atómicas del flujo ESFTT,
 > cruzando LPACAP, RD 1955/2000 y normativa sectorial AT.
+> Justificantes de notificación revisados en #928 (ADR-049): tres tipos nuevos (puesta a
+> disposición en Notifica, 1.er intento postal, sede) y la fecha que lleva cada uno. Las fechas
+> de cumplimiento y de efectos se calculan desde estos documentos (`app/services/notificaciones.py`).
 
 ---
 
@@ -10,10 +13,13 @@
 
 | codigo | nombre | origen | tarea / trámite | norma de referencia | notas |
 |--------|--------|--------|-----------------|---------------------|-------|
-| `JUSTIFICANTE_NOTIFICA` | Justificante Notifica-PNT | EXTERNO | NOTIFICAR (producido) | LPACAP art. 43 | PDF parseable; helper extrae fecha_administrativa al incorporar al pool |
-| `JUSTIFICANTE_BANDEJA` | Justificante BandeJA | EXTERNO | NOTIFICAR (producido) | | PDF parseable; fecha = transmisión electrónica (instantánea); helper la extrae |
-| `JUSTIFICANTE_SIR` | Justificante SIR / ARIES | EXTERNO | NOTIFICAR (producido) | | No parseable (captura pantalla); fecha_administrativa manual |
-| `JUSTIFICANTE_POSTAL` | Justificante notificación postal | EXTERNO | NOTIFICAR (producido) | | Parseabilidad por determinar; fecha_administrativa manual |
+| `JUSTIFICANTE_NOTIFICA_DISPOSICION` | Justificante de puesta a disposición (Notifica-PNT) | EXTERNO | NOTIFICAR (consumido) | LPACAP art. 43.3 | ADR-049 §B (#928). Fecha administrativa = **puesta a disposición**: da cumplimiento del deber de notificar, nunca efectos. PDF parseable; el pool sugiere la fecha (`fecha_sugerida`). Fecha obligatoria |
+| `JUSTIFICANTE_NOTIFICA` | Justificante Notifica-PNT | EXTERNO | NOTIFICAR (producido) | LPACAP arts. 41.5, 43.2 | Fecha administrativa = **efectos**: acceso/lectura (43.2 p. 1), rechazo expreso (41.5) o la fecha que da la plataforma en «Rechazada por transcurso de plazo» / «Caducada» (43.2 p. 2). **No** la puesta a disposición (ADR-049 §G). PDF parseable; el pool sugiere la lectura. Fecha obligatoria |
+| `JUSTIFICANTE_POSTAL_1ER` | Acuse del primer intento de notificación postal | EXTERNO | NOTIFICAR (consumido) | LPACAP arts. 40.4, 42.2 | ADR-049 §C (#928). Solo si el 1.er intento **falla**. Fecha administrativa = fecha del intento: da cumplimiento, no efectos. Sin tipo para el 2.º intento. Fecha obligatoria |
+| `JUSTIFICANTE_POSTAL` | Justificante notificación postal | EXTERNO | NOTIFICAR (producido) | LPACAP arts. 41.5, 42.2 | Fecha administrativa = **efectos**: entrega o rechazo acreditados. Si el 1.er intento fue correcto sirve también como cumplimiento. Manual. Fecha obligatoria |
+| `JUSTIFICANTE_SEDE` | Justificante de puesta a disposición en sede electrónica | EXTERNO | NOTIFICAR (consumido) | LPACAP art. 42.1 | ADR-049 §C (#928). Obligación paralela de toda notificación en papel (POSTAL). No es notificación: no da cumplimiento ni efectos. Sin él, la sede queda PENDIENTE salvo justificación (`notificaciones.sede_justificacion`). Fecha obligatoria |
+| `JUSTIFICANTE_BANDEJA` | Justificante BandeJA | EXTERNO | NOTIFICAR (producido) | | Fecha administrativa = recepción, **única y de efectos** (no da cumplimiento aparte). Fecha obligatoria |
+| `JUSTIFICANTE_SIR` | Justificante SIR / ARIES | EXTERNO | NOTIFICAR (producido) | | No parseable (captura pantalla). Fecha administrativa = recepción, **única y de efectos**; manual. Fecha obligatoria |
 | `JUSTIFICANTE_BOE` | Justificante publicación BOE | EXTERNO | ANUNCIO_BOE.ESPERAR_PLAZO(1) (producido) | | Aportado por el promotor cuando publica en BOE |
 | `JUSTIFICANTE_BOP` | Justificante publicación BOP | EXTERNO | ANUNCIO_BOP.ESPERAR_PLAZO(1) (producido) | | |
 | `JUSTIFICANTE_BOJA` | Justificante publicación BOJA | EXTERNO | ANUNCIO_BOJA.ESPERAR_PLAZO(1) (producido) | | |
