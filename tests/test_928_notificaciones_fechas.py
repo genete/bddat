@@ -5,17 +5,12 @@ de notificar, derivados de sus documentos (ADR-049 §C).
 Una función por caso de la tabla del propio issue (ADR §C, destinatario
 titular). Cada caso monta una tarea NOTIFICAR real (`ArbolESFTT`) y vincula
 sus documentos con el rol de la tabla — los documentos son `bddat://`, sin
-fichero físico, así que `rutas_esftt.py` no entra en juego.
+fichero físico, así que `rutas_esftt.py` no entra en juego. El PDF polivalente
+con fichero físico compartido está en test_928_hook_notificar.py.
 
-Dos casos no se pueden montar contra una fila `Notificacion` real todavía,
-ambos anticipados por el propio issue:
-  - `resultado = RECHAZADA`: el CHECK de la BD solo admite CORRECTA/INCORRECTA
-    hasta que 928c lo relaje. Se prueba con un doble (`_TareaFalsa`).
-  - `estado_sede` rama 'JUSTIFICADA': `sede_justificacion` no existe en el
-    modelo hasta 928c ("se prueba con un doble hasta que llegue 928c", §5).
+Desde 928c todos los casos van contra filas `Notificacion` reales (antes,
+RECHAZADA y `sede_justificacion` se probaban con dobles).
 """
-from types import SimpleNamespace
-
 import pytest
 
 from app.services.notificaciones import (
@@ -30,7 +25,8 @@ from app.services.notificaciones import (
 )
 
 
-def _montar_notificar(arbol_esftt, *, vinculos, resultado=None, canal='NOTIFICA', numero_intento=None):
+def _montar_notificar(arbol_esftt, *, vinculos, resultado=None, canal='NOTIFICA', numero_intento=None,
+                      sede_justificacion=None):
     """Tarea NOTIFICAR real con los documentos de `vinculos` —lista de
     (codigo_tipo, rol, fecha)— vinculados con ese rol. `resultado=None` deja
     la tarea sin fila `Notificacion` (aún sin registrar)."""
@@ -45,7 +41,7 @@ def _montar_notificar(arbol_esftt, *, vinculos, resultado=None, canal='NOTIFICA'
         arbol_esftt.vincular(tarea, doc, rol)
 
     if resultado is not None:
-        kwargs = {'canal': canal}
+        kwargs = {'canal': canal, 'sede_justificacion': sede_justificacion}
         if numero_intento is not None:
             kwargs['numero_intento'] = numero_intento
         arbol_esftt.notificacion(tarea, resultado=resultado, **kwargs)
@@ -79,24 +75,14 @@ def test_notifica_leida(app_ctx, arbol_esftt):
     assert notificacion_efectuada(tarea) is True
 
 
-def test_notifica_rechazada(app_ctx):
-    """`resultado = RECHAZADA` — CHECK de BD lo bloquea hasta 928c (doble)."""
+def test_notifica_rechazada(app_ctx, arbol_esftt):
+    """Rechazo expreso (art. 41.5) o por transcurso de plazo (43.2 p. 2): la
+    notificación se tiene por efectuada, con efectos en la fecha del rechazo."""
     f_disposicion, f_notifica = _fecha(10), _fecha(3)
-    doc_disposicion = SimpleNamespace(
-        id=1, tipo_doc=SimpleNamespace(codigo='JUSTIFICANTE_NOTIFICA_DISPOSICION'),
-        fecha_administrativa=f_disposicion)
-    doc_notifica = SimpleNamespace(
-        id=2, tipo_doc=SimpleNamespace(codigo='JUSTIFICANTE_NOTIFICA'),
-        fecha_administrativa=f_notifica)
-    tarea = SimpleNamespace(
-        vinculos_documento=[
-            SimpleNamespace(rol='CONSUMIDO', documento=doc_disposicion),
-            SimpleNamespace(rol='PRODUCIDO', documento=doc_notifica),
-        ],
-        notificacion=SimpleNamespace(resultado='RECHAZADA', canal='NOTIFICA'),
-        documento_producido=doc_notifica,
-        ejecutada=True,
-    )
+    tarea = _montar_notificar(arbol_esftt, vinculos=[
+        ('JUSTIFICANTE_NOTIFICA_DISPOSICION', 'CONSUMIDO', f_disposicion),
+        ('JUSTIFICANTE_NOTIFICA', 'PRODUCIDO', f_notifica),
+    ], resultado='RECHAZADA')
 
     cumplimiento = fecha_cumplimiento(tarea)
     efectos = fecha_efectos(tarea)
@@ -261,7 +247,7 @@ def test_documentos_a_notificar_excluye_los_previos(app_ctx, arbol_esftt):
 
 
 # ---------------------------------------------------------------------------
-# estado_sede (§5: "se prueba con un doble hasta que llegue 928c")
+# estado_sede (§5)
 # ---------------------------------------------------------------------------
 
 def test_estado_sede_no_aplica_sin_fila(app_ctx, arbol_esftt):
@@ -293,12 +279,10 @@ def test_estado_sede_pendiente(app_ctx, arbol_esftt):
     assert estado_sede(tarea) == 'PENDIENTE'
 
 
-def test_estado_sede_justificada():
-    """`sede_justificacion` no existe hasta 928c: doble."""
-    tarea = SimpleNamespace(
-        notificacion=SimpleNamespace(canal='POSTAL', sede_justificacion='Motivo justificado'),
-        vinculos_documento=[],
-    )
+def test_estado_sede_justificada(app_ctx, arbol_esftt):
+    tarea = _montar_notificar(arbol_esftt, vinculos=[
+        ('JUSTIFICANTE_POSTAL', 'PRODUCIDO', _fecha(1)),
+    ], resultado='CORRECTA', canal='POSTAL', sede_justificacion='Motivo justificado')
     assert estado_sede(tarea) == 'JUSTIFICADA'
 
 

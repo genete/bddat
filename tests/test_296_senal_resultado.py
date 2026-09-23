@@ -11,8 +11,10 @@ con NOTIFICAR INCORRECTA) mockeaba `db.session` entero — el SQL nunca se ejecu
 solo el `if` posterior a `.first()` (#715). Sustituido por
 `tests/test_715_check_finalizar_fase_tramite.py`, con SQL real.
 """
-import pytest
+from types import SimpleNamespace
 from unittest.mock import MagicMock
+
+import pytest
 
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -109,19 +111,21 @@ class _StubFase:
 
 
 class _StubTareaConResultado(_StubTarea):
-    """Extiende _StubTarea con un atributo `resultado` explícito.
+    """Extiende _StubTarea con una fila `notificacion` con ese resultado.
 
-    Tramite.finalizado llama t.resultado; en stubs lo exponemos como atributo
-    directo para controlar el valor sin necesidad de ResultadoDocumento en BD.
+    Tramite.finalizado no compara `t.resultado` desde #928: pregunta a
+    `services.notificaciones` (`notificacion_efectuada`, `estado_sede`), que
+    leen la fila. Canal NOTIFICA: la sede (solo POSTAL) no aplica.
     """
     def __init__(self, codigo, doc_producido_id=None, resultado=None):
         vinculos = [_Vinculo('PRODUCIDO')] if doc_producido_id is not None else []
-        super().__init__(codigo, vinculos=vinculos)
-        self._resultado_override = resultado
+        notificacion = None if resultado is None else SimpleNamespace(
+            resultado=resultado, canal='NOTIFICA', numero_intento=1, sede_justificacion=None)
+        super().__init__(codigo, vinculos=vinculos, notificacion=notificacion)
 
     @property
     def resultado(self):
-        return self._resultado_override
+        return self.notificacion.resultado if self.notificacion else None
 
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -145,7 +149,7 @@ class TestTareaResultado:
         assert _tarea_resultado(t) is None
 
     def test_fila_sin_resultado_es_none(self):
-        # Envío registrado (camino A) pero sin resultado aún (ADR-034) → None
+        # Fila creada al vincular un justificante, sin resultado aún (#928) → None
         t = _StubTarea('NOTIFICAR', notificacion=_notificacion_stub(None))
         assert _tarea_resultado(t) is None
 

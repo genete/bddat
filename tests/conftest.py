@@ -344,7 +344,9 @@ def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None):
 
     entidad = Entidad(
         nombre_completo=f'Titular de prueba {n}, S.L.',
-        nif=f'B{n:08d}',
+        # Rango B9xxxxxxx: el B0000000x es de scripts/semilla_test.py, y chocaba
+        # en cuanto el primer alta del proceso era la 1 o la 2 (un fichero suelto).
+        nif=f'B9{n:07d}',
         rol_titular=True,
         rol_consultado=False,
         rol_publicador=False,
@@ -598,14 +600,17 @@ class ArbolESFTT:
         self.db.session.flush()
         return v
 
-    def notificacion(self, tarea, resultado=None, canal='NOTIFICA', fecha=None, numero_intento=None):
+    def notificacion(self, tarea, resultado=None, canal='NOTIFICA', numero_intento=None,
+                     sede_justificacion=None):
+        """Fila de `notificaciones` fabricada directamente, sin pasar por el
+        hook de `editar_tarea`. Sin fechas (#928): las da la
+        `fecha_administrativa` de los justificantes que vincule el test."""
         from app.models.notificaciones import Notificacion
-        import datetime
         kwargs = dict(
             tarea_id=tarea.id,
             resultado=resultado,
             canal=canal,
-            fecha_puesta_disposicion=fecha or datetime.date.today(),
+            sede_justificacion=sede_justificacion,
         )
         if numero_intento is not None:
             kwargs['numero_intento'] = numero_intento

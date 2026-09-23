@@ -17,7 +17,6 @@ Ejes que cubren:
     issue): el candado deja de prometer "revierte antes" cuando revertir
     también está bloqueado.
 """
-import datetime
 
 import pytest
 from flask_login import login_user
@@ -98,7 +97,7 @@ def _montar_cadena_subsanacion(specs):
             db.session.flush()
             db.session.add(Notificacion(
                 tarea_id=notificar.id, canal='NOTIFICA',
-                fecha_puesta_disposicion=datetime.date(2026, 7, 20), numero_intento=1,
+                numero_intento=1,
             ))
             db.session.flush()
 

@@ -36,6 +36,7 @@ from app.models.organismos_expediente import OrganismoExpediente
 from app.models.tramites_organismos import TramiteOrganismo
 from app.models.reformados_proyecto import ReformadoProyecto
 from app.services import estado_dominio as sem
+from app.services import notificaciones as notif_svc
 
 log = logging.getLogger(__name__)
 
@@ -489,7 +490,13 @@ def _serializar_tarea(tarea) -> tuple[dict, dict]:
     tt = tarea.tipo_tarea
     codigo = tt.codigo if tt else None
 
-    consumidos = tarea.documentos_consumidos
+    # NOTIFICAR (#928 N1 §8): `doc_consumido` cuenta solo lo que se notifica —
+    # conserva el significado que conoce el front —; los justificantes previos
+    # (también CONSUMIDO) van aparte, igual que la sede, para el badge futuro.
+    if codigo == 'NOTIFICAR':
+        consumidos = tarea.documentos_a_notificar
+    else:
+        consumidos = tarea.documentos_consumidos
     producido = tarea.documento_producido
 
     nodo = {
@@ -505,6 +512,9 @@ def _serializar_tarea(tarea) -> tuple[dict, dict]:
         'plazo': None,       # solo ESPERAR_PLAZO
         'resultado': None,   # solo NOTIFICAR
     }
+    if codigo == 'NOTIFICAR':
+        nodo['justificantes_previos'] = {'count': len(tarea.justificantes_previos)}
+        nodo['sede'] = notif_svc.estado_sede(tarea)
 
     agg = _agregados_vacios()
 

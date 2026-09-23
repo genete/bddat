@@ -23,7 +23,6 @@ Ejes que cubren:
     justificación (BD real, limpieza manual — mismo patrón que
     TestRevertirDiagnosticoCircuito de test_678).
 """
-from datetime import date
 
 import pytest
 
@@ -277,8 +276,7 @@ class TestReabrirFase:
                              tipo_tarea_id=_tipo(TipoTarea, 'NOTIFICAR').id)
         db.session.add(tarea_notif)
         db.session.flush()
-        db.session.add(Notificacion(tarea_id=tarea_notif.id, canal='NOTIFICA',
-                                     fecha_puesta_disposicion=date.today()))
+        db.session.add(Notificacion(tarea_id=tarea_notif.id, canal='NOTIFICA'))
         db.session.flush()
 
         _cerrar_fase(fase_fin)

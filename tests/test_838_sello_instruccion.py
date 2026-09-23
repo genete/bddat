@@ -208,7 +208,6 @@ class TestSelloAlReabrir:
         notificada no hay nada que hacer dentro de este flujo, mientras que el sello
         sí tiene salida. Decirle «deshaga el certificado» a quien ya notificó sería
         mandarle por un camino que no le corresponde."""
-        from datetime import date
         from app import db
         from app.models.notificaciones import Notificacion
         from app.services.invariantes_esftt import check_invariante
@@ -218,8 +217,7 @@ class TestSelloAlReabrir:
         fase_fin = arbol_esftt.fase('RESOLUCION', solicitud=sol)
         tramite = arbol_esftt.tramite(fase_fin, 'ELABORACION')
         tarea = arbol_esftt.tarea(tramite, 'NOTIFICAR')
-        db.session.add(Notificacion(tarea_id=tarea.id, canal='NOTIFICA',
-                                    fecha_puesta_disposicion=date.today()))
+        db.session.add(Notificacion(tarea_id=tarea.id, canal='NOTIFICA'))
         db.session.flush()
         _cerrar(arbol_esftt, fase_fin)
         assert sol.estado.startswith('RESUELTA')

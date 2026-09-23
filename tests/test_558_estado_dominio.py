@@ -21,16 +21,23 @@ def _doc(tipo_codigo=None):
     return SimpleNamespace(tipo_doc=tipo_doc)
 
 
-def _notif(resultado, numero_intento=1):
-    return SimpleNamespace(resultado=resultado, numero_intento=numero_intento)
+def _notif(resultado, numero_intento=1, canal='NOTIFICA', sede_justificacion=None):
+    return SimpleNamespace(resultado=resultado, numero_intento=numero_intento, canal=canal,
+                           sede_justificacion=sede_justificacion)
 
 
 def _tarea(codigo, *, consumidos=(), producido=None, notificacion=None):
     cons = list(consumidos)
+    # `vinculos_documento`: lo lee services.notificaciones (documentos_a_notificar,
+    # estado_sede) para NOTIFICAR desde #928.
+    vinculos = [SimpleNamespace(rol='CONSUMIDO', documento=d) for d in cons]
+    if producido is not None:
+        vinculos.append(SimpleNamespace(rol='PRODUCIDO', documento=producido))
     return SimpleNamespace(
         tipo_tarea=SimpleNamespace(codigo=codigo),
         documentos_consumidos=cons,
         documento_producido=producido,
+        vinculos_documento=vinculos,
         notificacion=notificacion,
         ejecutada=producido is not None,
         planificada=(not cons and producido is None),
@@ -89,14 +96,47 @@ def test_notificar_sin_consumido_tramitar():
 def test_notificar_sin_resultado_notificar():
     assert ed.estado_tarea(_tarea('NOTIFICAR', consumidos=[_doc()])) == 'PENDIENTE_NOTIFICAR'
 
+def test_notificar_solo_justificante_previo_tramitar():
+    # #928 §8: un justificante previo consumido no es "el documento a notificar".
+    t = _tarea('NOTIFICAR', consumidos=[_doc('JUSTIFICANTE_NOTIFICA_DISPOSICION')],
+               notificacion=_notif(None))
+    assert ed.estado_tarea(t) == 'PENDIENTE_TRAMITAR'
+
 def test_notificar_envio_registrado_sin_resultado():
-    # Camino A ("Registrar envío"): fila creada, resultado aún None.
-    t = _tarea('NOTIFICAR', consumidos=[_doc()], notificacion=_notif(None))
+    # Fila creada por el hook al vincular un justificante, resultado aún None.
+    t = _tarea('NOTIFICAR', consumidos=[_doc(), _doc('JUSTIFICANTE_NOTIFICA_DISPOSICION')],
+               notificacion=_notif(None))
     assert ed.estado_tarea(t) == 'PENDIENTE_RESULTADO_NOTIFICACION'
 
 def test_notificar_correcta_fin():
     t = _tarea('NOTIFICAR', consumidos=[_doc()], producido=_doc(), notificacion=_notif('CORRECTA'))
     assert ed.estado_tarea(t) == 'FIN'
+
+def test_notificar_rechazada_fin():
+    # Art. 41.5: el rechazo da la notificación por efectuada (#928).
+    t = _tarea('NOTIFICAR', consumidos=[_doc()], producido=_doc(), notificacion=_notif('RECHAZADA'))
+    assert ed.estado_tarea(t) == 'FIN'
+
+def test_notificar_correcta_sin_producido_falta_el_final():
+    t = _tarea('NOTIFICAR', consumidos=[_doc()], notificacion=_notif('CORRECTA'))
+    assert ed.estado_tarea(t) == 'PENDIENTE_RESULTADO_NOTIFICACION'
+
+def test_notificar_postal_sin_sede_pendiente_sede():
+    t = _tarea('NOTIFICAR', consumidos=[_doc()], producido=_doc('JUSTIFICANTE_POSTAL'),
+               notificacion=_notif('CORRECTA', canal='POSTAL'))
+    assert ed.estado_tarea(t) == 'PENDIENTE_SEDE'
+    assert ed.color('PENDIENTE_SEDE') == 'naranja'
+
+def test_notificar_postal_sede_puesta_o_justificada_fin():
+    puesta = _tarea('NOTIFICAR', consumidos=[_doc(), _doc('JUSTIFICANTE_SEDE')],
+                    producido=_doc('JUSTIFICANTE_POSTAL'),
+                    notificacion=_notif('CORRECTA', canal='POSTAL'))
+    puesta.vinculos_documento[1].documento.fecha_administrativa = '2026-09-01'
+    justificada = _tarea('NOTIFICAR', consumidos=[_doc()], producido=_doc('JUSTIFICANTE_POSTAL'),
+                         notificacion=_notif('CORRECTA', canal='POSTAL',
+                                             sede_justificacion='Motivo'))
+    assert ed.estado_tarea(puesta) == 'FIN'
+    assert ed.estado_tarea(justificada) == 'FIN'
 
 def test_notificar_incorrecta_1_fallida():
     t = _tarea('NOTIFICAR', consumidos=[_doc()], producido=_doc(), notificacion=_notif('INCORRECTA', 1))

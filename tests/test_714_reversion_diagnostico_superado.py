@@ -20,8 +20,6 @@ Ejes que cubren:
   - Fuera de la cadena (CONSULTA_SEPARATA): diagnósticos paralelos, ninguno supera a
     otro, la reversión no se toca.
 """
-import datetime
-
 import pytest
 
 
@@ -53,7 +51,7 @@ def _montar_fase(codigo_fase, specs):
 
         if notificado:
             notificar = arbol.tarea(tramite, 'NOTIFICAR')
-            arbol.notificacion(notificar, fecha=datetime.date(2026, 7, 20))
+            arbol.notificacion(notificar)
 
         tarea = arbol.tarea(tramite, 'ANALIZAR')
         tareas_analizar.append(tarea)

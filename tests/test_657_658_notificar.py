@@ -1,20 +1,23 @@
 """
-Tests #657/#658 — hook de editar_tarea para la tarea NOTIFICAR (ADR-034 §6).
+Tests #657/#658/#712 — hook de editar_tarea para la tarea NOTIFICAR (ADR-034 §6),
+rehecho en #928 (ADR-049 §B; §6 del issue).
 
-Camino B (justificante definitivo): al fijar documento_producido_id en una
-tarea NOTIFICAR, mapea tipo_doc→canal, parsea si es NOTIFICA (único canal con
-parser, #655) y hace upsert de Notificacion por tarea_id, con cotejo no
-bloqueante de identificador_envio (#658).
+Al guardar una tarea NOTIFICAR, el hook deriva el canal del tipo de los
+justificantes vinculados y hace upsert de Notificacion por tarea_id, con cotejo
+no bloqueante del canal (#712) y de identificador_envio (#658). Desde #928:
+crea la fila con cualquier canal (no solo el parseable) y **nunca escribe
+`resultado`** (D2): lo fija el usuario; el parser solo lo propone. Los casos
+propios de #928 (previos, sede, desvincular, rol incoherente) están en
+test_928_hook_notificar.py.
 
-Contra la BD real de desarrollo (mismo patrón que test_667_mover_documento_
-esftt.py — app_ctx con rollback por SAVEPOINT) + fs_tmp (#674) para que el
-movimiento físico real de mover_a_esftt no toque el servidor de ficheros de
-desarrollo. El PDF es sintético (reportlab), misma receta que
+Contra la BD de tests (app_ctx con rollback por SAVEPOINT) + fs_tmp (#674) para
+que el movimiento físico real de mover_a_esftt no toque el servidor de ficheros.
+El PDF es sintético (reportlab), misma receta que
 test_655_parser_justificante_notifica.py — no se comitea ningún justificante
-real de terceros.
+real de terceros. Los avisos del hook quedan en bitácora (D17), que necesita un
+`current_user` real: fixture `con_usuario`.
 """
 import io
-from datetime import date
 
 import pytest
 from reportlab.pdfgen import canvas
@@ -53,51 +56,66 @@ def _pdf_sintetico(texto: str) -> bytes:
     return buffer.getvalue()
 
 
-def _tarea_notificar_real(app_ctx):
-    """Tarea NOTIFICAR sin vínculos ni fila en `notificaciones`, fabricada (#428).
+@pytest.fixture
+def con_usuario(app_ctx):
+    """Petición con usuario autenticado: la bitácora de los avisos del hook
+    (D17) necesita `current_user` real."""
+    from flask_login import login_user
+    from app.models.usuarios import Usuario
+    usuario = Usuario.query.first()
+    assert usuario is not None, 'la semilla debe traer al menos un usuario'
+    with app_ctx.test_request_context():
+        login_user(usuario)
+        yield usuario
 
-    Antes buscaba la primera de la base que cumpliera las dos condiciones y
-    saltaba si no había ninguna — nueve tests de golpe en cuanto la base dejó de
-    tener expedientes a medio tramitar. Fabricada cumple las dos por construcción
-    y no depende de que nadie haya tocado ese expediente antes.
 
-    Los tests que la usan traen ya `fs_tmp`, que es lo que el alta necesita para
-    escribir el documento de solicitud fuera del servidor de ficheros real.
-    """
-    from app import db as _db
+def _tarea_notificar():
+    """Tarea NOTIFICAR sin vínculos ni fila en `notificaciones`, fabricada (#428)."""
     from tests.conftest import ArbolESFTT
-
-    return ArbolESFTT(_db).tarea_propia('NOTIFICAR', codigo_tramite='NOTIFICACION')
+    return ArbolESFTT(db).tarea_propia('NOTIFICAR', codigo_tramite='NOTIFICACION')
 
 
 def _tipo_doc(codigo):
     t = TipoDocumento.query.filter_by(codigo=codigo).first()
-    if t is None:
-        pytest.skip(f'Catálogo {codigo} no disponible en la BD de desarrollo')
+    assert t is not None, f'la semilla debe traer el tipo de documento {codigo}'
     return t
 
 
-def _documento_con_fichero(expediente_id, tipo_doc_id, fs_tmp, contenido_pdf, nombre='justificante.pdf'):
+def _documento_con_fichero(expediente_id, codigo_tipo, fs_tmp, contenido,
+                           nombre='justificante.pdf'):
     from app.services.reloj_simulado import hoy
-    (fs_tmp / nombre).write_bytes(contenido_pdf)
-    doc = Documento(expediente_id=expediente_id, url=nombre, tipo_doc_id=tipo_doc_id,
-                     asunto='#657 test', fecha_administrativa=hoy())
+    (fs_tmp / nombre).write_bytes(contenido)
+    doc = Documento(expediente_id=expediente_id, url=nombre,
+                    tipo_doc_id=_tipo_doc(codigo_tipo).id,
+                    asunto='#657 test', fecha_administrativa=hoy())
     db.session.add(doc)
     db.session.flush()
     return doc
 
 
-class TestHookNotificarCaminoBAutomatico:
+def _fila_previa(tarea, canal, identificador_envio=None, resultado=None):
+    notif = Notificacion(tarea_id=tarea.id, canal=canal,
+                         identificador_envio=identificador_envio, resultado=resultado)
+    db.session.add(notif)
+    db.session.flush()
+    return notif
 
-    def test_justificante_notifica_reconocido_crea_fila(self, app_ctx, fs_tmp):
-        tarea = _tarea_notificar_real(app_ctx)
-        expediente = tarea.tramite.fase.solicitud.expediente
-        tipo_doc = _tipo_doc('JUSTIFICANTE_NOTIFICA')
-        doc = _documento_con_fichero(
-            expediente.id, tipo_doc.id, fs_tmp, _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
-        resultado = svc.editar_tarea(
-            tarea, documentos_consumidos_ids=[], documento_producido_id=doc.id, notas=None)
+def _producir(tarea, doc):
+    return svc.editar_tarea(
+        tarea, documentos_consumidos_ids=[], documento_producido_id=doc.id, notas=None)
+
+
+class TestHookNotificarProducido:
+
+    def test_justificante_notifica_reconocido_crea_fila_sin_resultado(self, con_usuario, fs_tmp):
+        """El parseo solo aporta la remesa: el resultado lo fija el usuario (D2)."""
+        tarea = _tarea_notificar()
+        exp_id = tarea.tramite.fase.solicitud.expediente_id
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA', fs_tmp,
+                                     _pdf_sintetico(TEXTO_JUSTIFICANTE))
+
+        resultado = _producir(tarea, doc)
 
         assert resultado.ok is True
         assert resultado.advertencia is None
@@ -105,197 +123,140 @@ class TestHookNotificarCaminoBAutomatico:
         assert notif is not None
         assert notif.canal == 'NOTIFICA'
         assert notif.identificador_envio == '82541676'
-        assert notif.resultado == 'CORRECTA'
-        assert notif.fecha_puesta_disposicion == date(2026, 5, 28)
-        assert notif.fecha_resultado == date(2026, 6, 1)
+        assert notif.resultado is None
         assert notif.documento_id == doc.id
 
-    def test_pdf_no_reconocido_sin_fila_previa_no_crea_nada(self, app_ctx, fs_tmp):
-        tarea = _tarea_notificar_real(app_ctx)
-        expediente = tarea.tramite.fase.solicitud.expediente
-        tipo_doc = _tipo_doc('JUSTIFICANTE_NOTIFICA')
-        doc = _documento_con_fichero(
-            expediente.id, tipo_doc.id, fs_tmp, _pdf_sintetico('Esto no es un justificante.'))
+    def test_pdf_no_reconocido_crea_fila_igualmente(self, con_usuario, fs_tmp):
+        """Sin fechas NOT NULL, la fila ya no depende del parser: basta un
+        justificante con canal (#928)."""
+        tarea = _tarea_notificar()
+        exp_id = tarea.tramite.fase.solicitud.expediente_id
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA', fs_tmp,
+                                     _pdf_sintetico('Esto no es un justificante.'))
 
-        resultado = svc.editar_tarea(
-            tarea, documentos_consumidos_ids=[], documento_producido_id=doc.id, notas=None)
+        assert _producir(tarea, doc).ok is True
+        notif = Notificacion.query.filter_by(tarea_id=tarea.id).first()
+        assert notif is not None
+        assert notif.identificador_envio is None
+        assert notif.resultado is None
 
-        assert resultado.ok is True
+    def test_sir_sin_fila_previa_crea_fila(self, con_usuario, fs_tmp):
+        """Antes (#657) SIR no podía crear la fila: faltaba la fecha NOT NULL."""
+        tarea = _tarea_notificar()
+        exp_id = tarea.tramite.fase.solicitud.expediente_id
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_SIR', fs_tmp, b'captura')
+
+        assert _producir(tarea, doc).ok is True
+        notif = Notificacion.query.filter_by(tarea_id=tarea.id).first()
+        assert notif is not None
+        assert notif.canal == 'SIR'
+        assert notif.documento_id == doc.id
+
+    def test_tipo_doc_sin_canal_no_crea_fila(self, con_usuario, fs_tmp):
+        """Producido de un tipo ajeno a los justificantes con canal: el hook no
+        crea nada, ni siquiera intenta parsear."""
+        tarea = _tarea_notificar()
+        exp_id = tarea.tramite.fase.solicitud.expediente_id
+        doc = _documento_con_fichero(exp_id, 'RESOLUCION', fs_tmp,
+                                     _pdf_sintetico(TEXTO_JUSTIFICANTE))
+
+        assert _producir(tarea, doc).ok is True
         assert Notificacion.query.filter_by(tarea_id=tarea.id).first() is None
 
-    def test_tipo_doc_sin_canal_reconocido_ignora_hook(self, app_ctx, fs_tmp):
-        """Documento producido de un tipo ajeno a los 4 justificantes de notificación
-        (p.ej. un tipo genérico) — el hook no hace nada, ni siquiera intenta parsear."""
-        tarea = _tarea_notificar_real(app_ctx)
-        expediente = tarea.tramite.fase.solicitud.expediente
-        tipo_doc_generico = TipoDocumento.query.filter(
-            ~TipoDocumento.codigo.in_(
-                ['JUSTIFICANTE_NOTIFICA', 'JUSTIFICANTE_BANDEJA', 'JUSTIFICANTE_SIR', 'JUSTIFICANTE_POSTAL']
-            )
-        ).first()
-        if tipo_doc_generico is None:
-            pytest.skip('No hay tipos de documento ajenos a NOTIFICAR en el catálogo')
-        doc = _documento_con_fichero(
-            expediente.id, tipo_doc_generico.id, fs_tmp, _pdf_sintetico(TEXTO_JUSTIFICANTE))
+    def test_con_fila_previa_no_toca_resultado_ni_remesa(self, con_usuario, fs_tmp):
+        """Con fila previa, el hook solo sigue al producido (documento_id)."""
+        tarea = _tarea_notificar()
+        exp_id = tarea.tramite.fase.solicitud.expediente_id
+        notif = _fila_previa(tarea, 'SIR', identificador_envio='SIR-001', resultado='CORRECTA')
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_SIR', fs_tmp, b'captura')
 
-        resultado = svc.editar_tarea(
-            tarea, documentos_consumidos_ids=[], documento_producido_id=doc.id, notas=None)
-
-        assert resultado.ok is True
-        assert Notificacion.query.filter_by(tarea_id=tarea.id).first() is None
-
-    def test_canal_sin_parser_con_fila_previa_solo_actualiza_documento_id(self, app_ctx, fs_tmp):
-        """SIR (sin parser, #655): con fila previa (camino A manual), el hook solo
-        vincula documento_id — no toca resultado/fecha_resultado."""
-        tarea = _tarea_notificar_real(app_ctx)
-        expediente = tarea.tramite.fase.solicitud.expediente
-        tipo_doc = _tipo_doc('JUSTIFICANTE_SIR')
-
-        notif = Notificacion(
-            tarea_id=tarea.id, canal='SIR', identificador_envio='SIR-001',
-            fecha_puesta_disposicion=date(2026, 5, 1),
-        )
-        db.session.add(notif)
-        db.session.flush()
-
-        doc = _documento_con_fichero(expediente.id, tipo_doc.id, fs_tmp, b'captura de pantalla (no PDF parseable)')
-
-        resultado = svc.editar_tarea(
-            tarea, documentos_consumidos_ids=[], documento_producido_id=doc.id, notas=None)
+        resultado = _producir(tarea, doc)
 
         assert resultado.ok is True
         assert resultado.advertencia is None
         db.session.refresh(notif)
         assert notif.documento_id == doc.id
-        assert notif.resultado is None
+        assert notif.resultado == 'CORRECTA'
         assert notif.identificador_envio == 'SIR-001'
 
-    def test_cotejo_coincide_actualiza_sin_advertencia(self, app_ctx, fs_tmp):
-        tarea = _tarea_notificar_real(app_ctx)
-        expediente = tarea.tramite.fase.solicitud.expediente
-        tipo_doc = _tipo_doc('JUSTIFICANTE_NOTIFICA')
 
-        notif = Notificacion(
-            tarea_id=tarea.id, canal='NOTIFICA', identificador_envio='82541676',
-            fecha_puesta_disposicion=date(2026, 5, 28),
-        )
-        db.session.add(notif)
-        db.session.flush()
+class TestHookNotificarCotejo:
 
-        doc = _documento_con_fichero(
-            expediente.id, tipo_doc.id, fs_tmp, _pdf_sintetico(TEXTO_JUSTIFICANTE))
+    def test_remesa_coincide_sin_advertencia(self, con_usuario, fs_tmp):
+        tarea = _tarea_notificar()
+        exp_id = tarea.tramite.fase.solicitud.expediente_id
+        notif = _fila_previa(tarea, 'NOTIFICA', identificador_envio='82541676')
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA', fs_tmp,
+                                     _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
-        resultado = svc.editar_tarea(
-            tarea, documentos_consumidos_ids=[], documento_producido_id=doc.id, notas=None)
+        resultado = _producir(tarea, doc)
 
         assert resultado.ok is True
         assert resultado.advertencia is None
         db.session.refresh(notif)
-        assert notif.resultado == 'CORRECTA'
         assert notif.documento_id == doc.id
+        assert notif.resultado is None  # el parseo ya no lo escribe (D2)
 
-    def test_cotejo_no_coincide_genera_advertencia_no_bloqueante(self, app_ctx, fs_tmp):
-        """El riesgo real que motivó #658: justificante de otro expediente asociado
-        a esta tarea. No bloquea — aviso, y el resultado se actualiza igualmente."""
-        tarea = _tarea_notificar_real(app_ctx)
-        expediente = tarea.tramite.fase.solicitud.expediente
-        tipo_doc = _tipo_doc('JUSTIFICANTE_NOTIFICA')
+    def test_remesa_no_coincide_advierte_sin_bloquear(self, con_usuario, fs_tmp):
+        """El riesgo real que motivó #658: justificante de otro expediente
+        asociado a esta tarea. No bloquea — aviso, y la remesa no se pisa."""
+        tarea = _tarea_notificar()
+        exp_id = tarea.tramite.fase.solicitud.expediente_id
+        notif = _fila_previa(tarea, 'NOTIFICA', identificador_envio='REMESA-DISTINTA')
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA', fs_tmp,
+                                     _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
-        notif = Notificacion(
-            tarea_id=tarea.id, canal='NOTIFICA', identificador_envio='REMESA-DISTINTA',
-            fecha_puesta_disposicion=date(2026, 5, 1),
-        )
-        db.session.add(notif)
-        db.session.flush()
-
-        doc = _documento_con_fichero(
-            expediente.id, tipo_doc.id, fs_tmp, _pdf_sintetico(TEXTO_JUSTIFICANTE))
-
-        resultado = svc.editar_tarea(
-            tarea, documentos_consumidos_ids=[], documento_producido_id=doc.id, notas=None)
+        resultado = _producir(tarea, doc)
 
         assert resultado.ok is True
         assert resultado.advertencia is not None
         assert '82541676' in resultado.advertencia['motivo']
         assert 'REMESA-DISTINTA' in resultado.advertencia['motivo']
         db.session.refresh(notif)
-        assert notif.identificador_envio == 'REMESA-DISTINTA'  # no se sobrescribe
-        assert notif.resultado == 'CORRECTA'  # el resultado sí se actualiza
+        assert notif.identificador_envio == 'REMESA-DISTINTA'
 
-    def test_cotejo_canal_no_coincide_con_parser_actualiza_canal_y_avisa(self, app_ctx, fs_tmp):
-        """#712 — bug real: notif.canal nunca se reasignaba. Registrado a mano como
-        SIR y luego se vincula un justificante NOTIFICA — el documento manda."""
-        tarea = _tarea_notificar_real(app_ctx)
-        expediente = tarea.tramite.fase.solicitud.expediente
-        tipo_doc = _tipo_doc('JUSTIFICANTE_NOTIFICA')
+    def test_canal_no_coincide_con_parser_actualiza_canal_y_avisa(self, con_usuario, fs_tmp):
+        """#712: registrado como SIR y luego se vincula un justificante NOTIFICA
+        — el documento manda."""
+        tarea = _tarea_notificar()
+        exp_id = tarea.tramite.fase.solicitud.expediente_id
+        notif = _fila_previa(tarea, 'SIR')
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA', fs_tmp,
+                                     _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
-        notif = Notificacion(
-            tarea_id=tarea.id, canal='SIR', identificador_envio=None,
-            fecha_puesta_disposicion=date(2026, 5, 1),
-        )
-        db.session.add(notif)
-        db.session.flush()
-
-        doc = _documento_con_fichero(
-            expediente.id, tipo_doc.id, fs_tmp, _pdf_sintetico(TEXTO_JUSTIFICANTE))
-
-        resultado = svc.editar_tarea(
-            tarea, documentos_consumidos_ids=[], documento_producido_id=doc.id, notas=None)
+        resultado = _producir(tarea, doc)
 
         assert resultado.ok is True
-        assert resultado.advertencia is not None
         assert 'NOTIFICA' in resultado.advertencia['motivo']
         assert 'SIR' in resultado.advertencia['motivo']
         db.session.refresh(notif)
-        assert notif.canal == 'NOTIFICA'  # el documento manda, ya no se queda en SIR para siempre
-        assert notif.resultado == 'CORRECTA'
+        assert notif.canal == 'NOTIFICA'
 
-    def test_cotejo_canal_no_coincide_sin_parser_tambien_avisa(self, app_ctx, fs_tmp):
-        """El cotejo de canal no depende de que haya parser (a diferencia del cotejo
-        de remesa) — el canal se deriva del tipo de documento, siempre disponible."""
-        tarea = _tarea_notificar_real(app_ctx)
-        expediente = tarea.tramite.fase.solicitud.expediente
-        tipo_doc = _tipo_doc('JUSTIFICANTE_SIR')
+    def test_canal_no_coincide_sin_parser_tambien_avisa(self, con_usuario, fs_tmp):
+        """El cotejo de canal no depende de que haya parser — el canal se deriva
+        del tipo de documento, siempre disponible."""
+        tarea = _tarea_notificar()
+        exp_id = tarea.tramite.fase.solicitud.expediente_id
+        notif = _fila_previa(tarea, 'BANDEJA', identificador_envio='X-1')
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_SIR', fs_tmp, b'captura')
 
-        notif = Notificacion(
-            tarea_id=tarea.id, canal='BANDEJA', identificador_envio='X-1',
-            fecha_puesta_disposicion=date(2026, 5, 1),
-        )
-        db.session.add(notif)
-        db.session.flush()
-
-        doc = _documento_con_fichero(expediente.id, tipo_doc.id, fs_tmp, b'captura de pantalla')
-
-        resultado = svc.editar_tarea(
-            tarea, documentos_consumidos_ids=[], documento_producido_id=doc.id, notas=None)
+        resultado = _producir(tarea, doc)
 
         assert resultado.ok is True
-        assert resultado.advertencia is not None
         assert 'SIR' in resultado.advertencia['motivo']
         assert 'BANDEJA' in resultado.advertencia['motivo']
         db.session.refresh(notif)
         assert notif.canal == 'SIR'
-        assert notif.resultado is None  # SIR no tiene parser — no se inventa un resultado
+        assert notif.resultado is None
 
-    def test_cotejo_canal_coincide_no_avisa(self, app_ctx, fs_tmp):
-        """Caso base: canal ya registrado coincide con el del documento vinculado
-        — sin aviso de canal (sigue sin aviso de remesa tampoco, #658)."""
-        tarea = _tarea_notificar_real(app_ctx)
-        expediente = tarea.tramite.fase.solicitud.expediente
-        tipo_doc = _tipo_doc('JUSTIFICANTE_NOTIFICA')
+    def test_canal_coincide_no_avisa(self, con_usuario, fs_tmp):
+        tarea = _tarea_notificar()
+        exp_id = tarea.tramite.fase.solicitud.expediente_id
+        notif = _fila_previa(tarea, 'NOTIFICA', identificador_envio='82541676')
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA', fs_tmp,
+                                     _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
-        notif = Notificacion(
-            tarea_id=tarea.id, canal='NOTIFICA', identificador_envio='82541676',
-            fecha_puesta_disposicion=date(2026, 5, 28),
-        )
-        db.session.add(notif)
-        db.session.flush()
-
-        doc = _documento_con_fichero(
-            expediente.id, tipo_doc.id, fs_tmp, _pdf_sintetico(TEXTO_JUSTIFICANTE))
-
-        resultado = svc.editar_tarea(
-            tarea, documentos_consumidos_ids=[], documento_producido_id=doc.id, notas=None)
+        resultado = _producir(tarea, doc)
 
         assert resultado.ok is True
         assert resultado.advertencia is None

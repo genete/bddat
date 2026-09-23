@@ -212,9 +212,11 @@ def _mensaje_pendiente(tarea, estado: str) -> str:
         if estado == 'PENDIENTE_TRAMITAR':
             return 'falta doc firmado'
         if estado == 'NOTIFICACION_FALLIDA':
-            return 'notificación fallida — 2º intento'
+            return 'notificación fallida — repetir'
         if estado == 'NOTIFICACION_AGOTADA':
             return 'notificación agotada — procede edicto'
+        if estado == 'PENDIENTE_SEDE':
+            return 'falta puesta a disposición en sede'
         # PENDIENTE_NOTIFICAR: distingue por presencia de justificante (producido)
         if tarea.documento_producido is None:
             return 'esperando justificante'

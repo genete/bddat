@@ -2,8 +2,8 @@
 (#928, N1 §5; ADR-049 §B/§C).
 
 Fuente única: `Documento.fecha_administrativa`. Sustituye a leer directamente
-`notificaciones.fecha_puesta_disposicion`/`fecha_resultado` (que 928c retira,
-ADR-049 §G) o a navegar `tarea.notificacion`/`tarea.vinculos_documento` a
+`notificaciones.fecha_puesta_disposicion`/`fecha_resultado` (retiradas en
+928c, ADR-049 §G) o a navegar `tarea.notificacion`/`tarea.vinculos_documento` a
 pelo desde el resto del código — todo consumidor nuevo llama a este servicio.
 
 Dos reglas uniformes, sin ramificar por canal (ADR-049 §C):
@@ -16,10 +16,9 @@ Hueco para N5 (`Tarea.notificacion` → lista, un destinatario por fila): la
 firma de cada función admitirá un `destinatario` opcional cuando llegue —
 cambia este servicio, no sus llamadores.
 
-`RESULTADOS_EFECTUADA` y `TIPOS_JUSTIFICANTE_PREVIO` se anticipan aquí porque
-este servicio ya los necesita; §3 (928c) también los define en
-`app.models.notificaciones` cuando el CHECK de `resultado` admita `RECHAZADA`
-— hasta entonces son las mismas constantes, sin más fuente que esta.
+`RESULTADOS`, `RESULTADOS_EFECTUADA` y `TIPOS_JUSTIFICANTE_PREVIO` viven en
+`app.models.notificaciones` (junto al CHECK de `resultado`, 928c); se
+reexportan aquí para que los consumidores tengan un único import.
 """
 from __future__ import annotations
 
@@ -27,13 +26,8 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Optional
 
-# Justificantes previos: presupuesto del justificante final, nunca el
-# documento que se notifica. JUSTIFICANTE_SEDE no es una notificación en sí
-# (obligación paralela del art. 42.1) pero comparte el trato de "previo".
-TIPOS_JUSTIFICANTE_PREVIO = (
-    'JUSTIFICANTE_NOTIFICA_DISPOSICION',
-    'JUSTIFICANTE_POSTAL_1ER',
-    'JUSTIFICANTE_SEDE',
+from app.models.notificaciones import (  # noqa: F401 — reexportadas
+    RESULTADOS, RESULTADOS_EFECTUADA, TIPOS_JUSTIFICANTE_PREVIO,
 )
 
 # Dan CUMPLIMIENTO del deber de notificar (arts. 43.3, 40.4/42.2, 44): la
@@ -57,17 +51,14 @@ JUSTIFICANTES_FINALES = (
     'ANUNCIO_PUBLICADO',
 )
 
-# Resultados que dan la notificación por efectuada (art. 41.5/41.7): D1
-# ratificada — al publicarse el edicto, `resultado` pasa a CORRECTA, así que
-# el filtro es el mismo para el justificante y para el anuncio.
-RESULTADOS_EFECTUADA = ('CORRECTA', 'RECHAZADA')
-
-_TODOS_LOS_RESULTADOS = ('CORRECTA', 'RECHAZADA', 'INCORRECTA')
+# RESULTADOS_EFECTUADA (modelo): D1 ratificada — al publicarse el edicto,
+# `resultado` pasa a CORRECTA, así que el filtro de efectos es el mismo para
+# el justificante y para el anuncio.
 
 # Canal implícito de cada tipo de documento de notificación — D6 (ADR-049
 # §D): RECHAZADA solo tiene sentido en NOTIFICA y POSTAL, «en BANDEJA/SIR no
 # consta ningún rechazo» (la recepción misma es la notificación).
-_CANAL_POR_TIPO_DOC = {
+CANAL_POR_TIPO_DOC = {
     'JUSTIFICANTE_NOTIFICA_DISPOSICION': 'NOTIFICA',
     'JUSTIFICANTE_NOTIFICA': 'NOTIFICA',
     'JUSTIFICANTE_POSTAL_1ER': 'POSTAL',
@@ -77,8 +68,8 @@ _CANAL_POR_TIPO_DOC = {
 }
 
 _RESULTADOS_POR_CANAL = {
-    'NOTIFICA': _TODOS_LOS_RESULTADOS,
-    'POSTAL': _TODOS_LOS_RESULTADOS,
+    'NOTIFICA': RESULTADOS,
+    'POSTAL': RESULTADOS,
     'BANDEJA': ('CORRECTA',),
     'SIR': ('CORRECTA',),
 }
@@ -163,10 +154,6 @@ def estado_sede(tarea) -> Optional[str]:
     - `'PUESTA'` si hay un `JUSTIFICANTE_SEDE` vinculado con fecha.
     - `'JUSTIFICADA'` si `notificacion.sede_justificacion` tiene texto.
     - `'PENDIENTE'` en el resto de casos.
-
-    `sede_justificacion` no existe todavía en el modelo (llega en 928c): el
-    `getattr` degrada a `None` — nunca `'JUSTIFICADA'` — hasta entonces, sin
-    reventar contra una `Notificacion` real de hoy.
     """
     notif = tarea.notificacion
     if notif is None or notif.canal != 'POSTAL':
@@ -175,7 +162,7 @@ def estado_sede(tarea) -> Optional[str]:
         doc = v.documento
         if _tipo_codigo(doc) == 'JUSTIFICANTE_SEDE' and doc.fecha_administrativa is not None:
             return 'PUESTA'
-    if getattr(notif, 'sede_justificacion', None):
+    if notif.sede_justificacion:
         return 'JUSTIFICADA'
     return 'PENDIENTE'
 
@@ -195,10 +182,10 @@ def canal_de_tipo(codigo: str) -> Optional[str]:
     """Canal implícito de un tipo de documento de notificación, o `None` si
     el tipo no tiene canal propio (`JUSTIFICANTE_SEDE` no es una notificación;
     `ANUNCIO_PUBLICADO` es el edicto de #568, su canal es cosa suya — D15)."""
-    return _CANAL_POR_TIPO_DOC.get(codigo)
+    return CANAL_POR_TIPO_DOC.get(codigo)
 
 
 def resultados_validos(canal: str) -> tuple:
     """Resultados admisibles para `canal` (D6: `RECHAZADA` solo en `NOTIFICA`
     y `POSTAL` — en `BANDEJA`/`SIR` «no consta ningún rechazo», ADR-049 §D)."""
-    return _RESULTADOS_POR_CANAL.get(canal, _TODOS_LOS_RESULTADOS)
+    return _RESULTADOS_POR_CANAL.get(canal, RESULTADOS)

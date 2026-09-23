@@ -8,6 +8,7 @@ ficticios — no se comiten PDFs reales con NIF/emails/teléfonos de terceros.
 import io
 import zipfile
 
+import pytest
 from reportlab.pdfgen import canvas
 
 from app.services.parser_justificante_notifica import (
@@ -66,6 +67,19 @@ def test_parsea_estado_leida_y_deriva_resultado_correcta():
     assert r.estado_texto == "Leída"
     assert r.resultado == "CORRECTA"
     assert r.canal == "NOTIFICA"
+
+
+@pytest.mark.parametrize('estado,esperado', [
+    ('Rechazada', 'RECHAZADA'),                          # art. 41.5 (#928, D13)
+    ('Rechazada por transcurso de plazo', 'RECHAZADA'),  # 43.2 p. 2: texto real, antes sin clave
+    ('Caducada', 'INCORRECTA'),
+    ('Anulada', None),                                   # no entran en BDDAT
+    ('No entregada', None),
+])
+def test_mapa_resultado_928(estado, esperado):
+    r = _parsear_texto(TEXTO_SIN_CODIGO_EXPEDIENTE.replace('Estado: Leída', f'Estado: {estado}'))
+    assert r.estado_texto == estado
+    assert r.resultado == esperado
 
 
 def test_fechas_puesta_disposicion_y_lectura():

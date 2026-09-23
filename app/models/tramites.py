@@ -93,11 +93,16 @@ class Tramite(db.Model):
     @property
     def finalizado(self):
         """True si todas las tareas con tipos documentales tienen documento producido
-        y toda tarea NOTIFICAR tiene resultado CORRECTA registrado en notificaciones.
+        y toda tarea NOTIFICAR está efectuada (CORRECTA o RECHAZADA, art. 41.5) sin
+        la puesta a disposición en sede pendiente (art. 42.1, #928).
 
         ESPERAR_PLAZO produce CERT_PLAZO_CUMPLIDO (Caso B) o un doc externo (Caso A).
         NOTIFICAR ejecutada sin resultado registrado (None, ADR-034) → no finalizado (#418).
         Deuda #357 eliminada: ESPERAR_PLAZO ya participa en finalizado (#362).
+
+        Sede PENDIENTE ⇒ no finalizado ⇒ `_check_completitud_cierre` bloquea el
+        cierre de la fase — forzable con justificación (D4 de #928), no puerta
+        cerrada.
 
         Un trámite sin ninguna tarea nunca se considera finalizado (#723): antes
         devolvía True por vacuidad del bucle de abajo — "vacío" no es lo mismo
@@ -105,6 +110,9 @@ class Tramite(db.Model):
         ningún aviso (ver también estado_dominio.estado_tramite, que ya evitaba
         el mismo vacío por otra vía).
         """
+        # Import diferido: los modelos no importan servicios a nivel de módulo.
+        from app.services.notificaciones import estado_sede, notificacion_efectuada
+
         if not self.tareas:
             return False
         _requieren = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO'}
@@ -114,7 +122,8 @@ class Tramite(db.Model):
             codigo = t.tipo_tarea.codigo
             if codigo in _requieren and not t.ejecutada:
                 return False
-            if codigo == 'NOTIFICAR' and t.ejecutada and t.resultado != 'CORRECTA':
+            if codigo == 'NOTIFICAR' and (not notificacion_efectuada(t)
+                                          or estado_sede(t) == 'PENDIENTE'):
                 return False
         return True
 

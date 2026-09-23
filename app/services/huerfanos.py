@@ -20,6 +20,7 @@ from app.models.fases import Fase
 from app.models.solicitudes import Solicitud
 from app.models.tramites_tareas import TramiteTarea
 from app.models.tramites_tareas_documentos import TramiteTareaDocumento
+from app.models.notificaciones import TIPOS_JUSTIFICANTE_PREVIO
 
 
 def tareas_candidatas(documento) -> list[dict]:
@@ -74,12 +75,18 @@ def tareas_candidatas(documento) -> list[dict]:
         if admite.get(clave) != 'exacta':
             admite[clave] = coincidencia
 
+    # Un justificante previo de notificación (D10 de #928) puede llegar DESPUÉS
+    # del final — el usuario sube el PDF polivalente por segunda vez —, así que
+    # se ofrece como CONSUMIDO aunque la tarea ya esté ejecutada.
+    es_previo = (documento.tipo_doc is not None
+                 and documento.tipo_doc.codigo in TIPOS_JUSTIFICANTE_PREVIO)
+
     candidatas = []
     for tarea in tareas:
         tipo_tramite_id = tarea.tramite.tipo_tramite_id
 
         clave_entrada = (tipo_tramite_id, tarea.tipo_tarea_id, 'ENTRADA')
-        if clave_entrada in admite and not tarea.ejecutada:
+        if clave_entrada in admite and (es_previo or not tarea.ejecutada):
             candidatas.append({
                 'tarea_id':       tarea.id,
                 'tramite_nombre': tarea.tramite.tipo_tramite.nombre,

@@ -147,10 +147,12 @@ def _motivo_diagnostico_superado(tarea: Tarea) -> Optional[MotivoIrreversible]:
        diagnóstico, ese es el motivo más informativo aunque este también sea cierto
        (el ELABORAR de esa vuelta posterior normalmente ya existe).
 
-    Nota: la fila de `notificaciones` cuenta aunque `resultado` sea NULL — existe desde
-    que se registra el envío (camino A de ADR-034), y `fecha_puesta_disposicion` es NOT
-    NULL, de modo que su sola presencia ya significa que el escrito se puso a
-    disposición.
+    Nota: la fila de `notificaciones` cuenta aunque `resultado` sea NULL — su sola
+    presencia ya significa que el escrito se puso a disposición: desde #928 solo la
+    crea el hook de `editar_tarea` al vincular un justificante con canal (previo o
+    final), y la borra si se desvincula el último sin haber fijado resultado
+    (invariante explícito en el docstring de `Notificacion`; antes lo garantizaba el
+    NOT NULL de `fecha_puesta_disposicion`, retirada por ADR-049).
     """
     tramite = tarea.tramite
     if tramite is None or tramite.tipo_tramite is None:

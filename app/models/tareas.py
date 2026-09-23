@@ -39,7 +39,11 @@ class Tarea(db.Model):
     SEMÁNTICA SEGÚN TIPO:
         - ANALIZAR:      consume 1..N (documentos analizados), produce 1 (DIAGNOSTICO)
         - ELABORAR:      consume 0..N (DIAGNOSTICO de ANALIZAR previo), produce 1
-        - NOTIFICAR:     consume 1..N (documentos notificados), produce 1 (justificante)
+        - NOTIFICAR:     consume 1..N documentos a notificar + 0..N justificantes
+                         previos (puesta a disposición Notifica, 1er intento
+                         postal, sede — #928, ADR-049 §B); produce 1
+                         (justificante final). Ver `documentos_a_notificar` y
+                         `justificantes_previos`: `documentos_consumidos` mezcla ambos
         - ESPERAR_PLAZO: consume 0..1 (justificante que inicia el cómputo),
                          produce 0..1 (CERT_PLAZO_CUMPLIDO — Caso B — o doc externo — Caso A)
 
@@ -113,6 +117,20 @@ class Tarea(db.Model):
         return [v.documento for v in self.vinculos_documento if v.rol == 'CONSUMIDO']
 
     @property
+    def documentos_a_notificar(self):
+        """NOTIFICAR: los consumidos que no son un justificante previo — el
+        documento que se notifica (#928 N1 §8). Import diferido: los modelos
+        no importan servicios a nivel de módulo."""
+        from app.services.notificaciones import documentos_a_notificar
+        return documentos_a_notificar(self)
+
+    @property
+    def justificantes_previos(self):
+        """NOTIFICAR: justificantes previos vinculados como CONSUMIDO (#928)."""
+        from app.services.notificaciones import justificantes_previos
+        return justificantes_previos(self)
+
+    @property
     def documento_producido(self):
         """Documento de salida de la tarea (rol PRODUCIDO), o None."""
         for v in self.vinculos_documento:
@@ -145,13 +163,14 @@ class Tarea(db.Model):
 
     @property
     def resultado(self):
-        """Resultado de la notificación: CORRECTA | INCORRECTA | None.
+        """Resultado de la notificación: CORRECTA | RECHAZADA | INCORRECTA | None.
 
         Solo aplica a tareas NOTIFICAR. Lee de notificaciones por tarea_id, no
-        por documento (ADR-034, #657/#658 — corrige ADR-008): la fila puede
-        existir sin documento producido (camino A, "Registrar envío") o con
-        documento pero sin resultado aún. None = sin fila, o fila sin
-        resultado registrado (pendiente del justificante definitivo).
+        por documento (ADR-034, #657/#658 — corrige ADR-008): la fila existe en
+        cuanto hay un justificante con canal vinculado (previo o final, #928),
+        aunque aún no haya producido ni resultado. None = sin fila, o fila sin
+        resultado fijado por el usuario. Para "¿está efectuada?" no comparar
+        con 'CORRECTA': usar `services.notificaciones.notificacion_efectuada`.
         """
         notif = self.notificacion
         return notif.resultado if notif else None

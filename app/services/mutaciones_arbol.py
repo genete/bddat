@@ -51,6 +51,7 @@ from app.services.parser_justificante_notifica import (
 from app.services.codigo_seguimiento import extraer_tarea_id
 from app.services.extraccion_texto_documento import extraer_texto
 from app.services.reformados import ultimo_reformado
+from app.services import notificaciones as notif_svc
 
 log = logging.getLogger(__name__)
 
@@ -106,19 +107,14 @@ def _registrar_advertencia(operacion, tabla, registro_id, sujeto, res_eval: Eval
 
 
 # ---------------------------------------------------------------------------
-# Hook #657/#658 (ADR-034 §6): camino B — justificante definitivo
+# Hook de NOTIFICAR (#657/#658/#712, rehecho en #928 — ADR-049 §B)
 # ---------------------------------------------------------------------------
 
-# Tipo de documento → canal (TIPOS_DOCUMENTOS_CATALOGO.md). Solo NOTIFICA tiene
-# parser hoy (#655); el resto queda a la espera del "Registrar puesta a
-# disposición"/"Registrar notificación" manual de NotificarEditor (#657/#712).
-# Público: lo reutiliza api_expedientes.py (validación del desplegable/preview, #712).
-MAPA_CANAL_POR_TIPO_DOC = {
-    'JUSTIFICANTE_NOTIFICA': 'NOTIFICA',
-    'JUSTIFICANTE_BANDEJA':  'BANDEJA',
-    'JUSTIFICANTE_SIR':      'SIR',
-    'JUSTIFICANTE_POSTAL':   'POSTAL',
-}
+# Tipo de documento → canal: los seis justificantes con canal (previos y
+# finales). JUSTIFICANTE_SEDE y ANUNCIO_PUBLICADO no están — ninguno crea fila
+# por sí solo (la sede no es una notificación; el edicto es de #568, D15).
+# Público: lo reutiliza api_expedientes.py (validación del preview, #712).
+MAPA_CANAL_POR_TIPO_DOC = notif_svc.CANAL_POR_TIPO_DOC
 
 
 def parsear_documento_notifica(doc: Documento):
@@ -146,72 +142,139 @@ def parsear_documento_notifica(doc: Documento):
     return resultado if resultado.reconocido else None
 
 
-def _hook_657_notificar_resultado(tarea, id_producido) -> Optional[dict]:
-    """Hook #657/#658/#712: al fijar/cambiar documento_producido_id en una tarea
-    NOTIFICAR, upsert de Notificacion buscando por tarea_id (nunca por
-    identificador_envio, ADR-034 §6) + cotejo no bloqueante contra la remesa
-    (#658) y el canal (#712) ya registrados.
+def _tipo_codigo(doc) -> Optional[str]:
+    return doc.tipo_doc.codigo if doc.tipo_doc else None
 
-    Devuelve un dict de advertencia (cotejo fallido) para que el caller lo
-    propague al cliente, o None. Sin parser para el canal del documento (todo
-    salvo NOTIFICA hoy) solo actualiza documento_id/canal si ya existe fila —
-    sin fila previa y sin datos parseados no puede crearla (fecha_puesta_disposicion
-    es NOT NULL): el usuario debe usar "Registrar puesta a disposición"/
-    "Registrar notificación" a mano en NotificarEditor.
+
+def _avisos_rol_incoherente(tarea) -> list[str]:
+    """D17: un justificante previo vinculado como PRODUCIDO, o un justificante
+    final como CONSUMIDO. No bloquea — BDDAT no verifica el carácter del
+    documento (P5) — solo avisa. ANUNCIO_PUBLICADO se admite en los dos roles
+    (el intermedio se consume, el definitivo se produce; #568)."""
+    avisos = []
+    for v in tarea.vinculos_documento:
+        tipo = _tipo_codigo(v.documento)
+        if v.rol == 'PRODUCIDO' and tipo in notif_svc.TIPOS_JUSTIFICANTE_PREVIO:
+            avisos.append(
+                f'«{tipo}» es un justificante previo y se ha vinculado como producido: '
+                'debería vincularse como consumido (el producido es el justificante final).'
+            )
+        elif (v.rol == 'CONSUMIDO' and tipo in notif_svc.JUSTIFICANTES_FINALES
+              and tipo != 'ANUNCIO_PUBLICADO'):
+            avisos.append(
+                f'«{tipo}» es un justificante final y se ha vinculado como consumido: '
+                'debería vincularse como producido.'
+            )
+    return avisos
+
+
+def _hook_notificar(tarea) -> Optional[dict]:
+    """Hook de NOTIFICAR (#657/#658/#712; rehecho en #928, ADR-049 §B y §6 del
+    issue). Se llama en cada `editar_tarea` de una NOTIFICAR, con la tarea ya
+    con sus vínculos resueltos: los consumidos (justificantes previos) importan
+    tanto como el producido.
+
+    - Docs con canal = vínculos cuyo tipo está en `MAPA_CANAL_POR_TIPO_DOC`.
+      Canal: el del PRODUCIDO si lo tiene; si no, el de los previos.
+    - Sin fila y con algún doc con canal → la crea con ese canal, para
+      cualquier canal (no solo el parseable), `documento_id` = el PRODUCIDO si
+      es un justificante final, e `identificador_envio` del parseo si lo hay.
+    - Con fila → cotejo de canal y de remesa (#658/#712); `documento_id`
+      sigue al PRODUCIDO.
+    - Sin ningún doc con canal y `resultado IS NULL` → borra la fila (D16):
+      sin justificante y sin resultado no hay constancia de nada. Con
+      resultado se conserva (constancia de un acto comunicado).
+    - **Nunca escribe `resultado`** (D2): lo fija el usuario con el PATCH; el
+      parser solo lo propone (`parsear_documento`). Ni fechas: no existen.
+
+    Avisos no bloqueantes (canal incoherente, remesa distinta, rol incoherente
+    con el tipo): se devuelven al cliente y quedan en bitácora (D17).
     """
-    if id_producido is None or tarea.tipo_tarea.codigo != 'NOTIFICAR':
+    if tarea.tipo_tarea.codigo != 'NOTIFICAR':
         return None
 
-    doc = Documento.query.get(id_producido)
-    tipo_codigo = doc.tipo_doc.codigo if doc.tipo_doc else None
-    canal = MAPA_CANAL_POR_TIPO_DOC.get(tipo_codigo)
-    if canal is None:
-        return None  # tipo de documento no es un justificante de notificación reconocido
-
-    parseo = parsear_documento_notifica(doc) if canal == 'NOTIFICA' else None
-
+    avisos = _avisos_rol_incoherente(tarea)
     notif = Notificacion.query.filter_by(tarea_id=tarea.id).first()
 
+    con_canal = [
+        (v.documento, MAPA_CANAL_POR_TIPO_DOC[_tipo_codigo(v.documento)])
+        for v in tarea.vinculos_documento
+        if _tipo_codigo(v.documento) in MAPA_CANAL_POR_TIPO_DOC
+    ]
+
+    if not con_canal:
+        if notif is not None and notif.resultado is None:
+            db.session.delete(notif)
+        return _cerrar_avisos_notificar(tarea, avisos)
+
+    producido = tarea.documento_producido
+    canal_producido = MAPA_CANAL_POR_TIPO_DOC.get(_tipo_codigo(producido)) if producido else None
+    canales = sorted({c for _, c in con_canal})
+    canal = canal_producido or canales[0]
+    if len(canales) > 1:
+        avisos.append(
+            'Los justificantes vinculados corresponden a canales distintos '
+            f'({", ".join(canales)}). Se toma «{canal}».'
+        )
+
+    # El parseo solo sirve para `identificador_envio` (remesa): el del
+    # justificante NOTIFICA producido si lo hay; si no, el de un previo NOTIFICA.
+    doc_notifica = next(
+        (d for d, c in sorted(con_canal, key=lambda dc: dc[0] is not producido) if c == 'NOTIFICA'),
+        None,
+    )
+    parseo = parsear_documento_notifica(doc_notifica) if doc_notifica else None
+    remesa = parseo.id_remesa if parseo else None
+
+    documento_id = (producido.id if producido is not None
+                    and _tipo_codigo(producido) in notif_svc.JUSTIFICANTES_FINALES else None)
+
     if notif is None:
-        if parseo is None or parseo.fecha_puesta_disposicion is None:
-            return None
         db.session.add(Notificacion(
-            tarea_id=tarea.id, documento_id=doc.id, canal=canal,
-            identificador_envio=parseo.id_remesa,
-            fecha_puesta_disposicion=parseo.fecha_puesta_disposicion.date(),
-            resultado=parseo.resultado,
-            fecha_resultado=parseo.fecha_lectura.date() if parseo.fecha_lectura else None,
+            tarea=tarea, canal=canal, documento_id=documento_id,
+            identificador_envio=remesa, numero_intento=1,
         ))
-        return None
+        return _cerrar_avisos_notificar(tarea, avisos)
 
-    avisos = []
-
-    # #712: el documento vinculado manda sobre el canal anotado a mano —
-    # mismo criterio que el cotejo de remesa, y no depende de que haya parser
-    # (el canal se deriva del tipo de documento, siempre disponible).
+    # #712: el documento vinculado manda sobre el canal anotado — el canal se
+    # deriva del tipo de documento, siempre disponible, haya o no parser.
     if canal != notif.canal:
         avisos.append(
             f'El documento vinculado corresponde al canal «{canal}», distinto '
-            f'del registrado al notificar («{notif.canal}»). Se ha actualizado '
-            'el canal.'
+            f'del registrado («{notif.canal}»). Se ha actualizado el canal.'
         )
         notif.canal = canal
+        if canal != 'POSTAL':
+            notif.numero_intento = 1  # ck_notificaciones_intento_postal (D14)
 
-    if (parseo is not None and notif.identificador_envio and parseo.id_remesa
-            and notif.identificador_envio != parseo.id_remesa):
+    if notif.identificador_envio and remesa and notif.identificador_envio != remesa:
         avisos.append(
-            f'El justificante vinculado trae la remesa «{parseo.id_remesa}», '
-            f'distinta de la registrada al notificar («{notif.identificador_envio}»). '
-            'Puede haberse vinculado el justificante de otro expediente.'
+            f'El justificante vinculado trae la remesa «{remesa}», distinta de '
+            f'la registrada («{notif.identificador_envio}»). Puede haberse '
+            'vinculado el justificante de otro expediente.'
         )
 
-    notif.documento_id = doc.id
-    if parseo is not None:
-        notif.identificador_envio = notif.identificador_envio or parseo.id_remesa
-        notif.resultado = parseo.resultado
-        notif.fecha_resultado = parseo.fecha_lectura.date() if parseo.fecha_lectura else None
+    notif.documento_id = documento_id
+    notif.identificador_envio = notif.identificador_envio or remesa
+    return _cerrar_avisos_notificar(tarea, avisos)
 
-    return {'motivo': ' '.join(avisos)} if avisos else None
+
+def _cerrar_avisos_notificar(tarea, avisos: list[str]) -> Optional[dict]:
+    """Devuelve el dict de advertencia del hook de NOTIFICAR y deja constancia
+    en bitácora (D17) con el formato de `_registrar_advertencia`. Hasta #928
+    los avisos de canal y remesa solo llegaban al cliente, sin rastro."""
+    if not avisos:
+        return None
+    motivo = ' '.join(avisos)
+    bitacora_svc.registrar(
+        current_user.id, 'ALTERAR', 'tareas', tarea.id,
+        detalle={
+            'advertencia': True,
+            'motivo': motivo,
+            'sujeto': build_sujeto(tarea.tramite.fase.solicitud.expediente, tarea.tramite),
+        },
+    )
+    return {'motivo': motivo}
 
 
 # ---------------------------------------------------------------------------
@@ -900,11 +963,10 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
                 doc = vinculo.documento
                 rol_liberado = vinculo.rol
                 ta.vinculos_documento.remove(vinculo)
-                # #738 punto 1: desvincular un justificante es hoy silencioso — el
-                # vínculo estructural (DocumentoTarea) desaparece pero la fila
-                # Notificacion puede seguir viva apuntando al mismo documento
-                # (ADR-034). No se bloquea (el issue no cierra esta puerta: la
-                # vinculación pudo hacerse por error), solo queda rastro.
+                # #738 punto 1: desvincular un justificante no se bloquea (la
+                # vinculación pudo hacerse por error), solo queda rastro. La
+                # fila Notificacion la resuelve después _hook_notificar (D16 de
+                # #928: se borra si no queda justificante y no hay resultado).
                 if es_documento_critico(doc):
                     bitacora_svc.registrar(
                         current_user.id, 'ALTERAR', 'tareas', ta.id,
@@ -938,8 +1000,10 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
 
         # Tras mover_a_esftt (documento ya en su ubicación final) — el hook solo
         # lee el fichero, no depende de dónde esté, pero mantiene el orden lógico
-        # "vínculos resueltos → efectos derivados" del resto de la función.
-        advertencia = _hook_657_notificar_resultado(ta, documento_producido_id)
+        # "vínculos resueltos → efectos derivados" del resto de la función. En
+        # cada guardado de una NOTIFICAR, no solo si cambia el producido (#928):
+        # los consumidos (justificantes previos) también crean o borran la fila.
+        advertencia = _hook_notificar(ta)
 
         # #717: solo en la transición a un producido NUEVO — mover_a_esftt ya
         # dejó el fichero en su ubicación final, necesaria para leer su texto.

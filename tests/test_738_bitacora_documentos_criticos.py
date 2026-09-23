@@ -18,7 +18,6 @@ Cuatro frentes, cada uno en su propia clase:
   4. advertir_documentos_criticos_huerfanos (invariantes_esftt.py) y su enganche
      en editar_fase — guarda temprana no bloqueante (ADVERTIR).
 """
-from datetime import date
 
 import pytest
 
@@ -115,7 +114,7 @@ class TestBitacoraDesvincularDocumentoCritico:
         db.session.add(DocumentoTarea(tarea_id=tarea.id, documento_id=doc.id, rol='PRODUCIDO'))
         db.session.add(Notificacion(
             tarea_id=tarea.id, documento_id=doc.id, canal='NOTIFICA',
-            identificador_envio='82541676', fecha_puesta_disposicion=date(2026, 5, 28),
+            identificador_envio='82541676',
             resultado='CORRECTA',
         ))
         db.session.flush()
@@ -130,8 +129,9 @@ class TestBitacoraDesvincularDocumentoCritico:
 
         # El vínculo estructural desaparece...
         assert DocumentoTarea.query.filter_by(tarea_id=tarea_id, documento_id=doc_id).first() is None
-        # ...pero la fila Notificacion sigue viva (el hueco original, #738 contexto):
-        # esto es justo lo que ya no debe pasar en silencio.
+        # ...pero la fila Notificacion sigue viva: con resultado ya fijado es
+        # constancia de un acto comunicado y el hook la conserva (D16 de #928).
+        # Justo por eso la desvinculación no debe pasar en silencio.
         assert Notificacion.query.filter_by(tarea_id=tarea_id).first() is not None
 
         fila = db.session.execute(text(
@@ -211,7 +211,7 @@ class TestDocumentoEsReferenciadoNotificacion:
 
         db.session.add(Notificacion(
             tarea_id=tarea.id, documento_id=doc.id, canal='NOTIFICA',
-            fecha_puesta_disposicion=date(2026, 5, 28), resultado='CORRECTA',
+            resultado='CORRECTA',
         ))
         db.session.flush()
 
