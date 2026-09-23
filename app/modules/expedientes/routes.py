@@ -1109,6 +1109,12 @@ def pool_editar_documento(id, doc_id):
                 sincronizar_principal(doc, es_principal=False, usuario_id=current_user.id)
 
         db.session.commit()
+    except ValueError as e:
+        # El invariante de fecha obligatoria (DOC_PROYECTO, justificantes de
+        # notificación — #928 N1 §4) y el resto de validadores del modelo
+        # lanzan ValueError: error del cliente, no del servidor (#928).
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 422
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500

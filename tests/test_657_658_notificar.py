@@ -78,9 +78,10 @@ def _tipo_doc(codigo):
 
 
 def _documento_con_fichero(expediente_id, tipo_doc_id, fs_tmp, contenido_pdf, nombre='justificante.pdf'):
+    from app.services.reloj_simulado import hoy
     (fs_tmp / nombre).write_bytes(contenido_pdf)
     doc = Documento(expediente_id=expediente_id, url=nombre, tipo_doc_id=tipo_doc_id,
-                     asunto='#657 test')
+                     asunto='#657 test', fecha_administrativa=hoy())
     db.session.add(doc)
     db.session.flush()
     return doc

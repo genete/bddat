@@ -20,6 +20,8 @@ ESPERAR_PLAZO tienen NOTIFICAR antes, así que el punto 1 es universal.
 import pytest
 from flask_login import login_user
 
+from app.services.reloj_simulado import hoy
+
 
 def _usuario():
     from app.models.usuarios import Usuario
@@ -62,7 +64,7 @@ def _notificar(arbol, tramite, *, consumido=True, producido=False, resultado=_SI
         doc = arbol.documento(expediente_id, 'OFICIO_REQUERIMIENTO', f'oficio-{tarea.id}')
         arbol.vincular(tarea, doc, 'CONSUMIDO')
     if producido:
-        just = arbol.documento(expediente_id, 'JUSTIFICANTE_NOTIFICA', f'justif-{tarea.id}')
+        just = arbol.documento(expediente_id, 'JUSTIFICANTE_NOTIFICA', f'justif-{tarea.id}', fecha=hoy())
         arbol.vincular(tarea, just, 'PRODUCIDO')
     if resultado is not _SIN_FILA:
         arbol.notificacion(tarea, resultado)

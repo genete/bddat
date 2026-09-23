@@ -98,14 +98,9 @@ def declarar_reformado(documento, origen: str, *, usuario_id: int) -> ReformadoP
     return reformado
 
 
-MENSAJE_FECHA_OBLIGATORIA = (
-    'Un documento de proyecto necesita fecha administrativa: es la que ordena las '
-    'versiones del proyecto y decide a cuál pertenece cada documento.'
-)
-
-
 def exigir_fecha_administrativa(tipo_doc_id, fecha) -> None:
-    """Comprobación temprana de la fecha obligatoria, antes de tocar el disco.
+    """Comprobación temprana de la fecha obligatoria (`fechas.TIPOS_FECHA_OBLIGATORIA`,
+    #928 N1 §4 — antes solo DOC_PROYECTO), antes de tocar el disco.
 
     El listener de `Documento` es la red final —cubre las cuatro puertas, los
     scripts y el shell—, pero salta en el flush, y en la ingesta multipart el flush
@@ -116,13 +111,14 @@ def exigir_fecha_administrativa(tipo_doc_id, fecha) -> None:
     if fecha is not None or tipo_doc_id is None:
         return
     from app.models.tipos_documentos import TipoDocumento
+    from app.services.fechas import TIPOS_FECHA_OBLIGATORIA, mensaje_fecha_obligatoria
     try:
         tipo = TipoDocumento.query.get(tipo_doc_id)
     except (OperationalError, ProgrammingError):
         log.warning('reformados: catálogo de tipos no disponible — sin comprobar la fecha')
         return
-    if tipo is not None and tipo.codigo == CODIGO_DOC_PROYECTO:
-        raise ValueError(MENSAJE_FECHA_OBLIGATORIA)
+    if tipo is not None and tipo.codigo in TIPOS_FECHA_OBLIGATORIA:
+        raise ValueError(mensaje_fecha_obligatoria(tipo.codigo))
 
 
 def declarar_desde_metadatos(documento, metadatos: dict, *, usuario_id: int):

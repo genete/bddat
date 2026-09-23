@@ -302,12 +302,13 @@ class Documento(db.Model):
 
 @event.listens_for(Documento, 'before_insert')
 @event.listens_for(Documento, 'before_update')
-def _exigir_fecha_a_los_proyectos(mapper, connection, target):
-    """La fecha administrativa es obligatoria para DOC_PROYECTO (ADR-044 §C).
-
-    Los DOC_PROYECTO del expediente forman la línea temporal del proyecto y las
-    versiones son los tramos entre reformados: sin fecha no hay tramo al que
-    pertenecer.
+def _exigir_fecha_administrativa_completa(mapper, connection, target):
+    """La fecha administrativa es obligatoria para los tipos de
+    `fechas.TIPOS_FECHA_OBLIGATORIA` (#928, N1 §4 — antes solo DOC_PROYECTO,
+    ADR-044 §C): DOC_PROYECTO, porque las versiones del proyecto son los
+    tramos entre reformados y sin fecha no hay tramo al que pertenecer; los
+    siete justificantes de notificación, porque sin fecha no aportan ninguna
+    y el fallo sería silencioso.
 
     No cabe NOT NULL —la columna es nullable por decisión (#191) y aquí la
     obligatoriedad es condicional al tipo— ni CHECK, porque el discriminante es el
@@ -323,9 +324,9 @@ def _exigir_fecha_a_los_proyectos(mapper, connection, target):
         return
 
     from app.models.tipos_documentos import TipoDocumento
+    from app.services.fechas import TIPOS_FECHA_OBLIGATORIA, mensaje_fecha_obligatoria
     codigo = connection.execute(
         db.select(TipoDocumento.codigo).where(TipoDocumento.id == target.tipo_doc_id)
     ).scalar()
-    if codigo == 'DOC_PROYECTO':
-        from app.services.reformados import MENSAJE_FECHA_OBLIGATORIA
-        raise ValueError(MENSAJE_FECHA_OBLIGATORIA)
+    if codigo in TIPOS_FECHA_OBLIGATORIA:
+        raise ValueError(mensaje_fecha_obligatoria(codigo))

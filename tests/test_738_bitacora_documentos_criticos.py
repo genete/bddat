@@ -75,11 +75,13 @@ def _fase_con_tramite_y_tarea(codigo_tipo_tramite, codigo_tipo_tarea,
     return solicitud, fase, tramite, tarea
 
 
-def _documento(expediente_id, tipo_doc_id, *, url=None):
+def _documento(expediente_id, tipo_doc_id, *, url=None, fecha=None):
     from app import db
     from app.models.documentos import Documento
+    from app.services.reloj_simulado import hoy
     doc = Documento(expediente_id=expediente_id, tipo_doc_id=tipo_doc_id,
-                     url=url or f'bddat://test-738/doc-{id(object())}')
+                     url=url or f'bddat://test-738/doc-{id(object())}',
+                     fecha_administrativa=fecha or hoy())
     db.session.add(doc)
     db.session.flush()
     return doc

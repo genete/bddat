@@ -46,7 +46,7 @@ def _fs_tmp(app, tmp_path):
     app.config['FILESYSTEM_BASE'] = base_original
 
 
-TIPO_DOC_ID = 7  # arbitrario, consistente entre documento_existente y la plantilla del test
+TIPO_DOC_ID = 1  # OTROS (server_default, #928): arbitrario pero sin fecha obligatoria
 
 
 def _vinculo(documento, rol='CONSUMIDO'):
