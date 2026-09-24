@@ -8,6 +8,8 @@ Bloques:
   D) El cumplimiento del acto: `documento_cumplimiento_fase` y
      `ActoSolicitud.documento_cumplimiento`; la convención de D2 en catálogo.
   E) La rama `calculado` de `plazos._resolver_campo_fecha` (D5).
+  F) El plazo del acto: `obtener_estado_plazo_acto` y `plazos_de_la_solicitud`
+     sobre las filas reales del catálogo (D11).
 
 Fechas fijas y en el pasado: el modelo rechaza la fecha administrativa futura
 (#824) y bajo `app_ctx` «hoy» puede ser el reloj simulado.
@@ -456,3 +458,146 @@ class TestRamaCalculado:
         tarea = _notificar(arbol_aislado, fase, 'NOTIFICACION', [
             ('JUSTIFICANTE_POSTAL', _F3, 'PRODUCIDO')])
         assert _resolver_campo_fecha(tarea, {'rol': 'PRODUCIDO'}) == _F3
+
+
+# ---------------------------------------------------------------------------
+# F) El plazo del acto (filas reales del catálogo, «hoy» fijado)
+# ---------------------------------------------------------------------------
+
+# Escrito de solicitud un martes. Los límites caen en día hábil sin festivo
+# nacional ni andaluz, así que no hay prórroga que calcular: +1 mes → vie
+# 4-abr, +3 meses → mié 4-jun, +6 meses → jue 4-sep.
+_DISPARO = date(2025, 3, 4)
+_LIMITE_1M = date(2025, 4, 4)
+_LIMITE_3M = date(2025, 6, 4)
+_LIMITE_6M = date(2025, 9, 4)
+
+
+@pytest.fixture
+def hoy_fijo(monkeypatch):
+    """Fija el «hoy» del motor de plazos; devuelve el setter para moverlo."""
+    def fijar(dia):
+        monkeypatch.setattr('app.services.plazos._hoy', lambda: dia)
+    return fijar
+
+
+def _solicitud_desde(arbol, siglas, disparo=_DISPARO):
+    solicitud = _con_tipo(arbol.solicitud_propia(), siglas)
+    solicitud.documento_solicitud.fecha_administrativa = disparo
+    arbol.db.session.flush()
+    return solicitud
+
+
+def _por_acto(plazos):
+    return {p.acto: p for p in plazos}
+
+
+class TestPlazoDelActo:
+
+    def test_el_plazo_corre_durante_la_instruccion(self, arbol_aislado, hoy_fijo):
+        """Sin fase resolutora todavía: el plazo existe y corre (H5)."""
+        from app.services.plazos import plazos_de_la_solicitud
+        solicitud = _solicitud_desde(arbol_aislado, 'AAP')
+        arbol_aislado.fase('ANALISIS_SOLICITUD', solicitud=solicitud)
+
+        hoy_fijo(date(2025, 4, 1))
+        (aap,) = plazos_de_la_solicitud(solicitud)
+        assert (aap.acto, aap.estado) == ('AAP', 'EN_PLAZO')
+        assert aap.fecha_disparo == _DISPARO and aap.fecha_limite == _LIMITE_3M
+        assert aap.fecha_cumplimiento is None
+        assert (aap.fase_resolutora, aap.fase_resolutora_id) == ('RESOLUCION', None)
+
+        hoy_fijo(date(2025, 6, 2))
+        assert plazos_de_la_solicitud(solicitud)[0].estado == 'PROXIMO_VENCER'
+
+    def test_sin_fase_y_pasado_el_limite_vencido(self, arbol_aislado, hoy_fijo):
+        from app.services.plazos import plazos_de_la_solicitud
+        solicitud = _solicitud_desde(arbol_aislado, 'AAP')
+        hoy_fijo(date(2025, 7, 1))
+        (aap,) = plazos_de_la_solicitud(solicitud)
+        assert aap.estado == 'VENCIDO' and aap.dias_restantes < 0
+
+    def test_el_estado_no_se_guarda(self, arbol_aislado, hoy_fijo):
+        """Se calcula en cada lectura: cambia «hoy» y cambia el estado, sin
+        nada que invalidar."""
+        from app.services.plazos import plazos_de_la_solicitud
+        solicitud = _solicitud_desde(arbol_aislado, 'AAP')
+        hoy_fijo(date(2025, 4, 1))
+        assert plazos_de_la_solicitud(solicitud)[0].estado == 'EN_PLAZO'
+        hoy_fijo(date(2025, 7, 1))
+        assert plazos_de_la_solicitud(solicitud)[0].estado == 'VENCIDO'
+
+    def test_cada_acto_con_su_plazo(self, arbol_aislado, hoy_fijo):
+        """El defecto de la v1: la DUP no se mide contra los 3 meses de la AAC,
+        ni la AAT contra el mes de la AE."""
+        from app.services.plazos import plazos_de_la_solicitud
+        hoy_fijo(date(2025, 4, 1))
+
+        aac_dup = _por_acto(plazos_de_la_solicitud(
+            _solicitud_desde(arbol_aislado, 'AAC+DUP')))
+        assert aac_dup['AAC'].fecha_limite == _LIMITE_3M
+        assert aac_dup['DUP'].fecha_limite == _LIMITE_6M
+        assert (aac_dup['AAC'].fase_resolutora, aac_dup['DUP'].fase_resolutora) == (
+            'RESOLUCION', 'RESOLUCION_DUP')
+
+        ae_aat = plazos_de_la_solicitud(_solicitud_desde(arbol_aislado, 'AE_DEFINITIVA+AAT'))
+        assert [(p.acto, p.plazo_valor, p.plazo_unidad, p.fecha_limite) for p in ae_aat] == [
+            ('AE_DEFINITIVA', 1, 'MESES', _LIMITE_1M),
+            ('AAT', 3, 'MESES', _LIMITE_3M),
+        ]
+
+    def test_acto_sin_fila_sin_plazo(self, arbol_aislado, hoy_fijo):
+        from app.services.plazos import plazos_de_la_solicitud
+        hoy_fijo(date(2025, 4, 1))
+        (interesado,) = plazos_de_la_solicitud(_solicitud_desde(arbol_aislado, 'INTERESADO'))
+        assert (interesado.acto, interesado.estado) == ('INTERESADO', 'SIN_PLAZO')
+        assert interesado.fase_resolutora == 'RECONOCIMIENTO_INTERESADO'
+        assert interesado.fecha_limite is None
+
+    def test_sin_suspender_hasta_796(self, arbol_aislado, hoy_fijo):
+        """La forma ya prevé la suspensión y hoy vale «sin suspender», aunque la
+        solicitud tenga un requerimiento notificado que suspende en el catálogo
+        (lo sigue suspendiendo la función antigua, no la del acto)."""
+        from app.services.plazos import obtener_estado_plazo_solicitud, plazos_de_la_solicitud
+        hoy_fijo(date(2025, 4, 1))
+        solicitud = _solicitud_desde(arbol_aislado, 'AAP+AAC+DUP')
+        fase = arbol_aislado.fase('ANALISIS_SOLICITUD', solicitud=solicitud)
+        espera = arbol_aislado.tarea(
+            arbol_aislado.tramite(fase, 'REQUERIMIENTO_SUBSANACION'), 'ESPERAR_PLAZO')
+        arbol_aislado.vincular(espera, arbol_aislado.documento(
+            solicitud.expediente_id, 'JUSTIFICANTE_NOTIFICA', f'930-req-{espera.id}',
+            fecha=date(2025, 3, 20)), 'CONSUMIDO')
+
+        assert obtener_estado_plazo_solicitud(solicitud).suspendido is True
+        for p in plazos_de_la_solicitud(solicitud):
+            assert p.suspendido is False and p.suspendido_desde is None
+            assert p.dias_suspendidos == 0
+            assert p.fecha_limite_sin_suspender == p.fecha_limite
+
+    def test_fase_resolutora_id_cuando_existe(self, arbol_aislado, hoy_fijo):
+        from app.services.plazos import plazos_de_la_solicitud
+        hoy_fijo(date(2025, 4, 1))
+        solicitud = _solicitud_desde(arbol_aislado, 'AAP+AAC+DUP')
+        fase = arbol_aislado.fase('RESOLUCION', solicitud=solicitud)
+        plazos = _por_acto(plazos_de_la_solicitud(solicitud))
+        assert plazos['AAP'].fase_resolutora_id == fase.id
+        assert plazos['AAC'].fase_resolutora_id == fase.id
+        assert plazos['DUP'].fase_resolutora_id is None
+
+    def test_un_acto_suelto_igual_que_en_la_lista(self, arbol_aislado, hoy_fijo):
+        from app.services.actos_solicitud import actos_de
+        from app.services.plazos import obtener_estado_plazo_acto, plazos_de_la_solicitud
+        hoy_fijo(date(2025, 4, 1))
+        solicitud = _solicitud_desde(arbol_aislado, 'AAC+DUP')
+        assert [obtener_estado_plazo_acto(a) for a in actos_de(solicitud)] == \
+            plazos_de_la_solicitud(solicitud)
+
+    def test_camino_del_acto(self, arbol_aislado):
+        from app.services.plazos import _camino_acto, compilar_camino
+        solicitud = _con_tipo(arbol_aislado.solicitud_propia(), 'AAP+AAC')
+        expediente = compilar_camino(solicitud, 'SOLICITUD').split('/')[0]
+        assert _camino_acto(_acto(solicitud, 'AAC')) == f'{expediente}/AAC'
+
+    def test_sin_solicitud_lista_vacia(self):
+        from app.services.plazos import plazos_de_la_solicitud
+        assert plazos_de_la_solicitud(None) == []
