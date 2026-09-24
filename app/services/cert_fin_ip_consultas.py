@@ -71,6 +71,7 @@ def crear_cert_fin_ip_consultas(expediente, solicitud, version_vigente=None) -> 
 
     cert = Certificado(
         documento_id=doc.id,
+        tipo=_CODIGO,
         solicitud_id=solicitud.id,
         reformado_id=version_vigente.id if version_vigente else None,
         datos=datos,

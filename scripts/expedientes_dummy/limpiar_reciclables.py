@@ -87,6 +87,9 @@ FK_TRATADAS_A_MANO = frozenset({
     # solicitudes se borran antes que los documentos, unas líneas más abajo.
     'solicitudes.documento_solicitud_id',
     # Colgados de fase/expediente sin cascada
+    # `certificados.fase_id` (#932) la resuelve el orden: todo certificado cuelga
+    # de un documento del expediente y se borra en el paso 2, antes que las fases.
+    'certificados.fase_id',
     'certificados_fase.expediente_id',
     'certificados_fase.fase_id',
     'informaciones_publicas.fase_id',
