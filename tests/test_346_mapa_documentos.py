@@ -223,3 +223,123 @@ def test_elaborar_analizar_tienen_salida(app_ctx):
     assert huecos == [], (
         f"ELABORAR/ANALIZAR sin SALIDA mapeada: {huecos}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test 6 — Con BD: entradas múltiples de DATOS_CATASTRALES (#927)
+# ---------------------------------------------------------------------------
+
+# Consumidos que declara ESTRUCTURA_FTT.json (nota de cada trámite) para los
+# pasos con varias ENTRADA: {(trámite, orden, tarea): {tipo_documento: obligatorio}}.
+# Es un manifiesto EXACTO: falla si alguien quita un código, añade uno de más o
+# cambia su obligatoriedad. Editarlo exige cambiar antes la fuente (el JSON).
+ENTRADAS_DATOS_CATASTRALES = {
+    ('SOLICITUD_CATASTRALES', 1, 'ANALIZAR'): {
+        'XML_PARA_CATASTRO': True,
+        'DR_DATOS_CATASTRALES': False,   # «si se aportó en origen»
+    },
+    ('REQUERIMIENTO_CATASTRALES', 1, 'ELABORAR'): {
+        'DIAGNOSTICO': True,
+    },
+    ('REMISION_ACUERDO_DATOS', 1, 'ELABORAR'): {
+        'XML_DE_CATASTRO': True,
+        'DR_DATOS_CATASTRALES': True,
+        'DIAGNOSTICO': True,
+    },
+    ('ANALISIS_RBDA', 1, 'ANALIZAR'): {
+        'RBDA': True,
+        'RBDA_DIRECCIONES': True,
+    },
+}
+
+
+def _entradas_de_catalogo(tramite_codigo, orden):
+    """{codigo_tipo_documento | None: obligatorio} de todas las ENTRADA del paso."""
+    from app.models.tramites_tareas_documentos import TramiteTareaDocumento
+    from app.models.tipos_tramites import TipoTramite
+
+    tipo_tramite = TipoTramite.query.filter_by(codigo=tramite_codigo).first()
+    assert tipo_tramite is not None, f'la semilla debe traer el trámite {tramite_codigo}'
+    filas = TramiteTareaDocumento.query.filter_by(
+        tipo_tramite_id=tipo_tramite.id, orden_tarea=orden, rol='ENTRADA',
+    ).all()
+    return {(f.tipo_documento.codigo if f.tipo_documento else None): f.obligatorio
+            for f in filas}, len(filas)
+
+
+@pytest.mark.parametrize('paso', sorted(ENTRADAS_DATOS_CATASTRALES))
+def test_entradas_multiples_datos_catastrales_exactas(app_ctx, paso):
+    """El paso consume exactamente lo que declara la fuente, ni más ni menos, y
+    sin filas duplicadas (el índice único ya lo impide; se comprueba el recuento)."""
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tramites import TipoTramite
+
+    tramite_codigo, orden, tarea_codigo = paso
+
+    # El (trámite, orden) apunta a la tarea que dice el manifiesto
+    tipo_tramite = TipoTramite.query.filter_by(codigo=tramite_codigo).first()
+    assert tipo_tramite is not None, f'la semilla debe traer el trámite {tramite_codigo}'
+    slot = TramiteTarea.query.filter_by(tipo_tramite_id=tipo_tramite.id, orden=orden).first()
+    assert slot is not None and slot.tipo_tarea.codigo == tarea_codigo, (
+        f'{tramite_codigo}#{orden} debería ser {tarea_codigo}'
+    )
+
+    esperado = ENTRADAS_DATOS_CATASTRALES[paso]
+    real, n_filas = _entradas_de_catalogo(tramite_codigo, orden)
+    assert real == esperado, f'ENTRADA de {tramite_codigo}#{orden}: {real} != {esperado}'
+    assert n_filas == len(esperado)
+
+
+@pytest.mark.parametrize('paso', sorted(ENTRADAS_DATOS_CATASTRALES))
+def test_radar_ofrece_cada_entrada_multiple(app_ctx, arbol_esftt, paso):
+    """Cada tipo consumido del paso hace candidata a la tarea (CONSUMIDO, exacta):
+    la multi-entrada no puede quedarse en «solo la primera fila»."""
+    from app.services.huerfanos import tareas_candidatas
+
+    tramite_codigo, _orden, tarea_codigo = paso
+    tarea = arbol_esftt.tarea_propia(
+        tarea_codigo, codigo_fase='DATOS_CATASTRALES', codigo_tramite=tramite_codigo)
+    exp_id = tarea.tramite.fase.solicitud.expediente_id
+
+    for tipo_codigo in ENTRADAS_DATOS_CATASTRALES[paso]:
+        doc = arbol_esftt.documento(exp_id, tipo_codigo, f'927-{tarea.id}-{tipo_codigo}')
+        propias = [c for c in tareas_candidatas(doc) if c['tarea_id'] == tarea.id]
+        assert any(c['rol'] == 'CONSUMIDO' and c['coincidencia'] == 'exacta'
+                   for c in propias), (
+            f'{tipo_codigo} no hace candidata a {tramite_codigo}.{tarea_codigo}: {propias}'
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 7 — Con BD: todo ANALIZAR consume algo (ESTRUCTURA_FTT.json: «≥1 oblig.»)
+# ---------------------------------------------------------------------------
+
+# Excepciones conocidas. El test exige IGUALDAD: al declarar la entrada de una,
+# hay que quitarla de aquí — y un ANALIZAR nuevo sin entrada falla.
+ANALIZAR_SIN_ENTRADA = {
+    ('REGISTRO_INTERESADOS', 1),        # sin revisar
+    ('REQUERIMIENTO_CATASTRALES', 4),   # la fuente no fija el tipo de la respuesta
+}
+
+
+def test_todo_analizar_tiene_entrada(app_ctx):
+    from app import db
+    from app.models.tipos_tramites import TipoTramite
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tareas import TipoTarea
+    from app.models.tramites_tareas_documentos import TramiteTareaDocumento
+
+    analizar_id = db.session.query(TipoTarea.id).filter_by(codigo='ANALIZAR').scalar()
+    assert analizar_id is not None
+
+    huecos = set()
+    for slot in TramiteTarea.query.filter_by(tipo_tarea_id=analizar_id).all():
+        hay = TramiteTareaDocumento.query.filter_by(
+            tipo_tramite_id=slot.tipo_tramite_id, orden_tarea=slot.orden, rol='ENTRADA',
+        ).first()
+        if hay is None:
+            huecos.add((TipoTramite.query.get(slot.tipo_tramite_id).codigo, slot.orden))
+
+    assert huecos == ANALIZAR_SIN_ENTRADA, (
+        f'ANALIZAR sin ENTRADA: {sorted(huecos)} (esperados {sorted(ANALIZAR_SIN_ENTRADA)})'
+    )
