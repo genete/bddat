@@ -93,6 +93,30 @@ export function deleteCertFinInstruccion(expedienteId, solicitudId, justificacio
   )
 }
 
+// Certificado de cumplimiento de la fase finalizadora (POST, #947, ADR-049 §F). Sin
+// body: el documento a citar lo da el cálculo. Tres desenlaces, todos 200 y con
+// `enlace_vista` (la vista HTML para AppModalLarge):
+//   {emitido:false, falta}             — no consta la notificación; nada creado
+//   {emitido:true, ya_emitido:false}   — emitido ahora
+//   {emitido:true, ya_emitido:true}    — ya estaba
+// 422 solo por errores reales (fase no finalizadora, catálogo incompleto).
+export function postCertificarCumplimiento(expedienteId, faseId) {
+  return api.post(
+    `/api/expedientes/${expedienteId}/nodo/fase/${faseId}/certificado-cumplimiento`,
+    {},
+  )
+}
+
+// Retira el certificado de cumplimiento y con él el sello (DELETE, #947). body:
+// {justificacion} — obligatoria. 422: fase cerrada (puerta cerrada, reabrirla antes),
+// sin certificado, sin justificación o certificado vinculado a alguna tarea.
+export function deleteCertCumplimiento(expedienteId, faseId, justificacion) {
+  return api.delete(
+    `/api/expedientes/${expedienteId}/nodo/fase/${faseId}/certificado-cumplimiento`,
+    { body: { justificacion } },
+  )
+}
+
 // Contenedor de la tarea ANALIZAR (#442). Respuesta: {resultado, documento_producido,
 // secciones_extendidas, defectos_consolidado, completo}.
 export function getAnalizar(expedienteId, tareaId) {
