@@ -4,7 +4,7 @@
 > **Estado:** En construcción — sesión inicial de diseño.
 > **Fuente de verdad:** `docs/NORMATIVA_PLAZOS.md` — todo contenido legal (plazos, artículos, constantes) extrae de ahí. En caso de discrepancia, prevalece `NORMATIVA_PLAZOS.md`.
 > Referencia de arquitectura: `DISEÑO_MOTOR_AGNOSTICO.md`
-> Última sincronización: 2026-08-21 (§1.1 NORMATIVA_PLAZOS.md — art. 22.1.a, la medida única de #778 / ADR-041)
+> Última sincronización: 2026-09-24 (§1.1 NORMATIVA_PLAZOS.md — art. 40: cursar (40.2) frente al plazo máximo de notificar la resolución (21.2, 40.4); §5.1 al día, #930 / ADR-049)
 
 ---
 
