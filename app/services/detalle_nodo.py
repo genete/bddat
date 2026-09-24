@@ -38,6 +38,7 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.organismos_expediente import OrganismoExpediente
 from app.services.arbol_expediente import ID_VERSION_INICIAL_BASE, plazo_tarea
+from app.services.sellos import CERT_CUMPLIMIENTO_FASE, certificado_cumplimiento
 
 log = logging.getLogger(__name__)
 
@@ -118,8 +119,12 @@ def info_apertura_documento(exp_id: int, doc, *, estricto: bool = True) -> dict:
     (aplica igual a un documento aún no enlazado a ninguna tarea, #609).
 
     bddat:// (ADR-006) no tiene fichero físico: el enlace despacha por recurso (#610).
-    - certificados/<id>: PDF generado on-demand, ya funcional (cert_pdf). `abrir_en`
-      'enlace': el consumidor sigue el href (pestaña nueva).
+    - certificados/<id>: la url dice «no hay papel, se pinta»; QUÉ se pinta lo dice
+      la fila de `certificados` (su `tipo`), nunca la url (#947, D2). El
+      CERT_CUMPLIMIENTO_FASE se consulta en su vista HTML (`abrir_en` 'modal', como
+      un diagnóstico); los demás, PDF generado on-demand (cert_pdf, `abrir_en`
+      'enlace': el consumidor sigue el href en pestaña nueva). La fila solo se lee
+      para los certificados: el resto del pool no paga esa consulta.
     - diagnosticos/<id>: sin representación física — se consulta en un modal
       (#629, ADR-023 §6, AppModalLarge). `abrir_en` 'modal': el consumidor debe
       abrir `enlace` con AppModalLarge.open() en vez de seguirlo como href.
@@ -136,6 +141,16 @@ def info_apertura_documento(exp_id: int, doc, *, estricto: bool = True) -> dict:
         partes = url[len('bddat://'):].split('/')
         recurso = partes[0] if partes else ''
         if recurso == 'certificados':
+            cert = doc.certificado
+            if cert is not None and cert.tipo == CERT_CUMPLIMIENTO_FASE:
+                return {
+                    'enlace': url_for('expedientes.cert_cumplimiento_fase_vista',
+                                      id=exp_id, fase_id=cert.fase_id),
+                    'externo': False,
+                    'puede_abrir': True,
+                    'puede_abrir_carpeta': False,
+                    'abrir_en': 'modal',
+                }
             return {
                 'enlace': url_for('expedientes.cert_pdf', cert_id=int(partes[1])),
                 'externo': False,
@@ -333,6 +348,19 @@ def _detalle_fase(exp, fase_id: int) -> dict:
     tf = fase.tipo_fase
     if tf and tf.codigo == 'CONSULTAS':
         payload['organismos'] = _organismos_de_fase(fase)
+    # Cumplimiento del plazo de resolver (#947): solo en las finalizadoras, las
+    # únicas que resuelven actos. Emitido, su documento entra en la lista de la fase.
+    if tf and tf.es_finalizadora:
+        cert = certificado_cumplimiento(fase)
+        payload['cert_cumplimiento'] = {
+            'emitido': cert is not None,
+            'documento_id': cert.documento_id if cert else None,
+            'certificado_id': cert.id if cert else None,
+            'enlace_vista': url_for('expedientes.cert_cumplimiento_fase_vista',
+                                    id=exp.id, fase_id=fase.id),
+        }
+        if cert is not None:
+            documentos.append(_serializar_documento(exp.id, cert.documento, 'PRODUCIDO'))
     return payload
 
 

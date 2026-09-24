@@ -17,6 +17,8 @@ acto se cumple con el documento que acredita la notificación al titular, que
 es el cumplimiento de la `NOTIFICAR` del trámite `NOTIFICACION` de la fase que
 lo resuelve (`documento_cumplimiento_fase`). Vive aquí y no en el acto
 (`services/actos_solicitud.py`), que solo delega: la regla existe una sola vez.
+Desde #947 (N4), con el `CERT_CUMPLIMIENTO_FASE` emitido se lee de él
+(`services/sellos.py`) en vez de calcularse.
 
 Hueco para N5 (`Tarea.notificacion` → lista, un destinatario por fila): la
 firma de cada función admitirá un `destinatario` opcional cuando llegue —
@@ -35,6 +37,7 @@ from typing import Optional
 from app.models.notificaciones import (  # noqa: F401 — reexportadas
     RESULTADOS, RESULTADOS_EFECTUADA, TIPOS_JUSTIFICANTE_PREVIO,
 )
+from app.services import sellos
 
 # Dan CUMPLIMIENTO del deber de notificar (arts. 43.3, 40.4/42.2, 44): la
 # fecha más antigua entre los vinculados a la tarea, cualquier rol.
@@ -194,15 +197,38 @@ def documento_cumplimiento_fase(fase) -> Optional['Documento']:  # noqa: F821
     """Documento que acredita la notificación al titular de lo que resuelve
     `fase`, o `None`.
 
-    El cumplimiento (`fecha_cumplimiento`) más antiguo entre las `NOTIFICAR`
-    del titular de la fase (empate: menor `documento.id`). `None` si la fase
-    no es finalizadora, si no tiene esa `NOTIFICAR` o si ninguna tiene un
-    justificante de cumplimiento con fecha (BANDEJA y SIR no lo son). No lee
-    `notificaciones.resultado` ni el canal: lo hereda de `fecha_cumplimiento`.
+    Con sello se lee, sin sello se calcula (ADR-049 §E/§F, #947): si la fase
+    tiene emitido su `CERT_CUMPLIMIENTO_FASE`, el documento es el que el
+    certificado cita, aunque después se haya vinculado a la tarea un
+    justificante con fecha anterior (D4) — la vía para cambiarlo es deshacer el
+    certificado. Sin certificado, `calcular_documento_cumplimiento_fase`.
 
-    Único punto de entrada del cumplimiento del acto: N4 antepondrá aquí la
-    lectura del `CERT_CUMPLIMIENTO_FASE` emitido, y el acto y el plazo lo
-    heredarán sin cambios. `plazos.py` no sabe que existen certificados.
+    Único punto de entrada del cumplimiento del acto: el acto
+    (`ActoSolicitud.documento_cumplimiento`), el plazo y las barras de #922 lo
+    heredan sin cambios. `plazos.py` no sabe que existen certificados.
+    """
+    if fase.tipo_fase is None or not fase.tipo_fase.es_finalizadora:
+        return None
+    sellado = sellos.documento_cumplimiento_sellado(fase)
+    if sellado is not None:
+        return sellado
+    return calcular_documento_cumplimiento_fase(fase)
+
+
+def calcular_documento_cumplimiento_fase(fase) -> Optional['Documento']:  # noqa: F821
+    """El cálculo puro, sin mirar el sello: el cumplimiento
+    (`fecha_cumplimiento`) más antiguo entre las `NOTIFICAR` del titular de la
+    fase (empate: menor `documento.id`).
+
+    `None` si la fase no es finalizadora, si no tiene esa `NOTIFICAR` o si
+    ninguna tiene un justificante de cumplimiento con fecha (BANDEJA y SIR no
+    lo son). No lee `notificaciones.resultado` ni el canal: lo hereda de
+    `fecha_cumplimiento`.
+
+    Pública porque la necesita, además del plazo sin sello, quien decide qué
+    documento citaría el certificado (`cert_cumplimiento_fase.revisar`) y la
+    puerta cerrada de su emisión: los dos preguntan por el cálculo aunque ya
+    haya un sello.
     """
     if fase.tipo_fase is None or not fase.tipo_fase.es_finalizadora:
         return None
@@ -213,7 +239,6 @@ def documento_cumplimiento_fase(fase) -> Optional['Documento']:  # noqa: F821
         if _es_notificar_del_titular(fase, tramite, tarea)
         and (cumplimiento := fecha_cumplimiento(tarea)) is not None
     ]
-    # N4: aquí, antes de calcular, se leerá el CERT_CUMPLIMIENTO_FASE emitido.
     if not candidatos:
         return None
     return min(candidatos, key=lambda c: (c.fecha, c.documento.id)).documento

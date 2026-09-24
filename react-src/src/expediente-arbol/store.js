@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCertificarFinInstruccion, deleteCertFinInstruccion, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCertificarFinInstruccion, deleteCertFinInstruccion, postCertificarCumplimiento, deleteCertCumplimiento, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
 import { showToast } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -91,6 +91,10 @@ export const useArbolStore = create((set, get) => ({
   // Informe devuelto por la revisión cuando NO se consolidó. Su presencia es lo que
   // abre el modal: no hay flag aparte porque no hay modal sin informe que enseñar.
   informeFinInstruccion: null,
+
+  // --- certificado de cumplimiento de la fase finalizadora (#947, ADR-049 §F) ---
+  certificandoCumplimiento: false,
+  deshaciendoCumplimiento: false,
 
   // --- menú contextual (S3b-4) ---
   menuCtx: null,           // { x, y, sel } | null
@@ -429,6 +433,60 @@ export const useArbolStore = create((set, get) => ({
       await get().refrescarArbol()
     } catch (e) {
       set({ deshaciendoFinInstruccion: false })
+      if (e.status === 401 || e.status === 403) return
+      if (e.status === 422 && e.payload && (e.payload.motivo || e.payload.error)) {
+        showToast(e.payload.motivo || e.payload.error, 'danger')
+      } else {
+        showToast(e.message || 'No se pudo deshacer el certificado', 'danger')
+      }
+    }
+  },
+
+  // El botón de la fase finalizadora (#947, D3). Con cualquier desenlace se abre la
+  // misma vista en el modal grande —la que dice qué falta, o el certificado—, así que
+  // aquí no hay informe propio que guardar ni modal que montar: la vista es HTML del
+  // backend (AppModalLarge, capa 3). Si se emitió ahora, además se refresca el árbol,
+  // porque el plazo de los actos pasa a leerse del sello y su documento entra en la fase.
+  certificarCumplimiento: async () => {
+    const { expedienteId, seleccion } = get()
+    if (!seleccion || seleccion.tipo !== 'fase' || !expedienteId) return
+    set({ certificandoCumplimiento: true })
+    try {
+      const res = await postCertificarCumplimiento(expedienteId, seleccion.id)
+      set({ certificandoCumplimiento: false })
+      if (res.emitido && !res.ya_emitido) {
+        showToast('Certificado de cumplimiento emitido', 'success')
+        await get().refrescarArbol()
+      }
+      if (window.AppModalLarge && res.enlace_vista) {
+        window.AppModalLarge.open(res.enlace_vista, { title: 'Certificado de cumplimiento de la fase' })
+      }
+    } catch (e) {
+      set({ certificandoCumplimiento: false })
+      if (e.status === 401 || e.status === 403) return
+      if (e.status === 422 && e.payload && (e.payload.error || e.payload.motivo)) {
+        showToast(e.payload.error || e.payload.motivo, 'danger')
+      } else {
+        showToast(e.message || 'No se pudo certificar el cumplimiento', 'danger')
+      }
+    }
+  },
+
+  // Retira el certificado de cumplimiento (#947): el plazo vuelve a calcularse y el
+  // documento citado deja de estar protegido. Como deshacer el fin de instrucción: o
+  // se retira o se explica por qué no (fase cerrada → reabrirla antes), en toast.
+  deshacerCumplimiento: async (justificacion) => {
+    const { expedienteId, seleccion } = get()
+    if (!seleccion || seleccion.tipo !== 'fase' || !expedienteId) return
+    if (!justificacion || !justificacion.trim()) return
+    set({ deshaciendoCumplimiento: true })
+    try {
+      await deleteCertCumplimiento(expedienteId, seleccion.id, justificacion.trim())
+      showToast('Certificado de cumplimiento deshecho: el plazo vuelve a calcularse', 'success')
+      set({ deshaciendoCumplimiento: false })
+      await get().refrescarArbol()
+    } catch (e) {
+      set({ deshaciendoCumplimiento: false })
       if (e.status === 401 || e.status === 403) return
       if (e.status === 422 && e.payload && (e.payload.motivo || e.payload.error)) {
         showToast(e.payload.motivo || e.payload.error, 'danger')

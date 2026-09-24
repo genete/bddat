@@ -358,9 +358,12 @@ class TestCumplimiento:
     def test_justificante_sin_fecha_se_ignora(self):
         """Desde N1 el modelo no admite un justificante de notificación sin
         fecha (TIPOS_FECHA_OBLIGATORIA), así que se prueba sin BD: si alguno
-        llegara (dato heredado), no cuenta."""
+        llegara (dato heredado), no cuenta. Sobre el cálculo puro: la lectura
+        del sello (#947) no es lo que se prueba aquí."""
         from types import SimpleNamespace as N
-        from app.services.notificaciones import documento_cumplimiento_fase
+        from app.services.notificaciones import (
+            calcular_documento_cumplimiento_fase as documento_cumplimiento_fase,
+        )
 
         def _doc(id_, fecha):
             return N(id=id_, fecha_administrativa=fecha,
@@ -668,13 +671,19 @@ class TestPlazoDelActo:
 # G) Rendimiento (D14; precedente #907)
 # ---------------------------------------------------------------------------
 
-def test_plazos_sobre_el_arbol_cargado_solo_catalogo_e_inhabiles(arbol_aislado, hoy_fijo):
+@pytest.mark.parametrize('con_certificado', [False, True], ids=['calculado', 'sellado'])
+def test_plazos_sobre_el_arbol_cargado_solo_catalogo_e_inhabiles(
+        arbol_aislado, hoy_fijo, con_certificado):
     """Sobre el árbol cargado como lo carga `construir_arbol` (expediente con
     su tipo + `opciones_solicitud()`), los plazos de los actos —incluido
     recorrer la finalizadora notificada hasta el justificante y buscar las
     causas de suspensión (#796) por todo el árbol— cuestan tres sentencias: el
     catálogo de los actos, el de las tareas (las causas) y el calendario, cada
     uno una vez para todos los actos.
+
+    También con el `CERT_CUMPLIMIENTO_FASE` emitido (#947): el certificado viene
+    en la carga del árbol y el documento que cita, entre los vínculos de su
+    tarea, así que leer el sello no añade ninguna.
 
     Se reproduce la carga en vez de llamar a `construir_arbol` porque este
     devuelve un dict y suelta los objetos: el mapa de identidad es débil y
@@ -693,10 +702,12 @@ def test_plazos_sobre_el_arbol_cargado_solo_catalogo_e_inhabiles(arbol_aislado, 
     hoy_fijo(date(2025, 4, 1))
     solicitud = _solicitud_desde(arbol_aislado, 'AAP+AAC+DUP')
     fase = arbol_aislado.fase('RESOLUCION', solicitud=solicitud)
-    _notificar(arbol_aislado, fase, 'NOTIFICACION', [
+    tarea = _notificar(arbol_aislado, fase, 'NOTIFICACION', [
         ('JUSTIFICANTE_NOTIFICA_DISPOSICION', date(2025, 3, 20), 'CONSUMIDO'),
         ('JUSTIFICANTE_NOTIFICA', date(2025, 3, 24), 'PRODUCIDO'),
     ])
+    if con_certificado:
+        _sellar(arbol_aislado, fase, tarea)
     expediente_id = solicitud.expediente_id
 
     def cargar_arbol():
@@ -713,8 +724,30 @@ def test_plazos_sobre_el_arbol_cargado_solo_catalogo_e_inhabiles(arbol_aislado, 
         (sol,) = solicitudes
         plazos = plazos_de_la_solicitud(sol)
         assert [p.acto for p in plazos] == ['AAP', 'AAC', 'DUP']
+        assert plazos[0].fecha_cumplimiento == date(2025, 3, 20)
 
     assert contar_consultas(arbol_y_plazos) - contar_consultas(cargar_arbol) == 3
+
+
+def _sellar(arbol, fase, tarea):
+    """El certificado de cumplimiento a pelo, sin el servicio (que pide usuario
+    para la bitácora): aquí solo importa que exista al cargar el árbol."""
+    from app.models.certificados import Certificado
+    from app.models.documentos import Documento
+    from app.models.tipos_documentos import TipoDocumento
+    citado = next(v.documento for v in tarea.vinculos_documento
+                  if v.documento.tipo_doc.codigo == 'JUSTIFICANTE_NOTIFICA_DISPOSICION')
+    tipo = TipoDocumento.query.filter_by(codigo='CERT_CUMPLIMIENTO_FASE').first()
+    assert tipo is not None, 'la migración 947 debe traer CERT_CUMPLIMIENTO_FASE'
+    doc = Documento(expediente_id=fase.solicitud.expediente_id, tipo_doc_id=tipo.id,
+                    url='bddat://certificados/0')
+    arbol.db.session.add(doc)
+    arbol.db.session.flush()
+    from datetime import UTC, datetime
+    arbol.db.session.add(Certificado(documento_id=doc.id, tipo='CERT_CUMPLIMIENTO_FASE',
+                                     fase_id=fase.id, datos={'documento_id': citado.id},
+                                     generado_en=datetime.now(UTC).replace(tzinfo=None)))
+    arbol.db.session.flush()
 
 
 # ---------------------------------------------------------------------------

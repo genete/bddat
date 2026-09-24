@@ -9,6 +9,7 @@ RUTAS:
     POST /expedientes/<id>/editar               → guardar cambios; JSON si XHR, redirect si no (#543)
     GET  /expedientes/<id>/gestionar-municipios → parcial modal grande municipios (ADR-023 §6 #543)
     POST /expedientes/<id>/municipios           → guardar municipios; JSON si XHR (#543)
+    GET  /expedientes/<id>/fases/<fase_id>/certificado-cumplimiento → vista del certificado (#947)
     (otros: arbol, pool_documentos, cert_pdf…)
 
     Seguimiento se movió a seguimiento_y_huerfanos (#630, ADR-038) — ya no vive aquí.
@@ -57,6 +58,7 @@ from app.services.reformados import (
     ultimo_reformado,
 )
 from app.services import bitacora as bitacora_svc
+from app.services import sellos
 from app.services.invariantes_esftt import es_documento_critico
 from app.utils.permisos import (
     puede_cambiar_responsable,
@@ -443,7 +445,13 @@ def cert_pdf(cert_id):
         return resultado
 
     tipo_cert = cert.tipo
-    pdf_bytes = generar_pdf_certificado(cert, expediente, tipo_cert)
+    try:
+        pdf_bytes = generar_pdf_certificado(cert, expediente, tipo_cert)
+    except NotImplementedError:
+        # CERT_CUMPLIMIENTO_FASE (#947) no tiene PDF: se consulta en su vista HTML.
+        # Solo se llega aquí por acceso directo — `info_apertura_documento` ya lo
+        # manda al modal —, y un 400 explícito es mejor que un 500.
+        abort(400, description='Este certificado no tiene PDF: se consulta en su vista.')
 
     from flask import Response
     return Response(
@@ -483,6 +491,8 @@ def _documento_es_referenciado(doc):
       doc.anclado_en_solicitud         → Solicitud.documento_solicitud_id
       doc.anclado_en_fin_instruccion   → Solicitud.documento_fin_instruccion_id
       doc.anclado_en_cierre            → Solicitud.documento_cierre_id
+      doc.fases_resultado              → Fase.documento_resultado_id     (lista, #947)
+      doc.certificado                  → Certificado.documento_id        (uselist=False, #947)
 
     `doc.notificacion` (#738 punto 2): sin este check, un justificante que ya
     perdió su vínculo `DocumentoTarea` (desvinculado, ver punto 1) parece libre
@@ -498,6 +508,13 @@ def _documento_es_referenciado(doc):
     destapa es el CERT_FIN_INSTRUCCION, que además no lo consume ninguna tarea
     mientras la fase que resuelve no exista — con lo que ninguna de las tres
     referencias anteriores lo veía.
+
+    Las dos últimas (#947), el mismo agujero por otras dos FK sin `ON DELETE`: el
+    documento de un certificado emitido (`certificados.documento_id`) no cuelga de
+    ninguna tarea —el de cumplimiento de la fase, por diseño—, y el que cierra una
+    fase (`fases.documento_resultado_id`) puede no colgar de ninguna si se eligió
+    así al cerrarla. En los dos casos el pool los daba por libres y el borrado
+    moría en un IntegrityError con un 500.
     """
     if doc.reformado_proyecto:
         return True
@@ -508,6 +525,10 @@ def _documento_es_referenciado(doc):
     if doc.notificacion:
         return True
     if doc.anclado_en_solicitud or doc.anclado_en_fin_instruccion or doc.anclado_en_cierre:
+        return True
+    if doc.fases_resultado:
+        return True
+    if sellos.es_certificado_emitido(doc):
         return True
     return False
 
@@ -542,7 +563,23 @@ def _motivo_ancla(doc):
     comparten forma —una lista de solicitudes de la que sale el número— y esta no,
     porque el backref es escalar y lo que hay que explicar no es de quién es el
     documento, sino qué gesto lo suelta.
+
+    Los sellos van primero (#947): el documento que cita un certificado cuelga
+    además de su tarea, y el mensaje genérico de «referenciado» no diría que la
+    salida es deshacer el certificado. El texto es el de `sellos.motivo_sellado`,
+    el mismo que da `editar_tarea` al intentar desvincularlo.
     """
+    motivo = sellos.motivo_sellado(doc)
+    if motivo is not None:
+        return motivo
+    if doc.fases_resultado:
+        fase = doc.fases_resultado[0]
+        nombre = fase.tipo_fase.nombre if fase.tipo_fase else f'#{fase.id}'
+        return (
+            f'Este documento cierra la fase «{nombre}»: es su documento de resultado. '
+            f'No puede eliminarse mientras la fase lo tenga; para soltarlo, reabra la '
+            f'fase desde su inspector.'
+        )
     if doc.reformado_proyecto is not None:
         # Mismo motivo que niega revertir_reformado (R3, #895): si ya lo tiene, decirlo
         # aquí evita mandar al usuario a un gesto que va a fallar igual al intentarlo.
@@ -943,6 +980,11 @@ def pool_descargar_documento(id, doc_id):
         partes = url[len('bddat://'):].split('/')
         recurso = partes[0] if partes else ''
         if recurso == 'certificados':
+            # Qué se pinta lo dice la fila, no la url (#947, D2): el certificado de
+            # cumplimiento no tiene PDF, se consulta en su vista (como un diagnóstico).
+            cert = doc.certificado
+            if cert is not None and cert.tipo == sellos.CERT_CUMPLIMIENTO_FASE:
+                abort(400, description='Este certificado no tiene PDF: se consulta en su vista.')
             return redirect(url_for('expedientes.cert_pdf', cert_id=int(partes[1])))
         if recurso == 'diagnosticos':
             abort(400, description='Este documento no tiene representación descargable.')
@@ -986,6 +1028,34 @@ def diagnostico_modal(id, doc_id):
         resultado=diagnostico.resultado,
         grupos=agrupar_defectos_por_origen(diagnostico.defectos or []),
     )
+
+
+@bp.route('/<int:id>/fases/<int:fase_id>/certificado-cumplimiento')
+@login_required
+def cert_cumplimiento_fase_vista(id, fase_id):
+    """Fragmento modal grande — el certificado de cumplimiento de la fase (#947, D2).
+
+    Vista única para los dos momentos: con el certificado emitido pinta lo sellado;
+    sin él, el borrador calculado al vuelo (qué documento se citaría, o qué falta),
+    sin guardar nada. Siempre de solo lectura: emitir y deshacer son gestos de la
+    API del árbol. Se abre desde el botón de la fase y, emitido, desde el documento
+    del certificado en el pool, la Despensa o el inspector
+    (`info_apertura_documento`), igual que un diagnóstico.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return '', 403
+
+    fase = Fase.query.get_or_404(fase_id)
+    if fase.solicitud.expediente_id != id:
+        abort(404)
+    if fase.tipo_fase is None or not fase.tipo_fase.es_finalizadora:
+        abort(404)
+
+    from app.services.cert_cumplimiento_fase import vista
+    return render_template('expedientes/_cert_cumplimiento_fase_fragmento.html',
+                           vista=vista(fase))
 
 
 @bp.route('/<int:id>/documentos/url-externa', methods=['POST'])
@@ -1036,6 +1106,37 @@ def pool_registrar_url_externa(id):
     return jsonify({'ok': True})
 
 
+def _fecha_del_payload(fecha_raw):
+    """Fecha administrativa del cuerpo JSON: ISO → `date`; vacía o mal formada →
+    None. Solo el parseo — quien asigna el resultado recibe el ValueError de los
+    validadores del modelo (#824)."""
+    if not fecha_raw:
+        return None
+    try:
+        return date.fromisoformat(fecha_raw)
+    except ValueError:
+        return None
+
+
+def _cambia_lo_sellable(doc, datos) -> bool:
+    """El cuerpo de `pool_editar_documento` cambia la fecha, el tipo o el fichero
+    de `doc` — lo que un sello protege (#947). Con la misma interpretación que
+    aplica la ruta al escribir: url vacía no cambia nada; tipo vacío es OTROS (1)."""
+    url_nueva = (datos.get('url') or '').strip()
+    if url_nueva and url_nueva != doc.url:
+        return True
+    if 'tipo_doc_id' in datos:
+        try:
+            if int(datos['tipo_doc_id'] or 1) != doc.tipo_doc_id:
+                return True
+        except (TypeError, ValueError):
+            return True   # valor ilegible: la escritura lo rechazará con 422
+    if ('fecha_administrativa' in datos
+            and _fecha_del_payload(datos['fecha_administrativa']) != doc.fecha_administrativa):
+        return True
+    return False
+
+
 @bp.route('/<int:id>/documentos/<int:doc_id>/editar', methods=['POST'])
 @login_required
 def pool_editar_documento(id, doc_id):
@@ -1054,6 +1155,17 @@ def pool_editar_documento(id, doc_id):
     # Esto permite edición masiva parcial (p.ej. solo cambiar prioridad)
     # sin sobreescribir los demás metadatos.
 
+    # Sello (#947, ADR-049 §F): del documento que cita un certificado, o del propio
+    # certificado, no se cambian la fecha, el tipo ni el fichero. Se comparan
+    # VALORES y no presencia de claves: el formulario completo del pool reenvía
+    # todos los campos aunque no cambien, y bloquear por «viene la clave» impediría
+    # editar el asunto de un documento citado. La consulta al sello solo se paga
+    # si de verdad cambia alguno de los tres.
+    if _cambia_lo_sellable(doc, datos):
+        motivo = sellos.motivo_sellado(doc)
+        if motivo is not None:
+            return jsonify({'ok': False, 'error': motivo}), 422
+
     try:
         url_nueva = (datos.get('url') or '').strip()
         if url_nueva:
@@ -1063,19 +1175,12 @@ def pool_editar_documento(id, doc_id):
             doc.tipo_doc_id = int(datos['tipo_doc_id'] or 1)
 
         if 'fecha_administrativa' in datos:
-            fecha_raw = datos['fecha_administrativa']
-            # El except cubre SOLO el parseo del formato: asignar dentro de él
+            # El parseo va aparte de la asignación: asignar dentro de su except
             # se tragaba también el ValueError del invariante de fecha futura
             # (#824), que quedaba en un borrado silencioso de la fecha. Las
             # otras tres rutas del pool ya asignan en el constructor, fuera de
             # su try de parseo, y por eso no tenían este agujero.
-            fecha_parseada = None
-            if fecha_raw:
-                try:
-                    fecha_parseada = date.fromisoformat(fecha_raw)
-                except ValueError:
-                    pass
-            doc.fecha_administrativa = fecha_parseada
+            doc.fecha_administrativa = _fecha_del_payload(datos['fecha_administrativa'])
 
         if 'asunto' in datos:
             doc.asunto = (datos['asunto'] or '').strip() or None

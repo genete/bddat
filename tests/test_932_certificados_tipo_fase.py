@@ -273,10 +273,3 @@ class TestBackrefsDeFase:
         assert fase.certificados == []
         assert fase.certificados_cumplimiento == []
         assert fase.certificados is not fase.certificados_cumplimiento
-
-    def test_nada_puebla_todavia_fase_id(self, app_ctx):
-        """Hasta N4 ningún certificado cuelga de una fase."""
-        from app import db
-        assert db.session.execute(db.text(
-            "SELECT count(*) FROM public.certificados WHERE fase_id IS NOT NULL"
-        )).scalar() == 0

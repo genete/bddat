@@ -72,7 +72,10 @@ REGISTROS_REQUERIDOS: dict = {
                       # #928 (N1, ADR-049 §B) — services/notificaciones.py y el hook de
                       # NOTIFICAR los resuelven por código (cumplimiento/efectos/sede)
                       'JUSTIFICANTE_NOTIFICA_DISPOSICION', 'JUSTIFICANTE_POSTAL_1ER',
-                      'JUSTIFICANTE_SEDE'],
+                      'JUSTIFICANTE_SEDE',
+                      # #947 (N4, ADR-049 §F) — cert_cumplimiento_fase lo emite y
+                      # sellos lo lee por código
+                      'CERT_CUMPLIMIENTO_FASE'],
     # Rol usa 'nombre' como identificador estable — anclado en PERMISOS (app/utils/permisos.py)
     'Rol': ['ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'],
 }

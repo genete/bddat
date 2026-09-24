@@ -541,6 +541,107 @@ function SelloInstruccion() {
   )
 }
 
+// Cumplimiento del plazo de resolver (#947, ADR-049 §F): el botón de la fase
+// finalizadora. Mismo gesto que el fin de instrucción —siempre activo, nunca un
+// error—, pero la respuesta no es un informe propio: es la vista HTML del
+// certificado, la misma para el borrador calculado (qué documento se citaría, o qué
+// falta) y para el emitido, que se abre en el modal grande. Por eso aquí no hay
+// modal que montar (a diferencia de ModalInformeFinInstruccion).
+//
+// Aparece con la fase abierta y también cerrada: emitir con la fase cerrada se
+// permite (sella lo que ADR-036 ya sella); deshacer, no, y el backend lo explica.
+function CertCumplimientoFase() {
+  const detalle      = useArbolStore((s) => s.detalle)
+  const certificando = useArbolStore((s) => s.certificandoCumplimiento)
+  const certificar   = useArbolStore((s) => s.certificarCumplimiento)
+
+  const cert = detalle && detalle.cert_cumplimiento
+  if (!cert) return null
+
+  if (cert.emitido) return <SelloCumplimiento cert={cert} />
+
+  return (
+    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border bg-light mb-3">
+      <span className="small">
+        <i className="bi bi-hourglass-split me-1" />
+        <strong>Cumplimiento del plazo sin certificar.</strong> El plazo de resolver de
+        los actos de esta fase se calcula en cada lectura desde la notificación al titular.
+      </span>
+      <span className="small text-muted">
+        Si consta la notificación, el certificado se emite en el acto y fija el documento
+        que la acredita; si no, verá qué falta y no se creará ningún documento.
+      </span>
+      <button type="button" className="btn btn-sm btn-primary"
+              disabled={certificando} onClick={certificar}>
+        {certificando ? 'Revisando…' : '📜 Certificar el cumplimiento'}
+      </button>
+    </div>
+  )
+}
+
+// El sello del cumplimiento, con su salida (#947). Mismo esquema que
+// SelloInstruccion: el estado, qué implica, y el deshacer plegado — el estado
+// normal es que el sello se quede puesto, y desplegarlo es ya parte del acto.
+function SelloCumplimiento({ cert }) {
+  const [abierto, setAbierto] = React.useState(false)
+  const [justificacion, setJustificacion] = React.useState('')
+  const deshaciendo = useArbolStore((s) => s.deshaciendoCumplimiento)
+  const deshacer    = useArbolStore((s) => s.deshacerCumplimiento)
+
+  return (
+    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border border-success-subtle bg-success-subtle mb-3">
+      <span className="small">
+        <i className="bi bi-patch-check-fill me-1" />
+        <strong>Cumplimiento certificado.</strong> El plazo de resolver de los actos de
+        esta fase se lee del certificado.
+      </span>
+      <span className="small text-muted">
+        Mientras conste, el documento que cita no puede modificarse, desvincularse ni
+        borrarse. El resto de la notificación sigue abierta a lo que llegue después.
+      </span>
+      <button type="button" className="btn btn-sm btn-outline-success align-self-start"
+              onClick={() => window.AppModalLarge && window.AppModalLarge.open(
+                cert.enlace_vista, { title: 'Certificado de cumplimiento de la fase' })}>
+        <i className="bi bi-eye me-1" />Ver el certificado
+      </button>
+
+      {!abierto ? (
+        <button type="button" className="btn btn-sm btn-link text-danger p-0 text-start"
+                onClick={() => setAbierto(true)}>
+          El documento citado no es el correcto: deshacer el certificado
+        </button>
+      ) : (
+        <>
+          <span className="small text-muted">
+            Se borrará el certificado y el plazo volverá a calcularse. Solo con la fase
+            abierta. Queda registrado en bitácora, con el documento que citaba.
+          </span>
+          <textarea
+            className="form-control form-control-sm"
+            rows={2}
+            placeholder="Justificación obligatoria para deshacer el certificado"
+            value={justificacion}
+            onChange={(e) => setJustificacion(e.target.value)}
+            disabled={deshaciendo}
+          />
+          <div className="d-flex gap-2">
+            <button type="button" className="btn btn-sm btn-danger"
+                    disabled={deshaciendo || !justificacion.trim()}
+                    onClick={() => deshacer(justificacion.trim())}>
+              {deshaciendo ? 'Deshaciendo…' : '↩️ Deshacer el certificado'}
+            </button>
+            <button type="button" className="btn btn-sm btn-outline-secondary"
+                    disabled={deshaciendo}
+                    onClick={() => { setAbierto(false); setJustificacion('') }}>
+              Cancelar
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // El informe de la revisión cuando NO se consolidó (#827, ADR-043 §E). Modal propio
 // con clases de Bootstrap y sin su JS: el bundle de la isla no carga bootstrap.js y
 // el contenido viene de la respuesta del POST, no de una URL — así que ni
@@ -875,6 +976,10 @@ function InspectorEdicion({ nodo }) {
   // Bisagra instrucción → resolución (#827): acción de la solicitud, mismo criterio
   // de emplazamiento que la de CONSULTAS — junto al Editor, no en su lugar.
   const esSolicitud = seleccion.tipo === 'solicitud'
+  // Cumplimiento del plazo (#947): acción de la fase finalizadora, mismo
+  // emplazamiento — junto al Editor. Qué fases lo tienen lo decide el backend
+  // (`cert_cumplimiento` solo viene en las finalizadoras).
+  const esFase = seleccion.tipo === 'fase'
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
       <BarraEdicion tipo={seleccion.tipo} nodo={nodo} />
@@ -882,6 +987,7 @@ function InspectorEdicion({ nodo }) {
         {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
         {!borrarPendienteConfirm && esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
         {!borrarPendienteConfirm && esSolicitud && <CertFinInstruccion />}
+        {!borrarPendienteConfirm && esFase && <CertCumplimientoFase />}
         {esSolicitud && <ModalInformeFinInstruccion />}
         {borrarPendienteConfirm
           ? <ConfirmacionBorrado nodo={nodo} />
