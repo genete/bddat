@@ -70,6 +70,10 @@ FK_TRATADAS_A_MANO = frozenset({
     # Referencias a documentos que hay que neutralizar antes de borrarlos
     'fases.documento_resultado_id',
     'solicitudes.documento_cierre_id',
+    # Documento principal del proyecto (#887): el proyecto se borra DESPUÉS que
+    # los documentos, así que hay que anularla antes. Si el proyecto de otro
+    # expediente tiene como principal un documento de este, se aborta (#943).
+    'proyectos.documento_principal_id',
     'organismos_expediente.documento_id',
     'organismos_expediente.condicionados_doc_id',
     'interesados_expediente.documento_acreditativo_id',
@@ -90,6 +94,8 @@ FK_TRATADAS_A_MANO = frozenset({
     # `certificados.fase_id` (#932) la resuelve el orden: todo certificado cuelga
     # de un documento del expediente y se borra en el paso 2, antes que las fases.
     'certificados.fase_id',
+    # `certificados.solicitud_id` (#932) igual: el paso 2 va antes que las solicitudes.
+    'certificados.solicitud_id',
     'certificados_fase.expediente_id',
     'certificados_fase.fase_id',
     'informaciones_publicas.fase_id',
@@ -101,6 +107,18 @@ FK_TRATADAS_A_MANO = frozenset({
     # Auto-referencias / históricos: se comprueban o se borran antes
     'historico_titulares_expediente.solicitud_cambio_id',
     'solicitudes.solicitud_afectada_id',
+    # Referencias a reformados_proyecto (ADR-044 R3-R5). Los reformados no se
+    # borran a mano: caen en CASCADE con su documento en el paso 5. Lo que
+    # resuelve estas RESTRICT es el ORDEN: certificados y documentos_requisito
+    # se borran en el paso 2, y fases, coberturas y requerimientos caen en
+    # cascada con las solicitudes, todo antes que los documentos. Una fila de
+    # OTRO expediente que apuntase a un reformado de este haría fallar el
+    # DELETE y deshacer la transacción: fallo ruidoso, no borrado a medias.
+    'certificados.reformado_id',
+    'documentos_requisito.reformado_id',
+    'fases.reformado_id',
+    'coberturas_item_tecnico.reformado_id',
+    'requerimientos_tarea.reformado_id',
 })
 
 SQL_FKS = """
@@ -250,6 +268,23 @@ def _borrar_expediente(exp, con_ficheros):
             f'{ajenas} solicitud(es) de otros expedientes apuntan a este por '
             'solicitud_afectada_id — resuélvelo a mano antes de borrar.')
 
+    # Proyecto de OTRO expediente cuyo documento principal es de este: al borrar
+    # el documento perdería su documento principal. Mismo criterio que arriba: no
+    # se decide en silencio por el otro expediente. (Compartir proyecto no es
+    # posible: `expedientes.proyecto_id` es UNIQUE, así que el propio proyecto
+    # siempre se borra en el paso 6.)
+    ancla_ajena = ex(db.text("""
+        SELECT count(*) FROM public.proyectos p
+        JOIN public.documentos d ON d.id = p.documento_principal_id
+        WHERE d.expediente_id = :eid
+          AND EXISTS (SELECT 1 FROM public.expedientes e
+                      WHERE e.proyecto_id = p.id AND e.id <> :eid)
+    """), p).scalar()
+    if ancla_ajena:
+        raise RuntimeError(
+            f'{ancla_ajena} proyecto(s) de otros expedientes tienen como documento '
+            'principal uno de este — resuélvelo a mano antes de borrar.')
+
     try:
         # 1. Neutralizar las referencias a documentos que sobreviven al borrado
         #    de la cadena (todas NO ACTION: sin esto, el DELETE de documentos falla).
@@ -265,6 +300,11 @@ def _borrar_expediente(exp, con_ficheros):
         ex(db.text("UPDATE public.interesados_expediente "
                    "SET documento_acreditativo_id = NULL "
                    "WHERE expediente_id = :eid"), p)
+        # Tras la comprobación previa, un documento principal de este expediente
+        # solo puede estar en su propio proyecto, que se borra en el paso 6.
+        ex(db.text("UPDATE public.proyectos SET documento_principal_id = NULL "
+                   "WHERE documento_principal_id = ANY(:v)"),
+           {'v': ids['documentos'] or [0]})
 
         # 2. Hijos de documentos sin cascada
         for tabla in ('certificados', 'diagnosticos', 'documentos_requisito'):
