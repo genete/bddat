@@ -7,6 +7,7 @@ Bloques:
   C) Catálogo de fases: `es_finalizadora` == `FASES_RESOLUTORAS`.
   D) El cumplimiento del acto: `documento_cumplimiento_fase` y
      `ActoSolicitud.documento_cumplimiento`; la convención de D2 en catálogo.
+  E) La rama `calculado` de `plazos._resolver_campo_fecha` (D5).
 
 Fechas fijas y en el pasado: el modelo rechaza la fecha administrativa futura
 (#824) y bajo `app_ctx` «hoy» puede ser el reloj simulado.
@@ -394,3 +395,64 @@ class TestNotificarDelTitular:
         fase = arbol_aislado.fase(codigo_fase, solicitud=solicitud)
         tarea = arbol_aislado.tarea(arbol_aislado.tramite(fase, codigo_tramite), 'NOTIFICAR')
         assert es_notificar_del_titular(tarea) is False
+
+
+# ---------------------------------------------------------------------------
+# E) La rama `calculado` (D5)
+# ---------------------------------------------------------------------------
+
+class TestRamaCalculado:
+
+    def test_propiedad_calculada_da_la_fecha_de_su_documento(self):
+        from types import SimpleNamespace as N
+        from app.services.plazos import _resolver_campo_fecha
+        elemento = N(documento_cumplimiento=N(fecha_administrativa=_F1))
+        assert _resolver_campo_fecha(elemento, {'calculado': 'documento_cumplimiento'}) == _F1
+
+    def test_sobre_un_acto_real(self, arbol_aislado):
+        from app.services.plazos import _resolver_campo_fecha
+        solicitud = arbol_aislado.solicitud_propia()
+        fase = arbol_aislado.fase('RESOLUCION', solicitud=solicitud)
+        _notificar(arbol_aislado, fase, 'NOTIFICACION', [
+            ('JUSTIFICANTE_NOTIFICA_DISPOSICION', _F2, 'CONSUMIDO')])
+        acto = _acto(solicitud, 'AAP')
+        assert _resolver_campo_fecha(acto, {'calculado': 'documento_cumplimiento'}) == _F2
+
+    def test_nombre_desconocido_none_y_aviso_sin_tocar_el_dato(self, caplog):
+        """Aunque el elemento tenga un atributo con ese nombre: no se hace
+        `getattr` con lo que no está en la lista cerrada. Y el señalador no se
+        «cura»: es una lectura."""
+        import logging
+        from types import SimpleNamespace as N
+        from app.services.plazos import _resolver_campo_fecha
+        elemento = N(documento_solicitud=N(fecha_administrativa=_F1))
+        senalador = {'calculado': 'documento_solicitud'}
+        with caplog.at_level(logging.WARNING, logger='app.services.plazos'):
+            assert _resolver_campo_fecha(elemento, senalador) is None
+        assert senalador == {'calculado': 'documento_solicitud'}
+        assert any('documento_solicitud' in r.getMessage() and 'desconocida' in r.getMessage()
+                   for r in caplog.records)
+
+    def test_elemento_sin_la_propiedad(self, arbol_aislado):
+        from app.services.plazos import _resolver_campo_fecha
+        solicitud = arbol_aislado.solicitud_propia()
+        fase = arbol_aislado.fase('ANALISIS_SOLICITUD', solicitud=solicitud)
+        tarea = arbol_aislado.tarea(arbol_aislado.tramite(fase, 'ANALISIS_DOCUMENTAL'),
+                                    'ANALIZAR')
+        for elemento in (solicitud, tarea):
+            assert _resolver_campo_fecha(elemento, {'calculado': 'documento_cumplimiento'}) is None
+
+    def test_fk_y_rol_siguen_igual(self, arbol_aislado):
+        """Incluida la subida a `elemento.solicitud`, que es la que usa el acto
+        para su disparo."""
+        from app.services.plazos import _resolver_campo_fecha
+        solicitud = arbol_aislado.solicitud_propia()
+        fecha_solicitud = solicitud.documento_solicitud.fecha_administrativa
+        fk = {'fk': 'documento_solicitud_id'}
+        assert _resolver_campo_fecha(solicitud, fk) == fecha_solicitud
+        assert _resolver_campo_fecha(_acto(solicitud, 'AAP'), fk) == fecha_solicitud
+
+        fase = arbol_aislado.fase('RESOLUCION', solicitud=solicitud)
+        tarea = _notificar(arbol_aislado, fase, 'NOTIFICACION', [
+            ('JUSTIFICANTE_POSTAL', _F3, 'PRODUCIDO')])
+        assert _resolver_campo_fecha(tarea, {'rol': 'PRODUCIDO'}) == _F3

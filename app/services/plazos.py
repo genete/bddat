@@ -109,6 +109,11 @@ log = logging.getLogger(__name__)
 
 UMBRAL_ALERTA = 5  # días hábiles (DISEÑO_FECHAS_PLAZOS.md §2.4)
 
+# Propiedades calculadas que un señalador `{"calculado": ...}` puede nombrar
+# (#930, D5). Lista cerrada y pública: la administración del catálogo tiene
+# una etiqueta legible por cada nombre, y un test obliga a que coincidan.
+CALCULADOS = frozenset({'documento_cumplimiento'})
+
 # Estados corriendo: el plazo aún no se ha cumplido ni agotado. Sirve también
 # para decidir si una suspensión sigue viva — no hace falta guardar ningún flag
 # «abierto», la propia medida lo dice (ADR-041 §Consecuencias).
@@ -855,19 +860,31 @@ def _get_tipo_elemento_codigo(elemento, tipo_elemento: str) -> Optional[str]:
 def _resolver_campo_fecha(elemento, campo_fecha: dict) -> Optional[date]:
     """Resuelve un señalador JSON → Documento.fecha_administrativa.
 
-    Vocabulario cerrado desde #788 — dos ramas, una por portador de fecha:
+    Vocabulario cerrado — tres ramas, una por portador de fecha (#788, y la
+    tercera de ADR-049 §E, #930):
 
       {'fk': 'documento_solicitud_id'}                       → Solicitud, por FK directa
       {'fk': 'documento_cierre_id'}                          → ídem, ancla de cierre (#778)
       {'rol': 'CONSUMIDO'|'PRODUCIDO'[, 'tipo_documento']}   → Tarea, por vínculo (ADR-010)
+      {'calculado': 'documento_cumplimiento'}                → propiedad calculada del
+                                                               elemento que devuelve el
+                                                               documento (el acto, #930)
 
-    ADR-048 no añade un tercer portador: una Fase finalizadora sigue sin FK
+    `fk` sigue significando clave foránea real; por eso lo calculado lleva
+    clave propia. Solo se aceptan los nombres de `CALCULADOS`: el nombre viene
+    de un dato editable y no se hace `getattr` con cualquier cosa. Uno
+    desconocido resuelve a None con un aviso en el log y **no se cura aquí**
+    (D5): esto es una lectura, varias veces por petición, y el catálogo
+    estructural se corrige con una migración; la administración lo rotula ⚠.
+    Un elemento sin la propiedad (una Tarea, una Solicitud) también da None.
+
+    ADR-048 no añade un portador: una Fase finalizadora sigue sin FK
     propia a `documento_solicitud_id`, así que su disparo se resuelve subiendo
     a `elemento.solicitud` cuando el atributo no está en la propia fase —no es
     la indirección `via_tarea_tipo` que #788 retiró (esa bajaba de trámite a
     tarea; esta sube de fase a la solicitud que ya la contiene por FK real,
     `Fase.solicitud_id`). El vocabulario sigue siendo el mismo `{'fk': ...}`,
-    solo cambia de qué objeto se lee.
+    solo cambia de qué objeto se lee. El acto (`ActoSolicitud`) sube igual.
 
     Lo usan los dos señaladores de la entrada, el del disparo (`campo_fecha`) y el
     del cumplimiento (`campo_fecha_cumplimiento`): el vocabulario es el mismo
@@ -876,9 +893,15 @@ def _resolver_campo_fecha(elemento, campo_fecha: dict) -> Optional[date]:
     if not campo_fecha:
         return None
 
+    calculado = campo_fecha.get('calculado')
     rol = campo_fecha.get('rol')
 
-    if rol:
+    if calculado:
+        if calculado not in CALCULADOS:
+            log.warning('plazos: propiedad calculada desconocida «%s»', calculado)
+            return None
+        doc = getattr(elemento, calculado, None)
+    elif rol:
         doc = _documento_por_rol(elemento, rol, campo_fecha.get('tipo_documento'))
     else:
         fk_col = campo_fecha.get('fk', '')
