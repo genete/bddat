@@ -46,6 +46,19 @@ Verificado el 2026-09-24 con la suite completa. Lo que hay que saber:
 - **`test_365::test_ruta_local_absoluta_con_unidad_rechazada`** falla en Linux:
   `C:/…` no es ruta absoluta fuera de Windows.
 
+### Cobertura
+
+```bash
+pytest --cov=app --cov-report=term-missing                      # global (71 % el 2026-09-24)
+COVERAGE_CORE=ctrace pytest --cov=app --cov-context=test --cov-report=
+python scripts/cobertura_por_test.py                            # líneas exclusivas por fichero
+```
+
+Por test, **`COVERAGE_CORE=ctrace` es obligatorio**: el núcleo por defecto de
+Python ≥ 3.12 registra cada línea una sola vez por proceso y los contextos salen
+incompletos sin avisar. Requiere `pip install pytest-cov` (no está en
+`requirements.txt`).
+
 ---
 
 ## 2. Qué protege cada tipo de test
