@@ -10,6 +10,7 @@ Bloques:
   E) La rama `calculado` de `plazos._resolver_campo_fecha` (D5).
   F) El plazo del acto: `obtener_estado_plazo_acto` y `plazos_de_la_solicitud`
      sobre las filas reales del catálogo (D11).
+  G) Rendimiento: sobre el árbol ya cargado, solo catálogo e inhábiles (D14).
 
 Fechas fijas y en el pasado: el modelo rechaza la fecha administrativa futura
 (#824) y bajo `app_ctx` «hoy» puede ser el reloj simulado.
@@ -601,3 +602,54 @@ class TestPlazoDelActo:
     def test_sin_solicitud_lista_vacia(self):
         from app.services.plazos import plazos_de_la_solicitud
         assert plazos_de_la_solicitud(None) == []
+
+
+# ---------------------------------------------------------------------------
+# G) Rendimiento (D14; precedente #907)
+# ---------------------------------------------------------------------------
+
+def test_plazos_sobre_el_arbol_cargado_solo_catalogo_e_inhabiles(arbol_aislado, hoy_fijo):
+    """Sobre el árbol cargado como lo carga `construir_arbol` (expediente con
+    su tipo + `opciones_solicitud()`), los plazos de los actos —incluido
+    recorrer la finalizadora notificada hasta el justificante— cuestan dos
+    sentencias: el catálogo y el calendario, una vez para todos los actos.
+
+    Se reproduce la carga en vez de llamar a `construir_arbol` porque este
+    devuelve un dict y suelta los objetos: el mapa de identidad es débil y
+    todo se volvería a cargar en perezoso, cosa que no pasará cuando #922
+    pinte las barras dentro del propio árbol. `expunge_all` por lo mismo que
+    en #928: una petición real parte de una sesión limpia."""
+    from sqlalchemy.orm import joinedload
+
+    from app import db
+    from app.models.expedientes import Expediente
+    from app.models.solicitudes import Solicitud
+    from app.services.arbol_expediente import opciones_solicitud
+    from app.services.plazos import plazos_de_la_solicitud
+    from tests.conftest import contar_consultas
+
+    hoy_fijo(date(2025, 4, 1))
+    solicitud = _solicitud_desde(arbol_aislado, 'AAP+AAC+DUP')
+    fase = arbol_aislado.fase('RESOLUCION', solicitud=solicitud)
+    _notificar(arbol_aislado, fase, 'NOTIFICACION', [
+        ('JUSTIFICANTE_NOTIFICA_DISPOSICION', date(2025, 3, 20), 'CONSUMIDO'),
+        ('JUSTIFICANTE_NOTIFICA', date(2025, 3, 24), 'PRODUCIDO'),
+    ])
+    expediente_id = solicitud.expediente_id
+
+    def cargar_arbol():
+        db.session.flush()
+        db.session.expunge_all()
+        expediente = (Expediente.query.options(joinedload(Expediente.tipo_expediente))
+                      .get(expediente_id))
+        solicitudes = (Solicitud.query.filter_by(expediente_id=expediente_id)
+                       .options(*opciones_solicitud()).all())
+        return expediente, solicitudes
+
+    def arbol_y_plazos():
+        _expediente, solicitudes = cargar_arbol()
+        (sol,) = solicitudes
+        plazos = plazos_de_la_solicitud(sol)
+        assert [p.acto for p in plazos] == ['AAP', 'AAC', 'DUP']
+
+    assert contar_consultas(arbol_y_plazos) - contar_consultas(cargar_arbol) == 2
