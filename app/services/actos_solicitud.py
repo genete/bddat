@@ -22,10 +22,16 @@ solicitud. `informe_instruccion.codigos_fase_finalizadora` y el guardián de
 Es un invariante en código (ADR-046/047 lo fijan), no regla del motor ni dato
 de catálogo: si aparece una finalizadora nueva en `tipos_fases` y no aquí, lo
 dicen el aviso de arranque de `catalogo_requerido` y el test de catálogo.
+
+Dependencias en una sola dirección: este módulo importa
+`services.notificaciones` (el cumplimiento); `notificaciones` no importa este.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
+
+from app.services.notificaciones import documento_cumplimiento_fase
 
 # Actos con fase propia, se resuelvan como se resuelvan los demás.
 _FASE_DE_ACTO = {
@@ -66,6 +72,22 @@ class ActoSolicitud:
     solicitud: object          # Solicitud (sin import: evita el ciclo con los modelos)
     siglas: str                # tipo atómico: 'AAP', 'AAC', 'DUP'…
 
+    @property
+    def documento_cumplimiento(self) -> Optional['Documento']:  # noqa: F821
+        """Documento que acredita la notificación al titular en la fase que
+        resuelve este acto, o `None` (la fase aún no existe, o no consta).
+
+        Delega (D1): la regla de cumplimiento existe una sola vez, en
+        `notificaciones.documento_cumplimiento_fase`, y el acto solo la
+        expone. Es la propiedad que nombra `{"calculado":
+        "documento_cumplimiento"}` en `catalogo_plazos`. Dos actos resueltos
+        por la misma fase (AAP y AAC en una RESOLUCION) reciben el mismo
+        documento: una notificación cumple los dos plazos, cada uno contra el
+        suyo.
+        """
+        fase = fase_de(self)
+        return documento_cumplimiento_fase(fase) if fase is not None else None
+
 
 def actos_de(solicitud) -> list[ActoSolicitud]:
     """Un acto por cada tipo atómico de la solicitud; `[]` sin tipo."""
@@ -79,6 +101,17 @@ def fase_resolutora(solicitud, siglas: str) -> str:
     if siglas in _FASE_DE_ACTO_PARTIDA and _resuelta_partida(solicitud):
         return _FASE_DE_ACTO_PARTIDA[siglas]
     return _FASE_POR_DEFECTO
+
+
+def fase_de(acto: ActoSolicitud):
+    """La `Fase` que resuelve el acto, de las que ya constan en
+    `solicitud.fases`, o `None`: nace al final de la instrucción, mucho después
+    de que el plazo empiece a correr."""
+    codigo = fase_resolutora(acto.solicitud, acto.siglas)
+    return next(
+        (f for f in acto.solicitud.fases if f.tipo_fase and f.tipo_fase.codigo == codigo),
+        None,
+    )
 
 
 def _resuelta_partida(solicitud) -> bool:
