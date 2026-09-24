@@ -559,9 +559,9 @@ class TestPlazoDelActo:
 
     def test_sin_suspender_hasta_796(self, arbol_aislado, hoy_fijo):
         """La forma ya prevé la suspensión y hoy vale «sin suspender», aunque la
-        solicitud tenga un requerimiento notificado que suspende en el catálogo
-        (lo sigue suspendiendo la función antigua, no la del acto)."""
-        from app.services.plazos import obtener_estado_plazo_solicitud, plazos_de_la_solicitud
+        solicitud tenga un requerimiento notificado que suspende en el catálogo:
+        las causas no se conectan al acto hasta #796 (#931, D8)."""
+        from app.services.plazos import _causas_suspension, plazos_de_la_solicitud
         hoy_fijo(date(2025, 4, 1))
         solicitud = _solicitud_desde(arbol_aislado, 'AAP+AAC+DUP')
         fase = arbol_aislado.fase('ANALISIS_SOLICITUD', solicitud=solicitud)
@@ -571,7 +571,7 @@ class TestPlazoDelActo:
             solicitud.expediente_id, 'JUSTIFICANTE_NOTIFICA', f'930-req-{espera.id}',
             fecha=date(2025, 3, 20)), 'CONSUMIDO')
 
-        assert obtener_estado_plazo_solicitud(solicitud).suspendido is True
+        assert _causas_suspension(solicitud), 'el requerimiento notificado debe ser causa'
         for p in plazos_de_la_solicitud(solicitud):
             assert p.suspendido is False and p.suspendido_desde is None
             assert p.dias_suspendidos == 0

@@ -15,13 +15,16 @@ Bloques:
   A) Niveles         — TRAMITE devuelve SIN_PLAZO sin tocar BD; FASE sí compila
                        camino y consulta el catálogo (ADR-048).
   B) tipo_documento  — predicado de candidatura y filtro al resolver la fecha.
-  C) Suspensiones    — solo se calculan en el nivel SOLICITUD.
+  C) Suspensiones    — la tarea no calcula suspensiones: solo el plazo de
+                       resolver es suspendible.
   D) Trámite → tarea — `Tramite.tarea_espera` baja al ESPERAR_PLAZO (#778: es
                        navegación del árbol, no interfaz del servicio de plazos).
   E) Con BD          — TRAMITE sigue sin filas y el CheckConstraint lo impide;
                        FASE admite filas, pero solo para fases finalizadoras.
-  F) FASE (ADR-048)  — disparo heredado de la solicitud, cumplimiento NULL a
-                       propósito, sin suspensión.
+
+El bloque F (el plazo de la fase finalizadora, ADR-048) y el control de que el
+plazo de la solicitud recorría sus suspensiones se retiraron con las dos
+funciones que probaban (#931): el plazo de resolver es del acto (#930).
 """
 from datetime import date
 from types import SimpleNamespace
@@ -260,10 +263,10 @@ class TestPredicadoTipoDocumento:
 
 
 # ---------------------------------------------------------------------------
-# C) Las suspensiones son del plazo de la solicitud, y de ningún otro
+# C) Las suspensiones son del plazo de resolver, y de ningún otro
 # ---------------------------------------------------------------------------
 
-class TestSuspensionSoloEnSolicitud:
+class TestSuspensionSoloEnElPlazoDeResolver:
 
     def test_nivel_tarea_no_calcula_suspensiones(self):
         """Art. 22: se suspende «el plazo máximo legal para resolver un
@@ -312,28 +315,6 @@ class TestSuspensionSoloEnSolicitud:
 
         assert resultado.estado == 'VENCIDO'
         assert resultado.fecha_limite == date(2026, 2, 23)   # 12 ene + 30 hábiles
-
-    def test_nivel_solicitud_si_calcula_suspensiones(self):
-        """Control: en el nivel que sí tiene plazo suspendible, se recorre."""
-        from app.services.plazos import obtener_estado_plazo_solicitud
-
-        solicitud = MagicMock()
-        solicitud.tipo_solicitud = MagicMock(siglas='AAP')
-        solicitud.expediente.tipo_expediente = MagicMock(tipo='Distribucion')
-        solicitud.documento_solicitud = _doc(date(2026, 1, 12))
-        solicitud.documento_cierre = None
-        solicitud.fases = []
-        entrada = _entrada('ANY/AAP', {'fk': 'documento_solicitud_id'},
-                           plazo_valor=20, plazo_unidad='DIAS_HABILES')
-
-        with _catalogo_mockeado([entrada]), \
-             patch('app.services.plazos._hoy', return_value=date(2026, 1, 20)), \
-             patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()), \
-             patch('app.services.plazos._causas_suspension', return_value=[]) as mock_susp:
-            obtener_estado_plazo_solicitud(solicitud)
-
-        mock_susp.assert_called_once_with(solicitud)
-
 
 # ---------------------------------------------------------------------------
 # D) Los consumidores de nivel trámite bajan a la tarea
@@ -475,72 +456,3 @@ class TestCatalogoEnBD:
             efecto_vencimiento_id=efecto.id,
         ))
         db.session.flush()   # no debe lanzar — app_ctx hace rollback al terminar
-
-
-# ---------------------------------------------------------------------------
-# F) FASE finalizadora (ADR-048) — disparo heredado, cumplimiento NULL, sin suspensión
-# ---------------------------------------------------------------------------
-
-class TestFaseFinalizadora:
-
-    def test_disparo_hereda_la_fecha_de_la_solicitud(self):
-        """`_resolver_campo_fecha` sube a `Fase.solicitud` porque la fase no
-        tiene `documento_solicitud` propio — no es la indirección `via_tarea_tipo`
-        que #788 retiró, sube por una FK real (`Fase.solicitud_id`)."""
-        from app.services.plazos import _resolver_campo_fecha
-
-        fase = _fase(documento_solicitud=_doc(date(2026, 3, 1)))
-        fecha = _resolver_campo_fecha(fase, {'fk': 'documento_solicitud_id'})
-        assert fecha == date(2026, 3, 1)
-
-    def test_sin_documento_solicitud_no_hay_disparo(self):
-        from app.services.plazos import _resolver_campo_fecha
-
-        fase = _fase(documento_solicitud=None)
-        assert _resolver_campo_fecha(fase, {'fk': 'documento_solicitud_id'}) is None
-
-    def test_obtener_estado_plazo_fase_sin_entrada_de_catalogo(self):
-        """Fase taxonómica (sin fila de catálogo que case) → SIN_PLAZO."""
-        from app.services.plazos import obtener_estado_plazo_fase
-
-        with _catalogo_mockeado([]):
-            resultado = obtener_estado_plazo_fase(_fase(codigo='CONSULTAS'))
-
-        assert resultado.estado == 'SIN_PLAZO'
-
-    def test_obtener_estado_plazo_fase_calcula_vencimiento(self):
-        """Control: con entrada aplicable, calcula igual que TAREA/SOLICITUD —
-        misma medida única (ADR-041), solo cambia de dónde sale el disparo."""
-        from app.services.plazos import obtener_estado_plazo_fase
-
-        fase = _fase(codigo='RESOLUCION_DUP', siglas='DUP',
-                     documento_solicitud=_doc(date(2026, 1, 12)))
-        entrada = _entrada('ANY/ANY/RESOLUCION_DUP', {'fk': 'documento_solicitud_id'},
-                           plazo_valor=6, plazo_unidad='MESES')
-
-        with _catalogo_mockeado([entrada]), \
-             patch('app.services.plazos._hoy', return_value=date(2026, 3, 1)), \
-             patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()):
-            resultado = obtener_estado_plazo_fase(fase)
-
-        assert resultado.estado == 'EN_PLAZO'
-        # 12 ene + 6 meses = 12 jul (domingo) → prorroga al primer hábil (art. 30.5)
-        assert resultado.fecha_limite == date(2026, 7, 13)
-        assert resultado.fecha_cumplimiento is None           # ADR-048 §B: NULL a propósito
-
-    def test_obtener_estado_plazo_fase_no_calcula_suspensiones(self):
-        """El plazo de fase no es suspendible (ADR-048 §B): a diferencia de
-        `obtener_estado_plazo_solicitud`, no recorre causas de suspensión."""
-        from app.services.plazos import obtener_estado_plazo_fase
-
-        fase = _fase(documento_solicitud=_doc(date(2026, 1, 12)))
-        entrada = _entrada('ANY/ANY/RESOLUCION_DUP', {'fk': 'documento_solicitud_id'},
-                           plazo_valor=6, plazo_unidad='MESES')
-
-        with _catalogo_mockeado([entrada]), \
-             patch('app.services.plazos._hoy', return_value=date(2026, 3, 1)), \
-             patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()), \
-             patch('app.services.plazos._causas_suspension') as mock_susp:
-            obtener_estado_plazo_fase(fase)
-
-        mock_susp.assert_not_called()

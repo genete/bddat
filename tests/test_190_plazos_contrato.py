@@ -53,20 +53,12 @@ class _StubSolicitud:
 
 
 # ---------------------------------------------------------------------------
-# A) Contrato de plazos.py — dos entradas, una por nivel con plazo (#778)
+# A) Contrato de plazos.py — la tarea y el acto (#778, #931)
 # ---------------------------------------------------------------------------
 
 def test_elemento_sin_tipo_devuelve_sin_plazo():
     """Un objeto que no lleva su tipo ESFTT no llega a tocar BD."""
-    from app.services.plazos import (
-        EstadoPlazo, EstadoPlazoSolicitud,
-        obtener_estado_plazo_solicitud, obtener_estado_plazo_tarea,
-    )
-    r = obtener_estado_plazo_solicitud(object())
-    assert isinstance(r, EstadoPlazoSolicitud)
-    assert (r.estado, r.efecto, r.fecha_limite, r.dias_restantes) == \
-           ('SIN_PLAZO', 'NINGUNO', None, None)
-    assert r.suspendido is False
+    from app.services.plazos import EstadoPlazo, obtener_estado_plazo_tarea
 
     r = obtener_estado_plazo_tarea(object())
     assert isinstance(r, EstadoPlazo)
@@ -76,15 +68,28 @@ def test_elemento_sin_tipo_devuelve_sin_plazo():
 
 def test_acepta_none_y_dict_como_elemento():
     """Los consumidores llaman con lo que tienen en contexto, y para CREAR eso es
-    un dict, no una instancia ORM."""
-    from app.services.plazos import (
-        obtener_estado_plazo_solicitud, obtener_estado_plazo_tarea,
-    )
-    for fn in (obtener_estado_plazo_solicitud, obtener_estado_plazo_tarea):
-        for elemento in (None, {'tipo_fase': MagicMock()}):
-            r = fn(elemento)
-            assert r.estado == 'SIN_PLAZO'
-            assert r.efecto == 'NINGUNO'
+    un dict, no una instancia ORM. La tarea responde SIN_PLAZO; la solicitud,
+    ningún acto que medir (#931: su plazo es el de cada acto)."""
+    from app.services.plazos import obtener_estado_plazo_tarea, plazos_de_la_solicitud
+
+    for elemento in (None, {'tipo_fase': MagicMock()}):
+        r = obtener_estado_plazo_tarea(elemento)
+        assert r.estado == 'SIN_PLAZO'
+        assert r.efecto == 'NINGUNO'
+        assert plazos_de_la_solicitud(elemento) == []
+
+
+def test_el_plazo_del_acto_nace_sin_suspender():
+    """Una sola clase para el plazo de resolver desde #931: `EstadoPlazoActo`
+    absorbe los datos de suspensión, que valen «sin suspender» por defecto."""
+    from app.services.plazos import EstadoPlazo, EstadoPlazoActo
+
+    r = EstadoPlazoActo(estado='SIN_PLAZO', efecto='NINGUNO', fecha_limite=None,
+                        dias_restantes=None, acto='AAP', fase_resolutora='RESOLUCION',
+                        fase_resolutora_id=None)
+    assert isinstance(r, EstadoPlazo)
+    assert (r.suspendido, r.suspendido_desde, r.dias_suspendidos,
+            r.fecha_limite_sin_suspender) == (False, None, 0, None)
 
 
 def test_las_cuatro_fechas_acompanan_al_estado():

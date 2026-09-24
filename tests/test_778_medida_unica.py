@@ -9,8 +9,14 @@ una solicitud, al intervalo que hay que descontarle a su plazo.
 Bloques:
   A) Los cuatro finales de una espera, con fechas fijas.
   B) El tope por construcción — el defecto que abrió este issue.
-  C) El plazo de la solicitud: qué suspende, qué no, y la fusión en el recorrido.
+  C) El plazo de resolver: qué suspende, qué no, y la fusión en el recorrido.
   D) Con BD: el catálogo cumple los invariantes del rediseño.
+
+B y C medían la suspensión a través del plazo de la solicitud, que #931 retiró:
+el plazo de resolver es de cada acto (#930). Hasta que #796 conecte las causas
+al acto, ninguna función de producción aplica la suspensión, pero el mecanismo
+se conserva (#931, D8) y aquí se prueba montando esa conexión a mano:
+`_plazo_de_resolver`.
 """
 from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
@@ -74,24 +80,23 @@ def _entrada_subsanacion(**kwargs):
     )
 
 
-def _entrada_solicitud(**kwargs):
-    """El plazo para resolver y notificar de una AAP: 3 meses (art. 128)."""
-    kwargs.setdefault('cumplimiento', {'fk': 'documento_cierre_id'})
+def _entrada_acto():
+    """El plazo para resolver y notificar una AAP: 3 meses (art. 128), la fila
+    atómica tal como la dejó #930."""
     return _entrada(
         'ANY/AAP',
         {'fk': 'documento_solicitud_id'},
+        cumplimiento={'calculado': 'documento_cumplimiento'},
         plazo_valor=3, plazo_unidad='MESES',
         efecto='SILENCIO_DESESTIMATORIO',
-        **kwargs,
     )
 
 
-def _solicitud(disparo=None, cierre=None, tareas_por_fase=()):
+def _solicitud(disparo=None, tareas_por_fase=()):
     sol = MagicMock()
     sol.tipo_solicitud = MagicMock(siglas='AAP')
     sol.expediente.tipo_expediente = MagicMock(tipo='Distribucion')
     sol.documento_solicitud = _doc(disparo) if disparo else None
-    sol.documento_cierre = _doc(cierre) if cierre else None
     fases = []
     for tareas in tareas_por_fase:
         tramites = {}
@@ -105,8 +110,28 @@ def _solicitud(disparo=None, cierre=None, tareas_por_fase=()):
     return sol
 
 
+def _plazo_de_resolver(solicitud, hoy):
+    """El plazo de resolver del acto AAP de `solicitud`, con las causas de
+    suspensión de su solicitud aplicadas y sin calendario (solo findes).
+
+    Es la conexión que hará #796 en `plazos._plazos_de_actos`: desde #931
+    ninguna función de producción la hace —el acto se mide sin causas—, y el
+    mecanismo sigue probado montándola aquí (D8). Las causas salen del catálogo
+    parcheado con `_catalogo({'TAREA': [...]})`.
+    """
+    from app.services.actos_solicitud import ActoSolicitud
+    from app.services.plazos import _causas_suspension, _estado_con_suspensiones
+
+    return _estado_con_suspensiones(
+        ActoSolicitud(solicitud=solicitud, siglas='AAP'), _entrada_acto(),
+        solicitud.documento_solicitud.fecha_administrativa,
+        _causas_suspension(solicitud), frozenset(), hoy,
+        acto='AAP', fase_resolutora='RESOLUCION', fase_resolutora_id=None,
+    )
+
+
 def _catalogo(por_nivel: dict):
-    """Parchea la carga del catálogo: {'TAREA': [...], 'SOLICITUD': [...]}.
+    """Parchea la carga del catálogo por nivel: {'TAREA': [...]}.
 
     Se parchea `_cargar_entradas` y no la query: el punto de corte es el que el
     servicio expone a propósito para poder medir muchas tareas con una sola
@@ -236,33 +261,26 @@ class TestTopePorConstruccion:
         }
         assert paradas == {VENCIMIENTO}
 
-    def test_la_fecha_limite_de_la_solicitud_no_se_aleja(self):
+    def test_la_fecha_limite_del_plazo_de_resolver_no_se_aleja(self):
         """No regresión del defecto de #778, medido donde dolía: un
         REQUERIMIENTO_SUBSANACION notificado y sin contestar mantiene la fecha
-        límite de la solicitud, se calcule hoy o dentro de un año."""
-        from app.services.plazos import obtener_estado_plazo_solicitud
-
+        límite del plazo de resolver, se calcule hoy o dentro de un año."""
         limites = set()
         for dias in (0, 60, 365):
             espera = _tarea(consumidos=[_doc(NOTIFICACION)])
             solicitud = _solicitud(disparo=date(2026, 1, 2), tareas_por_fase=[[espera]])
-            congela_hoy, sin_inhabiles = _sin_bd(date(2026, 2, 1) + timedelta(days=dias))
-            with _catalogo({'TAREA': [_entrada_subsanacion()],
-                            'SOLICITUD': [_entrada_solicitud()]}), congela_hoy, sin_inhabiles:
-                limites.add(obtener_estado_plazo_solicitud(solicitud).fecha_limite)
+            with _catalogo({'TAREA': [_entrada_subsanacion()]}):
+                limites.add(_plazo_de_resolver(
+                    solicitud, date(2026, 2, 1) + timedelta(days=dias)).fecha_limite)
 
         assert len(limites) == 1, f'La fecha límite se mueve con el tiempo: {limites}'
 
-    def test_la_solicitud_acaba_venciendo(self):
+    def test_el_plazo_de_resolver_acaba_venciendo(self):
         """Y por tanto el silencio llega a producirse y el semáforo avisa."""
-        from app.services.plazos import obtener_estado_plazo_solicitud
-
         espera = _tarea(consumidos=[_doc(NOTIFICACION)])
         solicitud = _solicitud(disparo=date(2026, 1, 2), tareas_por_fase=[[espera]])
-        congela_hoy, sin_inhabiles = _sin_bd(date(2026, 9, 1))
-        with _catalogo({'TAREA': [_entrada_subsanacion()],
-                        'SOLICITUD': [_entrada_solicitud()]}), congela_hoy, sin_inhabiles:
-            ep = obtener_estado_plazo_solicitud(solicitud)
+        with _catalogo({'TAREA': [_entrada_subsanacion()]}):
+            ep = _plazo_de_resolver(solicitud, date(2026, 9, 1))
 
         assert ep.estado == 'VENCIDO'
         assert ep.efecto == 'SILENCIO_DESESTIMATORIO'
@@ -270,32 +288,25 @@ class TestTopePorConstruccion:
 
 
 # ---------------------------------------------------------------------------
-# C) El plazo de la solicitud
+# C) El plazo de resolver y sus suspensiones
 # ---------------------------------------------------------------------------
 
-class TestPlazoDeLaSolicitud:
+class TestSuspensionDelPlazoDeResolver:
 
     def test_sin_causas_el_plazo_es_el_del_catalogo(self):
-        from app.services.plazos import obtener_estado_plazo_solicitud
-
         solicitud = _solicitud(disparo=date(2026, 1, 12))
-        congela_hoy, sin_inhabiles = _sin_bd(date(2026, 2, 2))
-        with _catalogo({'SOLICITUD': [_entrada_solicitud()]}), congela_hoy, sin_inhabiles:
-            ep = obtener_estado_plazo_solicitud(solicitud)
+        with _catalogo({'TAREA': []}):
+            ep = _plazo_de_resolver(solicitud, date(2026, 2, 2))
 
         assert ep.fecha_limite == date(2026, 4, 13)   # 12-ene + 3 meses → dom 12 → lun 13
         assert ep.dias_suspendidos == 0
         assert ep.fecha_limite_sin_suspender == ep.fecha_limite
 
     def test_una_suspension_viva_empuja_y_se_declara(self):
-        from app.services.plazos import obtener_estado_plazo_solicitud
-
         espera = _tarea(consumidos=[_doc(NOTIFICACION)])
         solicitud = _solicitud(disparo=date(2026, 1, 2), tareas_por_fase=[[espera]])
-        congela_hoy, sin_inhabiles = _sin_bd(date(2026, 1, 20))
-        with _catalogo({'TAREA': [_entrada_subsanacion()],
-                        'SOLICITUD': [_entrada_solicitud()]}), congela_hoy, sin_inhabiles:
-            ep = obtener_estado_plazo_solicitud(solicitud)
+        with _catalogo({'TAREA': [_entrada_subsanacion()]}):
+            ep = _plazo_de_resolver(solicitud, date(2026, 1, 20))
 
         assert ep.suspendido is True
         assert ep.suspendido_desde == NOTIFICACION
@@ -305,9 +316,7 @@ class TestPlazoDeLaSolicitud:
     def test_un_plazo_que_no_suspende_no_empuja_nada(self):
         """La información pública y los traslados al peticionario (arts. 126 /
         127.3 RD 1955/2000) tienen plazo y NO suspenden: corren dentro del plazo
-        de la solicitud y lo consumen."""
-        from app.services.plazos import obtener_estado_plazo_solicitud
-
+        de resolver y lo consumen."""
         traslado = _tarea(tramite_codigo='CONSULTA_TRASLADO_TITULAR',
                           fase_codigo='CONSULTAS',
                           consumidos=[_doc(NOTIFICACION)])
@@ -316,10 +325,8 @@ class TestPlazoDeLaSolicitud:
                            suspende=False, plazo_valor=15)
         solicitud = _solicitud(disparo=date(2026, 1, 2), tareas_por_fase=[[traslado]])
 
-        congela_hoy, sin_inhabiles = _sin_bd(date(2026, 1, 20))
-        with _catalogo({'TAREA': [entrada],
-                        'SOLICITUD': [_entrada_solicitud()]}), congela_hoy, sin_inhabiles:
-            ep = obtener_estado_plazo_solicitud(solicitud)
+        with _catalogo({'TAREA': [entrada]}):
+            ep = _plazo_de_resolver(solicitud, date(2026, 1, 20))
 
         assert ep.suspendido is False
         assert ep.dias_suspendidos == 0
@@ -332,18 +339,14 @@ class TestPlazoDeLaSolicitud:
         código y nunca tuvo fila: el sistema lo pintaba como plazo no configurado
         y a la vez lo usaba para mover la fecha límite de la solicitud.
         """
-        from app.services.plazos import obtener_estado_plazo_solicitud
-
         compatibilidad = _tarea(tramite_codigo='SOLICITUD_COMPATIBILIDAD',
                                 fase_codigo='COMPATIBILIDAD_AMBIENTAL',
                                 consumidos=[_doc(NOTIFICACION)])
         solicitud = _solicitud(disparo=date(2026, 1, 2),
                                tareas_por_fase=[[compatibilidad]])
 
-        congela_hoy, sin_inhabiles = _sin_bd(date(2026, 1, 20))
-        with _catalogo({'TAREA': [_entrada_subsanacion()],
-                        'SOLICITUD': [_entrada_solicitud()]}), congela_hoy, sin_inhabiles:
-            ep = obtener_estado_plazo_solicitud(solicitud)
+        with _catalogo({'TAREA': [_entrada_subsanacion()]}):
+            ep = _plazo_de_resolver(solicitud, date(2026, 1, 20))
 
         assert ep.suspendido is False
         assert ep.dias_suspendidos == 0
@@ -351,8 +354,6 @@ class TestPlazoDeLaSolicitud:
     def test_causas_solapadas_se_cuentan_una_vez(self):
         """Separata contestada + requerimiento vivo que se solapan: la unión, no
         la suma. Un reloj no se para dos veces (art. 22, en singular)."""
-        from app.services.plazos import obtener_estado_plazo_solicitud
-
         separata = _tarea(tramite_codigo='CONSULTA_SEPARATA', fase_codigo='CONSULTAS',
                           consumidos=[_doc(date(2026, 2, 2))],
                           producido=_doc(date(2026, 3, 2)))
@@ -365,10 +366,8 @@ class TestPlazoDeLaSolicitud:
         solicitud = _solicitud(disparo=date(2026, 1, 2),
                                tareas_por_fase=[[separata], [requerimiento]])
 
-        congela_hoy, sin_inhabiles = _sin_bd(date(2026, 3, 10))
-        with _catalogo({'TAREA': [_entrada_subsanacion(), entrada_separata],
-                        'SOLICITUD': [_entrada_solicitud()]}), congela_hoy, sin_inhabiles:
-            ep = obtener_estado_plazo_solicitud(solicitud)
+        with _catalogo({'TAREA': [_entrada_subsanacion(), entrada_separata]}):
+            ep = _plazo_de_resolver(solicitud, date(2026, 3, 10))
 
         # Separata: (2-feb, 2-mar]. Requerimiento: (16-feb, 2-mar] — vence el 2-mar
         # (10 hábiles desde el 16-feb) y no llega a hoy. La unión es (2-feb, 2-mar]:
@@ -379,8 +378,6 @@ class TestPlazoDeLaSolicitud:
     def test_suspendido_desde_es_el_inicio_del_bloque_continuo(self):
         """Puede ser anterior a la causa viva más antigua: lo que interesa es
         desde cuándo lleva el plazo parado sin interrupción."""
-        from app.services.plazos import obtener_estado_plazo_solicitud
-
         separata = _tarea(tramite_codigo='CONSULTA_SEPARATA', fase_codigo='CONSULTAS',
                           consumidos=[_doc(date(2026, 2, 2))],
                           producido=_doc(date(2026, 3, 2)))
@@ -393,39 +390,11 @@ class TestPlazoDeLaSolicitud:
         solicitud = _solicitud(disparo=date(2026, 1, 2),
                                tareas_por_fase=[[separata], [requerimiento]])
 
-        congela_hoy, sin_inhabiles = _sin_bd(date(2026, 3, 5))
-        with _catalogo({'TAREA': [_entrada_subsanacion(), entrada_separata],
-                        'SOLICITUD': [_entrada_solicitud()]}), congela_hoy, sin_inhabiles:
-            ep = obtener_estado_plazo_solicitud(solicitud)
+        with _catalogo({'TAREA': [_entrada_subsanacion(), entrada_separata]}):
+            ep = _plazo_de_resolver(solicitud, date(2026, 3, 5))
 
         assert ep.suspendido is True
         assert ep.suspendido_desde == date(2026, 2, 2)
-
-    def test_la_solicitud_cerrada_esta_cumplida(self):
-        """El plazo de la solicitud se cierra con el certificado que acredita la
-        notificación a todos los interesados (art. 40.4), no con la resolución."""
-        from app.services.plazos import obtener_estado_plazo_solicitud
-
-        solicitud = _solicitud(disparo=date(2026, 1, 12), cierre=date(2026, 3, 30))
-        congela_hoy, sin_inhabiles = _sin_bd(date(2026, 5, 1))
-        with _catalogo({'SOLICITUD': [_entrada_solicitud()]}), congela_hoy, sin_inhabiles:
-            ep = obtener_estado_plazo_solicitud(solicitud)
-
-        assert ep.estado == 'CUMPLIDO'
-        assert ep.cumplido_fuera_de_plazo is False
-
-    def test_sin_certificado_de_cierre_la_solicitud_vence(self):
-        """Consecuencia asumida en ADR-041 §D bis: CUMPLIDO depende de un acto de
-        formalización, y sin él la solicitud se marca vencida aunque se resolviera
-        a tiempo. Misma señal que una fase en PDTE_CIERRE."""
-        from app.services.plazos import obtener_estado_plazo_solicitud
-
-        solicitud = _solicitud(disparo=date(2026, 1, 12))
-        congela_hoy, sin_inhabiles = _sin_bd(date(2026, 5, 1))
-        with _catalogo({'SOLICITUD': [_entrada_solicitud()]}), congela_hoy, sin_inhabiles:
-            ep = obtener_estado_plazo_solicitud(solicitud)
-
-        assert ep.estado == 'VENCIDO'
 
     def test_la_tarea_no_calcula_suspensiones(self):
         """Art. 22: se suspende «el plazo máximo legal para resolver un

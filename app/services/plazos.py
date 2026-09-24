@@ -21,9 +21,6 @@ Las entradas (#788, ADR-041 §G; el acto, ADR-049 §E):
     obtener_estado_plazo_tarea(tarea)          el plazo de una tarea
     obtener_estado_plazo_acto(acto)            el plazo de resolver de un acto
     plazos_de_la_solicitud(solicitud)          ídem, uno por acto de la solicitud
-    obtener_estado_plazo_fase(fase)            el plazo de una fase finalizadora  } se retiran
-    obtener_estado_plazo_solicitud(solicitud)  el plazo de la solicitud, que ya   } en N2b
-                                               incluye la suspensión
 
 El plazo de resolver es del ACTO, no de la solicitud ni de la fase (#930): una
 solicitud AAP+AAC+DUP pide tres autorizaciones con plazos de 3, 3 y 6 meses, y
@@ -34,22 +31,12 @@ solicitud —existe desde el día 1, antes de que nazca la fase que lo
 resolverá— y se cumple con la notificación al titular en esa fase
 (`{"calculado": "documento_cumplimiento"}`). Sin suspensión hasta #796.
 
-Solo la Solicitud y la Tarea portan fecha administrativa propia —la primera por
-`documento_solicitud_id`, la segunda por `documentos_tarea` (ADR-010)—, así que
-#788 dejó fuera a la Fase y al Trámite: taxonomía ESFTT, no figuras jurídicas,
-los plazos legales se enganchan a actos. ADR-048 reabre esa exclusión, pero solo
-para la Fase finalizadora: `RESOLUCION_DUP`/`RESOLUCION_AAP`/`RESOLUCION_AAC`
-(ADR-046/047) no son taxonomía, son el acto mismo — la autorización o la
-declaración con su propio artículo. El disparo hereda la fecha de la solicitud
-contenedora (`_resolver_campo_fecha` sube a `fase.solicitud` cuando el atributo
-no está en la propia fase); el cumplimiento queda sin resolver a propósito
-(`campo_fecha_cumplimiento=NULL`, issue de cierre propio por fase pendiente de
-abrir) — el plazo de fase nunca alcanza CUMPLIDO, solo EN_PLAZO/VENCIDO, mismo
-patrón que TABLON_AYUNTAMIENTOS. No hay suspensión a nivel FASE: art. 22 habla
-del plazo del procedimiento, y extenderlo por acto es alcance de esa misma
-issue futura, no de esto. ADR-049 lo supera: el plazo no puede colgar de una
-fase que no existe mientras corre, y las tres filas de fase, idénticas a las
-atómicas, se retiran en N2b.
+Hasta #931 hubo dos entradas más, ya retiradas: el plazo de la solicitud (#788,
+el único suspendible) y el de la fase finalizadora (ADR-048, que reabrió para
+`RESOLUCION_DUP`/`AAP`/`AAC` la exclusión de la Fase que había hecho #788). Las
+dos daban un plazo al contenedor o a la fase que resuelve, y ADR-049 las
+supera: el plazo no puede colgar de una fase que no existe mientras corre, ni
+de una solicitud que pide varios actos con plazos distintos.
 
 El Trámite sigue fuera: una función «plazo de un trámite» reintroduciría por la
 puerta de atrás el nivel que #788 eliminó para él — bajar de un trámite a su
@@ -57,16 +44,23 @@ tarea de espera sigue siendo navegación del árbol (`Tramite.tarea_espera`), no
 una entrada de este servicio.
 
 La suspensión no es un mecanismo aparte (#778):
-    Es el plazo de un tercero visto desde la solicitud, y la propia ley lo dice
-    al fijar cuándo termina —art. 22.1.a: «por el tiempo que medie entre la
-    notificación del requerimiento y su efectivo cumplimiento por el
+    Es el plazo de un tercero visto desde el plazo de resolver, y la propia ley
+    lo dice al fijar cuándo termina —art. 22.1.a: «por el tiempo que medie entre
+    la notificación del requerimiento y su efectivo cumplimiento por el
     destinatario, o, en su defecto, por el del plazo concedido»—, que es el menor
-    de los dos: exactamente la parada. El plazo de la solicitud se mide como
-    cualquier otro; luego se recorren sus tareas, se retienen las que tienen
-    entrada marcada como suspensora, cada una aporta el intervalo
+    de los dos: exactamente la parada. El plazo de resolver se mide como
+    cualquier otro; luego se recorren las tareas de la solicitud, se retienen
+    las que tienen entrada marcada como suspensora, cada una aporta el intervalo
     [disparo, parada], los solapados se funden (el art. 22 suspende «el
     transcurso del plazo máximo legal para resolver», en singular: un reloj no se
     para dos veces) y los días hábiles de la unión empujan el vencimiento.
+
+    Desde #931 el mecanismo entero sigue aquí pero NO está conectado: el plazo
+    del acto se mide sin causas (`_plazos_de_actos` pasa `()`), y
+    `_causas_suspension` no tiene llamador en producción. Lo reconecta #796, que
+    decide contra qué acto corre cada causa; retirado el plazo de la solicitud,
+    que era quien la aplicaba, borrar la pieza obligaba a #796 a reescribirla
+    (#931, D8).
 
     Consecuencia directa: el tope existe por construcción. Ninguna suspensión
     puede crecer sin límite, porque su parada nunca pasa del vencimiento. Antes
@@ -171,7 +165,7 @@ class EstadoPlazo:
                                        # | 'SIN_EFECTO_AUTOMATICO'
     fecha_limite: Optional[date]       # el VENCIMIENTO (nombre histórico, §3.5 del
                                        # diseño): último día hábil dentro del plazo.
-                                       # En la solicitud, ya con las suspensiones
+                                       # En el acto, ya con las suspensiones
                                        # sumadas. None si SIN_PLAZO
     dias_restantes: Optional[int]      # None si SIN_PLAZO o CUMPLIDO; negativo si VENCIDO
     fecha_disparo: Optional[date] = None
@@ -193,35 +187,30 @@ class EstadoPlazo:
         )
 
 
-@dataclass
-class EstadoPlazoSolicitud(EstadoPlazo):
-    """El plazo de la solicitud, único suspendible (art. 22, #788).
+@dataclass(kw_only=True)
+class EstadoPlazoActo(EstadoPlazo):
+    """El plazo de resolver de un acto (#930, ADR-049 §E, D11), el único
+    suspendible (art. 22).
+
+    Absorbe desde #931 los cuatro datos de suspensión de la clase del plazo de
+    la solicitud, que se retiró con él. La barra los necesita (dónde acababa el
+    plazo, cuánto se ha estirado, si está parado): hoy valen siempre «sin
+    suspender» y #796 los rellena sin cambiar la forma.
 
     `suspendido` es dato aparte y NO un valor del estado, porque es ortogonal: un
     plazo puede estar suspendido y a la vez próximo a vencer.
-    """
-    suspendido: bool = False
-    suspendido_desde: Optional[date] = None   # inicio del bloque fusionado que llega
-                                              # a hoy; puede ser anterior a la causa
-                                              # viva más antigua
-    dias_suspendidos: int = 0                 # días hábiles de la unión de intervalos
-    fecha_limite_sin_suspender: Optional[date] = None
-
-
-@dataclass(kw_only=True)
-class EstadoPlazoActo(EstadoPlazoSolicitud):
-    """El plazo de resolver de un acto (#930, ADR-049 §E, D11).
-
-    Hereda los cuatro datos de suspensión porque la barra los necesita (dónde
-    acababa el plazo, cuánto se ha estirado, si está parado): hoy valen
-    siempre «sin suspender» y #796 los rellena sin cambiar la forma. N2b, al
-    retirar el plazo de la solicitud, funde las dos clases en una.
 
     Sin `documento_cumplimiento_id`: las barras solo pintan la fecha.
     """
     acto: str                            # tipo atómico: 'AAP'
     fase_resolutora: str                 # código de la fase que lo resuelve, exista o no
     fase_resolutora_id: Optional[int]    # None mientras esa fase no existe
+    suspendido: bool = False
+    suspendido_desde: Optional[date] = None   # inicio del bloque fusionado que llega
+                                              # a hoy; puede ser anterior a la causa
+                                              # viva más antigua
+    dias_suspendidos: int = 0                 # días hábiles de la unión de intervalos
+    fecha_limite_sin_suspender: Optional[date] = None
 
 
 @dataclass(frozen=True)
@@ -234,13 +223,6 @@ class _Medida:
 
 
 _SIN_PLAZO = EstadoPlazo(
-    estado='SIN_PLAZO',
-    efecto='NINGUNO',
-    fecha_limite=None,
-    dias_restantes=None,
-)
-
-_SIN_PLAZO_SOLICITUD = EstadoPlazoSolicitud(
     estado='SIN_PLAZO',
     efecto='NINGUNO',
     fecha_limite=None,
@@ -291,91 +273,6 @@ def obtener_estado_plazo_tarea(tarea, ctx=None, variables=None) -> EstadoPlazo:
         fecha_parada=medida.parada,
         **_metadatos_entrada(entrada),
     )
-
-
-def obtener_estado_plazo_fase(fase, ctx=None, variables=None) -> EstadoPlazo:
-    """
-    Estado del plazo legal de una fase finalizadora (ADR-048, excepción acotada
-    a #788 — ver docstring del módulo).
-
-    Solo hay entradas de catálogo para fases finalizadoras (RESOLUCION_DUP,
-    RESOLUCION_AAP, RESOLUCION_AAC): una fase taxonómica (CONSULTAS,
-    ADMISIBILIDAD...) no tiene camino que case y devuelve SIN_PLAZO sin
-    necesidad de comprobar aquí `tipo_fase.es_finalizadora` — el catálogo es el
-    filtro, no el código (mismo criterio que el resto del servicio).
-
-    Sin suspensión (a diferencia de `obtener_estado_plazo_solicitud`): el
-    art. 22 suspende el plazo del procedimiento, y extenderlo por acto es
-    alcance de la issue de cierre propio por fase, no de esta.
-
-    Args:
-        fase:      Instancia ORM de Fase. None o dict → SIN_PLAZO sin tocar BD.
-        ctx:       ExpedienteContext. Construye variables internamente.
-        variables: Dict de variables pre-construido. Tiene precedencia sobre ctx.
-    """
-    if fase is None or isinstance(fase, dict):
-        return _SIN_PLAZO
-    if _get_tipo_elemento_codigo(fase, 'FASE') is None:
-        return _SIN_PLAZO
-
-    entrada = _seleccionar_catalogo(fase, 'FASE', _variables_de(ctx, variables))
-    if entrada is None:
-        return _SIN_PLAZO
-
-    disparo = _resolver_campo_fecha(fase, entrada.campo_fecha or {})
-    if disparo is None:
-        return _SIN_PLAZO
-
-    hoy = _hoy()
-    inhabiles = _obtener_inhabiles_bd(disparo, hoy + timedelta(days=_margen_dias([entrada])))
-    medida = _medir(fase, entrada, disparo, inhabiles, hoy)
-
-    estado, dias = _leer_estado(medida, hoy, inhabiles)
-    return EstadoPlazo(
-        estado=estado,
-        efecto=_efecto(entrada),
-        fecha_limite=medida.vencimiento,
-        dias_restantes=dias,
-        fecha_disparo=medida.disparo,
-        fecha_cumplimiento=medida.cumplimiento,
-        fecha_parada=medida.parada,
-        **_metadatos_entrada(entrada),
-    )
-
-
-def obtener_estado_plazo_solicitud(solicitud, ctx=None, variables=None) -> EstadoPlazoSolicitud:
-    """
-    Estado del plazo máximo para resolver y notificar (art. 21.3 LPACAP), ya con
-    las suspensiones del art. 22 aplicadas.
-
-    Es el único plazo suspendible: los de nivel TAREA son de un tercero
-    (organismo, DGPEM), del interesado (art. 68.1) o períodos que han de
-    transcurrir — nada que suspender (#788).
-    """
-    if solicitud is None or isinstance(solicitud, dict):
-        return _SIN_PLAZO_SOLICITUD
-    if _get_tipo_elemento_codigo(solicitud, 'SOLICITUD') is None:
-        return _SIN_PLAZO_SOLICITUD
-
-    entrada = _seleccionar_catalogo(solicitud, 'SOLICITUD', _variables_de(ctx, variables))
-    if entrada is None:
-        return _SIN_PLAZO_SOLICITUD
-
-    disparo = _resolver_campo_fecha(solicitud, entrada.campo_fecha or {})
-    if disparo is None:
-        return _SIN_PLAZO_SOLICITUD
-
-    hoy = _hoy()
-    # Las causas de suspensión se identifican ANTES de cargar el calendario para
-    # que el rango cubra también sus disparos: no se presupone que ninguno sea
-    # anterior al de la solicitud, aunque en un expediente sano no lo sea.
-    causas = _causas_suspension(solicitud)
-    fecha_ini = min([disparo] + [d for _, _, d in causas])
-    inhabiles = _obtener_inhabiles_bd(
-        fecha_ini,
-        hoy + timedelta(days=_margen_dias([entrada] + [e for _, e, _ in causas])),
-    )
-    return _estado_con_suspensiones(solicitud, entrada, disparo, causas, inhabiles, hoy)
 
 
 def obtener_estado_plazo_acto(acto, ctx=None, variables=None) -> EstadoPlazoActo:
@@ -459,10 +356,10 @@ def _plazos_de_actos(actos: list, variables: dict) -> list[EstadoPlazoActo]:
             ))
             continue
         entrada, disparo = medibles[i]
-        # Sin suspensión hasta #796, que rellena aquí las causas del acto.
+        # Sin suspensión hasta #796, que rellena aquí las causas del acto
+        # (`_causas_suspension`) y amplía el rango del calendario a sus disparos.
         resultado.append(_estado_con_suspensiones(
-            acto, entrada, disparo, (), inhabiles, hoy,
-            clase=EstadoPlazoActo, **identidad,
+            acto, entrada, disparo, (), inhabiles, hoy, **identidad,
         ))
     return resultado
 
@@ -475,18 +372,18 @@ def _camino_acto(acto) -> str:
 
 
 def _estado_con_suspensiones(elemento, entrada, disparo: date, causas,
-                             inhabiles: frozenset, hoy: date,
-                             clase=EstadoPlazoSolicitud, **extra) -> EstadoPlazoSolicitud:
-    """La medida de un plazo suspendible, con las suspensiones de `causas`
-    aplicadas (#930, D12: núcleo común, extraído de
-    `obtener_estado_plazo_solicitud`).
+                             inhabiles: frozenset, hoy: date, **identidad) -> EstadoPlazoActo:
+    """La medida del plazo de resolver de un acto, con las suspensiones de
+    `causas` aplicadas (#930, D12: núcleo común, extraído del plazo de la
+    solicitud que #931 retiró).
 
     `causas` es la lista `[(tarea, entrada, disparo)]` de `_causas_suspension`;
     vacía, el resultado sale «sin suspender» (`suspendido=False`,
     `dias_suspendidos=0`, `fecha_limite_sin_suspender == fecha_limite`).
     El calendario llega ya cargado —y debe cubrir también los disparos de las
-    causas—: así quien mide varios plazos a la vez lo carga una sola vez.
-    `clase` y `extra` dejan al acto añadir su identidad al resultado.
+    causas, que no se presupone posteriores al del acto—: así quien mide
+    varios plazos a la vez lo carga una sola vez. `identidad` son los campos
+    del acto (`acto`, `fase_resolutora`, `fase_resolutora_id`).
     """
     bloques = _fusionar_intervalos([
         _intervalo_de(tarea, entrada_tarea, disparo_tarea, inhabiles, hoy)
@@ -504,7 +401,7 @@ def _estado_con_suspensiones(elemento, entrada, disparo: date, causas,
     )
 
     estado, dias = _leer_estado(medida_efectiva, hoy, inhabiles)
-    return clase(
+    return EstadoPlazoActo(
         estado=estado,
         efecto=_efecto(entrada),
         fecha_limite=limite,
@@ -517,7 +414,7 @@ def _estado_con_suspensiones(elemento, entrada, disparo: date, causas,
         dias_suspendidos=dias_suspendidos,
         fecha_limite_sin_suspender=medida.vencimiento,
         **_metadatos_entrada(entrada),
-        **extra,
+        **identidad,
     )
 
 
@@ -610,16 +507,21 @@ def calcular_fecha_fin(
 
 
 # ---------------------------------------------------------------------------
-# Suspensiones — la misma medida, vista desde la solicitud (art. 22 LPACAP)
+# Suspensiones — la misma medida, vista desde el plazo de resolver (art. 22 LPACAP)
 # ---------------------------------------------------------------------------
 
 def _causas_suspension(solicitud) -> list[tuple]:
     """Tareas de la solicitud cuya entrada de catálogo suspende, ya con su disparo.
 
+    SIN LLAMADOR EN PRODUCCIÓN desde #931 hasta #796 (D8): quien la usaba era el
+    plazo de la solicitud, retirado; #796 la reconecta al plazo de cada acto y
+    decide contra cuál corre cada causa. Se conserva, con sus pruebas, porque
+    #796 la reutiliza tal cual.
+
     Devuelve [(tarea, entrada, disparo)]. Recorre solicitud → fases → trámites →
     tareas: el art. 22 suspende «el plazo máximo legal para resolver un
-    procedimiento y notificar la resolución», que es el plazo de esta solicitud y
-    ninguno más.
+    procedimiento y notificar la resolución», que es el plazo de resolver de los
+    actos de esta solicitud y ninguno más.
 
     Las entradas de nivel TAREA se cargan UNA vez y se pasan al matcher: si no,
     cada tarea del expediente repetiría la misma query.
