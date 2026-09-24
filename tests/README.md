@@ -59,6 +59,20 @@ Python ≥ 3.12 registra cada línea una sola vez por proceso y los contextos sa
 incompletos sin avisar. Requiere `pip install pytest-cov` (no está en
 `requirements.txt`).
 
+### ¿Protege algo que ningún otro test protege?
+
+```bash
+python scripts/mutacion_dirigida.py tests/test_X.py [--max 30] [--max-tests-linea 20] [--solape]
+```
+
+Introduce errores en las líneas de `app/` que ejecuta ese fichero y mira si solo
+él los detecta. Antes de retirar o fusionar un test, esto es lo que decide —no
+la cobertura de líneas— (#946). Límite: **solo ve código Python**. Un test que
+protege una restricción de la BD (índice único, CHECK, FK) aparece como
+redundante aunque sea el único que la vigila: `test_899` protege en exclusiva
+cuatro índices parciales y la mutación de Python daba 0. Para esos, la prueba es
+quitar la restricción en la BD de tests y ver quién falla.
+
 ---
 
 ## 2. Qué protege cada tipo de test
