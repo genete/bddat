@@ -10,7 +10,9 @@ Reescrito dos veces:
   #788 — las 11 filas bajan de nivel FASE a nivel SOLICITUD y su camino pierde el
   segmento `/RESOLUCION`. Los 1/3/6 meses de los arts. 128, 131.7, 132 bis/ter,
   133, 138 y 145.4 son el plazo de la SOLICITUD para resolver *y notificar*
-  (art. 21.3.b LPACAP); que el acto que lo consume viva en la fase finalizadora no
+  (art. 21.2 LPACAP; el 21.3.b solo fija desde cuándo se cuenta — y ADR-049,
+  #930, lo precisa: es el plazo de cada acto de la solicitud, con su fila
+  atómica); que el acto que lo consume viva en la fase finalizadora no
   lo convierte en plazo de la fase, que además no tiene fecha de inicio a la que
   agarrarse. Consecuencia práctica: el plazo se resuelve desde que hay documento
   de solicitud —que es cuando empieza legalmente— y no desde que alguien crea la

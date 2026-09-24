@@ -238,8 +238,12 @@ inicio/fin), en el **footer** (raya superior), simple y sin adornos.
 
 **Dónde aplica:**
 - **Tarea ESPERAR_PLAZO**: siempre.
-- **Tarea NOTIFICAR**: plazo de **lectura** de la notificación; **dos barras** si hay 2º intento.
-- **Solicitud**: si el cálculo de plazos da un plazo administrativo de solicitud.
+- **Tarea NOTIFICAR**: plazo para **cursar** la notificación (art. 40.2 LPACAP, 10 días
+  hábiles desde que se dicta el acto; fila `ANY/ANY/ANY/ANY/NOTIFICAR`) — no el de lectura
+  (art. 43.2), que no tiene fila; **dos barras** si hay 2º intento.
+- **Solicitud**: una barra por **acto** (`plazos.plazos_de_la_solicitud`, #930, ADR-049 §E):
+  el plazo de resolver es de cada tipo atómico, no de la solicitud. La fase finalizadora
+  pinta las de los actos que ella resuelve (#922).
 
 ---
 
@@ -251,7 +255,7 @@ inicio/fin), en el **footer** (raya superior), simple y sin adornos.
   (resultado + `numero_intento`)— y propagar la mayor prioridad a los no-hoja, **reutilizando
   `seguimiento.py`** (hecho en #558 vía el núcleo `estado_dominio.py`).
 - **Plazo (barra):** la v1 semántica usa el `estado` de plazo ya disponible. La proporcional
-  (diferida) exigirá el progreso en días hábiles + plazo de **solicitud** y de **lectura de
+  (diferida) exigirá el progreso en días hábiles + plazo de cada **acto** y de **cursar la
   notificación** por intento.
 - **Documentos:** sin cambios de backend.
 
@@ -265,6 +269,6 @@ queda desdoblado en `PENDIENTE_REDACTAR` (🔴) + `PENDIENTE_FIRMA` (🟡).
 
 - Tipo de documento `BORRADOR_FIRMA` en `tipos_documentos` (migración) — para el subestado FIRMA.
 - Scheduler + Playwright que envíe a firma las tareas en estado FIRMA.
-- Barra de plazo **proporcional** (progreso en días hábiles), plazo de **solicitud** y de
-  **lectura de notificación** por intento.
+- Barra de plazo **proporcional** (progreso en días hábiles), plazo de cada **acto** y de
+  **cursar la notificación** por intento.
 - ~~Refinar la prioridad numérica fina al unificar con `seguimiento.PRIORIDAD`.~~ Hecho en #558 (§5).
