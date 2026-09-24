@@ -1,0 +1,97 @@
+{# _cert_cumplimiento_fase_fragmento.html — Certificado de cumplimiento de la fase (#947, ADR-049 §F).
+   No extiende base_app.html. Inyectado por AppModalLarge (ADR-023 §6), como el diagnóstico.
+
+   Vista ÚNICA para los dos momentos (D2): emitido, pinta lo sellado; sin emitir,
+   el borrador calculado al vuelo (qué documento se citaría, o qué falta), sin
+   guardar nada. Solo datos que no se mueven: fase, actos, documento citado y
+   huella. Sin veredicto de plazo (cumplido o vencido): «nunca se guarda, se
+   pinta siempre» (§E), y ya lo pintan las barras del plazo (#922).
+
+   Datos: `vista` (services/cert_cumplimiento_fase.Vista).
+#}
+<div class="p-3">
+
+  <div class="mb-3">
+    {% if vista.emitido %}
+      <span class="badge text-bg-success">
+        <i class="bi bi-patch-check-fill me-1"></i>Certificado emitido
+      </span>
+    {% elif vista.falta %}
+      <span class="badge text-bg-warning">
+        <i class="bi bi-exclamation-triangle me-1"></i>No consta la notificación al titular
+      </span>
+    {% else %}
+      <span class="badge text-bg-light border">
+        <i class="bi bi-pencil me-1"></i>Borrador — sin emitir
+      </span>
+    {% endif %}
+  </div>
+
+  <p class="small mb-3">
+    {% if vista.emitido %}
+      Consta la notificación al titular de lo que resuelve esta fase, acreditada por el
+      documento que se cita abajo (art. 40.4 LPACAP). Desde la emisión, el plazo de
+      resolver de sus actos se lee de este certificado y ese documento no puede
+      modificarse, desvincularse ni borrarse.
+    {% elif vista.falta %}
+      {{ vista.falta }} No se ha creado ningún documento.
+    {% else %}
+      Si se emitiera ahora, el certificado citaría el documento de abajo como
+      acreditación de la notificación al titular. Este borrador se calcula al abrirlo
+      y no se guarda.
+    {% endif %}
+  </p>
+
+  {# col-lg-2: el modal grande ocupa casi toda la ventana, y con col-sm-4 la
+     etiqueta quedaba a media pantalla de su valor. #}
+  <dl class="row small mb-3">
+    <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Expediente</dt>
+    <dd class="col-sm-8 col-lg-10">{{ vista.expediente }} · {{ vista.solicitud }}</dd>
+
+    <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Fase</dt>
+    <dd class="col-sm-8 col-lg-10">{{ vista.fase }}</dd>
+
+    <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Actos que resuelve</dt>
+    <dd class="col-sm-8 col-lg-10">{{ vista.actos | join(', ') if vista.actos else '—' }}</dd>
+  </dl>
+
+  {% if vista.documento %}
+  <div class="mb-3">
+    <div class="text-muted fw-semibold small mb-1">
+      {% if vista.emitido %}Documento citado{% else %}Documento que se citaría{% endif %}
+    </div>
+    <dl class="row small mb-0">
+      <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Tipo</dt>
+      <dd class="col-sm-8 col-lg-10">{{ vista.documento.tipo }} (nº {{ vista.documento.id }})</dd>
+
+      <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Fecha que acredita</dt>
+      <dd class="col-sm-8 col-lg-10">{{ vista.documento.fecha or '—' }}</dd>
+
+      <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Canal</dt>
+      <dd class="col-sm-8 col-lg-10">{{ vista.documento.canal }}</dd>
+
+      <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Tarea</dt>
+      <dd class="col-sm-8 col-lg-10">{{ vista.documento.tarea or '—' }}</dd>
+    </dl>
+  </div>
+  {% endif %}
+
+  {# Huella: un papel siempre lleva a su fila de `certificados`. #}
+  <div class="border-top pt-2 small text-muted">
+    {% if vista.emitido %}
+      Certificado nº {{ vista.certificado_id }} · Documento nº {{ vista.documento_certificado_id }}
+      · Emitido el {{ vista.emitido_en or '—' }} · {{ vista.expediente }}
+      · Fase nº {{ vista.fase_id }} ({{ vista.fase }})
+    {% else %}
+      Borrador calculado el {{ vista.calculado_en }} · {{ vista.expediente }}
+      · Fase nº {{ vista.fase_id }} ({{ vista.fase }}) · No emitido
+    {% endif %}
+  </div>
+
+  <div class="d-flex justify-content-end border-top pt-3 mt-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-modal-large-close>
+      Cerrar
+    </button>
+  </div>
+
+</div>

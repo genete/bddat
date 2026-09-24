@@ -1035,6 +1035,93 @@ def deshacer_cert_fin_instruccion_nodo(expediente_id, nodo_id):
 
 
 # =============================================================================
+# ENDPOINT 8quinquies: Certificar el cumplimiento de la fase finalizadora (#947,
+# ADR-049 §F)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/fase/<int:nodo_id>'
+              '/certificado-cumplimiento', methods=['POST'])
+@login_required
+def emitir_cert_cumplimiento_fase_nodo(expediente_id, nodo_id):
+    """
+    POST .../nodo/fase/<fase_id>/certificado-cumplimiento — el botón de la fase
+    (#947, D3). Sin body: no hay nada que elegir, el documento lo da el cálculo.
+
+    Tres desenlaces y ningún error, todos 200 con `enlace_vista` para abrir la
+    vista en el modal grande:
+    - falta la notificación al titular → `emitido: false` y `falta`; nada creado;
+    - está todo → `emitido: true`: certificado emitido;
+    - ya estaba emitido → `emitido: true, ya_emitido: true`.
+
+    422 para errores de verdad: fase no finalizadora o catálogo sin el tipo; 422
+    de bloqueo (`puede_escapar: false`) solo si la puerta cerrada discrepara de la
+    revisión. Con la fase cerrada **se permite** (no muta su interior), por eso se
+    resuelve con `permitir_fase_cerrada`.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    # Mismo permiso que el otro certificado del árbol y que cerrar o reabrir una fase.
+    if verificar_acceso_expediente(expediente, 'gestionar_estructura'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        fase = _resolver_nodo(expediente, 'fase', nodo_id, permitir_fase_cerrada=True)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    from app.services.cert_cumplimiento_fase import emitir
+
+    res = emitir(fase)
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    payload = res.a_dict()
+    payload['enlace_vista'] = url_for('expedientes.cert_cumplimiento_fase_vista',
+                                      id=expediente.id, fase_id=fase.id)
+    if res.error:
+        payload['error'] = res.error
+        return jsonify(payload), 422
+    return jsonify(payload), 200
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/fase/<int:nodo_id>'
+              '/certificado-cumplimiento', methods=['DELETE'])
+@login_required
+def deshacer_cert_cumplimiento_fase_nodo(expediente_id, nodo_id):
+    """
+    DELETE .../nodo/fase/<fase_id>/certificado-cumplimiento — retira el
+    certificado y con él el sello: el plazo vuelve a calcularse y el documento
+    que citaba deja de estar protegido (#947).
+
+    Body JSON: {justificacion}, obligatoria. Resuelto con `permitir_fase_cerrada`
+    para que, con la fase cerrada, el mensaje sea el del invariante («reábrala
+    antes»), que es una sola fuente, y no el genérico del sellado.
+
+    422 con `puede_escapar: false` si la fase está cerrada; 422 con `error` si no
+    hay certificado, falta la justificación o el certificado está vinculado a
+    alguna tarea.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_estructura'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        fase = _resolver_nodo(expediente, 'fase', nodo_id, permitir_fase_cerrada=True)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    from app.services.cert_cumplimiento_fase import deshacer
+
+    datos = request.get_json(silent=True) or {}
+    res = deshacer(fase, justificacion=(datos.get('justificacion') or ''))
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    if res.error:
+        payload = res.a_dict()
+        payload['error'] = res.error
+        return jsonify(payload), 422
+    return jsonify(res.a_dict()), 200
+
+
+# =============================================================================
 # ENDPOINT 8ter: Alta de organismo consultado en una fase CONSULTAS (ADR-042 §C)
 # =============================================================================
 
