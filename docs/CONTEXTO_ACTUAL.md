@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **#928 (N1 de ADR-049)** mergeado (PR #934): las fechas de notificación salen solo de documentos; `notificaciones` sin fechas, con `RECHAZADA` y sede (`PENDIENTE_SEDE`). El `NotificarEditor` no registra puesta a disposición ni resultado hasta **#929** (asumido, D12). Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#927** mergeado (PR #937): 8 entradas múltiples de `DATOS_CATASTRALES` en `tramites_tareas_documentos`. Deja abiertos #935 (la sugerencia de tipo mezcla `ENTRADA` y `SALIDA` y se pierde en esos pasos), #936 (la tabla no distingue por fase) y #938 (repaso general de la tabla contra `ESTRUCTURA_FTT`). Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **#927** (entradas múltiples de `REMISION_ACUERDO_DATOS.ELABORAR` y `ANALISIS_RBDA.ANALIZAR`, desbloqueado por N1) y luego **#930 (N2)**, siguiente de la cadena principal.
+**Próximo:** **#930 (N2)**, siguiente de la cadena principal de ADR-049 (el plazo es del acto; cumplimiento calculado).
 
 ---
 
