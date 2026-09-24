@@ -16,12 +16,23 @@ distintas: gana el cumplimiento → llegó lo que se esperaba; gana el vencimien
 se agotó el plazo concedido y el procedimiento prosigue (art. 22.1.d in fine);
 gana hoy → el plazo sigue corriendo.
 
-Tres entradas, no cuatro literales de nivel (#788 + excepción de ADR-048, ADR-041 §G):
+Las entradas (#788, ADR-041 §G; el acto, ADR-049 §E):
 
     obtener_estado_plazo_tarea(tarea)          el plazo de una tarea
-    obtener_estado_plazo_fase(fase)            el plazo de una fase finalizadora
-    obtener_estado_plazo_solicitud(solicitud)  el plazo de la solicitud, que ya
+    obtener_estado_plazo_acto(acto)            el plazo de resolver de un acto
+    plazos_de_la_solicitud(solicitud)          ídem, uno por acto de la solicitud
+    obtener_estado_plazo_fase(fase)            el plazo de una fase finalizadora  } se retiran
+    obtener_estado_plazo_solicitud(solicitud)  el plazo de la solicitud, que ya   } en N2b
                                                incluye la suspensión
+
+El plazo de resolver es del ACTO, no de la solicitud ni de la fase (#930): una
+solicitud AAP+AAC+DUP pide tres autorizaciones con plazos de 3, 3 y 6 meses, y
+un plazo del contenedor no puede ser correcto para las tres. El acto es cada
+tipo atómico de la solicitud (`actos_solicitud.ActoSolicitud`, valor derivado
+sin tabla); se mide con la fila atómica del catálogo desde el escrito de la
+solicitud —existe desde el día 1, antes de que nazca la fase que lo
+resolverá— y se cumple con la notificación al titular en esa fase
+(`{"calculado": "documento_cumplimiento"}`). Sin suspensión hasta #796.
 
 Solo la Solicitud y la Tarea portan fecha administrativa propia —la primera por
 `documento_solicitud_id`, la segunda por `documentos_tarea` (ADR-010)—, así que
@@ -36,7 +47,9 @@ no está en la propia fase); el cumplimiento queda sin resolver a propósito
 abrir) — el plazo de fase nunca alcanza CUMPLIDO, solo EN_PLAZO/VENCIDO, mismo
 patrón que TABLON_AYUNTAMIENTOS. No hay suspensión a nivel FASE: art. 22 habla
 del plazo del procedimiento, y extenderlo por acto es alcance de esa misma
-issue futura, no de esto.
+issue futura, no de esto. ADR-049 lo supera: el plazo no puede colgar de una
+fase que no existe mientras corre, y las tres filas de fase, idénticas a las
+atómicas, se retiran en N2b.
 
 El Trámite sigue fuera: una función «plazo de un trámite» reintroduciría por la
 puerta de atrás el nivel que #788 eliminó para él — bajar de un trámite a su
@@ -108,6 +121,11 @@ from sqlalchemy.orm import joinedload
 log = logging.getLogger(__name__)
 
 UMBRAL_ALERTA = 5  # días hábiles (DISEÑO_FECHAS_PLAZOS.md §2.4)
+
+# Propiedades calculadas que un señalador `{"calculado": ...}` puede nombrar
+# (#930, D5). Lista cerrada y pública: la administración del catálogo tiene
+# una etiqueta legible por cada nombre, y un test obliga a que coincidan.
+CALCULADOS = frozenset({'documento_cumplimiento'})
 
 # Estados corriendo: el plazo aún no se ha cumplido ni agotado. Sirve también
 # para decidir si una suspensión sigue viva — no hace falta guardar ningún flag
@@ -188,6 +206,22 @@ class EstadoPlazoSolicitud(EstadoPlazo):
                                               # viva más antigua
     dias_suspendidos: int = 0                 # días hábiles de la unión de intervalos
     fecha_limite_sin_suspender: Optional[date] = None
+
+
+@dataclass(kw_only=True)
+class EstadoPlazoActo(EstadoPlazoSolicitud):
+    """El plazo de resolver de un acto (#930, ADR-049 §E, D11).
+
+    Hereda los cuatro datos de suspensión porque la barra los necesita (dónde
+    acababa el plazo, cuánto se ha estirado, si está parado): hoy valen
+    siempre «sin suspender» y #796 los rellena sin cambiar la forma. N2b, al
+    retirar el plazo de la solicitud, funde las dos clases en una.
+
+    Sin `documento_cumplimiento_id`: las barras solo pintan la fecha.
+    """
+    acto: str                            # tipo atómico: 'AAP'
+    fase_resolutora: str                 # código de la fase que lo resuelve, exista o no
+    fase_resolutora_id: Optional[int]    # None mientras esa fase no existe
 
 
 @dataclass(frozen=True)
@@ -341,7 +375,119 @@ def obtener_estado_plazo_solicitud(solicitud, ctx=None, variables=None) -> Estad
         fecha_ini,
         hoy + timedelta(days=_margen_dias([entrada] + [e for _, e, _ in causas])),
     )
+    return _estado_con_suspensiones(solicitud, entrada, disparo, causas, inhabiles, hoy)
 
+
+def obtener_estado_plazo_acto(acto, ctx=None, variables=None) -> EstadoPlazoActo:
+    """
+    Estado del plazo máximo para resolver y notificar un acto (arts. 21.2 y
+    40.4 LPACAP; #930, ADR-049 §E).
+
+    Se mide con la fila atómica del catálogo (`<expediente>/<siglas del acto>`)
+    desde el escrito de la solicitud, y se cumple con el documento que acredita
+    la notificación al titular en la fase que resuelve el acto
+    (`{"calculado": "documento_cumplimiento"}`). Existe desde el día 1: antes
+    de que nazca esa fase no hay cumplimiento y el plazo corre.
+
+    Args:
+        acto:      `actos_solicitud.ActoSolicitud`.
+        ctx:       ExpedienteContext. Construye variables internamente.
+        variables: Dict de variables pre-construido. Tiene precedencia sobre ctx.
+    """
+    return _plazos_de_actos([acto], _variables_de(ctx, variables))[0]
+
+
+def plazos_de_la_solicitud(solicitud, ctx=None, variables=None) -> list[EstadoPlazoActo]:
+    """
+    Los plazos de resolver de una solicitud, uno por acto y en su orden (D11).
+
+    La API de lectura de las barras (#922): la caja de la solicitud las pinta
+    todas; la de una fase, las de los actos que ella resuelve
+    (`fase_resolutora == su código`). Un acto sin fila de catálogo
+    (INTERESADO, RECURSO…) sale con SIN_PLAZO. El resultado no se guarda
+    nunca: se calcula en cada lectura.
+
+    Catálogo y calendario de inhábiles se cargan una sola vez para todos los
+    actos. Lo demás lo lee del árbol ya cargado (`opciones_solicitud()`).
+    """
+    from app.services.actos_solicitud import actos_de
+
+    if solicitud is None or isinstance(solicitud, dict):
+        return []
+    return _plazos_de_actos(actos_de(solicitud), _variables_de(ctx, variables))
+
+
+def _plazos_de_actos(actos: list, variables: dict) -> list[EstadoPlazoActo]:
+    """Núcleo de las dos entradas del acto: selecciona la fila y el disparo de
+    cada uno, carga el calendario una vez para todo el rango y mide."""
+    from app.services.actos_solicitud import fase_de, fase_resolutora
+
+    if not actos:
+        return []
+
+    entradas = _cargar_entradas('SOLICITUD')
+    medibles = {}   # índice del acto → (entrada, disparo)
+    for i, acto in enumerate(actos):
+        entrada = _seleccionar_catalogo(acto, 'SOLICITUD', variables,
+                                        entradas=entradas, camino=_camino_acto(acto))
+        if entrada is None:
+            continue
+        disparo = _resolver_campo_fecha(acto, entrada.campo_fecha or {})
+        if disparo is not None:
+            medibles[i] = (entrada, disparo)
+
+    hoy = _hoy()
+    inhabiles = frozenset()
+    if medibles:
+        inhabiles = _obtener_inhabiles_bd(
+            min(d for _, d in medibles.values()),
+            hoy + timedelta(days=_margen_dias([e for e, _ in medibles.values()])),
+        )
+
+    resultado = []
+    for i, acto in enumerate(actos):
+        fase = fase_de(acto)
+        identidad = {
+            'acto': acto.siglas,
+            'fase_resolutora': fase_resolutora(acto.solicitud, acto.siglas),
+            'fase_resolutora_id': fase.id if fase is not None else None,
+        }
+        if i not in medibles:
+            resultado.append(EstadoPlazoActo(
+                estado='SIN_PLAZO', efecto='NINGUNO',
+                fecha_limite=None, dias_restantes=None, **identidad,
+            ))
+            continue
+        entrada, disparo = medibles[i]
+        # Sin suspensión hasta #796, que rellena aquí las causas del acto.
+        resultado.append(_estado_con_suspensiones(
+            acto, entrada, disparo, (), inhabiles, hoy,
+            clase=EstadoPlazoActo, **identidad,
+        ))
+    return resultado
+
+
+def _camino_acto(acto) -> str:
+    """`<tipo de expediente>/<siglas del acto>` (`Distribucion/AAP`): el camino
+    de su solicitud con el tipo atómico en lugar de la combinación."""
+    expediente = compilar_camino(acto.solicitud, 'SOLICITUD').split('/', 1)[0]
+    return f'{expediente}/{_segmento(acto.siglas)}'
+
+
+def _estado_con_suspensiones(elemento, entrada, disparo: date, causas,
+                             inhabiles: frozenset, hoy: date,
+                             clase=EstadoPlazoSolicitud, **extra) -> EstadoPlazoSolicitud:
+    """La medida de un plazo suspendible, con las suspensiones de `causas`
+    aplicadas (#930, D12: núcleo común, extraído de
+    `obtener_estado_plazo_solicitud`).
+
+    `causas` es la lista `[(tarea, entrada, disparo)]` de `_causas_suspension`;
+    vacía, el resultado sale «sin suspender» (`suspendido=False`,
+    `dias_suspendidos=0`, `fecha_limite_sin_suspender == fecha_limite`).
+    El calendario llega ya cargado —y debe cubrir también los disparos de las
+    causas—: así quien mide varios plazos a la vez lo carga una sola vez.
+    `clase` y `extra` dejan al acto añadir su identidad al resultado.
+    """
     bloques = _fusionar_intervalos([
         _intervalo_de(tarea, entrada_tarea, disparo_tarea, inhabiles, hoy)
         for tarea, entrada_tarea, disparo_tarea in causas
@@ -349,7 +495,7 @@ def obtener_estado_plazo_solicitud(solicitud, ctx=None, variables=None) -> Estad
     dias_suspendidos = _dias_suspendidos(bloques, inhabiles)
     vivo = next((b for b in bloques if b['vivo']), None)
 
-    medida = _medir(solicitud, entrada, disparo, inhabiles, hoy)
+    medida = _medir(elemento, entrada, disparo, inhabiles, hoy)
     limite = _aplicar_suspensiones(medida.vencimiento, bloques, inhabiles)
     medida_efectiva = replace(
         medida,
@@ -358,7 +504,7 @@ def obtener_estado_plazo_solicitud(solicitud, ctx=None, variables=None) -> Estad
     )
 
     estado, dias = _leer_estado(medida_efectiva, hoy, inhabiles)
-    return EstadoPlazoSolicitud(
+    return clase(
         estado=estado,
         efecto=_efecto(entrada),
         fecha_limite=limite,
@@ -371,6 +517,7 @@ def obtener_estado_plazo_solicitud(solicitud, ctx=None, variables=None) -> Estad
         dias_suspendidos=dias_suspendidos,
         fecha_limite_sin_suspender=medida.vencimiento,
         **_metadatos_entrada(entrada),
+        **extra,
     )
 
 
@@ -758,10 +905,13 @@ def _codigo_de_tipo(elemento, tipo_elemento: str) -> Optional[str]:
 
 
 def _cargar_entradas(tipo_elemento: str) -> list:
-    """Entradas activas del catálogo para un nivel, con condiciones eager-cargadas.
+    """Entradas activas del catálogo para un nivel, con condiciones y efecto
+    eager-cargados.
 
     Query única. La devuelve ordenada por prioridad (orden ASC, id ASC) para que
-    el matcher solo tenga que quedarse con la primera que case.
+    el matcher solo tenga que quedarse con la primera que case. El efecto va
+    en la misma consulta porque todo EstadoPlazo lo lee (`_efecto`,
+    `_metadatos_entrada`): sin él, cada efecto distinto costaba una más.
     """
     from app.models.catalogo_plazos import CatalogoPlazo
     from app.models.condiciones_plazo import CondicionPlazo
@@ -771,7 +921,8 @@ def _cargar_entradas(tipo_elemento: str) -> list:
         return (
             CatalogoPlazo.query
             .options(
-                joinedload(CatalogoPlazo.condiciones).joinedload(CondicionPlazo.variable)
+                joinedload(CatalogoPlazo.condiciones).joinedload(CondicionPlazo.variable),
+                joinedload(CatalogoPlazo.efecto_plazo),
             )
             .filter_by(tipo_elemento=tipo_elemento, activo=True)
             .order_by(CatalogoPlazo.orden.asc(), CatalogoPlazo.id.asc())
@@ -782,9 +933,14 @@ def _cargar_entradas(tipo_elemento: str) -> list:
         return []
 
 
-def _seleccionar_catalogo(elemento, tipo_elemento: str, variables_dict: dict, entradas=None):
+def _seleccionar_catalogo(elemento, tipo_elemento: str, variables_dict: dict, entradas=None,
+                          camino: Optional[str] = None):
     """
     Devuelve la primera entrada activa de catalogo_plazos aplicable al elemento.
+
+    `camino` admite uno ya compilado: el acto (#930) no es un elemento del
+    árbol y su camino no sale de `compilar_camino` sino de sustituir, en el de
+    su solicitud, la combinación por el tipo atómico.
 
     Desde #785 la identificación es estructural: se casa el camino SFTT real del
     elemento contra el patrón `camino` de cada entrada (comodín 'ANY', mismo
@@ -811,7 +967,7 @@ def _seleccionar_catalogo(elemento, tipo_elemento: str, variables_dict: dict, en
     """
     from app.services.operadores import camino_casa
 
-    camino_real = compilar_camino(elemento, tipo_elemento)
+    camino_real = camino or compilar_camino(elemento, tipo_elemento)
     if camino_real is None:
         return None
 
@@ -855,19 +1011,31 @@ def _get_tipo_elemento_codigo(elemento, tipo_elemento: str) -> Optional[str]:
 def _resolver_campo_fecha(elemento, campo_fecha: dict) -> Optional[date]:
     """Resuelve un señalador JSON → Documento.fecha_administrativa.
 
-    Vocabulario cerrado desde #788 — dos ramas, una por portador de fecha:
+    Vocabulario cerrado — tres ramas, una por portador de fecha (#788, y la
+    tercera de ADR-049 §E, #930):
 
       {'fk': 'documento_solicitud_id'}                       → Solicitud, por FK directa
       {'fk': 'documento_cierre_id'}                          → ídem, ancla de cierre (#778)
       {'rol': 'CONSUMIDO'|'PRODUCIDO'[, 'tipo_documento']}   → Tarea, por vínculo (ADR-010)
+      {'calculado': 'documento_cumplimiento'}                → propiedad calculada del
+                                                               elemento que devuelve el
+                                                               documento (el acto, #930)
 
-    ADR-048 no añade un tercer portador: una Fase finalizadora sigue sin FK
+    `fk` sigue significando clave foránea real; por eso lo calculado lleva
+    clave propia. Solo se aceptan los nombres de `CALCULADOS`: el nombre viene
+    de un dato editable y no se hace `getattr` con cualquier cosa. Uno
+    desconocido resuelve a None con un aviso en el log y **no se cura aquí**
+    (D5): esto es una lectura, varias veces por petición, y el catálogo
+    estructural se corrige con una migración; la administración lo rotula ⚠.
+    Un elemento sin la propiedad (una Tarea, una Solicitud) también da None.
+
+    ADR-048 no añade un portador: una Fase finalizadora sigue sin FK
     propia a `documento_solicitud_id`, así que su disparo se resuelve subiendo
     a `elemento.solicitud` cuando el atributo no está en la propia fase —no es
     la indirección `via_tarea_tipo` que #788 retiró (esa bajaba de trámite a
     tarea; esta sube de fase a la solicitud que ya la contiene por FK real,
     `Fase.solicitud_id`). El vocabulario sigue siendo el mismo `{'fk': ...}`,
-    solo cambia de qué objeto se lee.
+    solo cambia de qué objeto se lee. El acto (`ActoSolicitud`) sube igual.
 
     Lo usan los dos señaladores de la entrada, el del disparo (`campo_fecha`) y el
     del cumplimiento (`campo_fecha_cumplimiento`): el vocabulario es el mismo
@@ -876,9 +1044,15 @@ def _resolver_campo_fecha(elemento, campo_fecha: dict) -> Optional[date]:
     if not campo_fecha:
         return None
 
+    calculado = campo_fecha.get('calculado')
     rol = campo_fecha.get('rol')
 
-    if rol:
+    if calculado:
+        if calculado not in CALCULADOS:
+            log.warning('plazos: propiedad calculada desconocida «%s»', calculado)
+            return None
+        doc = getattr(elemento, calculado, None)
+    elif rol:
         doc = _documento_por_rol(elemento, rol, campo_fecha.get('tipo_documento'))
     else:
         fk_col = campo_fecha.get('fk', '')

@@ -3,7 +3,7 @@
     "version": "6.6",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-09-23",
+    "fecha_actualizacion": "2026-09-24",
     "ref_diseño": [
       "docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md",
       "docs/referencia/DISEÑO_CONSULTAS_ORGANISMOS.md",
@@ -478,7 +478,7 @@
           "descripcion": "Notificación a interesados de la resolución adoptada",
           "tareas_indicativas": ["NOTIFICAR"],
           "patron": "B (solo NOTIFICAR)",
-          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Se notifica al titular u otro interesado, según la solicitud."
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Se notifica al titular u otro interesado, según la solicitud. El NOTIFICAR de este trámite es la notificación al titular: de ella depende el cumplimiento del plazo de resolver de los actos que resuelve esta fase (arts. 21.2 y 40.4 LPACAP; ADR-049 §E, #930). El destinatario múltiple lo modela N5."
         },
         {
           "codigo": "PUBLICACION",
@@ -583,7 +583,7 @@
           "descripcion": "Notificación a interesados de la resolución de AAP adoptada.",
           "tareas_indicativas": ["NOTIFICAR"],
           "patron": "B (solo NOTIFICAR)",
-          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Se notifica al titular u otro interesado, según la solicitud."
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Se notifica al titular u otro interesado, según la solicitud. El NOTIFICAR de este trámite es la notificación al titular: de ella depende el cumplimiento del plazo de resolver del acto AAP (arts. 21.2 y 40.4 LPACAP; ADR-049 §E, #930). El destinatario múltiple lo modela N5."
         },
         {
           "codigo": "PUBLICACION",
@@ -615,7 +615,7 @@
           "descripcion": "Notificación a interesados de la resolución de AAC adoptada.",
           "tareas_indicativas": ["NOTIFICAR"],
           "patron": "B (solo NOTIFICAR)",
-          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Sin PUBLICACION: a diferencia de RESOLUCION_AAP, el art. 131.8 RD 1955/2000 solo exige notificar, no publicar (#918). Se notifica al titular u otro interesado, según la solicitud."
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Sin PUBLICACION: a diferencia de RESOLUCION_AAP, el art. 131.8 RD 1955/2000 solo exige notificar, no publicar (#918). Se notifica al titular u otro interesado, según la solicitud. El NOTIFICAR de este trámite es la notificación al titular: de ella depende el cumplimiento del plazo de resolver del acto AAC (arts. 21.2 y 40.4 LPACAP; ADR-049 §E, #930). El destinatario múltiple lo modela N5."
         }
       ]
     }

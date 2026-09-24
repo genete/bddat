@@ -24,10 +24,11 @@
                       y mismo marcado que el anterior (macro `senalador`
                       compartida), con matices: el rol admite «ninguno» —sin
                       señalador el plazo nunca alcanza CUMPLIDO, que es lo
-                      correcto en TABLON_AYUNTAMIENTOS—, en SOLICITUD el FK es
-                      el de cierre (no el de la solicitud), y en FASE queda fijo
-                      a NULL sin selección: no hay hoy cierre propio por fase
-                      (issue pendiente de abrir, ADR-048 §B).
+                      correcto en TABLON_AYUNTAMIENTOS—, en SOLICITUD es
+                      calculado (la notificación al titular en la fase que
+                      resuelve el acto, #930) y lo fija el servidor sin que
+                      viaje en el formulario, y en FASE queda fijo a NULL sin
+                      selección (ADR-048 §B; filas que se retiran en N2b).
 
    Compartidos por el modal de alta (listado.html) y el fragmento de edición
    (_editar_fragmento.html) para no duplicar el marcado.
@@ -176,10 +177,14 @@
         <label class="form-label fw-semibold small">{{ titulo }}</label>
     </div>
 
-    {# ---- SOLICITUD — FK único a documentos, sin selección posible ---- #}
+    {# ---- SOLICITUD — valor fijo por nivel, sin selección posible: el disparo
+           es la FK al escrito de solicitud; el cumplimiento, calculado (#930) y
+           fijado por el servidor, así que no viaja en el formulario ---- #}
     <div class="col-12" data-nivel-block="SOLICITUD" {% if nivel_actual != 'SOLICITUD' %}style="display:none"{% endif %}>
+        {% if fk_solicitud %}
         <input type="hidden" name="{{ name_prefix }}_fk" value="{{ fk_solicitud }}"
                {% if nivel_actual != 'SOLICITUD' %}disabled{% endif %}>
+        {% endif %}
         <div class="form-text">{{ ayuda_solicitud }}</div>
     </div>
 
@@ -248,9 +253,9 @@
 
 {% macro campo_cumplimiento(id_prefix, nivel_actual, cc_rol, cc_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map) %}
 {{ senalador(id_prefix, 'campo_cumplimiento', 'Documento que acredita el cumplimiento', nivel_actual,
-             'documento_cierre_id',
-             'Certificado de cierre de la solicitud: acredita que hubo notificación —o intento acreditado— a todos los interesados (art. 40.4 LPACAP).',
+             none,
+             'Calculado: documento que acredita la notificación al titular en la fase que resuelve este tipo de solicitud (acto) — arts. 21.2 y 40.4 LPACAP.',
              cc_rol, cc_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map,
              obligatorio=false,
-             ayuda_fase='Sin cierre propio por fase todavía (issue pendiente de abrir, ADR-048 §B): el plazo de esta fase solo puede estar en curso o vencido, nunca cumplido.') }}
+             ayuda_fase='Sin cierre propio por fase (ADR-048 §B): el plazo de esta fase solo puede estar en curso o vencido, nunca cumplido. El plazo de resolver es del acto (ADR-049): estas filas se retiran.') }}
 {% endmacro %}

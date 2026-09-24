@@ -16,13 +16,14 @@ BD de tests con rollback por SAVEPOINT (app_ctx) + fs_tmp para el movimiento
 físico de `mover_a_esftt`. Los endpoints HTTP están en test_928_api_notificar.py.
 """
 import pytest
-from sqlalchemy import event, text
+from sqlalchemy import text
 
 from app import db
 from app.models.documentos import Documento
 from app.models.notificaciones import Notificacion
 from app.models.tipos_documentos import TipoDocumento
 from app.services import mutaciones_arbol as svc
+from tests.conftest import contar_consultas
 
 
 @pytest.fixture
@@ -424,21 +425,6 @@ def test_pdf_polivalente_ambos_ficheros_validos_y_cada_fecha_la_suya(
 # Sin N+1 en el árbol (#907): el coste no crece con el número de NOTIFICAR
 # ---------------------------------------------------------------------------
 
-def _contar_consultas(funcion):
-    contador = {'n': 0}
-
-    def _uno(*_args, **_kwargs):
-        contador['n'] += 1
-
-    motor = db.engine
-    event.listen(motor, 'before_cursor_execute', _uno)
-    try:
-        funcion()
-    finally:
-        event.remove(motor, 'before_cursor_execute', _uno)
-    return contador['n']
-
-
 def _anadir_notificar_completa(arbol, fase):
     tramite = arbol.tramite(fase, 'NOTIFICACION')
     tarea = arbol.tarea(tramite, 'NOTIFICAR')
@@ -471,11 +457,11 @@ def test_arbol_sin_consulta_extra_por_notificar(arbol_aislado, ruta):
         db.session.expunge_all()
         assert getattr(arbol_expediente, ruta)(arg) is not None
 
-    con_una = _contar_consultas(construir)
+    con_una = contar_consultas(construir)
     from app.models.fases import Fase
     fase = db.session.get(Fase, fase_id)
     for _ in range(3):
         _anadir_notificar_completa(arbol_aislado, fase)
-    con_cuatro = _contar_consultas(construir)
+    con_cuatro = contar_consultas(construir)
 
     assert con_cuatro == con_una, (con_una, con_cuatro)

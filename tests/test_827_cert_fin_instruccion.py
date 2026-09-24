@@ -518,15 +518,18 @@ class TestBisagra:
         from app.services.informe_instruccion import codigos_fase_finalizadora
 
         class _SolFake:
+            # `tipos_simples` porque el mapa lee los actos (#930); sin `fases`:
+            # ninguno de estos tipos admite resolución partida.
             def __init__(self, tipo):
                 self.tipo_solicitud = tipo
+                self.tipos_simples = tipo.siglas.split('+') if tipo else []
 
         interesado = TipoSolicitud.query.filter_by(siglas='INTERESADO').first()
         aap = TipoSolicitud.query.filter_by(siglas='AAP').first()
         aac_dup = TipoSolicitud.query.filter_by(siglas='AAC+DUP').first()
         dup = TipoSolicitud.query.filter_by(siglas='DUP').first()
-        if interesado is None or aap is None or aac_dup is None or dup is None:
-            pytest.skip('Catálogo de tipos_solicitudes incompleto en esta BD')
+        assert None not in (interesado, aap, aac_dup, dup), (
+            'la semilla debe traer INTERESADO, AAP, AAC+DUP y DUP en tipos_solicitudes')
 
         assert codigos_fase_finalizadora(_SolFake(interesado)) == ['RECONOCIMIENTO_INTERESADO']
         assert codigos_fase_finalizadora(_SolFake(aap)) == ['RESOLUCION']

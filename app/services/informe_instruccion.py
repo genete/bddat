@@ -87,6 +87,7 @@ from typing import Optional
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.services import estado_dominio as sem
+from app.services.actos_solicitud import actos_de, fase_resolutora
 
 log = logging.getLogger(__name__)
 
@@ -95,52 +96,6 @@ log = logging.getLogger(__name__)
 PENDIENTE = 'PENDIENTE'
 SALVADO   = 'SALVADO'
 PASA      = 'PASA'
-
-# Qué fases finalizadoras habilitan el certificado en cada solicitud — son los
-# sujetos contra los que se audita. De mapa 1:1 a listas (#914, ADR-046): la
-# premisa de ADR-043 §C ("las dos finalizadoras nunca conviven en la misma
-# solicitud") queda superada por ADR-046 — AAC+DUP y AAP+AAC+DUP resuelven por
-# RESOLUCION *y* RESOLUCION_DUP a la vez, hermanas; DUP sola resuelve solo por
-# RESOLUCION_DUP (sustituye a RESOLUCION); AAP+DUP lleva las dos aunque la
-# emisión de RESOLUCION_DUP quede diferida (ADR-045 §C) — la fase existe y se
-# audita igual, el diferimiento lo impone su propio bloqueo de motor (#891),
-# no la ausencia de la fase. RECONOCIMIENTO_INTERESADO sigue siendo la única
-# de la solicitud INTERESADO, paralela con vida propia. Este mapa y las filas
-# de `reglas_motor` de cada finalizadora dicen lo mismo por duplicado a
-# propósito —allí el sujeto documenta la regla para el supervisor, aquí se
-# elige contra qué auditar—, y el aviso de arranque de
-# `app/checks/catalogo_requerido.py` vigila que no diverjan si aparece otra.
-_FASES_FINALIZADORAS_POR_SIGLAS = {
-    'INTERESADO': ['RECONOCIMIENTO_INTERESADO'],
-    'DUP': ['RESOLUCION_DUP'],
-    'AAC+DUP': ['RESOLUCION', 'RESOLUCION_DUP'],
-    'AAP+DUP': ['RESOLUCION', 'RESOLUCION_DUP'],
-}
-_FASE_FINALIZADORA_DEFECTO = 'RESOLUCION'
-
-# AAP+AAC y AAP+AAC+DUP NO están en el dict estático de arriba (#918, ADR-047 §B):
-# a diferencia de las combinaciones DUP (RESOLUCION + RESOLUCION_DUP siempre las
-# dos, sin elección), aquí conjunta vs. partida es una elección del técnico en
-# tiempo de ejecución — no cabe en un lookup estático por siglas. Se mira el árbol:
-# si ya existe RESOLUCION_AAP o RESOLUCION_AAC, esas; si no hay elección todavía,
-# conjunta por defecto (RESOLUCION), mismo criterio que el resto de la creación de
-# fases en el árbol (nadie fuerza la elección antes de tiempo).
-#
-# Por eso mismo RESOLUCION_AAP/RESOLUCION_AAC no aparecen como VALOR en ningún
-# dict — el guardián de app/checks/catalogo_requerido.py que vigila "toda fase
-# finalizadora está en el mapa" no las vería y avisaría en falso; se le declara
-# aquí la excepción, junto al propio código que la crea (#918).
-_SIGLAS_RESOLUCION_PARTIBLE = {'AAP+AAC', 'AAP+AAC+DUP'}
-_CODIGOS_RESOLUCION_PARTIDA = ('RESOLUCION_AAP', 'RESOLUCION_AAC')
-
-
-def _codigos_resolucion_autorizacion(solicitud) -> list[str]:
-    """RESOLUCION (conjunta) o RESOLUCION_AAP/RESOLUCION_AAC (partida, las que
-    ya consten creadas) — #918, ADR-047 §B. Sin elección todavía, conjunta."""
-    existentes = {f.tipo_fase.codigo for f in solicitud.fases if f.tipo_fase}
-    partida = [c for c in _CODIGOS_RESOLUCION_PARTIDA if c in existentes]
-    return partida if partida else ['RESOLUCION']
-
 
 # Cómo se llama cada tipo de tarea dentro de una frase. `TipoTarea.nombre` es una
 # descripción, no un nombre —«Revisión técnica o jurídica de documentación con
@@ -245,23 +200,22 @@ class Informe:
 # ---------------------------------------------------------------------------
 
 def codigos_fase_finalizadora(solicitud) -> list[str]:
-    """Códigos de los `TipoFase` finalizadores que esta solicitud abrirá.
+    """Códigos de los `TipoFase` finalizadores que esta solicitud abrirá — son
+    los sujetos contra los que se audita.
 
-    Casi siempre una lista de un elemento; dos en las combinaciones con DUP
-    que llevan RESOLUCION y RESOLUCION_DUP como hermanas (#914, ADR-046), o
-    en AAP+AAC/AAP+AAC+DUP resueltas partidas (RESOLUCION_AAP+RESOLUCION_AAC,
-    #918, ADR-047 §B) — ahí no es lookup estático, mira el árbol.
+    Las fases que resuelven sus actos, sin repetidas y en orden de aparición
+    (#930, D4): el mapa acto → fase vive en `actos_solicitud`, fuente única.
+    Casi siempre una; dos en las combinaciones con DUP, que llevan RESOLUCION y
+    RESOLUCION_DUP como hermanas (#914, ADR-046), y en AAP+AAC/AAP+AAC+DUP
+    resueltas partidas (RESOLUCION_AAP+RESOLUCION_AAC, #918, ADR-047 §B). Con
+    la partida a medias (solo consta RESOLUCION_AAP) se audita también la que
+    falta: sus reglas CREAR son las mismas, así que el veredicto no cambia.
+    Sin tipo, RESOLUCION.
     """
-    tipo_sol = solicitud.tipo_solicitud
-    siglas = tipo_sol.siglas if tipo_sol else None
-
-    if siglas in _SIGLAS_RESOLUCION_PARTIBLE:
-        codigos = _codigos_resolucion_autorizacion(solicitud)
-        if siglas == 'AAP+AAC+DUP':
-            codigos = codigos + ['RESOLUCION_DUP']
-        return codigos
-
-    return _FASES_FINALIZADORAS_POR_SIGLAS.get(siglas, [_FASE_FINALIZADORA_DEFECTO])
+    codigos = list(dict.fromkeys(
+        fase_resolutora(solicitud, acto.siglas) for acto in actos_de(solicitud)
+    ))
+    return codigos or ['RESOLUCION']
 
 
 def revisar(solicitud) -> Informe:

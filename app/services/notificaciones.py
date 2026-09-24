@@ -12,6 +12,12 @@ Dos reglas uniformes, sin ramificar por canal (ADR-049 §C):
   - Efectos frente al interesado: la fecha del `PRODUCIDO`, si su tipo es un
     `JUSTIFICANTE_FINAL` y el resultado da la notificación por efectuada.
 
+Y una regla de agregado, la del plazo de resolver (#930, N2; ADR-049 §E): el
+acto se cumple con el documento que acredita la notificación al titular, que
+es el cumplimiento de la `NOTIFICAR` del trámite `NOTIFICACION` de la fase que
+lo resuelve (`documento_cumplimiento_fase`). Vive aquí y no en el acto
+(`services/actos_solicitud.py`), que solo delega: la regla existe una sola vez.
+
 Hueco para N5 (`Tarea.notificacion` → lista, un destinatario por fila): la
 firma de cada función admitirá un `destinatario` opcional cuando llegue —
 cambia este servicio, no sus llamadores.
@@ -145,6 +151,72 @@ def fecha_efectos(tarea) -> Optional[FechaNotificacion]:
     if documento.fecha_administrativa is None:
         return None
     return FechaNotificacion(fecha=documento.fecha_administrativa, documento=documento)
+
+
+# ---------------------------------------------------------------------------
+# La notificación al titular y el cumplimiento del plazo del acto (#930, N2)
+# ---------------------------------------------------------------------------
+
+# El trámite cuya NOTIFICAR es la de la resolución al titular (D2). Invariante
+# en código, no dato: las cinco fases finalizadoras lo tienen con una
+# NOTIFICAR, y un test de catálogo protege la convención — si una finalizadora
+# futura la rompiera, el plazo de su acto quedaría VENCIDO sin explicación.
+# Las demás NOTIFICAR de una finalizadora (NOTIFICACION_ORGANISMOS,
+# NOTIFICACION_INTERESADOS, REQUERIMIENTO_RBDA_DEFINITIVA, publicaciones) tienen
+# su propio plazo de cursar (art. 40.2), pero no cierran el de resolver.
+TRAMITE_NOTIFICACION_TITULAR = 'NOTIFICACION'
+
+
+def _codigo(tipo) -> Optional[str]:
+    return tipo.codigo if tipo is not None else None
+
+
+def _es_notificar_del_titular(fase, tramite, tarea) -> bool:
+    """Núcleo del predicado, con la ascendencia ya en la mano: quien baja por
+    el árbol (`documento_cumplimiento_fase`) no tiene que volver a subir."""
+    return (
+        _codigo(tarea.tipo_tarea) == 'NOTIFICAR'
+        and _codigo(tramite.tipo_tramite) == TRAMITE_NOTIFICACION_TITULAR
+        and fase.tipo_fase is not None and bool(fase.tipo_fase.es_finalizadora)
+    )
+
+
+def es_notificar_del_titular(tarea) -> bool:
+    """La `NOTIFICAR` del trámite `NOTIFICACION` de una fase finalizadora: la
+    notificación de la resolución al titular. Es el único sitio que lo dice;
+    lo usan el cálculo del cumplimiento y el indicador del payload de
+    `…/notificar` (D10). Describe qué notificación es, no qué plazo cierra."""
+    tramite = tarea.tramite
+    return _es_notificar_del_titular(tramite.fase, tramite, tarea)
+
+
+def documento_cumplimiento_fase(fase) -> Optional['Documento']:  # noqa: F821
+    """Documento que acredita la notificación al titular de lo que resuelve
+    `fase`, o `None`.
+
+    El cumplimiento (`fecha_cumplimiento`) más antiguo entre las `NOTIFICAR`
+    del titular de la fase (empate: menor `documento.id`). `None` si la fase
+    no es finalizadora, si no tiene esa `NOTIFICAR` o si ninguna tiene un
+    justificante de cumplimiento con fecha (BANDEJA y SIR no lo son). No lee
+    `notificaciones.resultado` ni el canal: lo hereda de `fecha_cumplimiento`.
+
+    Único punto de entrada del cumplimiento del acto: N4 antepondrá aquí la
+    lectura del `CERT_CUMPLIMIENTO_FASE` emitido, y el acto y el plazo lo
+    heredarán sin cambios. `plazos.py` no sabe que existen certificados.
+    """
+    if fase.tipo_fase is None or not fase.tipo_fase.es_finalizadora:
+        return None
+    candidatos = [
+        cumplimiento
+        for tramite in fase.tramites
+        for tarea in tramite.tareas
+        if _es_notificar_del_titular(fase, tramite, tarea)
+        and (cumplimiento := fecha_cumplimiento(tarea)) is not None
+    ]
+    # N4: aquí, antes de calcular, se leerá el CERT_CUMPLIMIENTO_FASE emitido.
+    if not candidatos:
+        return None
+    return min(candidatos, key=lambda c: (c.fecha, c.documento.id)).documento
 
 
 def estado_sede(tarea) -> Optional[str]:

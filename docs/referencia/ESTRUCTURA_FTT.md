@@ -1,9 +1,9 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-09-23 (#928 — COMUNICACION_INICIO → COMUNICACION_INICIO_ADMISION; destinatario del NOTIFICAR en las notas del JSON)
+> Última sincronización: 2026-09-24 (#930 — el NOTIFICAR de NOTIFICACION en RESOLUCION/_AAP/_AAC es la notificación al titular que cumple el plazo del acto)
 
-**Versión:** 6.6 | **Fecha:** 2026-09-23
+**Versión:** 6.6 | **Fecha:** 2026-09-24
 
 Este documento es la versión legible por humanos del JSON estructural. El JSON es la fuente de verdad para código e IA; este MD es la referencia de consulta rápida.
 
@@ -202,7 +202,7 @@ aparte (#778, no fijado todavía).
 | Trámite | Patrón | Tareas indicativas | Nota |
 |---|---|---|---|
 | `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION — #373) | — |
-| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Se notifica al titular u otro interesado, según la solicitud |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Se notifica al titular u otro interesado, según la solicitud. Es la notificación al titular: de ella depende el cumplimiento del plazo de resolver de los actos que resuelve esta fase (arts. 21.2 y 40.4 LPACAP, #930) |
 | `PUBLICACION` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO | — |
 
 ---
@@ -237,7 +237,7 @@ aparte (#778, no fijado todavía).
 | Trámite | Patrón | Tareas indicativas | Nota |
 |---|---|---|---|
 | `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION de la solicitud) | — |
-| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Se notifica al titular u otro interesado, según la solicitud |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Se notifica al titular u otro interesado, según la solicitud. Es la notificación al titular: de ella depende el cumplimiento del plazo de resolver del acto AAP (arts. 21.2 y 40.4 LPACAP, #930) |
 | `PUBLICACION` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO | — |
 
 Mismo código de trámite `ELABORACION` que `RESOLUCION` — colisión de nombre de fichero resuelta vía `nombres_documentos.py:_SUSTITUCIONES` (#918). **Bloqueos de motor:** duplicado quirúrgico de los 5 de `RESOLUCION` (sujeto `ANY/ANY/RESOLUCION_AAP`), más exclusión mutua con `RESOLUCION` al `CREAR` la fase (condición `existe_resolucion_conjunta`, ADR-047 §B). Publica (art. 128.3 RD 1955/2000) igual que `RESOLUCION`, a diferencia de `RESOLUCION_AAC`.
@@ -250,6 +250,6 @@ Mismo código de trámite `ELABORACION` que `RESOLUCION` — colisión de nombre
 | Trámite | Patrón | Tareas indicativas | Nota |
 |---|---|---|---|
 | `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION de la solicitud) | — |
-| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Sin PUBLICACION: el art. 131.8 RD 1955/2000 solo exige notificar (#918). Se notifica al titular u otro interesado, según la solicitud |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Sin PUBLICACION: el art. 131.8 RD 1955/2000 solo exige notificar (#918). Se notifica al titular u otro interesado, según la solicitud. Es la notificación al titular: de ella depende el cumplimiento del plazo de resolver del acto AAC (arts. 21.2 y 40.4 LPACAP, #930) |
 
 Sin `PUBLICACION`: a diferencia de `RESOLUCION_AAP`, el art. 131.8 RD 1955/2000 solo exige notificar, no publicar (#918). Mismo código de trámite `ELABORACION` que `RESOLUCION` — colisión resuelta vía `nombres_documentos.py:_SUSTITUCIONES`. **Bloqueos de motor:** duplicado quirúrgico de los 5 de `RESOLUCION` (sujeto `ANY/ANY/RESOLUCION_AAC`); exclusión mutua con `RESOLUCION` al `CREAR` la fase (condición `existe_resolucion_conjunta`). Más la **regla de orden AAP→AAC** (ADR-047 §F, RD 1955/2000 arts. 128.4/130.1/131.1 párr. 2): `RESOLUCION_AAP` de la misma solicitud debe constar finalizada favorable. Por límite del motor —no compila sujeto a nivel de tarea—, la regla ancla en `CREAR` el trámite `ELABORACION` (sujeto `ANY/RESOLUCION_AAC/ELABORACION`), **no** en la tarea `ELABORAR` como el resto de reglas de orden de este documento.

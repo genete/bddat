@@ -2136,16 +2136,6 @@ def _fecha_notificacion_json(fn) -> dict | None:
     return {'fecha': fn.fecha.isoformat(), 'documento_id': fn.documento.id} if fn else None
 
 
-def _es_notificacion_del_titular(tarea) -> bool:
-    """[N2] La NOTIFICAR del trámite NOTIFICACION de una fase finalizadora: la
-    notificación de la resolución al titular, cuyo cumplimiento cierra el plazo
-    máximo para resolver y notificar."""
-    tramite = tarea.tramite
-    fase = tramite.fase
-    return (tramite.tipo_tramite is not None and tramite.tipo_tramite.codigo == 'NOTIFICACION'
-            and fase.tipo_fase is not None and bool(fase.tipo_fase.es_finalizadora))
-
-
 def _notificar_payload(tarea) -> dict:
     """Payload del contenedor NOTIFICAR (#928, «Huecos para el frontend»).
     `notificaciones` es una lista de 0 ó 1 elementos hasta N5."""
@@ -2169,7 +2159,9 @@ def _notificar_payload(tarea) -> dict:
             'cumplimiento': _fecha_notificacion_json(notif_svc.fecha_cumplimiento(tarea)),
             'efectos': _fecha_notificacion_json(notif_svc.fecha_efectos(tarea)),
         },
-        'es_notificacion_del_titular': _es_notificacion_del_titular(tarea),
+        # La notificación de la resolución al titular (#930, D10): el mismo
+        # predicado que decide el cumplimiento del plazo del acto, una sola regla.
+        'es_notificacion_del_titular': notif_svc.es_notificar_del_titular(tarea),
         'sede': {'aplica': sede is not None, 'estado': sede},
         'estado': estado_tarea(tarea),
         'resultados_validos': list(notif_svc.resultados_validos(notif.canal)) if notif else [],

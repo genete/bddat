@@ -686,3 +686,30 @@ def arbol_aislado(app_ctx, fs_tmp):
     """
     from app import db
     return ArbolESFTT(db)
+
+
+# ---------------------------------------------------------------------------
+# Conteo de consultas SQL (#907, #928, #930)
+# ---------------------------------------------------------------------------
+
+def contar_consultas(funcion) -> int:
+    """Sentencias SQL que emite `funcion()`, contadas en el motor.
+
+    Para tests de N+1: se compara el conteo de dos variantes (con una y con
+    cuatro NOTIFICAR; con y sin el plazo del acto), no un número absoluto, que
+    cambiaría con cualquier eager-load ajeno a lo que se prueba.
+    """
+    from sqlalchemy import event
+
+    contador = {'n': 0}
+
+    def _uno(*_args, **_kwargs):
+        contador['n'] += 1
+
+    motor = _db.engine
+    event.listen(motor, 'before_cursor_execute', _uno)
+    try:
+        funcion()
+    finally:
+        event.remove(motor, 'before_cursor_execute', _uno)
+    return contador['n']

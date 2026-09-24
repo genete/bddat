@@ -2,7 +2,7 @@
 
 > **Fuente:** Ley 39/2015, de 1 de octubre (LPACAP) — texto consolidado BOE. Leyes sectoriales pendientes de extracción (ver §2).
 > **Aplica a:** Motor de plazos (`app/services/plazos.py`), ContextAssembler, diseño de BD de plazos.
-> **Estado:** §1 completo (sesión 2026-04-01; §1.1 art. 22 corregido 2026-08-19 — #788 separa 22.1 potestativa de 22.2 imperativa, antes fundidas). §2.1 LSE, §2.2 RD1955, §2.3 RD-ley 23/2020, §2.4 RD-ley 6/2022+20/2022, §2.5 Ley 21/2013 EIA completos (sesión 2026-04-09). Decreto 9/2011, DL 2/2018, RAT y LAT revisados — sin plazos de autorización propios, notas en listado §2 (sesión 2026-04-09). §2.6 Ley 2/2026 y §2.7 Decreto 356/2010 pendientes.
+> **Estado:** §1 completo (sesión 2026-04-01; §1.1 art. 22 corregido 2026-08-19 — #788 separa 22.1 potestativa de 22.2 imperativa, antes fundidas; art. 40 corregido 2026-09-24 — #930 separa cursar la notificación (40.2) del plazo máximo para notificar la resolución (21.2, 40.4)). §2.1 LSE, §2.2 RD1955, §2.3 RD-ley 23/2020, §2.4 RD-ley 6/2022+20/2022, §2.5 Ley 21/2013 EIA completos (sesión 2026-04-09). Decreto 9/2011, DL 2/2018, RAT y LAT revisados — sin plazos de autorización propios, notas en listado §2 (sesión 2026-04-09). §2.6 Ley 2/2026 y §2.7 Decreto 356/2010 pendientes.
 
 ---
 
@@ -127,8 +127,8 @@ ordinaria que corre dentro del plazo.
 > del actual 22.1.d).
 
 #### Art. 40 — Obligación de notificar
-- La notificación debe cursarse en el plazo de **10 días hábiles** desde que se dicta el acto.
-- La obligación de "resolver y notificar" (art. 21) no se cumple solo con dictar la resolución — también exige notificarla dentro de este plazo.
+- Toda notificación debe cursarse en el plazo de **10 días hábiles** desde que se dicta el acto (40.2). Es un plazo de cada notificación, no el plazo para resolver.
+- La obligación de "resolver y notificar" (art. 21.1) se cumple dentro del plazo máximo del **art. 21.2**, que es el plazo en que debe *notificarse* la resolución (el 21.3.b solo fija desde cuándo se cuenta). A esos solos efectos basta la notificación con el texto íntegro de la resolución o el intento de notificación debidamente acreditado (**art. 40.4**). En BDDAT, el plazo es de cada acto y lo cumple la notificación al titular (ADR-049, #930).
 
 #### Art. 23 — Ampliación del plazo para resolver
 - Solo en casos excepcionales (agotados los medios del art. 21.5).
@@ -409,7 +409,7 @@ La resolución debe publicarse en BOE y en el Boletín Oficial de las provincias
 
 La autorización fija un **plazo** para que el titular solicite la AAC (aprobación del proyecto de ejecución): si vence sin solicitarla → **caducidad de la AAP** (art. 128.4). El titular puede pedir prórrogas por razones justificadas.
 
-> **Solicitud combinada `AAP+AAC` resuelta partida (ADR-047, #918 → #892/ADR-048):** cuando el técnico resuelve AAP y AAC en actos separados, cada uno lleva su propio plazo de 3 meses (art. 128 para AAP, art. 131.7 para AAC) desde la misma fecha de entrada de la solicitud — no un único plazo de 3 meses para toda la solicitud. `catalogo_plazos` sigue fijando el plazo único (`camino='ANY/AAP+AAC'`, art. 131.7) para el acto conjunto; para el camino partido, #892 añadió dos filas de nivel FASE (`ANY/ANY/RESOLUCION_AAP` y `ANY/ANY/RESOLUCION_AAC`, ADR-048) que heredan el disparo de la solicitud contenedora. El cumplimiento de esas filas queda NULL a propósito — sin cierre propio por fase todavía, issue pendiente de abrir — así que el plazo partido solo alcanza EN_PLAZO/VENCIDO, nunca CUMPLIDO.
+> **Solicitud combinada `AAP+AAC` (ADR-047, #918; ADR-049, #930):** cada acto lleva su propio plazo de 3 meses (art. 128 para AAP, art. 131.7 para AAC) desde la misma fecha de entrada de la solicitud, se resuelva conjunta o partida — no un único plazo para toda la solicitud. En `catalogo_plazos` son las filas atómicas `ANY/AAP` y `ANY/AAC`, y cada acto se cumple con la notificación al titular en la fase que lo resuelve (`RESOLUCION`, o `RESOLUCION_AAP`/`RESOLUCION_AAC` si es partida). La fila `ANY/AAP+AAC` y las dos de nivel FASE de #892 (`ANY/ANY/RESOLUCION_AAP`, `ANY/ANY/RESOLUCION_AAC`) quedan redundantes y las retira N2b.
 
 ---
 

@@ -4,7 +4,7 @@
 > **Estado:** En construcción — sesión inicial de diseño.
 > **Fuente de verdad:** `docs/NORMATIVA_PLAZOS.md` — todo contenido legal (plazos, artículos, constantes) extrae de ahí. En caso de discrepancia, prevalece `NORMATIVA_PLAZOS.md`.
 > Referencia de arquitectura: `DISEÑO_MOTOR_AGNOSTICO.md`
-> Última sincronización: 2026-08-21 (§1.1 NORMATIVA_PLAZOS.md — art. 22.1.a, la medida única de #778 / ADR-041)
+> Última sincronización: 2026-09-24 (§1.1 NORMATIVA_PLAZOS.md — art. 40: cursar (40.2) frente al plazo máximo de notificar la resolución (21.2, 40.4); §5.1 al día, #930 / ADR-049)
 
 ---
 
@@ -406,7 +406,7 @@ Estos controles son de integridad administrativa, no de plazo. Deben decidirse e
 
 ---
 
-### 3.2 Catálogo de plazos — CERRADO (campo_fecha 2026-04-19, condiciones_plazo #341 2026-04-30, camino SFTT #785 2026-08-17, niveles SOLICITUD/TAREA #788 2026-08-19, FASE finalizadora ADR-048/#892 2026-09-17)
+### 3.2 Catálogo de plazos — CERRADO (campo_fecha 2026-04-19, condiciones_plazo #341 2026-04-30, camino SFTT #785 2026-08-17, niveles SOLICITUD/TAREA #788 2026-08-19, FASE finalizadora ADR-048/#892 2026-09-17, plazo del acto y cumplimiento `calculado` ADR-049/#930 2026-09-24)
 
 > **Decisión:** Tabla separada `catalogo_plazos`, administrable por el Supervisor.
 
@@ -417,7 +417,7 @@ Motivación: un tipo de Fase o Trámite no tiene el plazo como atributo propio �
 ```
 catalogo_plazos
 ├── id
-├── tipo_elemento              ENUM(SOLICITUD, TAREA)  -- prefiltro SQL (#788)
+├── tipo_elemento              ENUM(SOLICITUD, FASE, TAREA)  -- prefiltro SQL (#788; FASE, ADR-048)
 ├── camino                     VARCHAR(250)  -- patrón ESFTT con comodín ANY (#785)
 ├── campo_fecha                JSONB  -- señalador del DISPARO (ver formato abajo)
 ├── campo_fecha_cumplimiento   JSONB  -- señalador del CUMPLIMIENTO, opcional (#778)
@@ -448,6 +448,34 @@ catalogo_plazos
 > PostgreSQL entre los motores considerados— y la asimetría entre dos columnas
 > con idéntica semántica tenía además una consecuencia práctica: `json` no
 > soporta el operador `=` en PostgreSQL, y `campo_fecha` ya se filtra así.
+
+#### El acto: la unidad del plazo de resolver (ADR-049 §E, #930)
+
+El plazo máximo de resolver no es de la solicitud ni de la fase: es de cada
+**acto**. Una solicitud `AAP+AAC+DUP` pide tres autorizaciones, cada una con su
+artículo y su plazo (3, 3 y 6 meses); un plazo del contenedor no puede ser
+correcto para las tres. El acto es cada tipo atómico de la solicitud
+(`Solicitud.tipos_simples`: `AAP+AAC` son dos actos aunque se resuelvan juntos),
+un valor derivado sin tabla (`services/actos_solicitud.py`).
+
+- **Fila:** la atómica del nivel SOLICITUD (`ANY/AAP`, `ANY/DUP`…). Las filas de
+  nivel SOLICITUD con `+` en el camino (las cuatro combinaciones) y las tres de
+  nivel FASE son huella del supuesto «una solicitud = un acto» y se retiran en
+  N2b; mientras tanto solo las lee la función antigua del plazo de solicitud.
+- **Disparo:** el escrito de la solicitud (art. 21.3.b). El plazo existe desde
+  el día 1, antes de que nazca la fase que lo resolverá — por eso no puede
+  colgar de la fase.
+- **Cumplimiento:** el documento que acredita la notificación al titular en la
+  fase que resuelve el acto (arts. 21.2 y 40.4): el justificante de
+  cumplimiento más antiguo de la `NOTIFICAR` del trámite `NOTIFICACION` de esa
+  fase (`notificaciones.documento_cumplimiento_fase`). Qué fase resuelve cada
+  acto lo dice `actos_solicitud.fase_resolutora`: `DUP` → `RESOLUCION_DUP`,
+  `INTERESADO` → `RECONOCIMIENTO_INTERESADO`, `AAP`/`AAC` →
+  `RESOLUCION_AAP`/`RESOLUCION_AAC` si la solicitud se resuelve partida, y el
+  resto → `RESOLUCION`. Dos actos resueltos por la misma fase reciben el mismo
+  documento.
+- **Lectura:** `plazos.plazos_de_la_solicitud(solicitud)`, uno por acto. El
+  resultado no se guarda: se calcula en cada lectura. Sin suspensión hasta #796.
 
 #### Identificación por camino SFTT (#785)
 
@@ -520,16 +548,26 @@ declaradas en el nivel equivocado. Fase también lo era, con una excepción
 acotada desde ADR-048: una fase **finalizadora** (`RESOLUCION_DUP`/AAP/AAC) es
 el acto, no taxonomía, aunque sigue sin FK propia a `documento_solicitud_id`
 — su disparo se resuelve subiendo a `Fase.solicitud` (FK real,
-`Fase.solicitud_id`, no una indirección de las que #788 retiró). `campo_fecha`
-no gana un tercer literal de vocabulario: sigue siendo `fk` o `rol`, solo
-cambia desde qué objeto se resuelve el `fk`.
+`Fase.solicitud_id`, no una indirección de las que #788 retiró). ADR-048 no
+añade un literal: sigue siendo `fk` o `rol`, solo cambia desde qué objeto se
+resuelve el `fk`.
+
+**Tercer portador, `calculado` (ADR-049 §E, #930).** El cumplimiento del acto
+no es una FK ni un vínculo: es una propiedad calculada del elemento que
+devuelve el documento (`ActoSolicitud.documento_cumplimiento`). `fk` sigue
+significando clave foránea real, así que lleva clave propia:
+`{"calculado": "documento_cumplimiento"}`. Solo vale un nombre de la lista
+cerrada `plazos.CALCULADOS`; uno desconocido resuelve a `None` con un aviso en el
+log, no se «cura» al leer y la administración lo rotula con ⚠. Sin `CHECK` en
+BD: lo sostienen los tests sobre las filas reales.
 
 El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Referencias por nivel:
 
 | Nivel | Referencia al documento de inicio | Referencia al de cumplimiento (#778) |
 |---|---|---|
-| `SOLICITUD` | `fk: documento_solicitud_id` — sin alternativa | `fk: documento_cierre_id` — sin alternativa |
-| `FASE` (finalizadora, ADR-048) | `fk: documento_solicitud_id` — resuelto vía `Fase.solicitud` | **NULL a propósito** — sin cierre propio por fase todavía (issue pendiente de abrir); el plazo no alcanza `CUMPLIDO` |
+| `SOLICITUD` (fila atómica = acto) | `fk: documento_solicitud_id` — sin alternativa; el acto lo resuelve subiendo a su solicitud | `calculado: documento_cumplimiento` — sin alternativa (#930) |
+| `SOLICITUD` (combinación, `+` en el camino) | ídem | `fk: documento_cierre_id` — ancla que nadie escribe; filas que se retiran en N2b |
+| `FASE` (finalizadora, ADR-048) | `fk: documento_solicitud_id` — resuelto vía `Fase.solicitud` | **NULL** — el plazo no alcanza `CUMPLIDO`; filas que se retiran en N2b (ADR-049) |
 | `TAREA` | `rol: CONSUMIDO` o `rol: PRODUCIDO` (vínculo en `documentos_tarea`, ADR-010), con `tipo_documento` opcional | ídem, o **nada** — y entonces el plazo no alcanza `CUMPLIDO` |
 
 > **Cada plazo se abre y se cierra en el mismo sitio (ADR-041 §D).** La estructura
@@ -546,18 +584,25 @@ El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Refer
 > con plazo cuyo documento de cierre viva necesariamente en otro trámite, es un
 > problema de modelado del ESFTT y se discute como tal.
 >
-> **El cierre del plazo de la solicitud es `documento_cierre_id`, no
-> `Fase(RESOLUCION).documento_resultado_id`** (ADR-041 §D bis): aquella es la
-> resolución y su fecha es la de dictar, anterior a la de notificar, y el art.
-> 21.3.b obliga a «resolver **y** notificar». El art. 40.4 fija con qué basta —la
-> notificación o el intento debidamente acreditado—, y con varios interesados hay
-> varios intentos: ninguno significa por sí solo «la solicitud está cerrada», de
-> ahí un certificado del hecho agregado (`CERT_CIERRE_SOLICITUD`) y no un
-> justificante bruto. Quién lo emite y cuándo quedó fuera de #778.
+> **El plazo de resolver se cumple con la notificación al titular, no con
+> `Fase(RESOLUCION).documento_resultado_id`** (ADR-049 §E, que corrige ADR-041
+> §D bis): aquella es la resolución y su fecha es la de dictar, anterior a la de
+> notificar. El art. 21.2 fija el plazo máximo en que debe **notificarse** la
+> resolución (el 21.3.b solo dice desde cuándo se cuenta), y el 40.4 fija con qué
+> basta a esos efectos: la notificación con el texto íntegro o el intento
+> debidamente acreditado. #778 lo ancló a `documento_cierre_id`, un certificado
+> del hecho agregado que nadie llegó a escribir (0 de 11 solicitudes), así que
+> ningún plazo de resolver pudo alcanzar `CUMPLIDO`. Desde #930 el cumplimiento
+> de cada acto se calcula (ver «El acto» arriba) y el certificado de cierre de la
+> solicitud (N6) queda como constancia que enumera por acto, no como ancla.
 
 ```jsonc
 // Único caso directo — Solicitud: "fk" = atributo ORM con FK a documentos
 { "fk": "documento_solicitud_id" }
+
+// Cumplimiento del acto (#930, ADR-049 §E) — propiedad calculada del elemento
+// que devuelve el documento; solo nombres de plazos.CALCULADOS:
+{ "calculado": "documento_cumplimiento" }
 
 // Caso Tarea — el documento se obtiene por rol del vínculo documentos_tarea:
 { "rol": "CONSUMIDO" }
@@ -580,10 +625,12 @@ El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Refer
 
 **UI de Supervisión:** selector en cascada (nivel ESFTT → si TAREA, rol y tipo de documento). El desplegable de tipo de documento sale de `tramites_tareas_documentos`, filtrado por el trámite/tarea/rol ya elegidos en la cascada del camino. El POST traduce la selección al JSON. La presentación inversa lo traduce a texto legible:
 - `{"fk": "documento_solicitud_id"}` → "Fecha administrativa del documento de solicitud"
+- `{"calculado": "documento_cumplimiento"}` → "Calculado: documento que acredita la notificación al titular en la fase que resuelve este tipo de solicitud (acto)"
+- `{"calculado": "<nombre fuera de la lista>"}` → "⚠ Propiedad calculada desconocida «…»: el plazo no puede cumplirse"
 - `{"rol": "CONSUMIDO"}` → "Fecha administrativa del documento consumido por esta tarea"
 - `{"rol": "PRODUCIDO", "tipo_documento": "CERT_PLAZO_TABLON"}` → "Fecha administrativa del documento producido («Certificado de plazo tablón»)"
 
-**`plazos.py` — resolver:** recibe el objeto ORM del elemento y el JSON de `campo_fecha`. Dos ramas según si el dict trae `fk` o `rol` — no hace falta mirar `tipo_elemento`, el vocabulario ya identifica unívocamente la rama. Si `rol` trae `tipo_documento`, filtra el vínculo por ese tipo; si no, toma el primero. Devuelve `Documento.fecha_administrativa` o `None`.
+**`plazos.py` — resolver:** recibe el objeto ORM del elemento (o el acto) y el JSON de `campo_fecha`. Tres ramas según si el dict trae `calculado`, `rol` o `fk` — no hace falta mirar `tipo_elemento`, el vocabulario ya identifica unívocamente la rama. Si `rol` trae `tipo_documento`, filtra el vínculo por ese tipo; si no, toma el primero. Devuelve `Documento.fecha_administrativa` o `None`.
 
 > La FK `efecto_vencimiento` referencia una tabla de efectos (no ENUM hardcodeado). Ver decisión §3.3 nota.
 
@@ -592,7 +639,8 @@ El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Refer
 > queda a cero, que es lo correcto — el plazo de resolución vive a nivel
 > FASE». Esa justificación era falsa: el plazo de resolución (arts.
 > 128/131.7/132 bis/ter/133/138/145.4 RD 1955/2000) es el plazo **de la
-> solicitud** para resolver y notificar (art. 21.3.b LPACAP), y por tanto
+> solicitud** para resolver y notificar (art. 21.2 LPACAP; ADR-049 lo precisa:
+> de cada acto de la solicitud), y por tanto
 > pertenece al nivel SOLICITUD, no FASE. #788 lo confirma: las 11 filas de
 > RESOLUCION migran de FASE a SOLICITUD (§5.2), y el nivel FASE queda
 > prohibido por el `CheckConstraint`.
@@ -877,9 +925,23 @@ class EstadoPlazoSolicitud(EstadoPlazo):
     dias_suspendidos: int
     fecha_limite_sin_suspender: Optional[date]
 
+@dataclass(kw_only=True)
+class EstadoPlazoActo(EstadoPlazoSolicitud):   # #930: suspensión «sin suspender» hasta #796
+    acto: str                            # tipo atómico: 'AAP'
+    fase_resolutora: str                 # código de la fase que lo resuelve, exista o no
+    fase_resolutora_id: Optional[int]    # None mientras no existe
+
 def obtener_estado_plazo_tarea(tarea, ctx=None, variables=None) -> EstadoPlazo: ...
-def obtener_estado_plazo_solicitud(sol, ctx=None, variables=None) -> EstadoPlazoSolicitud: ...
+def obtener_estado_plazo_acto(acto, ctx=None, variables=None) -> EstadoPlazoActo: ...
+def plazos_de_la_solicitud(sol, ctx=None, variables=None) -> list[EstadoPlazoActo]: ...
+def obtener_estado_plazo_solicitud(sol, ctx=None, variables=None) -> EstadoPlazoSolicitud: ...  # se retira en N2b
 ```
+
+**El plazo de resolver es del acto (#930, ADR-049 §E).** `plazos_de_la_solicitud`
+devuelve uno por acto de la solicitud (§3.2, «El acto»), con catálogo e inhábiles
+cargados una sola vez; es la lectura de las barras de #922. La función antigua
+del plazo de la solicitud (y la de fase, ADR-048) conviven hasta N2b, que las
+retira y funde `EstadoPlazoSolicitud` con `EstadoPlazoActo`.
 
 **Dos entradas, no un literal de nivel (#778, ADR-041 §G).** El servicio solo
 habla de las dos cosas que pueden tener plazo. Sin literales de nivel y sin
@@ -962,7 +1024,7 @@ Fuente detallada: `NORMATIVA_PLAZOS.md §1`.
 |---|---|---|---|
 | `PLAZO_DEFECTO_MESES` | 3 meses | Art. 21.3 | Cuando la norma sectorial no fija plazo |
 | `PLAZO_MAXIMO_MESES` | 6 meses | Art. 21.2 | Techo salvo ley que autorice más |
-| `NOTIFICACION_DIAS` | 10 días hábiles | Art. 40.2 | Plazo para notificar al interesado desde que se dicta el acto — culmina la obligación de "resolver y notificar" |
+| `NOTIFICACION_DIAS` | 10 días hábiles | Art. 40.2 | Plazo para **cursar** cualquier notificación desde que se dicta el acto. No es el plazo máximo para resolver y notificar: ese lo fija el art. 21.2 (el del acto, §3.2), y a sus efectos basta la notificación o el intento acreditado (art. 40.4). Solo documentación: ningún código lo usa |
 | `SUSPENSION_INFORME_PRECEPTIVO_MAX_MESES` | 3 meses | Art. 22.1.d | Suspensión por informe a otro órgano |
 | `SILENCIO_SUSPENSION_MESES` | 1 mes | Art. 117.3 | Silencio positivo en solicitud de suspensión de recurso |
 

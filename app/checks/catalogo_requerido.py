@@ -154,8 +154,10 @@ def validar_catalogo() -> List[str]:
 
 def _validar_finalizadoras_con_regla() -> List[str]:
     """Toda `TipoFase.es_finalizadora` debe estar nombrada por una regla de
-    precedencia del art. 82.1 (#827, ADR-043 §C) y por el mapa del informe de fin
-    de instrucción, que es quien elige contra qué fase se audita.
+    precedencia del art. 82.1 (#827, ADR-043 §C) y por el mapa acto → fase de
+    `actos_solicitud` (`FASES_RESOLUTORAS`, #930), del que salen contra qué fase
+    audita el informe de fin de instrucción y qué fase cierra el plazo de cada
+    acto.
 
     Las reglas se escribieron con sujeto explícito —una fila por finalizadora— en
     vez de un sujeto genérico con una condición Python, para que el supervisor lea
@@ -182,10 +184,7 @@ def _validar_finalizadoras_con_regla() -> List[str]:
     try:
         from app.models.tipos_fases import TipoFase
         from app.models.motor_reglas import ReglaMotor
-        from app.services.informe_instruccion import (
-            _FASES_FINALIZADORAS_POR_SIGLAS, _FASE_FINALIZADORA_DEFECTO,
-            _CODIGOS_RESOLUCION_PARTIDA,
-        )
+        from app.services.actos_solicitud import FASES_RESOLUTORAS
 
         finalizadoras = {
             tf.codigo for tf in TipoFase.query.filter_by(es_finalizadora=True).all()
@@ -207,25 +206,17 @@ def _validar_finalizadoras_con_regla() -> List[str]:
             pass
         return []
 
-    conocidas_por_emisor = (
-        {codigo for fases in _FASES_FINALIZADORAS_POR_SIGLAS.values() for codigo in fases}
-        | {_FASE_FINALIZADORA_DEFECTO}
-        # RESOLUCION_AAP/RESOLUCION_AAC nunca son VALOR del dict de arriba — se
-        # deciden en tiempo de ejecución (ADR-047 §B, #918), no por lookup
-        # estático — así que se declaran aquí a propósito.
-        | set(_CODIGOS_RESOLUCION_PARTIDA)
-    )
-
     avisos: List[str] = []
     for codigo in sorted(finalizadoras - nombradas):
         avisos.append(
             f"TipoFase.codigo='{codigo}' es finalizadora y ninguna regla activa del "
             f'art. 82.1 la nombra → se abriría sin comprobar el fin de instrucción (#827)'
         )
-    for codigo in sorted(finalizadoras - conocidas_por_emisor):
+    for codigo in sorted(finalizadoras - FASES_RESOLUTORAS):
         avisos.append(
-            f"TipoFase.codigo='{codigo}' es finalizadora y no está en el mapa de "
-            f'informe_instruccion → el certificado se auditaría contra otra fase (#827)'
+            f"TipoFase.codigo='{codigo}' es finalizadora y no está en el mapa acto → fase "
+            f'de actos_solicitud → el certificado se auditaría contra otra fase (#827) y '
+            f'ningún acto mediría su plazo contra ella (#930)'
         )
     return avisos
 
