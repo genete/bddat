@@ -99,6 +99,26 @@ Los dos tipos más caros —mocks y datos— son los que más se retocan: están
 a la *forma* del código o a filas concretas, no al comportamiento, y se rompen en
 cada refactor sin que haya fallo real.
 
+**Pero caro no es prescindible.** Los tests con mocks de los constructores de
+contexto (`test_300`, `391`–`394`, `402`–`406`, `457`, `776_comunicacion…`)
+detectan en exclusiva 89 errores que ningún otro test ve (#946): son la única
+protección de ese código. Se **reescriben** como integración sobre
+`arbol_aislado`, y el antiguo se retira solo cuando el nuevo detecta los mismos
+errores (#950). No se borran.
+
+### Antes de retirar o fusionar un test
+
+Lo aprendido en #946: de cuatro candidatos "redundantes" por cobertura y
+mutación aleatoria, tres resultaron ser el único vigilante de algo.
+
+1. ¿Qué lo motivó? Leer su docstring y el issue de origen.
+2. ¿Protege una restricción de la BD? Quitarla en la BD de tests y ver quién falla.
+3. ¿Es de regresión? Deshacer ese arreglo concreto y ver quién falla.
+4. ¿Protege una conexión entre piezas (p. ej. que el motor reciba una
+   variable)? Cortar esa conexión y ver quién falla.
+5. Solo si **otro test falla en todos los casos**, es candidato. Y aun así,
+   sopesar lo que se pierde: su `git blame` y el porqué que explica su docstring.
+
 ---
 
 ## 3. Reglas al escribir un test
