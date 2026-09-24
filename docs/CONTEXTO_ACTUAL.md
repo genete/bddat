@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **#932 (N3)** mergeado (PR #944): `certificados` con `tipo` (obligatoria) y `fase_id` (`ON DELETE RESTRICT`), índice único parcial `(fase_id, tipo)` y backref `Fase.certificados_cumplimiento` (`Fase.certificados` ya era de `CertificadoFase`). De paso, arreglada la ruta del PDF de certificado, rota desde #425 (leía un `Documento.tipo_documento` que no existe). Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#947 (N4)** mergeado (PR #948): el certificado de cumplimiento de la fase finalizadora, con sello se lee y sin sello se calcula; el documento citado queda protegido y se corrige deshaciendo el certificado. Sin PDF: vista HTML única. De paso, el pool deja de dar un 500 al borrar el documento de un certificado o el que cierra una fase. En desarrollo, AT-25 (`RESOLUCION_DUP` #28316) queda con su `NOTIFICACION › NOTIFICAR` y un justificante vinculado, montados para la verificación, sin certificado emitido. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **N4 (`CERT_CUMPLIMIENTO_FASE`)**, siguiente de la cadena de ADR-049; sin número todavía: crear y diseñar el issue. Decisión pendiente que se toma ahí: ADR-049 §F dice que al emitir «se guardan el PDF y `datos`», mientras que #932 anotaba el patrón ligero de los certificados actuales (PDF generado al vuelo por `cert_pdf.py`, documento virtual `bddat://`). El esquema de N3 sirve para las dos.
+**Próximo:** **N4b (`CERT_CIERRE_FASE`)**, siguiente de la cadena de ADR-049 y previo a N6; sin número todavía: crear y diseñar el issue. Punto de partida: ADR-049 §F (ocupa `documento_resultado_id`, `reabrir_fase` pasa a deshacerlo, informe «¿cómo voy?», exige el de cumplimiento) y lo que #947 dejó para él en «Fuera de este issue».
 
 ---
 

@@ -14,7 +14,7 @@
 
 ## Cadena, en orden
 
-| Orden | Issue | Qué es | Capa | Estado (24/09/2026, tras #932) |
+| Orden | Issue | Qué es | Capa | Estado (24/09/2026, tras #947) |
 |---|---|---|---|---|
 | 1 | **#926** | Bug: dos `Documento` con el mismo fichero rompen `mover_a_esftt` — prerrequisito de N1 | Backend | Cerrado (PR #933) |
 | 2 | **#928 (N1)** | Las fechas de notificación solo salen de documentos | Backend | Cerrado (PR #934) |
@@ -24,8 +24,8 @@
 | 5 | **#796** | Suspensión del art. 22, ahora por acto | Backend | Cerrado (PR #942) |
 | 6 | **#922** | Barras de plazo en el árbol/inspector (a reescribir por acto) | Frontend | Abierto, preexistente |
 | 7 | **#932 (N3)** | Amplía `certificados` (columnas `tipo`, `fase_id`) — infraestructura para N4 | Backend | Cerrado (PR #944) |
-| 8 | **#947 (N4)** | `CERT_CUMPLIMIENTO_FASE`: congela el cálculo del cumplimiento y protege el documento citado | Backend + inspector | Abierto |
-| 8b | **N4b** | `CERT_CIERRE_FASE`: el cierre de la fase finalizadora (ocupa `documento_resultado_id`; `reabrir_fase` lo deshace) — partido de N4; va antes de N6 | Backend + inspector | Sin crear, sin número |
+| 8 | **#947 (N4)** | `CERT_CUMPLIMIENTO_FASE`: congela el cálculo del cumplimiento y protege el documento citado | Backend + inspector | Cerrado (PR #948) |
+| 8b | **N4b** | `CERT_CIERRE_FASE`: el cierre de la fase finalizadora (ocupa `documento_resultado_id`; `reabrir_fase` lo deshace) — partido de N4; va antes de N6 | Backend + inspector | Sin crear, sin número — siguiente: diseñarlo |
 | 9 | **N5** | Notificación multi-destinatario (`Tarea.notificacion` → lista) | Backend | Sin crear, sin número |
 | 10 | **#568** | Edicto tras notificación infructuosa (art. 44) | Backend | Abierto, preexistente |
 | 11 | **N6** | `CERT_CIERRE_SOLICITUD` enumera por acto; cierra #921 y #801 | Backend | Sin crear, sin número |
@@ -40,7 +40,7 @@
 - ~~N3 y N4 dependen de cómo quede #796~~ — resuelto: #796 fija que solo la causa a) (22.1.a, `REQUERIMIENTO_SUBSANACION`) suspende, automática e inferida como hoy; la causa d) (informes/consultas a organismos) deja de inferirse porque en la práctica no se acuerda ni se comunica. N4 ya no tiene incertidumbre de diseño pendiente de #796; solo necesita que exista el plazo por acto (existe desde N2). #932 (N3) resultó no depender de #796 en absoluto — es infraestructura de esquema pura.
 - ~~#932 (N3) bloquea a N4~~ — cerrado: N4 tiene ya `tipo`, `fase_id` y el índice `(fase_id, tipo)`. ~~Queda para N4 decidir si el PDF se guarda al emitir o se genera al vuelo~~ — decidido en #947: ninguna de las dos, vista HTML única y paso a PDF posterior.
 - N5 dependía de #927, ya cerrado.
-- N4b depende de #947 (N4): el cierre exige el certificado de cumplimiento.
+- ~~N4b depende de #947 (N4)~~ — cerrado: el cierre ya tiene el certificado de cumplimiento que exigir (`sellos.certificado_cumplimiento(fase)`), el módulo de sellos donde añadir su función y el patrón de vista HTML única (borrador calculado / emitido) que puede reutilizar.
 - N6 depende de N3 (#932), N4 (#947), N4b y N5. Ya no depende de que #796 modele un acuerdo de suspensión: con solo causa a) activa, el certificado no tiene que declarar suspensiones de informes que nunca llegan a existir jurídicamente.
 
 ## Historial de esta tabla
@@ -55,3 +55,4 @@
 - **24/09/2026** — #796 cerrado (PR #942): migración `796_suspension_solo_causa_a` (marca apagada en las filas de causa d), por camino) y `_plazos_de_actos` conecta las causas, calculadas una vez por solicitud y aplicadas a todos sus actos: el requerimiento cuelga de `ANALISIS_SOLICITUD`, fase de la solicitud entera. La marca sigue siendo dato editable en la administración del catálogo (decisión de Carlos: no se bloquea). La jurisprudencia del issue queda sin verificar y marcada como tal; solo hará falta leerla en CENDOJ si algún día se implementa la causa d). #925 (suspensión a nivel de fase) cerrado como superado por ADR-049 §E. El test de rendimiento de `plazos_de_la_solicitud` pasa de 2 a 3 sentencias por el catálogo de tareas. Siguiente de la cadena principal: #932 (N3).
 - **24/09/2026** — #932 (N3) cerrado (PR #944): migración `932_certificados_tipo_fase` (`tipo` con backfill, `fase_id` RESTRICT, índice único parcial `(fase_id, tipo)`), backref `Fase.certificados_cumplimiento` y los dos servicios de certificados pasando `tipo`. Al verificar salió que la ruta `/cert/<id>/pdf` estaba rota desde #425 (`Documento.tipo_documento` no existe); arreglada leyendo `cert.tipo`. Derivado fuera de la cadena: `limpiar_reciclables.py` abortaba por 7 FKs de #887/ADR-044 sin tratar (sesión aparte). Siguiente de la cadena principal: N4, con la decisión PDF guardado / al vuelo pendiente.
 - **24/09/2026** — N4 diseñado y creado como **#947**. Cuatro decisiones: (D1) N4 se parte — solo `CERT_CUMPLIMIENTO_FASE`; `CERT_CIERRE_FASE` pasa a un **N4b** propio, antes de N6, que hasta ahora no figuraba en la cadena aunque N6 lo necesita; (D2) sin PDF: una vista HTML única para el borrador calculado y el certificado emitido, con huella, y paso a PDF posterior; ser certificado se lee de la fila de `certificados`, nunca de la url; (D3) el botón de la fase y la vista van en #947; (D4) se protegen el documento citado y su vínculo, no la tarea `NOTIFICAR` entera (POSTAL y NOTIFICA reciben documentos después de emitir). Hallazgo: el pool daba por borrable el documento de un certificado sin tarea (moriría en `IntegrityError`).
+- **24/09/2026** — #947 (N4) cerrado (PR #948): tipo `CERT_CUMPLIMIENTO_FASE` (migración `947_cert_cumplimiento_fase`), `services/sellos.py` (el módulo único de §F nace con este tipo) y `services/cert_cumplimiento_fase.py`. Al verificar el issue contra el código salieron H1–H9; los que cambian algo fuera del diseño: (H1) la API de la fase necesita `permitir_fase_cerrada` para que emitir con la fase cerrada llegue al servicio; (H2) deshacer comprueba que el certificado no cuelgue de ninguna tarea (la Despensa deja vincularlo); (H3) el bloqueo de edición del pool alcanza a toda fila de `certificados`, también a los dos tipos anteriores; (H4) `_documento_es_referenciado` tampoco veía `doc.fases_resultado` —mismo agujero que el del certificado, arreglado a la vez—; (H5) la apertura mira primero la url (dónde está el papel) y solo entonces la fila (qué se pinta), para no pagar una consulta por documento del pool; (H8) se protege el vínculo del citado con la tarea de la fase sellada, no los que tenga con otras. Siguiente de la cadena principal: N4b (`CERT_CIERRE_FASE`), crear y diseñar el issue.
