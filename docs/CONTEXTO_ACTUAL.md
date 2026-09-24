@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **#930 (N2)** mergeado (PR #939): el plazo de resolver es de cada acto y se cumple con la notificación al titular. Aditivo: las filas y funciones antiguas del plazo siguen hasta N2b. Deja abierto #940 (la marca `afectado_por_reformado` de la tasa solo existe en desarrollo, puesta a mano). Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#931 (N2b)** mergeado (PR #941): el plazo de resolver solo existe por acto. Fuera las filas de combinación y de fase del catálogo, el plazo de la solicitud y el de la fase; el nivel del catálogo pasa a `ACTO`. La suspensión (`_causas_suspension`) queda conservada pero sin conectar hasta #796. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **#931 (N2b)**, siguiente de la cadena principal de ADR-049 (retira las filas y funciones que N2 dejó sustituidas; renombra `SOLICITUD` → `ACTO`).
+**Próximo:** **#796**, siguiente de la cadena principal de ADR-049: conectar la suspensión al plazo de cada acto (causa a), requerimiento de subsanación) y apagar en el catálogo la marca de la causa d) (petición de informes).
 
 ---
 
