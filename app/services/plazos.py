@@ -346,7 +346,21 @@ def obtener_estado_plazo_solicitud(solicitud, ctx=None, variables=None) -> Estad
         fecha_ini,
         hoy + timedelta(days=_margen_dias([entrada] + [e for _, e, _ in causas])),
     )
+    return _estado_con_suspensiones(solicitud, entrada, disparo, causas, inhabiles, hoy)
 
+
+def _estado_con_suspensiones(elemento, entrada, disparo: date, causas: list,
+                             inhabiles: frozenset, hoy: date) -> EstadoPlazoSolicitud:
+    """La medida de un plazo suspendible, con las suspensiones de `causas`
+    aplicadas (#930, D12: núcleo común, extraído de
+    `obtener_estado_plazo_solicitud`).
+
+    `causas` es la lista `[(tarea, entrada, disparo)]` de `_causas_suspension`;
+    vacía, el resultado sale «sin suspender» (`suspendido=False`,
+    `dias_suspendidos=0`, `fecha_limite_sin_suspender == fecha_limite`).
+    El calendario llega ya cargado —y debe cubrir también los disparos de las
+    causas—: así quien mide varios plazos a la vez lo carga una sola vez.
+    """
     bloques = _fusionar_intervalos([
         _intervalo_de(tarea, entrada_tarea, disparo_tarea, inhabiles, hoy)
         for tarea, entrada_tarea, disparo_tarea in causas
@@ -354,7 +368,7 @@ def obtener_estado_plazo_solicitud(solicitud, ctx=None, variables=None) -> Estad
     dias_suspendidos = _dias_suspendidos(bloques, inhabiles)
     vivo = next((b for b in bloques if b['vivo']), None)
 
-    medida = _medir(solicitud, entrada, disparo, inhabiles, hoy)
+    medida = _medir(elemento, entrada, disparo, inhabiles, hoy)
     limite = _aplicar_suspensiones(medida.vencimiento, bloques, inhabiles)
     medida_efectiva = replace(
         medida,
