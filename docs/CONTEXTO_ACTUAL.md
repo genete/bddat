@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **#796** mergeado (PR #942): la suspensión del art. 22 corre sobre el plazo de cada acto y solo suspende la causa a) (requerimiento de subsanación), que empuja el plazo de todos los actos de la solicitud. La marca de la causa d) (informes, separatas) queda apagada en el catálogo (migración `796_suspension_solo_causa_a`); sigue siendo dato editable. #925 cerrado como superado. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#932 (N3)** mergeado (PR #944): `certificados` con `tipo` (obligatoria) y `fase_id` (`ON DELETE RESTRICT`), índice único parcial `(fase_id, tipo)` y backref `Fase.certificados_cumplimiento` (`Fase.certificados` ya era de `CertificadoFase`). De paso, arreglada la ruta del PDF de certificado, rota desde #425 (leía un `Documento.tipo_documento` que no existe). Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **#932 (N3)**, siguiente de la cadena de ADR-049: columnas `tipo` y `fase_id` en `certificados`, infraestructura para N4 (`CERT_CUMPLIMIENTO_FASE`).
+**Próximo:** **N4 (`CERT_CUMPLIMIENTO_FASE`)**, siguiente de la cadena de ADR-049; sin número todavía: crear y diseñar el issue. Decisión pendiente que se toma ahí: ADR-049 §F dice que al emitir «se guardan el PDF y `datos`», mientras que #932 anotaba el patrón ligero de los certificados actuales (PDF generado al vuelo por `cert_pdf.py`, documento virtual `bddat://`). El esquema de N3 sirve para las dos.
 
 ---
 
