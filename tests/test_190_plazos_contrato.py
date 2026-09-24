@@ -21,10 +21,7 @@ class _StubCtx:
 
 
 class _StubFase:
-    """Duck-type de Fase: tiene solicitud y tramites, NO fases ni fase ni tramite.
-    Sin `tipo_fase`: _get_tipo_elemento_codigo no encuentra tipo y el nivel FASE
-    (ADR-048) devuelve SIN_PLAZO igual que antes, pero ahora pasando por
-    plazos.obtener_estado_plazo_fase en vez de cortarse en variables/plazo.py."""
+    """Duck-type de Fase: tiene solicitud y tramites, NO fases ni fase ni tramite."""
     def __init__(self):
         self.solicitud = MagicMock()
         self.tramites = []
@@ -166,26 +163,56 @@ def test_estado_plazo_con_tarea():
     assert fn(_StubCtx(objeto=_StubTarea())) == 'SIN_PLAZO'
 
 
-def test_estado_plazo_con_fase_finalizadora_delega_en_plazos(monkeypatch):
-    """ADR-048: una Fase se resuelve a nivel 'FASE' (no None) y delega en
-    `plazos.obtener_estado_plazo_fase` — no es SIN_PLAZO ciego, es lo que esa
-    función responda."""
+def _plazos_prohibido(monkeypatch):
+    """Cualquier llamada al servicio de plazos revienta: el nivel debe
+    degradar en variables/plazo.py, sin llegar a preguntar."""
+    def _no_llamar(*args, **kwargs):
+        raise AssertionError('no debe consultar el servicio de plazos')
+    monkeypatch.setattr('app.services.plazos.obtener_estado_plazo_tarea', _no_llamar)
+
+
+def test_fase_finalizadora_degrada_sin_consultar_plazos(monkeypatch):
+    """#931 (D1): el plazo de resolver es del acto, no de la fase que lo
+    resuelve. La Fase finalizadora (ADR-048) pierde su implementación y degrada
+    como el Trámite, sin llegar al servicio de plazos."""
+    import app.services.variables.plazo  # noqa: F401
+    from app.services.variables import _REGISTRY
+
+    _plazos_prohibido(monkeypatch)
+    ctx = _StubCtx(objeto=_StubFaseFinalizadora())
+    assert _REGISTRY['estado_plazo'](ctx) == 'SIN_PLAZO'
+    assert _REGISTRY['efecto_plazo'](ctx) == 'NINGUNO'
+
+
+def test_solicitud_degrada_sin_consultar_plazos(monkeypatch):
+    """#931 (D1): ídem para la Solicitud — un contenedor de actos, cada uno
+    con su plazo; no hay uno solo que devolver."""
+    import app.services.variables.plazo  # noqa: F401
+    from app.services.variables import _REGISTRY
+
+    _plazos_prohibido(monkeypatch)
+    ctx = _StubCtx(objeto=_StubSolicitud())
+    assert _REGISTRY['estado_plazo'](ctx) == 'SIN_PLAZO'
+    assert _REGISTRY['efecto_plazo'](ctx) == 'NINGUNO'
+
+
+def test_tarea_si_delega_en_plazos(monkeypatch):
+    """Control: la Tarea sigue siendo el único nivel que pregunta."""
     import app.services.variables.plazo  # noqa: F401
     from app.services.variables import _REGISTRY
     from app.services.plazos import EstadoPlazo
 
     llamada = {}
 
-    def _fake(fase, ctx=None, variables=None):
-        llamada['fase'] = fase
+    def _fake(tarea, ctx=None, variables=None):
+        llamada['tarea'] = tarea
         return EstadoPlazo(estado='VENCIDO', efecto='NINGUNO', fecha_limite=None, dias_restantes=None)
 
-    monkeypatch.setattr('app.services.plazos.obtener_estado_plazo_fase', _fake)
+    monkeypatch.setattr('app.services.plazos.obtener_estado_plazo_tarea', _fake)
 
-    fase = _StubFaseFinalizadora()
-    fn = _REGISTRY['estado_plazo']
-    assert fn(_StubCtx(objeto=fase)) == 'VENCIDO'
-    assert llamada['fase'] is fase
+    tarea = _StubTarea()
+    assert _REGISTRY['estado_plazo'](_StubCtx(objeto=tarea)) == 'VENCIDO'
+    assert llamada['tarea'] is tarea
 
 
 # ---------------------------------------------------------------------------

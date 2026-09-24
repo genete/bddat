@@ -2,13 +2,19 @@
 Variables de tipo 'plazo' — delegan en plazos.py para obtener el estado
 del plazo legal asociado al elemento en contexto.
 
-Tres niveles pueden tener plazo: la Solicitud y la Tarea, que portan fecha
-administrativa propia (#788), y la Fase finalizadora, excepción acotada de
-ADR-048 — RESOLUCION_DUP/AAP/AAC son el acto, no taxonomía. Desde #778 el
-servicio lo dice en su propia interfaz —una función por cada uno— y aquí se
-elige cuál llamar, en vez de pasar un literal de nivel y dejar que el servicio
-responda «sin plazo» a los que no aplican. El Trámite se resuelve aquí mismo,
-sin tocar el servicio ni la BD.
+Hoy solo la Tarea tiene implementación: es el único nodo del árbol con un
+plazo propio que el servicio sabe medir (`obtener_estado_plazo_tarea`).
+
+La Solicitud y la Fase la tuvieron (#788; la Fase finalizadora desde
+ADR-048) y la perdieron en #931: el plazo de resolver es del ACTO (#930,
+ADR-049 §E), no de su contenedor ni de la fase que lo resuelve, y las dos
+funciones a las que llamaban se retiraron. Degradan como ya degradaba el
+Trámite —taxonomía ESFTT sin plazo propio—, sin tocar el servicio ni la BD.
+
+Las variables NO se retiran (#931, D1): son genéricas —«el estado del plazo
+del sujeto en contexto»— y la ley puede condicionar un trámite a ese estado.
+El día que una regla necesite el plazo de un acto se añade aquí la rama del
+sujeto `ActoSolicitud`; hoy ese objeto no llega al contexto del motor.
 """
 from __future__ import annotations
 
@@ -25,19 +31,16 @@ def _resolver_elemento(ctx):
       Tramite   → tiene 'fase', NO tiene 'tramites'
       Tarea     → tiene 'tramite'
 
-    Trámite se identifica igual —el contexto puede traerlo— pero devuelve nivel
-    None: no hay plazo que buscarle. Fase devuelve 'FASE' siempre: el filtro a
-    solo finalizadoras lo hace el catálogo (sin fila para una fase taxonómica,
-    `obtener_estado_plazo_fase` devuelve SIN_PLAZO), no esta función — mismo
-    criterio que el resto del servicio de plazos.
+    Solicitud, Fase y Trámite se identifican igual —el contexto puede
+    traerlos— pero devuelven nivel None: no hay plazo que buscarles (#931).
     """
     obj = ctx._objeto
     if obj is None or isinstance(obj, dict):
         return None, None
     if hasattr(obj, 'fases') and not hasattr(obj, 'solicitud'):
-        return obj, 'SOLICITUD'
+        return obj, None            # Solicitud — el plazo es de cada acto (#930)
     if hasattr(obj, 'solicitud') and hasattr(obj, 'tramites'):
-        return obj, 'FASE'
+        return obj, None            # Fase — ídem, aunque sea la que resuelve el acto
     if hasattr(obj, 'fase') and not hasattr(obj, 'tramites'):
         return obj, None            # Trámite — taxonomía ESFTT, no figura jurídica
     if hasattr(obj, 'tramite'):
@@ -51,10 +54,6 @@ def _estado_plazo(ctx):
     if nivel is None:
         return None
     from app.services import plazos
-    if nivel == 'SOLICITUD':
-        return plazos.obtener_estado_plazo_solicitud(elemento, ctx=ctx)
-    if nivel == 'FASE':
-        return plazos.obtener_estado_plazo_fase(elemento, ctx=ctx)
     return plazos.obtener_estado_plazo_tarea(elemento, ctx=ctx)
 
 
