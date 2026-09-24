@@ -19,7 +19,7 @@
 | 1 | **#926** | Bug: dos `Documento` con el mismo fichero rompen `mover_a_esftt` — prerrequisito de N1 | Backend | Cerrado (PR #933) |
 | 2 | **#928 (N1)** | Las fechas de notificación solo salen de documentos | Backend | Cerrado (PR #934) |
 | — | **#927** | Entradas múltiples en `tramites_tareas_documentos` — desbloqueado por N1; hace falta antes de N5, en paralelo a la cadena principal | Backend | Cerrado (PR #937) |
-| 3 | **#930 (N2)** | El plazo es del acto; cumplimiento calculado | Backend | Creado |
+| 3 | **#930 (N2)** | El plazo es del acto; cumplimiento calculado | Backend | Cerrado (PR #939) |
 | 4 | **#931 (N2b)** | Retira filas y funciones antiguas del catálogo; renombra `SOLICITUD` → `ACTO` | Backend | Creado |
 | 5 | **#796** | Suspensión del art. 22, ahora por acto | Backend | Diseño fijado (22/09/2026); pendiente de implementar en M3 |
 | 6 | **#922** | Barras de plazo en el árbol/inspector (a reescribir por acto) | Frontend | Abierto, preexistente |
@@ -48,3 +48,4 @@
 - **22/09/2026** — #932 (N3) diseñado y creado: `tipo`/`fase_id` en `certificados`, alternativa mínima frente a endurecer índices existentes (descartado, prematuro) o unificar con `certificados_fase` (descartado, issue aparte del ADR). Bloquea a N4.
 - **23/09/2026** — #926 y #928 (N1) cerrados. Orden acordado: #927 y luego #930 (N2).
 - **24/09/2026** — #927 cerrado (PR #937): 8 filas `ENTRADA` en `DATOS_CATASTRALES` (las 4 del issue + 4 que exigía `ESTRUCTURA_FTT.json`). N5 queda desbloqueado por este lado. Derivados fuera de la cadena, abiertos: #935 (`sugerencia_subida` mezcla `ENTRADA` y `SALIDA`), #936 (la tabla no distingue por fase) y #938 (repaso general de la tabla contra `ESTRUCTURA_FTT`). Siguiente de la cadena principal: #930 (N2).
+- **24/09/2026** — #930 (N2) cerrado (PR #939): el acto como unidad del plazo (`services/actos_solicitud.py`), cumplimiento `calculado` por la notificación al titular, `plazos_de_la_solicitud` para #922 y las 7 filas atómicas migradas (`930_plazo_acto_calculado`). Aditivo: las 4 combinaciones, las 3 filas de fase y las dos funciones antiguas siguen ahí para #931 (N2b). De paso, `NORMATIVA_PLAZOS.md` corregido (art. 40 y AAP+AAC por acto). Derivado fuera de la cadena, abierto: #940 (`afectado_por_reformado` de la tasa marcado solo a mano en desarrollo). Siguiente de la cadena principal: #931 (N2b).
