@@ -750,12 +750,27 @@ El recorrido parte de la **Solicitud** —no de la Fase ni del Trámite— porqu
 art. 22 LPACAP suspende «el plazo máximo legal para resolver un procedimiento y
 notificar la resolución», que es el plazo de resolver de sus actos y ninguno más.
 
-> **Sin conectar entre #931 y #796.** Hasta #931 lo aplicaba el plazo de la
-> solicitud (`obtener_estado_plazo_solicitud`), retirado porque el plazo de
-> resolver es de cada acto (#930). El plazo del acto se mide hoy sin causas
-> —sus cuatro datos de suspensión valen «sin suspender»— y #796 reconecta el
-> mecanismo, decidiendo contra qué acto corre cada causa. Se conservó entero, con
-> sus pruebas (`test_778`), porque #796 lo reutiliza tal cual.
+> **Por acto (#796).** Hasta #931 lo aplicaba el plazo de la solicitud, retirado
+> porque el plazo de resolver es de cada acto (#930); entre #931 y #796 el
+> mecanismo estuvo sin conectar. Ahora `_plazos_de_actos` calcula las causas una
+> vez por solicitud y las aplica **a todos sus actos por igual**: el requerimiento
+> de subsanación cuelga de `ANALISIS_SOLICITUD`, fase de la solicitud entera, y el
+> art. 22 suspende el plazo de resolver del procedimiento, no el de un acto
+> concreto.
+>
+> **Solo suspende la causa a) del art. 22.1** (`REQUERIMIENTO_SUBSANACION`). El
+> verbo del 22.1 es potestativo —«se podrá suspender»—: sin acuerdo y sin
+> comunicación no hay suspensión. En la a) el propio oficio del requerimiento ya
+> advierte de ella y la levanta el titular al contestar o el plazo concedido, sin
+> segunda comunicación. La d) (`SOLICITUD_INFORME`, `CONSULTA_SEPARATA`) exige
+> acuerdo y **dos** comunicaciones a los interesados que en la práctica no se
+> hacen, así que la suspensión no llega a existir jurídicamente; contarla
+> escondería al tramitador un plazo vencido —silencio desestimatorio—, y el error
+> contrario solo produce una alarma prematura. Por eso la migración 796 apagó la
+> marca en esas filas y BDDAT no la infiere. Es una mejora de procedimiento
+> futura (que el oficio de petición del informe advierta de la suspensión, como el
+> del requerimiento), sin issue de motor: el único perjudicado de no hacerla es la
+> propia Administración. La marca sigue siendo dato editable del catálogo.
 
 Los intervalos resultantes se **funden en una sola unión** — vivos y cerrados
 juntos: el reloj se para una vez, no una por cada causa concurrente — y se
@@ -921,7 +936,7 @@ plazos.py
     │       Si no hay respuesta ↓
     └── Fallback LPACAP (constantes §5)
     +
-    ├── Tabla suspensiones_plazo (periodos activos)
+    ├── Suspensiones (inferidas del árbol, sin tabla propia: §3.3)
     └── Calendario inhábiles Junta de Andalucía
 ```
 
@@ -990,7 +1005,7 @@ nivel que #788 eliminó.
 **Stub Fase 2 (#190):** `obtener_estado_plazo` devuelve `SIN_PLAZO`/`NINGUNO` siempre.
 Ninguna regla del motor disparará por plazo hasta que #172 implemente la lógica real.
 
-**M3 (#172):** la función leerá `catalogo_plazos`, resolverá `campo_fecha` JSONB → `Documento.fecha_administrativa`, calculará `fecha_limite` con `dias_inhabiles` y `suspensiones_plazo`, y devolverá el estado calculado según las condiciones de §2.4.
+**M3 (#172):** la función leerá `catalogo_plazos`, resolverá `campo_fecha` JSONB → `Documento.fecha_administrativa`, calculará `fecha_limite` con `dias_inhabiles` y las suspensiones inferidas del árbol (§3.3, sin tabla propia), y devolverá el estado calculado según las condiciones de §2.4.
 
 ---
 

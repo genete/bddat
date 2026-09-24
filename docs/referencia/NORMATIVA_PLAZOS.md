@@ -82,25 +82,40 @@ los siguientes casos»):
 | c) Recusación de funcionario | Desde que se plantea hasta que la resuelve el superior jerárquico |
 
 **Causas reales en BDDAT** (columna `catalogo_plazos.suspende_plazo_solicitud`
-desde #778 — antes una lista cerrada en el código): son del apartado **22.1** —
-potestativas en la letra de la ley, pero BDDAT las aplica siempre que concurren,
-sin modelar una decisión discrecional del tramitador. Corresponden a las letras
-**a)** (`REQUERIMIENTO_SUBSANACION`) y **d)** — informe preceptivo a otro órgano,
-con destinatario distinto en cada caso: `SOLICITUD_INFORME` (DGPEM / operador del
-sistema), `CONSULTA_SEPARATA` (organismo consultado) y `SOLICITUD_COMPATIBILIDAD`
-(órgano ambiental). Ninguna causa del 22.2 tiene reflejo en BDDAT: son supuestos
+desde #778 — antes una lista cerrada en el código): de las que tocan a BDDAT,
+todas del apartado **22.1** —potestativas en la letra de la ley— **solo la letra
+a) suspende desde #796**:
+
+- **a) `REQUERIMIENTO_SUBSANACION`: suspende, automática e inferida.** El
+  precepto no exige comunicación aparte del acuerdo: el oficio del requerimiento
+  ya advierte de la suspensión, y la levanta el propio titular al contestar o el
+  transcurso del plazo concedido.
+- **d) informe preceptivo a otro órgano: no se implementa.** El 22.1.d exige un
+  acuerdo de suspender y **dos** comunicaciones a los interesados —«la petición,
+  que deberá comunicarse a los interesados, y la recepción del informe, que
+  igualmente deberá ser comunicada»— y en la práctica no se hacen. Sin acuerdo y
+  sin comunicación la suspensión no existe, y contarla haría decir a BDDAT «queda
+  plazo» cuando ya venció (silencio desestimatorio). Marca apagada en
+  `SOLICITUD_INFORME` y `CONSULTA_SEPARATA` (migración 796);
+  `SOLICITUD_COMPATIBILIDAD` no tiene fila. Mejora de procedimiento futura, sin
+  issue de motor: que el oficio de petición advierta de la suspensión, como el
+  del requerimiento.
+
+Ninguna causa del 22.2 tiene reflejo en BDDAT: son supuestos
 de coordinación entre Administraciones, actuaciones complementarias de oficio y
 recusación — mecánica interna de la instrucción, no trámites que BDDAT modele
 como tales. La información pública y los traslados al peticionario (arts. 126 /
 127.3 RD 1955/2000) tampoco suspenden: no están en el art. 22, son instrucción
 ordinaria que corre dentro del plazo.
 
-> **Cuál de las cuatro suspende hoy depende del catálogo, no de esta lista**
-> (#778, corolario de ADR-041 §E): un plazo sin fila en `catalogo_plazos` no
-> suspende nada. `SOLICITUD_COMPATIBILIDAD` no tiene fila y por tanto no suspende
-> hasta que se le dé de alta — antes de #778 estaba marcado como suspensor en el
-> código y sin fila, así que el sistema lo pintaba como plazo no configurado a la
-> vez que lo usaba para mover la fecha límite de la solicitud.
+> **Cuál suspende hoy depende del catálogo, no de esta lista** (#778, corolario
+> de ADR-041 §E): un plazo sin fila en `catalogo_plazos` no suspende nada.
+> `SOLICITUD_COMPATIBILIDAD` no tiene fila y por tanto no suspende — antes de #778
+> estaba marcado como suspensor en el código y sin fila, así que el sistema lo
+> pintaba como plazo no configurado a la vez que lo usaba para mover la fecha
+> límite de la solicitud. Y desde #796 la suspensión es **del plazo de cada acto**
+> (ADR-049 §E): el requerimiento, propio de la solicitud entera, empuja el de
+> todos sus actos.
 
 > **Cómo se mide la duración: la letra a) escribe el mecanismo.** «Por el tiempo
 > que medie entre la notificación del requerimiento y su efectivo cumplimiento
@@ -111,8 +126,10 @@ ordinaria que corre dentro del plazo.
 > tenga tope por construcción.
 >
 > El **máximo de tres meses** de la letra d) recae sobre la suspensión, no sobre
-> el plazo concedido al informante. En la práctica no muerde: todos los plazos de
-> informe que BDDAT maneja son de tres meses o menos, así que la parada nunca los
+> el plazo concedido al informante. Desde #796 la d) no se computa, así que el
+> tope queda sin efecto práctico en BDDAT (el aviso al dar de alta la entrada
+> sigue por si se reactiva la marca). Lo que sigue vale para esa eventualidad. En
+> la práctica no muerde: todos los plazos de informe que BDDAT maneja son de tres meses o menos, así que la parada nunca los
 > excede. Donde la letra y esta lectura pueden diferir —organismo con dos meses
 > para informar que no contesta— BDDAT adopta la lectura **corta**: la suspensión
 > acaba al vencer el plazo concedido, lo que da una fecha límite más temprana y

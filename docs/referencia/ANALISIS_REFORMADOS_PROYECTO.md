@@ -535,6 +535,12 @@ las actuaciones».
 
 ### Deuda transversal que esta fase destapa: la suspensión acumulada
 
+> **Superado en parte por #796 (24/09/2026).** La causa d) del art. 22.1 (informes
+> y separatas) ya no se computa: sin acuerdo ni comunicación a los interesados no
+> hay suspensión, y `SOLICITUD_INFORME` y `CONSULTA_SEPARATA` tienen la marca
+> apagada. La acumulación por rondas que se describe abajo solo afecta hoy a la
+> causa a) (`REQUERIMIENTO_SUBSANACION`). El análisis se conserva como estaba.
+
 `catalogo_plazos` marca esta entrada con `suspende_plazo_solicitud = true` (art. 22.1.d LPACAP),
 igual que `CONSULTA_SEPARATA` (30 días) y `REQUERIMIENTO_SUBSANACION` (10 días). Y `plazos.py` funde
 los intervalos **solapados**, porque «un reloj no se para dos veces» — pero **dos rondas no se
