@@ -273,9 +273,9 @@ Tabla `consultas_nombradas`: SQL parametrizable por `:expediente_id` que se ejec
 
 ### 5.1 Cálculo (`services/plazos.py`)
 
-Dos entradas, una por nivel con plazo (#778):
+Una entrada por cosa con plazo (#778; el acto, #930/#931):
 `obtener_estado_plazo_tarea(tarea, ctx/variables) → EstadoPlazo(estado, efecto, fecha_limite, dias_restantes, fecha_disparo, fecha_cumplimiento, fecha_parada)` y
-`obtener_estado_plazo_solicitud(sol, ctx/variables) → EstadoPlazoSolicitud(… + suspendido, suspendido_desde, dias_suspendidos, fecha_limite_sin_suspender)`.
+`obtener_estado_plazo_acto(acto, ctx/variables)` / `plazos_de_la_solicitud(sol, ctx/variables)` → `EstadoPlazoActo(… + acto, fase_resolutora, fase_resolutora_id, suspendido, suspendido_desde, dias_suspendidos, fecha_limite_sin_suspender)`, uno por acto de la solicitud. El plazo de la solicitud entera y el de la fase finalizadora se retiraron en #931.
 
 Estados: `SIN_PLAZO` | `EN_PLAZO` | `PROXIMO_VENCER` (≤5 días hábiles) | `VENCIDO` | `CUMPLIDO`.
 
@@ -285,7 +285,7 @@ Efectos posibles: `NINGUNO`, `SILENCIO_ESTIMATORIO`, `SILENCIO_DESESTIMATORIO`, 
 
 ### 5.2 Suspensiones
 
-No hay motor aparte desde #778 (ADR-041): una suspensión es el plazo de un tercero visto desde la solicitud. `_causas_suspension(solicitud)` recorre `solicitud → fases → trámites → tareas` reteniendo las que tienen entrada con `suspende_plazo_solicitud`; cada una se mide igual que cualquier plazo y aporta el intervalo `[disparo, parada]`, con `parada = min(cumplimiento, vencimiento, hoy)`. Los intervalos se funden (`_fusionar_intervalos`) y sus días hábiles `(A, B]` empujan la fecha límite. Qué suspende es dato del catálogo, no una lista en el código.
+No hay motor aparte desde #778 (ADR-041): una suspensión es el plazo de un tercero visto desde el plazo de resolver. `_causas_suspension(solicitud)` recorre `solicitud → fases → trámites → tareas` reteniendo las que tienen entrada con `suspende_plazo_solicitud`; cada una se mide igual que cualquier plazo y aporta el intervalo `[disparo, parada]`, con `parada = min(cumplimiento, vencimiento, hoy)`. Los intervalos se funden (`_fusionar_intervalos`) y sus días hábiles `(A, B]` empujan la fecha límite. Qué suspende es dato del catálogo, no una lista en el código. Desde #931 el mecanismo está sin conectar: el plazo del acto se mide sin causas hasta que #796 las enganche.
 
 ### 5.3 Configuración (`models/catalogo_plazos.py`)
 

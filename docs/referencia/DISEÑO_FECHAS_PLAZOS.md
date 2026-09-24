@@ -406,7 +406,7 @@ Estos controles son de integridad administrativa, no de plazo. Deben decidirse e
 
 ---
 
-### 3.2 Catálogo de plazos — CERRADO (campo_fecha 2026-04-19, condiciones_plazo #341 2026-04-30, camino SFTT #785 2026-08-17, niveles SOLICITUD/TAREA #788 2026-08-19, FASE finalizadora ADR-048/#892 2026-09-17, plazo del acto y cumplimiento `calculado` ADR-049/#930 2026-09-24)
+### 3.2 Catálogo de plazos — CERRADO (campo_fecha 2026-04-19, condiciones_plazo #341 2026-04-30, camino SFTT #785 2026-08-17, niveles SOLICITUD/TAREA #788 2026-08-19, FASE finalizadora ADR-048/#892 2026-09-17, plazo del acto y cumplimiento `calculado` ADR-049/#930 2026-09-24, niveles ACTO/TAREA —sin combinaciones ni FASE— #931 2026-09-24)
 
 > **Decisión:** Tabla separada `catalogo_plazos`, administrable por el Supervisor.
 
@@ -417,7 +417,7 @@ Motivación: un tipo de Fase o Trámite no tiene el plazo como atributo propio �
 ```
 catalogo_plazos
 ├── id
-├── tipo_elemento              ENUM(SOLICITUD, FASE, TAREA)  -- prefiltro SQL (#788; FASE, ADR-048)
+├── tipo_elemento              ENUM(ACTO, TAREA)  -- nivel de la fila; prefiltro SQL (#788; ACTO, #931)
 ├── camino                     VARCHAR(250)  -- patrón ESFTT con comodín ANY (#785)
 ├── campo_fecha                JSONB  -- señalador del DISPARO (ver formato abajo)
 ├── campo_fecha_cumplimiento   JSONB  -- señalador del CUMPLIMIENTO, opcional (#778)
@@ -458,10 +458,12 @@ correcto para las tres. El acto es cada tipo atómico de la solicitud
 (`Solicitud.tipos_simples`: `AAP+AAC` son dos actos aunque se resuelvan juntos),
 un valor derivado sin tabla (`services/actos_solicitud.py`).
 
-- **Fila:** la atómica del nivel SOLICITUD (`ANY/AAP`, `ANY/DUP`…). Las filas de
-  nivel SOLICITUD con `+` en el camino (las cuatro combinaciones) y las tres de
-  nivel FASE son huella del supuesto «una solicitud = un acto» y se retiran en
-  N2b; mientras tanto solo las lee la función antigua del plazo de solicitud.
+- **Fila:** la del nivel ACTO, una por tipo atómico (`ANY/AAP`, `ANY/DUP`…). Su
+  hoja nunca es una combinación: el camino del acto lleva siempre su tipo simple,
+  y la administración rechaza una hoja con `+` (#931). Hasta #931 el nivel se
+  llamó SOLICITUD y convivía con cuatro filas de combinación y tres de nivel
+  FASE, huella del supuesto «una solicitud = un acto» (ver la nota de historia
+  tras «Corrección de #787»).
 - **Disparo:** el escrito de la solicitud (art. 21.3.b). El plazo existe desde
   el día 1, antes de que nazca la fase que lo resolverá — por eso no puede
   colgar de la fase.
@@ -494,25 +496,27 @@ nivel más de profundidad. La longitud codifica el nivel:
 
 | Nivel de la fila | Segmentos | Forma |
 |---|---|---|
-| SOLICITUD | 2 | `<expediente>/<siglas>` |
-| FASE (finalizadora) | 3 | `<expediente>/<siglas>/<fase>` |
+| ACTO | 2 | `<expediente>/<siglas del acto>` |
 | TAREA | 5 | `<expediente>/<siglas>/<fase>/<tramite>/<tarea>` |
 
+> **Dos «niveles» que no hay que confundir (#931).** El de la **fila**
+> (`tipo_elemento`: ACTO, TAREA) dice a qué se aplica el plazo. El del **nodo**
+> del árbol (Solicitud, Fase, Trámite, Tarea) dice qué ocupa cada segmento del
+> camino: en el de una tarea, el segundo segmento son las siglas reales de su
+> solicitud —combinación incluida— y el tercero, su fase. Solo el primero
+> cambió en #931; `plazos._TIPO_REL_CAMPO` y `_TIPO_CODIGO_ATTR` son del segundo.
+>
 > **TRAMITE no es nivel de fila desde #788** — no porta fecha administrativa
 > (§2.bis), así que un plazo no puede identificarse por Trámite:
-> `CheckConstraint tipo_elemento IN ('SOLICITUD','FASE','TAREA')` lo hace
-> explícito en BD. Su posición (segmento 4) sigue existiendo dentro del camino
-> de 5 segmentos de una TAREA, como **ancestro** — la cascada del formulario
-> sigue pidiendo trámite al dar de alta una tarea, lo que no tiene es alta
-> propia como nivel.
+> `CheckConstraint tipo_elemento IN ('ACTO','TAREA')` lo hace explícito en BD.
+> Su posición (segmento 4) sigue existiendo dentro del camino de 5 segmentos de
+> una TAREA, como **ancestro** — la cascada del formulario sigue pidiendo
+> trámite al dar de alta una tarea, lo que no tiene es alta propia como nivel.
 >
-> **FASE volvió a ser nivel de fila en ADR-048 (#892), acotada a fases
-> finalizadoras** (`RESOLUCION_DUP`/`RESOLUCION_AAP`/`RESOLUCION_AAC`,
-> ADR-046/047): a diferencia de toda fase anterior, esas SÍ son el acto —la
-> autorización o la declaración— no taxonomía, y desde que existen tienen su
-> propia fecha administrativa (`Fase.documento_resultado_id`). El
-> `CheckConstraint` solo exige el nivel; que la hoja sea finalizadora lo valida
-> el CRUD, no la BD (no puede: cruzaría a `tipos_fases`).
+> **FASE tampoco lo es desde #931.** ADR-048 (#892) la había admitido para las
+> fases finalizadoras (`RESOLUCION_DUP`/`RESOLUCION_AAP`/`RESOLUCION_AAC`), y
+> ADR-049 la superó: el plazo de resolver es del acto, no de la fase que lo
+> resuelve. Ver la nota de historia tras «Corrección de #787».
 
 **Invariante:** el último segmento nunca es `ANY` — es el tipo del elemento
 evaluado, siempre conocido. Una fila con hoja `ANY` no identificaría nada.
@@ -520,8 +524,7 @@ evaluado, siempre conocido. Una fila con hoja `ANY` no identificaría nada.
 ```
 ANY/ANY/ANY/REQUERIMIENTO_SUBSANACION/ESPERAR_PLAZO   -- el plazo de subsanación
 ANY/ANY/ANY/ANUNCIO_BOE/ESPERAR_PLAZO                 -- el de exposición en BOE
-ANY/AAP                                               -- resolución (SOLICITUD) de una AAP
-ANY/ANY/RESOLUCION_DUP                                -- resolución (FASE) de la DUP, ADR-048
+ANY/AAP                                               -- resolución (ACTO) de una AAP, sola o combinada
 ```
 
 `tipo_elemento` se conserva pese a ser derivable de la longitud: es el prefiltro
@@ -565,9 +568,7 @@ El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Refer
 
 | Nivel | Referencia al documento de inicio | Referencia al de cumplimiento (#778) |
 |---|---|---|
-| `SOLICITUD` (fila atómica = acto) | `fk: documento_solicitud_id` — sin alternativa; el acto lo resuelve subiendo a su solicitud | `calculado: documento_cumplimiento` — sin alternativa (#930) |
-| `SOLICITUD` (combinación, `+` en el camino) | ídem | `fk: documento_cierre_id` — ancla que nadie escribe; filas que se retiran en N2b |
-| `FASE` (finalizadora, ADR-048) | `fk: documento_solicitud_id` — resuelto vía `Fase.solicitud` | **NULL** — el plazo no alcanza `CUMPLIDO`; filas que se retiran en N2b (ADR-049) |
+| `ACTO` | `fk: documento_solicitud_id` — sin alternativa; el acto lo resuelve subiendo a su solicitud | `calculado: documento_cumplimiento` — sin alternativa (#930) |
 | `TAREA` | `rol: CONSUMIDO` o `rol: PRODUCIDO` (vínculo en `documentos_tarea`, ADR-010), con `tipo_documento` opcional | ídem, o **nada** — y entonces el plazo no alcanza `CUMPLIDO` |
 
 > **Cada plazo se abre y se cierra en el mismo sitio (ADR-041 §D).** La estructura
@@ -625,7 +626,7 @@ El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Refer
 
 **UI de Supervisión:** selector en cascada (nivel ESFTT → si TAREA, rol y tipo de documento). El desplegable de tipo de documento sale de `tramites_tareas_documentos`, filtrado por el trámite/tarea/rol ya elegidos en la cascada del camino. El POST traduce la selección al JSON. La presentación inversa lo traduce a texto legible:
 - `{"fk": "documento_solicitud_id"}` → "Fecha administrativa del documento de solicitud"
-- `{"calculado": "documento_cumplimiento"}` → "Calculado: documento que acredita la notificación al titular en la fase que resuelve este tipo de solicitud (acto)"
+- `{"calculado": "documento_cumplimiento"}` → "Calculado: documento que acredita la notificación al titular en la fase que resuelve este acto"
 - `{"calculado": "<nombre fuera de la lista>"}` → "⚠ Propiedad calculada desconocida «…»: el plazo no puede cumplirse"
 - `{"rol": "CONSUMIDO"}` → "Fecha administrativa del documento consumido por esta tarea"
 - `{"rol": "PRODUCIDO", "tipo_documento": "CERT_PLAZO_TABLON"}` → "Fecha administrativa del documento producido («Certificado de plazo tablón»)"
@@ -652,6 +653,23 @@ El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Refer
 > (`documento_resultado_id`). #892 no revierte la migración de #788 ni las 11
 > filas de SOLICITUD: añade tres filas de FASE, nuevas y aditivas, acotadas a
 > esas tres fases. Detalle completo en `docs/decisiones/ADR-048-plazo-fase-finalizadora.md`.
+>
+> **#931 vuelve a cerrar FASE, por otra razón, y renombra SOLICITUD a ACTO
+> (ADR-049 §E, 2026-09-24).** #788 cerró FASE porque la fase no portaba fecha;
+> ADR-048 la reabrió porque las finalizadoras sí la portan. Ninguno de los dos
+> argumentos era el decisivo: el plazo de resolver es del **acto** —cada tipo
+> atómico de la solicitud—, existe desde el escrito de solicitud y corre durante
+> toda la instrucción, cuando la fase que lo resolverá ni siquiera existe; no
+> puede colgar de ella. #930 midió ya el plazo por acto con las 7 filas
+> atómicas, y #931 retiró lo que quedaba del supuesto «una solicitud = un
+> acto»: las tres filas de FASE, que repetían las atómicas, y las cuatro de
+> combinación (`AAP+AAC`, `AAP+AAC+DUP`, `AAC+DUP`, `AE_DEFINITIVA+AAT`), que
+> daban un solo plazo a una solicitud que pide varios actos —y escondían que la
+> DUP son 6 meses, no 3—. El nivel de las 7 que quedan pasó de SOLICITUD a ACTO,
+> que es lo que eran: SOLICITUD inducía a leerlas como el plazo del
+> contenedor. Con ellas se retiraron el plazo de la solicitud y el de la fase
+> (`plazos.py`) y la implementación de ambos niveles en las variables de motor
+> `estado_plazo`/`efecto_plazo`, que siguen existiendo.
 
 #### §3.2.1 Condiciones de aplicabilidad — `_seleccionar_catalogo` (#341)
 
@@ -721,16 +739,23 @@ Si las dos condiciones se cumplen → 15 días; en caso contrario → 30 días.
 > causas) no se construyó: no hace falta un registro explícito de cada
 > suspensión si se puede derivar del árbol documental que ya existe.
 
-**Mecanismo real** (`app/services/plazos.py::obtener_estado_plazo_solicitud`,
-reescrito en #778 sobre ADR-041): el plazo de la solicitud se mide como
-cualquier otro (§2.4), y después se recorren sus tareas —`solicitud → fases →
-trámites → tareas`— reteniendo las que tienen entrada de catálogo **marcada como
-suspensora**. Cada una se mide **igual, sin nada añadido**, y aporta el intervalo
-`[disparo, parada]`.
+**Mecanismo real** (`app/services/plazos.py`: `_causas_suspension` y
+`_estado_con_suspensiones`, reescrito en #778 sobre ADR-041): el plazo de
+resolver se mide como cualquier otro (§2.4), y después se recorren las tareas
+de la solicitud —`solicitud → fases → trámites → tareas`— reteniendo las que
+tienen entrada de catálogo **marcada como suspensora**. Cada una se mide
+**igual, sin nada añadido**, y aporta el intervalo `[disparo, parada]`.
 
-Recibe la **Solicitud** —no la Fase ni el Trámite— porque el art. 22 LPACAP
-suspende «el plazo máximo legal para resolver un procedimiento y notificar la
-resolución», que es el plazo de la solicitud y ninguno más.
+El recorrido parte de la **Solicitud** —no de la Fase ni del Trámite— porque el
+art. 22 LPACAP suspende «el plazo máximo legal para resolver un procedimiento y
+notificar la resolución», que es el plazo de resolver de sus actos y ninguno más.
+
+> **Sin conectar entre #931 y #796.** Hasta #931 lo aplicaba el plazo de la
+> solicitud (`obtener_estado_plazo_solicitud`), retirado porque el plazo de
+> resolver es de cada acto (#930). El plazo del acto se mide hoy sin causas
+> —sus cuatro datos de suspensión valen «sin suspender»— y #796 reconecta el
+> mecanismo, decidiendo contra qué acto corre cada causa. Se conservó entero, con
+> sus pruebas (`test_778`), porque #796 lo reutiliza tal cual.
 
 Los intervalos resultantes se **funden en una sola unión** — vivos y cerrados
 juntos: el reloj se para una vez, no una por cada causa concurrente — y se
@@ -918,37 +943,34 @@ class EstadoPlazo:
     fecha_cumplimiento: Optional[date]
     fecha_parada: Optional[date]         # min(cumplimiento, vencimiento, hoy)
 
-@dataclass
-class EstadoPlazoSolicitud(EstadoPlazo):
-    suspendido: bool                     # ortogonal al estado, no un valor suyo
-    suspendido_desde: Optional[date]
-    dias_suspendidos: int
-    fecha_limite_sin_suspender: Optional[date]
-
 @dataclass(kw_only=True)
-class EstadoPlazoActo(EstadoPlazoSolicitud):   # #930: suspensión «sin suspender» hasta #796
+class EstadoPlazoActo(EstadoPlazo):      # el único suspendible (art. 22)
     acto: str                            # tipo atómico: 'AAP'
     fase_resolutora: str                 # código de la fase que lo resuelve, exista o no
     fase_resolutora_id: Optional[int]    # None mientras no existe
+    suspendido: bool = False             # ortogonal al estado, no un valor suyo
+    suspendido_desde: Optional[date] = None
+    dias_suspendidos: int = 0
+    fecha_limite_sin_suspender: Optional[date] = None   # «sin suspender» hasta #796
 
 def obtener_estado_plazo_tarea(tarea, ctx=None, variables=None) -> EstadoPlazo: ...
 def obtener_estado_plazo_acto(acto, ctx=None, variables=None) -> EstadoPlazoActo: ...
 def plazos_de_la_solicitud(sol, ctx=None, variables=None) -> list[EstadoPlazoActo]: ...
-def obtener_estado_plazo_solicitud(sol, ctx=None, variables=None) -> EstadoPlazoSolicitud: ...  # se retira en N2b
 ```
 
 **El plazo de resolver es del acto (#930, ADR-049 §E).** `plazos_de_la_solicitud`
 devuelve uno por acto de la solicitud (§3.2, «El acto»), con catálogo e inhábiles
-cargados una sola vez; es la lectura de las barras de #922. La función antigua
-del plazo de la solicitud (y la de fase, ADR-048) conviven hasta N2b, que las
-retira y funde `EstadoPlazoSolicitud` con `EstadoPlazoActo`.
+cargados una sola vez; es la lectura de las barras de #922. Las funciones del
+plazo de la solicitud y de la fase (ADR-048) convivieron con ella hasta #931,
+que las retiró y fundió `EstadoPlazoSolicitud` en `EstadoPlazoActo`.
 
-**Dos entradas, no un literal de nivel (#778, ADR-041 §G).** El servicio solo
-habla de las dos cosas que pueden tener plazo. Sin literales de nivel y sin
-niveles fantasma que siempre respondan «sin plazo»: cuando no hay entrada en el
-catálogo la respuesta es «no hay plazo», y el consumidor no tiene que saber por
-qué. Los consumidores que despachaban por *duck-typing* eligen ahora la función
-(`variables/plazo.py`), y Fase y Trámite se resuelven ahí mismo sin tocar BD.
+**Una entrada por cosa con plazo, no un literal de nivel (#778, ADR-041 §G).** El
+servicio solo habla de lo que puede tener plazo: la tarea y el acto. Sin
+literales de nivel y sin niveles fantasma que siempre respondan «sin plazo»:
+cuando no hay entrada en el catálogo la respuesta es «no hay plazo», y el
+consumidor no tiene que saber por qué. Los consumidores que despachaban por
+*duck-typing* eligen la función (`variables/plazo.py`), y Solicitud, Fase y
+Trámite se resuelven ahí mismo sin tocar BD (#931).
 
 **No hay entrada para el trámite.** Los dos consumidores que preguntaban por
 trámite (`consultas_organismos.py`, `variables/calculado.py`) llegaban con un
@@ -1103,6 +1125,15 @@ segmento), no en una condición sobre `tipo_solicitud`:
 | `ANY/DUP/RESOLUCION` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 145.4 RD 1955/2000 |
 
 `campo_fecha` para todas las filas RESOLUCION_*: `{"fk": "documento_solicitud_id"}`.
+
+> **Nota #931 (2026-09-24):** la tabla documenta el origen legal de cada plazo,
+> no la forma actual del dato. Las filas de combinación (`AE_DEFINITIVA+AAT`,
+> `AAP+AAC`, `AAP+AAC+DUP`, `AAC+DUP`) se retiraron en #931: el plazo de resolver
+> es de cada acto (#930), y una solicitud combinada se mide por los suyos
+> —`AAC+DUP`, por ejemplo, con 3 meses para la AAC y 6 para la DUP, no con un
+> único plazo de 3—. Quedan 7 filas, una por tipo atómico, de nivel ACTO y con
+> camino de 2 segmentos (`ANY/AAP`); los caminos de 3 segmentos de la tabla
+> (`…/RESOLUCION`) ya estaban desfasados desde #785/#788.
 
 > **`INFORMACION_PUBLICA` no es un plazo de RESOLUCION (#788) — nunca lo fue.**
 > La fila anterior vivía aquí marcada `[PENDIENTE REDISEÑO campo_fecha]`
