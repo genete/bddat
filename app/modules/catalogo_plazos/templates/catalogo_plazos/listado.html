@@ -54,7 +54,7 @@
         </div>
         {% endif %}
 
-        {% set _nivel_alta = form_data.get('tipo_elemento', 'SOLICITUD') if form_data else 'SOLICITUD' %}
+        {% set _nivel_alta = form_data.get('tipo_elemento', 'ACTO') if form_data else 'ACTO' %}
         {{ cf.camino_sftt('cpc', _nivel_alta,
                           form_data.get('camino', '') if form_data else '',
                           tipos_expediente, tipos_solicitud, tipos_fase, tipos_tramite, tipos_tarea) }}
@@ -195,10 +195,9 @@
         }).join('<span class="text-secondary opacity-50">/</span>') + '</span>';
     }
 
-    // SOLICITUD y TAREA tienen plazo posible desde #788; FASE se sumó en
-    // ADR-048, acotada a fases finalizadoras. Trámite sigue sin fecha
-    // administrativa y la tabla no tiene filas de ese nivel.
-    const NIVEL_LABEL = { SOLICITUD: 'Solicitud', FASE: 'Fase', TAREA: 'Tarea' };
+    // Niveles de fila (#931): ACTO —el plazo de resolver de cada tipo simple,
+    // SOLICITUD hasta entonces— y TAREA. Ni Fase ni Trámite tienen filas.
+    const NIVEL_LABEL = { ACTO: 'Acto', TAREA: 'Tarea' };
 
     new SelectorFiltro('#sf-estado', [
         { v: 'true',  t: 'Activos'   },
@@ -206,9 +205,8 @@
     ], { label: 'Estado', name: 'estado' });
 
     new SelectorFiltro('#sf-nivel', [
-        { v: 'SOLICITUD', t: 'Solicitud' },
-        { v: 'FASE',      t: 'Fase' },
-        { v: 'TAREA',     t: 'Tarea' }
+        { v: 'ACTO',  t: 'Acto' },
+        { v: 'TAREA', t: 'Tarea' }
     ], { label: 'Nivel', name: 'nivel' });
 
     const scrollInfinito = new ScrollInfinito({

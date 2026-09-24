@@ -289,7 +289,7 @@ def test_alta_completa_crea_el_expediente_anclado(usuario_supervisor, app, fs_tm
         with app.app_context():
             from app.models.expedientes import Expediente
             from app.models.interesados_expediente import InteresadoExpediente
-            from app.services.plazos import obtener_estado_plazo_solicitud
+            from app.services.plazos import plazos_de_la_solicitud
 
             exp = Expediente.query.filter_by(numero_at=siguiente).one()
             solicitud = exp.solicitudes[0]
@@ -303,8 +303,10 @@ def test_alta_completa_crea_el_expediente_anclado(usuario_supervisor, app, fs_tm
                 expediente_id=exp.id, tipo_origen='TITULAR').one()
             assert titular.documento_acreditativo_id == solicitud.documento_solicitud_id
 
-            # …y el plazo corriendo, que es de lo que iba el issue.
-            assert obtener_estado_plazo_solicitud(solicitud).estado != 'SIN_PLAZO'
+            # …y el plazo corriendo, que es de lo que iba el issue (desde
+            # #930, el de cada acto de la solicitud).
+            plazos = plazos_de_la_solicitud(solicitud)
+            assert plazos and all(p.estado != 'SIN_PLAZO' for p in plazos)
     finally:
         _borrar_expediente(app, siguiente)
 

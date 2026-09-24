@@ -21,10 +21,7 @@ class _StubCtx:
 
 
 class _StubFase:
-    """Duck-type de Fase: tiene solicitud y tramites, NO fases ni fase ni tramite.
-    Sin `tipo_fase`: _get_tipo_elemento_codigo no encuentra tipo y el nivel FASE
-    (ADR-048) devuelve SIN_PLAZO igual que antes, pero ahora pasando por
-    plazos.obtener_estado_plazo_fase en vez de cortarse en variables/plazo.py."""
+    """Duck-type de Fase: tiene solicitud y tramites, NO fases ni fase ni tramite."""
     def __init__(self):
         self.solicitud = MagicMock()
         self.tramites = []
@@ -56,20 +53,12 @@ class _StubSolicitud:
 
 
 # ---------------------------------------------------------------------------
-# A) Contrato de plazos.py — dos entradas, una por nivel con plazo (#778)
+# A) Contrato de plazos.py — la tarea y el acto (#778, #931)
 # ---------------------------------------------------------------------------
 
 def test_elemento_sin_tipo_devuelve_sin_plazo():
     """Un objeto que no lleva su tipo ESFTT no llega a tocar BD."""
-    from app.services.plazos import (
-        EstadoPlazo, EstadoPlazoSolicitud,
-        obtener_estado_plazo_solicitud, obtener_estado_plazo_tarea,
-    )
-    r = obtener_estado_plazo_solicitud(object())
-    assert isinstance(r, EstadoPlazoSolicitud)
-    assert (r.estado, r.efecto, r.fecha_limite, r.dias_restantes) == \
-           ('SIN_PLAZO', 'NINGUNO', None, None)
-    assert r.suspendido is False
+    from app.services.plazos import EstadoPlazo, obtener_estado_plazo_tarea
 
     r = obtener_estado_plazo_tarea(object())
     assert isinstance(r, EstadoPlazo)
@@ -79,15 +68,28 @@ def test_elemento_sin_tipo_devuelve_sin_plazo():
 
 def test_acepta_none_y_dict_como_elemento():
     """Los consumidores llaman con lo que tienen en contexto, y para CREAR eso es
-    un dict, no una instancia ORM."""
-    from app.services.plazos import (
-        obtener_estado_plazo_solicitud, obtener_estado_plazo_tarea,
-    )
-    for fn in (obtener_estado_plazo_solicitud, obtener_estado_plazo_tarea):
-        for elemento in (None, {'tipo_fase': MagicMock()}):
-            r = fn(elemento)
-            assert r.estado == 'SIN_PLAZO'
-            assert r.efecto == 'NINGUNO'
+    un dict, no una instancia ORM. La tarea responde SIN_PLAZO; la solicitud,
+    ningún acto que medir (#931: su plazo es el de cada acto)."""
+    from app.services.plazos import obtener_estado_plazo_tarea, plazos_de_la_solicitud
+
+    for elemento in (None, {'tipo_fase': MagicMock()}):
+        r = obtener_estado_plazo_tarea(elemento)
+        assert r.estado == 'SIN_PLAZO'
+        assert r.efecto == 'NINGUNO'
+        assert plazos_de_la_solicitud(elemento) == []
+
+
+def test_el_plazo_del_acto_nace_sin_suspender():
+    """Una sola clase para el plazo de resolver desde #931: `EstadoPlazoActo`
+    absorbe los datos de suspensión, que valen «sin suspender» por defecto."""
+    from app.services.plazos import EstadoPlazo, EstadoPlazoActo
+
+    r = EstadoPlazoActo(estado='SIN_PLAZO', efecto='NINGUNO', fecha_limite=None,
+                        dias_restantes=None, acto='AAP', fase_resolutora='RESOLUCION',
+                        fase_resolutora_id=None)
+    assert isinstance(r, EstadoPlazo)
+    assert (r.suspendido, r.suspendido_desde, r.dias_suspendidos,
+            r.fecha_limite_sin_suspender) == (False, None, 0, None)
 
 
 def test_las_cuatro_fechas_acompanan_al_estado():
@@ -166,26 +168,56 @@ def test_estado_plazo_con_tarea():
     assert fn(_StubCtx(objeto=_StubTarea())) == 'SIN_PLAZO'
 
 
-def test_estado_plazo_con_fase_finalizadora_delega_en_plazos(monkeypatch):
-    """ADR-048: una Fase se resuelve a nivel 'FASE' (no None) y delega en
-    `plazos.obtener_estado_plazo_fase` — no es SIN_PLAZO ciego, es lo que esa
-    función responda."""
+def _plazos_prohibido(monkeypatch):
+    """Cualquier llamada al servicio de plazos revienta: el nivel debe
+    degradar en variables/plazo.py, sin llegar a preguntar."""
+    def _no_llamar(*args, **kwargs):
+        raise AssertionError('no debe consultar el servicio de plazos')
+    monkeypatch.setattr('app.services.plazos.obtener_estado_plazo_tarea', _no_llamar)
+
+
+def test_fase_finalizadora_degrada_sin_consultar_plazos(monkeypatch):
+    """#931 (D1): el plazo de resolver es del acto, no de la fase que lo
+    resuelve. La Fase finalizadora (ADR-048) pierde su implementación y degrada
+    como el Trámite, sin llegar al servicio de plazos."""
+    import app.services.variables.plazo  # noqa: F401
+    from app.services.variables import _REGISTRY
+
+    _plazos_prohibido(monkeypatch)
+    ctx = _StubCtx(objeto=_StubFaseFinalizadora())
+    assert _REGISTRY['estado_plazo'](ctx) == 'SIN_PLAZO'
+    assert _REGISTRY['efecto_plazo'](ctx) == 'NINGUNO'
+
+
+def test_solicitud_degrada_sin_consultar_plazos(monkeypatch):
+    """#931 (D1): ídem para la Solicitud — un contenedor de actos, cada uno
+    con su plazo; no hay uno solo que devolver."""
+    import app.services.variables.plazo  # noqa: F401
+    from app.services.variables import _REGISTRY
+
+    _plazos_prohibido(monkeypatch)
+    ctx = _StubCtx(objeto=_StubSolicitud())
+    assert _REGISTRY['estado_plazo'](ctx) == 'SIN_PLAZO'
+    assert _REGISTRY['efecto_plazo'](ctx) == 'NINGUNO'
+
+
+def test_tarea_si_delega_en_plazos(monkeypatch):
+    """Control: la Tarea sigue siendo el único nivel que pregunta."""
     import app.services.variables.plazo  # noqa: F401
     from app.services.variables import _REGISTRY
     from app.services.plazos import EstadoPlazo
 
     llamada = {}
 
-    def _fake(fase, ctx=None, variables=None):
-        llamada['fase'] = fase
+    def _fake(tarea, ctx=None, variables=None):
+        llamada['tarea'] = tarea
         return EstadoPlazo(estado='VENCIDO', efecto='NINGUNO', fecha_limite=None, dias_restantes=None)
 
-    monkeypatch.setattr('app.services.plazos.obtener_estado_plazo_fase', _fake)
+    monkeypatch.setattr('app.services.plazos.obtener_estado_plazo_tarea', _fake)
 
-    fase = _StubFaseFinalizadora()
-    fn = _REGISTRY['estado_plazo']
-    assert fn(_StubCtx(objeto=fase)) == 'VENCIDO'
-    assert llamada['fase'] is fase
+    tarea = _StubTarea()
+    assert _REGISTRY['estado_plazo'](_StubCtx(objeto=tarea)) == 'VENCIDO'
+    assert llamada['tarea'] is tarea
 
 
 # ---------------------------------------------------------------------------

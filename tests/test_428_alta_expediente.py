@@ -72,13 +72,16 @@ class TestAltaCompleta:
         assert titular.documento_acreditativo_id == alta.documento.id
 
     def test_el_plazo_de_la_solicitud_arranca(self, alta):
-        """El motivo de todo el issue: sin ancla el art. 128 constaba SIN_PLAZO."""
-        from app.services.plazos import obtener_estado_plazo_solicitud
+        """El motivo de todo el issue: sin ancla el art. 128 constaba SIN_PLAZO.
+        Desde #930 el plazo es de cada acto, y todos arrancan con el escrito."""
+        from app.services.plazos import plazos_de_la_solicitud
 
-        estado = obtener_estado_plazo_solicitud(alta.solicitud)
-        assert estado.estado != 'SIN_PLAZO'
-        assert estado.fecha_disparo == alta.documento.fecha_administrativa
-        assert estado.fecha_limite is not None
+        plazos = plazos_de_la_solicitud(alta.solicitud)
+        assert plazos, 'la solicitud del alta debe tener al menos un acto'
+        for estado in plazos:
+            assert estado.estado != 'SIN_PLAZO', estado.acto
+            assert estado.fecha_disparo == alta.documento.fecha_administrativa
+            assert estado.fecha_limite is not None
 
 
 # ---------------------------------------------------------------------------
@@ -202,7 +205,7 @@ class TestSolicitudAdicional:
     def test_el_plazo_de_la_solicitud_adicional_arranca(self, alta_propia):
         import app.services.mutaciones_arbol as svc
         from app.models.solicitudes import Solicitud
-        from app.services.plazos import obtener_estado_plazo_solicitud
+        from app.services.plazos import plazos_de_la_solicitud
         from app.services.reloj_simulado import hoy
 
         doc = _documento_en_pool(alta_propia.expediente, fecha=hoy())
@@ -211,8 +214,8 @@ class TestSolicitudAdicional:
             alta_propia.expediente.titular_id, documento_solicitud_id=doc.id)
         assert res.ok is True, res.error
 
-        estado = obtener_estado_plazo_solicitud(Solicitud.query.get(res.ids[0]))
-        assert estado.estado != 'SIN_PLAZO'
+        (aap,) = plazos_de_la_solicitud(Solicitud.query.get(res.ids[0]))
+        assert aap.estado != 'SIN_PLAZO'
 
     def test_documento_de_otro_expediente_rechazado(self, app_ctx, fs_tmp):
         """La FK sola no lo impediría: `Documento` solo conoce su expediente, y

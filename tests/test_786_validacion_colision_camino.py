@@ -33,30 +33,33 @@ def _limpiar_datos_prueba(app):
         db.session.commit()
 
 
-def _datos_maestros(app):
-    """Siglas de un tipo de solicitud SIN entrada activa, más efecto y variable.
+def _tipos_atomicos_libres():
+    """Tipos de solicitud atómicos SIN fila activa de nivel ACTO, por id.
 
-    Las siglas no pueden salir de un `.first()` ciego: desde #788 el nivel
-    SOLICITUD tiene las 11 filas del plazo para resolver y notificar, y elegir
-    unas siglas ya ocupadas haría que el alta de partida chocase contra la
-    validación de colisión — el propio duplicado ciego que estos tests provocan a
-    propósito más adelante.
+    Atómicos porque la hoja de una fila ACTO no puede ser una combinación
+    (#931, D10); libres porque las 7 filas del plazo de resolver ya ocupan sus
+    caminos y el alta de partida chocaría contra la validación de colisión — el
+    propio duplicado ciego que estos tests provocan a propósito más adelante.
     """
+    from app.models.catalogo_plazos import CatalogoPlazo
+    from app.models.tipos_solicitudes import TipoSolicitud
+    caminos_ocupados = {
+        camino for (camino,) in CatalogoPlazo.query
+        .filter_by(tipo_elemento='ACTO', activo=True)
+        .with_entities(CatalogoPlazo.camino).all()
+    }
+    return [
+        t for t in TipoSolicitud.query.order_by(TipoSolicitud.id).all()
+        if '+' not in t.siglas and f'ANY/{t.siglas}' not in caminos_ocupados
+    ]
+
+
+def _datos_maestros(app):
+    """Siglas de un tipo atómico SIN entrada activa, más efecto y variable."""
     with app.app_context():
-        from app.models.catalogo_plazos import CatalogoPlazo
-        from app.models.tipos_solicitudes import TipoSolicitud
         from app.models.efectos_plazo import EfectoPlazo
         from app.models.motor_reglas import CatalogoVariable
-        caminos_ocupados = {
-            camino for (camino,) in CatalogoPlazo.query
-            .filter_by(tipo_elemento='SOLICITUD', activo=True)
-            .with_entities(CatalogoPlazo.camino).all()
-        }
-        tipo = next(
-            (t for t in TipoSolicitud.query.order_by(TipoSolicitud.id).all()
-             if f'ANY/{t.siglas}' not in caminos_ocupados),
-            None,
-        )
+        tipo = next(iter(_tipos_atomicos_libres()), None)
         efecto = EfectoPlazo.query.first()
         variable = CatalogoVariable.query.filter_by(activa=True).first()
         if tipo is None or efecto is None or variable is None:
@@ -66,7 +69,7 @@ def _datos_maestros(app):
 
 def _alta_solicitud(client, siglas, efecto_id, norma_origen, orden=999):
     return client.post('/catalogo_plazos/crear', data={
-        'tipo_elemento': 'SOLICITUD',
+        'tipo_elemento': 'ACTO',
         'camino_solicitud': siglas,
         'plazo_valor': '3',
         'plazo_unidad': 'MESES',
@@ -92,20 +95,10 @@ def test_crear_bloquea_duplicado_ciego_mismo_camino(usuario_supervisor, app):
 
 
 def test_crear_no_bloquea_camino_distinto(usuario_supervisor, app):
-    """Control: dos altas SOLICITUD con camino distinto no colisionan."""
+    """Control: dos altas ACTO con camino distinto no colisionan."""
     with app.app_context():
-        from app.models.catalogo_plazos import CatalogoPlazo
-        from app.models.tipos_solicitudes import TipoSolicitud
         from app.models.efectos_plazo import EfectoPlazo
-        caminos_ocupados = {
-            camino for (camino,) in CatalogoPlazo.query
-            .filter_by(tipo_elemento='SOLICITUD', activo=True)
-            .with_entities(CatalogoPlazo.camino).all()
-        }
-        tipos = [
-            t for t in TipoSolicitud.query.order_by(TipoSolicitud.id).all()
-            if f'ANY/{t.siglas}' not in caminos_ocupados
-        ][:2]
+        tipos = _tipos_atomicos_libres()[:2]
         efecto = EfectoPlazo.query.first()
         if len(tipos) < 2 or efecto is None:
             pytest.skip('Se necesitan al menos 2 tipos_solicitudes libres en esta BD')
@@ -146,7 +139,7 @@ def test_editar_bloquea_duplicado_ciego_con_otra_fila(usuario_supervisor, app):
         item_id = item.id
 
     r2 = usuario_supervisor.post(f'/catalogo_plazos/{item_id}/editar', data={
-        'tipo_elemento': 'SOLICITUD',
+        'tipo_elemento': 'ACTO',
         'camino_solicitud': siglas,   # mismo camino que la fila existente sin condiciones
         'plazo_valor': '3',
         'plazo_unidad': 'MESES',
@@ -191,7 +184,7 @@ def test_editar_permite_colision_con_condiciones_y_avisa(usuario_supervisor, app
     r2 = usuario_supervisor.post(
         f'/catalogo_plazos/{item_id}/editar',
         data={
-            'tipo_elemento': 'SOLICITUD',
+            'tipo_elemento': 'ACTO',
             'camino_solicitud': siglas,  # mismo camino que la fila sin condiciones (#786 fila 1)
             'plazo_valor': '3',
             'plazo_unidad': 'MESES',
@@ -211,5 +204,5 @@ def test_editar_permite_colision_con_condiciones_y_avisa(usuario_supervisor, app
     with app.app_context():
         from app.models.catalogo_plazos import CatalogoPlazo
         editado = CatalogoPlazo.query.get(item_id)
-        assert editado.tipo_elemento == 'SOLICITUD'
+        assert editado.tipo_elemento == 'ACTO'
         assert len(editado.condiciones) == 1

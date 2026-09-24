@@ -559,9 +559,9 @@ class TestPlazoDelActo:
 
     def test_sin_suspender_hasta_796(self, arbol_aislado, hoy_fijo):
         """La forma ya prevé la suspensión y hoy vale «sin suspender», aunque la
-        solicitud tenga un requerimiento notificado que suspende en el catálogo
-        (lo sigue suspendiendo la función antigua, no la del acto)."""
-        from app.services.plazos import obtener_estado_plazo_solicitud, plazos_de_la_solicitud
+        solicitud tenga un requerimiento notificado que suspende en el catálogo:
+        las causas no se conectan al acto hasta #796 (#931, D8)."""
+        from app.services.plazos import _causas_suspension, plazos_de_la_solicitud
         hoy_fijo(date(2025, 4, 1))
         solicitud = _solicitud_desde(arbol_aislado, 'AAP+AAC+DUP')
         fase = arbol_aislado.fase('ANALISIS_SOLICITUD', solicitud=solicitud)
@@ -571,7 +571,7 @@ class TestPlazoDelActo:
             solicitud.expediente_id, 'JUSTIFICANTE_NOTIFICA', f'930-req-{espera.id}',
             fecha=date(2025, 3, 20)), 'CONSUMIDO')
 
-        assert obtener_estado_plazo_solicitud(solicitud).suspendido is True
+        assert _causas_suspension(solicitud), 'el requerimiento notificado debe ser causa'
         for p in plazos_de_la_solicitud(solicitud):
             assert p.suspendido is False and p.suspendido_desde is None
             assert p.dias_suspendidos == 0
@@ -596,10 +596,13 @@ class TestPlazoDelActo:
             plazos_de_la_solicitud(solicitud)
 
     def test_camino_del_acto(self, arbol_aislado):
-        from app.services.plazos import _camino_acto, compilar_camino
+        """El camino del acto es el de su solicitud con el tipo atómico en lugar
+        de la combinación; desde #931 lo compila `compilar_camino` con el nivel
+        ACTO (antes, `_camino_acto` sobre el nivel SOLICITUD)."""
+        from app.services.plazos import compilar_camino
         solicitud = _con_tipo(arbol_aislado.solicitud_propia(), 'AAP+AAC')
-        expediente = compilar_camino(solicitud, 'SOLICITUD').split('/')[0]
-        assert _camino_acto(_acto(solicitud, 'AAC')) == f'{expediente}/AAC'
+        expediente = solicitud.expediente.tipo_expediente.tipo
+        assert compilar_camino(_acto(solicitud, 'AAC'), 'ACTO') == f'{expediente}/AAC'
 
     def test_sin_solicitud_lista_vacia(self):
         from app.services.plazos import plazos_de_la_solicitud
@@ -684,25 +687,21 @@ class TestCatalogoReal:
         assert fuera == []
 
     def test_las_siete_filas_atomicas_se_cumplen_calculadas(self, app_ctx):
+        """Tras #931 son las únicas filas del plazo de resolver, con nivel ACTO."""
         from app.models.catalogo_plazos import CatalogoPlazo
-        filas = CatalogoPlazo.query.filter_by(tipo_elemento='SOLICITUD').all()
-        atomicas = {f.camino: f.campo_fecha_cumplimiento for f in filas if '+' not in f.camino}
+        filas = CatalogoPlazo.query.filter_by(tipo_elemento='ACTO').all()
+        atomicas = {f.camino: f.campo_fecha_cumplimiento for f in filas}
         assert set(atomicas) == _ATOMICAS
         assert all(cc == _CALCULADO for cc in atomicas.values()), atomicas
 
-    def test_combinaciones_fases_y_tareas_sin_cambio(self, app_ctx):
-        """Lo que N2 no toca: las 4 combinaciones y las 3 filas de fase las
-        retira N2b; las 14 de tarea siguen con su vínculo (13) o sin
+    def test_sin_combinaciones_ni_fases_y_tareas_sin_cambio(self, app_ctx):
+        """#931 retiró las 4 combinaciones y las 3 filas de fase que N2 había
+        dejado sin tocar; las 14 de tarea siguen con su vínculo (13) o sin
         señalador (el tablón)."""
         from app.models.catalogo_plazos import CatalogoPlazo
         filas = CatalogoPlazo.query.all()
-        combinaciones = [f for f in filas if f.tipo_elemento == 'SOLICITUD' and '+' in f.camino]
-        assert len(combinaciones) == 4
-        assert all(f.campo_fecha_cumplimiento == {'fk': 'documento_cierre_id'}
-                   for f in combinaciones)
-
-        fases = [f for f in filas if f.tipo_elemento == 'FASE']
-        assert len(fases) == 3 and all(f.campo_fecha_cumplimiento is None for f in fases)
+        assert [f.camino for f in filas if '+' in f.camino and f.tipo_elemento != 'TAREA'] == []
+        assert {f.tipo_elemento for f in filas} == {'ACTO', 'TAREA'}
 
         tareas = [f for f in filas if f.tipo_elemento == 'TAREA']
         con_rol = [f for f in tareas if (f.campo_fecha_cumplimiento or {}).get('rol')]

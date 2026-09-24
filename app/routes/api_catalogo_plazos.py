@@ -22,10 +22,10 @@ api_catalogo_plazos_bp = Blueprint(
     'api_catalogo_plazos', __name__, url_prefix='/api'
 )
 
-# Niveles con plazo posible: SOLICITUD y TAREA desde #788, FASE desde ADR-048
-# (acotada a fases finalizadoras). Trámite sigue sin fecha administrativa y la
-# tabla no tiene filas de ese nivel.
-_NIVELES_VALIDOS = {'SOLICITUD', 'FASE', 'TAREA'}
+# Niveles de fila con plazo posible: ACTO (el plazo de resolver de cada tipo
+# atómico; SOLICITUD hasta #931) y TAREA. Ni FASE (retirada en #931) ni TRAMITE
+# (sin fecha administrativa, #788) tienen filas.
+_NIVELES_VALIDOS = {'ACTO', 'TAREA'}
 
 
 @api_catalogo_plazos_bp.route('/catalogo-plazos', methods=['GET'])
@@ -40,7 +40,7 @@ def listar_catalogo_plazos():
         limit  (int, default 50)     : Registros por página. Máx: 100.
         search (str, mín 2 chars)    : Búsqueda parcial en camino o norma_origen.
         estado (str: true/false/'')  : Filtro por activo. Default: todos.
-        nivel  (str: SOLICITUD/FASE/TAREA/'')          : Filtro por tipo_elemento.
+        nivel  (str: ACTO/TAREA/'')  : Filtro por tipo_elemento.
 
     Returns:
         200 OK  con JSON {data, next_cursor, has_more, total?}.
