@@ -58,7 +58,8 @@ def crear_cert(tarea: Tarea) -> Documento:
     db.session.flush()
 
     from app.models.certificados import Certificado
-    cert = Certificado(documento_id=doc.id, datos=datos, generado_en=datetime.utcnow())
+    cert = Certificado(documento_id=doc.id, tipo=tipo_doc_codigo, datos=datos,
+                       generado_en=datetime.utcnow())
     db.session.add(cert)
     db.session.flush()
 

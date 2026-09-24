@@ -9,9 +9,10 @@ class Certificado(db.Model):
     """
     Certificado interno generado por el motor, vinculado al pool de documentos.
 
-    Un registro por Documento de tipo CERT_*. El tipo concreto se deduce de
-    documento.tipo_documento.codigo. El campo datos almacena el contenido
-    tipo-específico en JSONB; su estructura varía por tipo:
+    Un registro por Documento de tipo CERT_*. El tipo concreto está en `tipo`
+    (#932), copia de documento.tipo_doc.codigo que se fija al crear el
+    certificado. El campo datos almacena el contenido tipo-específico en JSONB;
+    su estructura varía por tipo:
 
         CERT_PLAZO_CUMPLIDO — tarea_id, fecha_vencimiento, documento_inicio_id,
             tipo_tramite, normativa, plazo_valor, plazo_unidad, fecha_inicio_computo
@@ -23,12 +24,22 @@ class Certificado(db.Model):
     URI: bddat://certificados/{id}  →  resolver_url() devuelve dict completo.
 
     SCOPING POR SOLICITUD/VERSIÓN (ADR-044 R5, #901):
-        solicitud_id y reformado_id son NULL para casi todos los certificados —
-        solo los poblados CERT_FIN_IP_CONSULTAS (y cualquier tipo futuro que
-        necesite re-emitirse por solicitud y por ronda) los usan, para poder
-        buscar y no confundir el certificado de una solicitud o una ronda con
-        el de otra del mismo expediente. reformado_id NULL = versión inicial,
-        mismo criterio que fases.reformado_id (R3).
+        solicitud_id y reformado_id son NULL salvo en CERT_FIN_IP_CONSULTAS (y
+        cualquier tipo futuro que necesite re-emitirse por solicitud y por
+        ronda), para poder buscar y no confundir el certificado de una solicitud
+        o una ronda con el de otra del mismo expediente. reformado_id NULL =
+        versión inicial, mismo criterio que fases.reformado_id (R3).
+
+    SCOPING POR FASE (N3, ADR-049 §F, #932):
+        fase_id es el tercer eje de scoping, NULL salvo en los certificados que
+        cuelgan de una fase (CERT_CUMPLIMIENTO_FASE, N4). Sin reformado_id: las
+        fases finalizadoras no se repiten por ronda (ADR-044 R5). El índice único
+        parcial (fase_id, tipo) deja como mucho un certificado de cada tipo por
+        fase; por eso `tipo` es columna y no se deduce por join.
+
+        El backref es Fase.certificados_cumplimiento, no Fase.certificados: ese
+        nombre ya lo ocupa CertificadoFase (tabla certificados_fase, auditoría
+        del motor), que es otra cosa.
     """
     __tablename__ = 'certificados'
     __table_args__ = (
@@ -43,6 +54,11 @@ class Certificado(db.Model):
             unique=True,
             postgresql_where=db.text('solicitud_id IS NOT NULL AND reformado_id IS NOT NULL'),
         ),
+        db.Index(
+            'uq_certificado_fase_tipo', 'fase_id', 'tipo',
+            unique=True,
+            postgresql_where=db.text('fase_id IS NOT NULL'),
+        ),
         {'schema': 'public'},
     )
 
@@ -53,7 +69,15 @@ class Certificado(db.Model):
         db.ForeignKey('public.documentos.id', name='fk_certificado_documento'),
         nullable=False,
         unique=True,
-        comment='FK documentos. Tipo deducido de tipo_documento.codigo',
+        comment='FK documentos. Tipo deducido de tipo_doc.codigo',
+    )
+
+    tipo = db.Column(
+        db.String(50),
+        nullable=False,
+        comment='Código del tipo de certificado (tipos_documentos.codigo). '
+                'Denormalizado desde documentos.tipo_doc_id para permitir '
+                'el índice único (fase_id, tipo) sin join.',
     )
 
     solicitud_id = db.Column(
@@ -70,6 +94,14 @@ class Certificado(db.Model):
         nullable=True,
         comment='FK a REFORMADOS_PROYECTO. NULL = versión inicial (o certificado sin scoping '
                 'por versión) — ver docstring de la clase',
+    )
+
+    fase_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.fases.id', name='fk_certificado_fase', ondelete='RESTRICT'),
+        nullable=True,
+        comment='FK a FASES. NULL salvo en certificados anclados a una fase '
+                '(hoy, CERT_CUMPLIMIENTO_FASE, N4) — ver docstring de la clase',
     )
 
     generado_en = db.Column(
@@ -103,6 +135,11 @@ class Certificado(db.Model):
         foreign_keys=[reformado_id],
         backref=db.backref('certificados', passive_deletes=True),
     )
+    fase = db.relationship(
+        'Fase',
+        foreign_keys=[fase_id],
+        backref=db.backref('certificados_cumplimiento', passive_deletes=True),
+    )
 
     def __repr__(self):
-        return f'<Certificado id={self.id} doc={self.documento_id}>'
+        return f'<Certificado id={self.id} tipo={self.tipo} doc={self.documento_id}>'

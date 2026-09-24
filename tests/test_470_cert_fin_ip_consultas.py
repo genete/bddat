@@ -247,8 +247,8 @@ def test_buscar_existente_no_confunde_solicitudes_ni_rondas(app_ctx):
                     url='bddat://certificados/0')
     db.session.add(doc)
     db.session.flush()
-    cert_a = Certificado(documento_id=doc.id, solicitud_id=sol_a.id, reformado_id=None,
-                         datos={})
+    cert_a = Certificado(documento_id=doc.id, tipo='CERT_FIN_IP_CONSULTAS',
+                         solicitud_id=sol_a.id, reformado_id=None, datos={})
     db.session.add(cert_a)
     db.session.flush()
 
