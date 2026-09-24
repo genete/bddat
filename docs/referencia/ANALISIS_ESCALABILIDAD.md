@@ -40,6 +40,11 @@ volver a plantearlo cada vez que alguien audita el proyecto desde fuera.
 
 ### 2.1 La suite de tests corre contra la BD de desarrollo
 
+> **Resuelto en #849** (sept. 2026): existe `TestingConfig` con base propia
+> construida desde las migraciones y sembrada (`scripts/preparar_bd_test.py`),
+> y el tope de skips está en 0. Se conserva el análisis como contexto; el uso
+> actual de la suite está en [`tests/README.md`](../../tests/README.md).
+
 La viga que cede primero. No por el tamaño del código, sino porque **28.109
 líneas de test —la segunda área más grande del repo, por delante de
 `services`— dependen del estado de una máquina concreta.**
