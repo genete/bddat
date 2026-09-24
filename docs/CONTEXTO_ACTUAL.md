@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **#927** mergeado (PR #937): 8 entradas múltiples de `DATOS_CATASTRALES` en `tramites_tareas_documentos`. Deja abiertos #935 (la sugerencia de tipo mezcla `ENTRADA` y `SALIDA` y se pierde en esos pasos), #936 (la tabla no distingue por fase) y #938 (repaso general de la tabla contra `ESTRUCTURA_FTT`). Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#930 (N2)** mergeado (PR #939): el plazo de resolver es de cada acto y se cumple con la notificación al titular. Aditivo: las filas y funciones antiguas del plazo siguen hasta N2b. Deja abierto #940 (la marca `afectado_por_reformado` de la tasa solo existe en desarrollo, puesta a mano). Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **#930 (N2)**, siguiente de la cadena principal de ADR-049 (el plazo es del acto; cumplimiento calculado).
+**Próximo:** **#931 (N2b)**, siguiente de la cadena principal de ADR-049 (retira las filas y funciones que N2 dejó sustituidas; renombra `SOLICITUD` → `ACTO`).
 
 ---
 
