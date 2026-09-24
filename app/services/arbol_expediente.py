@@ -85,6 +85,10 @@ def opciones_solicitud() -> list:
         # Organismos consultados de la fase (ADR-042 §A) — grupo sintético en el árbol.
         selectinload(Solicitud.fases)
         .selectinload(Fase.organismos).joinedload(OrganismoExpediente.organismo),
+        # Sello del cumplimiento (#947): el plazo del acto lee el certificado de la
+        # fase antes de calcular. Una sentencia para todas las fases, no una por fase;
+        # el documento citado ya viene con los vínculos de las tareas (más abajo).
+        selectinload(Solicitud.fases).selectinload(Fase.certificados_cumplimiento),
         selectinload(Solicitud.fases)
         .selectinload(Fase.tramites).joinedload(Tramite.tipo_tramite),
         selectinload(Solicitud.fases)

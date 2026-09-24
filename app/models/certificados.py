@@ -20,8 +20,21 @@ class Certificado(db.Model):
             fundamento_juridico  (producido en #373)
         CERT_FIN_IP_CONSULTAS — fases_habilitantes, fecha_fin_ultima_fase
             (producido en issue futuro)
+        CERT_CUMPLIMIENTO_FASE — documento_id y nada más (#947, ADR-049 §F): el
+            documento que acredita la notificación al titular de lo que resuelve
+            la fase. Sin su fecha (una sola fuente) y sin tipo, tarea ni actos,
+            que se derivan del documento y de la fase y no pueden cambiar
+            mientras el sello exista. Un id dentro de JSONB no es FK: lo protege
+            services/sellos.py.
 
     URI: bddat://certificados/{id}  →  resolver_url() devuelve dict completo.
+
+    SER CERTIFICADO = TENER FILA AQUÍ, NUNCA LA URL (#947, D2):
+        `Documento.url` dice dónde está el papel (hoy bddat://, «no hay papel, se
+        pinta»; el día que haya PDF, su ruta). Esta fila dice qué sella, y no
+        cambia al pasar a PDF. Todo código que necesite saber si un documento es
+        un certificado pregunta por `doc.certificado`, no por el esquema de la
+        url; así el paso a PDF solo cambia dónde está el papel.
 
     SCOPING POR SOLICITUD/VERSIÓN (ADR-044 R5, #901):
         solicitud_id y reformado_id son NULL salvo en CERT_FIN_IP_CONSULTAS (y
