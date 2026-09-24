@@ -7,29 +7,33 @@ Interfaz de configuración para el Supervisor sobre `catalogo_plazos` +
 como tarjeta del hub del supervisor (ADR-029 §1), no como entrada propia de
 sidebar.
 
-Dos cascadas independientes, ambas gobernadas por el nivel ESFTT y ambas
+Dos cascadas independientes, ambas gobernadas por el nivel de la fila y ambas
 renderizadas por `_campo_fecha_macro.html`:
 
 1. Camino SFTT (#785) — DÓNDE está el plazo en el árbol. Un select por nivel; el
-   nivel elegido decide cuántos segmentos se piden (SOLICITUD 2, FASE 3, TAREA 5
-   — TRAMITE no es nivel seleccionable desde #788, aunque sigue pidiéndose como
-   segmento intermedio de una TAREA; FASE volvió a serlo en ADR-048, acotada a
-   fases finalizadoras: la hoja debe tener `es_finalizadora=True`). Los
-   ancestros admiten `ANY`; la hoja es obligatoria y nunca `ANY`, porque es el
-   tipo del elemento evaluado y siempre se conoce. Sustituye al antiguo select
-   único de `tipo_elemento_codigo`, que no distinguía dos puntos distintos del
-   árbol con el mismo literal.
+   nivel elegido decide cuántos segmentos se piden (ACTO 2, TAREA 5 — TRAMITE
+   no es nivel seleccionable desde #788, aunque sigue pidiéndose como segmento
+   intermedio de una TAREA; FASE tampoco desde #931). Los ancestros admiten
+   `ANY`; la hoja es obligatoria y nunca `ANY`, porque es el tipo del elemento
+   evaluado y siempre se conoce. En una fila ACTO la hoja es además un tipo
+   atómico: el camino del acto nunca lleva una combinación (#931, D10).
+   Sustituye al antiguo select único de `tipo_elemento_codigo`, que no
+   distinguía dos puntos distintos del árbol con el mismo literal.
 
 2. `campo_fecha` (DISEÑO_FECHAS_PLAZOS.md §3.2) — DESDE QUÉ documento se computa.
-   Vocabulario cerrado desde #788, ampliado por ADR-048 sin sintaxis nueva:
-   SOLICITUD y FASE son fijos (mismo disparo, la entrada de la solicitud — FASE
-   lo hereda vía `Fase.solicitud`), TAREA pide el rol (consumido/producido) y,
-   opcionalmente, el tipo de documento que desempata cuando dos tareas del
-   mismo tipo conviven en un trámite (las dos esperas de los `ANUNCIO_*`).
-   TRAMITE sigue sin portar fecha — no hay filas de ese nivel ni forma de
-   crearlas. El cumplimiento también va fijo por nivel: SOLICITUD, la
+   Vocabulario cerrado desde #788: ACTO es fijo (la entrada de la solicitud,
+   que el acto hereda de su contenedor), TAREA pide el rol
+   (consumido/producido) y, opcionalmente, el tipo de documento que desempata
+   cuando dos tareas del mismo tipo conviven en un trámite (las dos esperas de
+   los `ANUNCIO_*`). TRAMITE sigue sin portar fecha — no hay filas de ese
+   nivel ni forma de crearlas. El cumplimiento también va fijo en ACTO: la
    propiedad calculada del acto (`{"calculado": "documento_cumplimiento"}`,
-   #930, ADR-049 §E); FASE, NULL (las filas de fase se retiran en N2b).
+   #930, ADR-049 §E).
+
+«Nivel» significa dos cosas aquí (#931, D7): el de la FILA (`tipo_elemento`:
+ACTO, TAREA — `_NIVELES_VALIDOS`, `_SEGMENTOS_POR_NIVEL`) y el del NODO del árbol
+que ocupa cada segmento del camino (SOLICITUD, FASE, TRAMITE, TAREA —
+`_TIPO_MODELO`, `_SEGMENTOS_CAMINO`). Solo el primero cambió en #931.
 
 El bloque visible lo decide el servidor según el nivel actual (edición) o el
 valor por defecto del select (alta); el JS de `catalogo-plazos-cascada.js` solo
@@ -79,12 +83,12 @@ bp = Blueprint(
     template_folder='templates',
 )
 
-# Nivel ESFTT → (modelo del catálogo de tipos, atributo que porta el código estable).
-# TipoSolicitud usa 'siglas' — el resto usa 'codigo' (mismo mapeo que plazos.py).
-# Conserva sus 4 entradas a propósito (igual que plazos.py._TIPO_REL_CAMPO):
-# _tipo_elemento_nombre() la usa para nombrar CUALQUIER segmento del camino,
-# incluidos los ancestros Fase/Trámite de una TAREA — no es el mapa de niveles
-# seleccionables, que es _NIVELES_VALIDOS.
+# Nivel de NODO → (modelo del catálogo de tipos, atributo que porta el código
+# estable). TipoSolicitud usa 'siglas' — el resto usa 'codigo' (mismo mapeo que
+# plazos.py). Conserva sus 4 entradas a propósito (igual que
+# plazos.py._TIPO_REL_CAMPO): _tipo_elemento_nombre() la usa para nombrar
+# CUALQUIER segmento del camino, incluidos los ancestros Fase/Trámite de una
+# TAREA — no es el mapa de niveles de fila, que es _NIVELES_VALIDOS (#931, D7).
 _TIPO_MODELO = {
     'SOLICITUD': (TipoSolicitud, 'siglas'),
     'FASE':      (TipoFase, 'codigo'),
@@ -92,22 +96,23 @@ _TIPO_MODELO = {
     'TAREA':     (TipoTarea, 'codigo'),
 }
 
-# Niveles con plazo posible: SOLICITUD y TAREA portan fecha administrativa
-# propia (#788); FASE entró en ADR-048, acotada a fases finalizadoras —
-# RESOLUCION_DUP/AAP/AAC son el acto, no taxonomía. TRAMITE sigue fuera y el
-# CheckConstraint de catalogo_plazos ya lo rechaza — esta validación da el
-# error legible antes de llegar ahí. Que la hoja FASE sea finalizadora lo
-# exige _construir_camino, no este set (el constraint de BD no distingue
-# fases entre sí).
-_NIVELES_VALIDOS = {'SOLICITUD', 'FASE', 'TAREA'}
+# Niveles de FILA con plazo posible: ACTO (el plazo de resolver de cada tipo
+# atómico, #930; SOLICITUD hasta #931) y TAREA. TRAMITE no porta fecha (#788) y
+# FASE se retiró en #931; el CheckConstraint de catalogo_plazos los rechaza —
+# esta validación da el error legible antes de llegar ahí.
+_NIVELES_VALIDOS = {'ACTO', 'TAREA'}
+
+# Qué nodo del árbol ocupa la hoja de cada nivel de fila: el acto es un tipo de
+# solicitud (atómico), así que se nombra con TipoSolicitud.
+_NODO_DE_LA_HOJA = {'ACTO': 'SOLICITUD', 'TAREA': 'TAREA'}
 
 # Camino SFTT (#785): un segmento por nivel del árbol, de fuera a dentro. La
-# longitud del camino codifica el nivel del elemento evaluado, así que el nivel
-# elegido decide cuántos segmentos se piden. FASE y TRAMITE conservan su entrada
-# aquí aunque ya no sean niveles seleccionables (#788): siguen siendo posiciones
-# de ascendencia dentro del camino de 5 segmentos de una TAREA, y esta lista
-# valida cada posición contra el catálogo de tipos que le toca.
-#   (campo del formulario, nivel de tipo para validar, etiqueta para el error)
+# longitud del camino codifica el nivel de la fila, así que el nivel elegido
+# decide cuántos segmentos se piden. FASE y TRAMITE conservan su entrada aquí
+# aunque no sean niveles de fila: siguen siendo posiciones de ascendencia dentro
+# del camino de 5 segmentos de una TAREA, y esta lista valida cada posición
+# contra el catálogo de tipos que le toca (nivel de NODO).
+#   (campo del formulario, nivel de nodo para validar, etiqueta para el error)
 _SEGMENTOS_CAMINO = [
     ('camino_expediente', None,        'tipo de expediente'),
     ('camino_solicitud',  'SOLICITUD', 'tipo de solicitud'),
@@ -115,25 +120,25 @@ _SEGMENTOS_CAMINO = [
     ('camino_tramite',    'TRAMITE',   'tipo de trámite'),
     ('camino_tarea',      'TAREA',     'tipo de tarea'),
 ]
-# Los niveles con plazo posible: TRAMITE no porta fecha administrativa y queda
-# fuera del CheckConstraint de catalogo_plazos (#788); FASE sí, acotada a
-# finalizadoras (ADR-048).
-_SEGMENTOS_POR_NIVEL = {'SOLICITUD': 2, 'FASE': 3, 'TAREA': 5}
+# Segmentos por nivel de fila: la hoja de un ACTO ocupa la posición de la
+# solicitud; la de una TAREA, la última.
+_SEGMENTOS_POR_NIVEL = {'ACTO': 2, 'TAREA': 5}
 _UNIDADES_VALIDAS = {'DIAS_HABILES', 'DIAS_NATURALES', 'MESES', 'ANOS'}
 _ROLES_VALIDOS = {'CONSUMIDO', 'PRODUCIDO'}
 
+# Solo el disparo del acto: el certificado de cierre de la solicitud
+# (`documento_cierre_id`) dejó de cerrar ningún plazo en #930 y ninguna fila lo
+# nombra desde #931.
 _FK_LABEL = {
     'documento_solicitud_id': 'Fecha administrativa del documento de solicitud',
-    'documento_cierre_id': 'Fecha administrativa del certificado de cierre de la solicitud',
 }
 # Una etiqueta por cada nombre de `plazos.CALCULADOS` (#930, D5): quien añada
 # una propiedad calculada tiene que decir aquí qué significa — un test compara
 # las dos listas. El supervisor no teclea el nombre; ve qué es cada valor.
-# «(acto)» durante el interregno N2 → N2b: el nivel aún se llama SOLICITUD.
 _CALCULADO_LABEL = {
     'documento_cumplimiento': (
         'Calculado: documento que acredita la notificación al titular en la fase '
-        'que resuelve este tipo de solicitud (acto)'
+        'que resuelve este acto'
     ),
 }
 _ROL_LABEL = {'CONSUMIDO': 'consumido', 'PRODUCIDO': 'producido'}
@@ -253,16 +258,16 @@ def _tipo_documento_map() -> dict:
     return mapa
 
 
-def _tipo_elemento_nombre(tipo_elemento: str, codigo: str) -> str:
-    """Nombre legible del tipo de la hoja del camino."""
-    modelo_attr = _TIPO_MODELO.get(tipo_elemento)
+def _tipo_elemento_nombre(nivel_nodo: str, codigo: str) -> str:
+    """Nombre legible del tipo de un segmento del camino (nivel de NODO)."""
+    modelo_attr = _TIPO_MODELO.get(nivel_nodo)
     if not modelo_attr or not codigo:
         return codigo or '—'
     modelo, attr = modelo_attr
     row = modelo.query.filter_by(**{attr: codigo}).first()
     if not row:
         return codigo
-    if tipo_elemento == 'SOLICITUD':
+    if nivel_nodo == 'SOLICITUD':
         return f'{row.siglas} — {row.descripcion}'
     return row.nombre
 
@@ -273,9 +278,15 @@ def _camino_legible(camino: str) -> list[dict]:
     Devuelve [{'nivel': 'Fase', 'valor': 'RESOLUCION', 'nombre': 'Resolución',
                'any': False, 'hoja': True}, …] — 'any' marca los niveles sin
     concretar, 'hoja' el tipo del elemento evaluado.
+
+    El segundo segmento es la solicitud en el camino de una tarea y el acto en
+    el de una fila ACTO (2 segmentos, #931): mismo catálogo de tipos, distinta
+    etiqueta.
     """
     partes = (camino or '').split('/')
     etiquetas = ['Expediente', 'Solicitud', 'Fase', 'Trámite', 'Tarea']
+    if len(partes) == _SEGMENTOS_POR_NIVEL['ACTO']:
+        etiquetas[1] = 'Acto'
     salida = []
     for i, valor in enumerate(partes):
         es_any = valor == 'ANY'
@@ -309,10 +320,18 @@ def _construir_camino(tipo_elemento: str):
     Devuelve (camino, error_msg_o_None). Los ancestros admiten 'ANY'; la hoja
     —el tipo del elemento evaluado— es obligatoria y debe existir en su catálogo:
     un camino con hoja 'ANY' no identificaría nada.
+
+    La hoja de una fila ACTO debe ser un tipo atómico (#931, D10): el camino del
+    acto lleva siempre el suyo (`Distribucion/AAC`, nunca `Distribucion/AAP+AAC`),
+    así que una fila con una combinación se guardaría sin error y no casaría
+    nunca. Es el invariante del nivel, en el sitio donde estuvo la comprobación
+    de «fase finalizadora» del nivel FASE que #931 retiró. En una TAREA la
+    misma posición es un ancestro —las siglas reales de la solicitud— y ahí la
+    combinación sí es válida.
     """
     n = _SEGMENTOS_POR_NIVEL.get(tipo_elemento)
     if n is None:
-        return None, 'Nivel ESFTT no reconocido.'
+        return None, 'Nivel de la fila no reconocido.'
 
     segmentos = []
     for i in range(n):
@@ -330,11 +349,10 @@ def _construir_camino(tipo_elemento: str):
             row = modelo.query.filter_by(**{attr: valor}).first()
             if not row:
                 return None, f'El {etiqueta} «{valor}» no existe en el catálogo.'
-            if es_hoja and nivel_tipo == 'FASE' and not row.es_finalizadora:
+            if es_hoja and tipo_elemento == 'ACTO' and '+' in valor:
                 return None, (
-                    f'La fase «{valor}» no es finalizadora: solo una fase que '
-                    'formaliza un acto (RESOLUCION_DUP, RESOLUCION_AAP, '
-                    'RESOLUCION_AAC...) puede tener plazo propio (ADR-048).'
+                    f'«{valor}» es una combinación de actos. El plazo de resolver '
+                    'es de cada acto: elige un tipo simple (AAP, AAC, DUP…).'
                 )
 
         if '/' in valor:
@@ -349,7 +367,7 @@ def _campo_fecha_legible(tipo_elemento: str, campo_fecha: dict) -> str:
     """Traduce el JSON de campo_fecha a texto legible.
 
     Vocabulario cerrado de tres ramas (DISEÑO_FECHAS_PLAZOS.md §3.2): `fk` para
-    SOLICITUD, `rol` [+ `tipo_documento` opcional] para TAREA (#788) y
+    el disparo del ACTO, `rol` [+ `tipo_documento` opcional] para TAREA (#788) y
     `calculado` para el cumplimiento del acto (#930). Ya no existe
     `via_tarea_tipo` — era la indirección que bajaba de un trámite a su tarea,
     y con la fila declarada en la tarea sobra.
@@ -408,16 +426,14 @@ def _parse_fecha_opcional(valor_raw):
 def _construir_campo_fecha(tipo_elemento: str):
     """Traduce la selección en cascada del formulario al JSON de campo_fecha.
 
-    Vocabulario cerrado desde #788, ampliado por ADR-048 sin sintaxis nueva:
-    `_NIVELES_VALIDOS` ya descarta TRAMITE antes de llegar aquí — sin rama
-    para él.
+    Vocabulario cerrado desde #788: `_NIVELES_VALIDOS` ya descarta TRAMITE (y
+    FASE, desde #931) antes de llegar aquí — sin rama para ellos.
 
     Devuelve (campo_fecha_dict, error_msg_o_None).
     """
-    if tipo_elemento in ('SOLICITUD', 'FASE'):
-        # Único disparo posible: la fecha de entrada de la solicitud — propia
-        # en SOLICITUD, heredada vía Fase.solicitud en FASE (ADR-048 §B). Sin
-        # selección posible en ninguno de los dos (§3.2).
+    if tipo_elemento == 'ACTO':
+        # Único disparo posible: la fecha de entrada de la solicitud, que el
+        # acto hereda de su contenedor. Sin selección posible (§3.2).
         return {'fk': 'documento_solicitud_id'}, None
 
     if tipo_elemento == 'TAREA':
@@ -436,7 +452,7 @@ def _construir_campo_fecha(tipo_elemento: str):
 
         return campo_fecha, None
 
-    return None, 'Nivel ESFTT no reconocido.'
+    return None, 'Nivel de la fila no reconocido.'
 
 
 def _construir_campo_cumplimiento(tipo_elemento: str):
@@ -445,16 +461,11 @@ def _construir_campo_cumplimiento(tipo_elemento: str):
     Mismo vocabulario cerrado que `campo_fecha` —el problema es el mismo,
     localizar un documento desde el elemento— con estas diferencias:
 
-    - En SOLICITUD, la propiedad calculada del acto (#930, ADR-049 §E, D9): el
+    - En ACTO, la propiedad calculada del acto (#930, ADR-049 §E, D9): el
       documento que acredita la notificación al titular en la fase que
-      resuelve este tipo de solicitud (arts. 21.2 y 40.4 LPACAP). Fijo por
-      nivel, sin selección posible, igual que su gemelo; y se reescribe en
-      cada alta y edición, así que guardar una fila nunca revierte la
-      migración `930`. Editar desde aquí una de las cuatro combinaciones
-      también le deja `calculado`: la función antigua lo lee como «sin
-      cumplimiento», igual que antes (se retiran en N2b).
-    - En FASE queda NULL (ADR-048 §B): las filas de fase se retiran en N2b.
-      Sin selección posible: el formulario ni la ofrece en este nivel.
+      resuelve el acto (arts. 21.2 y 40.4 LPACAP). Fijo por nivel, sin
+      selección posible, igual que su gemelo; y se reescribe en cada alta y
+      edición, así que guardar una fila nunca revierte la migración `930`.
     - En TAREA el rol puede quedar vacío, y eso no es un formulario a medio
       rellenar: una entrada sin señalador de cumplimiento nunca alcanza CUMPLIDO,
       que es justo lo que hace falta en TABLON_AYUNTAMIENTOS (#416), donde el
@@ -462,11 +473,8 @@ def _construir_campo_cumplimiento(tipo_elemento: str):
 
     Devuelve (campo_cumplimiento_dict_o_None, error_msg_o_None).
     """
-    if tipo_elemento == 'SOLICITUD':
+    if tipo_elemento == 'ACTO':
         return {'calculado': 'documento_cumplimiento'}, None
-
-    if tipo_elemento == 'FASE':
-        return None, None
 
     if tipo_elemento == 'TAREA':
         rol = (request.form.get('campo_cumplimiento_rol') or '').strip().upper()
@@ -484,7 +492,7 @@ def _construir_campo_cumplimiento(tipo_elemento: str):
 
         return campo, None
 
-    return None, 'Nivel ESFTT no reconocido.'
+    return None, 'Nivel de la fila no reconocido.'
 
 
 def _aviso_tope_suspension(item) -> str | None:
@@ -520,7 +528,7 @@ def _rellenar_catalogo_plazo(item) -> list[str]:
 
     tipo_elemento = (request.form.get('tipo_elemento') or '').strip().upper()
     if tipo_elemento not in _NIVELES_VALIDOS:
-        return ['El nivel ESFTT es obligatorio.']  # sin nivel no se puede validar el resto
+        return ['El nivel es obligatorio.']  # sin nivel no se puede validar el resto
 
     camino, err_camino = _construir_camino(tipo_elemento)
     if err_camino:
@@ -534,8 +542,8 @@ def _rellenar_catalogo_plazo(item) -> list[str]:
     if err_cc:
         errores.append(err_cc)
 
-    # Solo las tareas suspenden: lo que el art. 22 suspende es el plazo de la
-    # solicitud, y marcarla a ella significaría que se suspende a sí misma. El
+    # Solo las tareas suspenden: lo que el art. 22 suspende es el plazo de
+    # resolver, y marcarlo a él significaría que se suspende a sí mismo. El
     # CheckConstraint lo cubre en BD; aquí se ignora la casilla sin error, porque
     # el formulario no la ofrece en ese nivel.
     suspende = (
@@ -851,7 +859,8 @@ def fragmento(id):
     return render_template(
         'catalogo_plazos/_detalle_fragmento.html',
         item=item,
-        tipo_elemento_nombre=_tipo_elemento_nombre(item.tipo_elemento, item.hoja),
+        tipo_elemento_nombre=_tipo_elemento_nombre(
+            _NODO_DE_LA_HOJA.get(item.tipo_elemento), item.hoja),
         camino_legible=_camino_legible(item.camino),
         campo_fecha_legible=_campo_fecha_legible(item.tipo_elemento, item.campo_fecha),
         campo_cumplimiento_legible=_campo_cumplimiento_legible(

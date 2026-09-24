@@ -67,18 +67,21 @@ class Solicitud(db.Model):
 
     CAMPO DOCUMENTO_CIERRE_ID (#778, ADR-041 §D bis):
         - NULLABLE: FK al certificado de cierre de la solicitud (CERT_CIERRE_SOLICITUD)
-        - Pareja de DOCUMENTO_SOLICITUD_ID: uno ancla la fecha de inicio del plazo
-          para resolver y notificar, este la de fin
+        - Nació (#778) como pareja de DOCUMENTO_SOLICITUD_ID: uno anclaba la fecha
+          de inicio del plazo para resolver y notificar, este la de fin. Ya no
+          cierra ningún plazo: el de resolver es de cada acto y se cumple con la
+          notificación al titular en la fase que lo resuelve (#930, ADR-049 §E);
+          desde #931 ninguna fila de catalogo_plazos lo nombra
+        - Se mantiene como constancia (ADR-049): CERT_CIERRE_SOLICITUD enumera,
+          por acto, la resolución y su notificación, y sirve después como
+          documento consumido por otras solicitudes
         - NO es Fase(RESOLUCION).documento_resultado_id: ese es la resolución, y su
-          fecha es la de dictar, anterior a la de notificar. El art. 21.3.b obliga a
-          «resolver Y notificar», y el 40.4 fija que basta la notificación —o el
-          intento debidamente acreditado— respecto de todos los interesados. Con
-          varios interesados hay varios intentos y ninguno significa por sí solo
-          «la solicitud está cerrada»: lo que se ancla aquí es el certificado que
-          constata el hecho agregado, con la fecha del último de esos actos
-        - Mientras no exista el certificado, el plazo de la solicitud no alcanza
-          CUMPLIDO (plazos.py) — es el mismo comportamiento que una fase en
-          PDTE_CIERRE: todo hecho, falta formalizar
+          fecha es la de dictar, anterior a la de notificar. El art. 21.2 obliga a
+          «dictar resolución expresa y a notificarla», y el 40.4 fija que basta la
+          notificación —o el intento debidamente acreditado—. Con varios
+          interesados hay varios intentos y ninguno significa por sí solo «la
+          solicitud está cerrada»: lo que se ancla aquí es el certificado que
+          constata el hecho agregado
 
     CAMPO ESTADO (property derivada, no columna):
         - EN_TRAMITE: alguna fase no está finalizada
@@ -164,8 +167,10 @@ class Solicitud(db.Model):
         db.Integer,
         db.ForeignKey('public.documentos.id', name='fk_solicitudes_documento_cierre'),
         nullable=True,
-        comment='FK a DOCUMENTOS. Certificado de cierre de la solicitud: ancla la fecha '
-                'de fin del plazo para resolver y notificar (#778)'
+        # Mismo texto que el COMMENT ON COLUMN de 931_nivel_acto
+        comment='FK a DOCUMENTOS. Certificado de cierre de la solicitud (CERT_CIERRE_SOLICITUD): '
+                'deja constancia, por acto, de la resolución y su notificación (ADR-049). '
+                'No cierra ningún plazo: el de resolver es de cada acto (#930)'
     )
 
     observaciones = db.Column(

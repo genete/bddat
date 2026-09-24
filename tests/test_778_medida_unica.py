@@ -528,7 +528,7 @@ class TestCatalogoEnBD:
             f'significaría que se suspende a sí misma. Filas: {[e.id for e in malas]}'
         )
 
-    def test_constraint_rechaza_solicitud_suspensora(self, app_ctx):
+    def test_constraint_rechaza_acto_suspensor(self, app_ctx):
         """El CRUD valida para dar error legible; el constraint cubre lo que
         escribe sin pasar por él — migraciones de seed y tests, que son por donde
         entraron los incidentes reales de esta tabla."""
@@ -541,7 +541,7 @@ class TestCatalogoEnBD:
         assert efecto is not None, 'Seed de efectos_plazo no encontrado'
 
         db.session.add(CatalogoPlazo(
-            tipo_elemento='SOLICITUD',
+            tipo_elemento='ACTO',
             camino='ANY/TEST_778',
             campo_fecha={'fk': 'documento_solicitud_id'},
             plazo_valor=3,
@@ -554,22 +554,15 @@ class TestCatalogoEnBD:
 
     def test_cumplimiento_usa_el_vocabulario_cerrado(self, app_ctx):
         """Mismo vocabulario que el señalador de disparo más el tercer portador
-        de #930: la fila atómica de SOLICITUD (el acto) se cumple con la
-        propiedad calculada; las combinaciones conservan el ancla de cierre
-        hasta que N2b las retire."""
+        de #930: la fila ACTO se cumple con la propiedad calculada (desde #931
+        ya no quedan las combinaciones que cerraban con `documento_cierre_id`)."""
         from app.models.catalogo_plazos import CatalogoPlazo
         for fila in CatalogoPlazo.query.filter_by(activo=True).all():
             cf = fila.campo_fecha_cumplimiento
-            if cf is None:
-                continue
-            claves = set(cf)
-            if fila.tipo_elemento == 'SOLICITUD' and '+' not in fila.camino:
+            if fila.tipo_elemento == 'ACTO':
                 assert cf == {'calculado': 'documento_cumplimiento'}, f'Fila {fila.id}: {cf}'
-            elif fila.tipo_elemento == 'SOLICITUD':
-                assert claves == {'fk'}, f'Fila {fila.id}: {cf}'
-                assert cf['fk'] == 'documento_cierre_id', f'Fila {fila.id}: {cf}'
-            else:
-                assert claves <= {'rol', 'tipo_documento'}, f'Fila {fila.id}: {cf}'
+            elif cf is not None:
+                assert set(cf) <= {'rol', 'tipo_documento'}, f'Fila {fila.id}: {cf}'
                 assert cf.get('rol') in ('CONSUMIDO', 'PRODUCIDO'), f'Fila {fila.id}: {cf}'
 
     def test_el_tablon_sigue_sin_senalador_de_cumplimiento(self, app_ctx):

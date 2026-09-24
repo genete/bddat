@@ -22,19 +22,25 @@ Reescrito dos veces:
   (a) la cita de DUP sola cambia de "Art. 145.4" (inexistente: el art. 145 es
   "Alegaciones", párrafo único) a "Art. 148.1", y el plazo de 3 a 6 meses; (b)
   ADR-048 reabre FASE como nivel posible, acotado a fases finalizadoras — tres
-  filas nuevas de ese nivel (bloque F) que esta suite no contaba como
-  "entradas de resolución de nivel SOLICITUD" y siguen sin contarlas.
+  filas de ese nivel que esta suite probaba aparte (bloque F).
+
+  #931 — el plazo de resolver es de cada acto (#930): las 4 combinaciones
+  (AAP+AAC, AAP+AAC+DUP, AAC+DUP, AE_DEFINITIVA+AAT) y las 3 filas de FASE se
+  retiran, y el nivel de las 7 atómicas pasa de SOLICITUD a ACTO. Una solicitud
+  combinada ya no tiene fila propia: cada acto encuentra la suya (bloque C).
+  Fuera el bloque F.
 
 Verifica:
   A) Variable tipo_solicitud sigue activa (la usan condiciones_requisito, #192);
      lo que ya no existe es su uso como discriminador de posición en plazos.
-  B) 11 entradas de nivel SOLICITUD, cada una con su camino, norma y efecto.
-  C) Para cada combinación cubierta, _seleccionar_catalogo devuelve la correcta
-     partiendo del elemento (sin dict de variables).
-  D) Combinaciones fuera de scope → None (deuda de #247).
-  F) #892/ADR-048 — las tres filas nuevas de nivel FASE (RESOLUCION_DUP/AAP/AAC).
+  B) 7 entradas de nivel ACTO, una por tipo atómico, con su norma y efecto.
+  C) Para cada tipo atómico cubierto, _seleccionar_catalogo devuelve la fila
+     correcta partiendo del acto (sin dict de variables); una combinación como
+     acto no encuentra ninguna.
+  D) Tipos fuera de scope → None (deuda de #247).
 
-Requieren BD con las migraciones 785, 788 y 892 aplicadas y fixture app_ctx (conftest.py).
+Requieren BD con las migraciones 785, 788, 892, 930 y 931 aplicadas y fixture
+app_ctx (conftest.py).
 """
 from unittest.mock import MagicMock
 
@@ -42,22 +48,22 @@ import pytest
 
 
 # ---------------------------------------------------------------------------
-# Combinaciones cubiertas y mapeo esperado (siglas → (valor, unidad, norma))
+# Tipos atómicos cubiertos y mapeo esperado (siglas → (valor, unidad, norma))
 # ---------------------------------------------------------------------------
 
-_COMBINACIONES_CUBIERTAS = {
+_ACTOS_CUBIERTOS = {
     'AE_PROVISIONAL':     (1, 'MESES', 'Art. 132 bis RD 1955/2000 + DA 3ª LSE'),
     'AE_DEFINITIVA':      (1, 'MESES', 'Art. 132 ter RD 1955/2000 + DA 3ª LSE'),
-    'AE_DEFINITIVA+AAT':  (1, 'MESES', 'Art. 132 ter RD 1955/2000 + DA 3ª LSE'),
     'AAP':                (3, 'MESES', 'Art. 128 RD 1955/2000'),
     'AAC':                (3, 'MESES', 'Art. 131.7 RD 1955/2000'),
-    'AAP+AAC':            (3, 'MESES', 'Art. 131.7 RD 1955/2000'),
-    'AAP+AAC+DUP':        (3, 'MESES', 'Art. 131.7 RD 1955/2000'),
-    'AAC+DUP':            (3, 'MESES', 'Art. 131.7 RD 1955/2000'),
     'AAT':                (3, 'MESES', 'Art. 133 RD 1955/2000'),
     'CIERRE':             (3, 'MESES', 'Art. 138 RD 1955/2000 (mod. RD 88/2026)'),
     'DUP':                (6, 'MESES', 'Art. 148.1 RD 1955/2000'),  # #892: cita corregida
 }
+
+# Solicitudes combinadas: cada una se descompone en actos atómicos con su fila
+# (#930); desde #931 ninguna tiene fila propia.
+_COMBINACIONES = ['AE_DEFINITIVA+AAT', 'AAP+AAC', 'AAP+AAC+DUP', 'AAC+DUP', 'AAP+DUP']
 
 _FUERA_DE_SCOPE = [
     'RAIPEE_PREVIA', 'RAIPEE_DEFINITIVA', 'RADNE',
@@ -66,24 +72,27 @@ _FUERA_DE_SCOPE = [
 ]
 
 
-def _solicitud(siglas):
-    """Solicitud con las siglas dadas.
+def _acto(siglas, siglas_solicitud=None):
+    """Acto `siglas` dentro de una solicitud `siglas_solicitud` (por defecto, la
+    del propio acto).
 
     Mock en vez de fila real: _seleccionar_catalogo solo necesita compilar el
-    camino del elemento (ascendencia con strings) y consultar el catálogo, que sí
+    camino del acto (ascendencia con strings) y consultar el catálogo, que sí
     es la tabla real de BD. Así el test no escribe nada.
     """
+    from app.services.actos_solicitud import ActoSolicitud
+
     solicitud = MagicMock()
-    solicitud.tipo_solicitud = MagicMock(siglas=siglas)
+    solicitud.tipo_solicitud = MagicMock(siglas=siglas_solicitud or siglas)
     solicitud.expediente.tipo_expediente = MagicMock(tipo='Distribucion')
-    return solicitud
+    return ActoSolicitud(solicitud=solicitud, siglas=siglas)
 
 
 def _entradas_resolucion():
     from app.models.catalogo_plazos import CatalogoPlazo
     return (
         CatalogoPlazo.query
-        .filter(CatalogoPlazo.tipo_elemento == 'SOLICITUD',
+        .filter(CatalogoPlazo.tipo_elemento == 'ACTO',
                 CatalogoPlazo.campo_fecha['fk'].astext == 'documento_solicitud_id',
                 CatalogoPlazo.norma_origen.isnot(None),
                 CatalogoPlazo.activo.is_(True))
@@ -126,21 +135,22 @@ def test_ninguna_condicion_de_plazo_usa_tipo_solicitud(app_ctx):
 
 
 # ---------------------------------------------------------------------------
-# B) Las 11 entradas están presentes con sus caminos y normas
+# B) Las 7 entradas están presentes con sus caminos y normas
 # ---------------------------------------------------------------------------
 
-def test_hay_exactamente_11_entradas_resolucion(app_ctx):
-    """7 originales, desdobladas en 11 al pasar el IN multivalor a camino."""
+def test_hay_exactamente_7_entradas_resolucion(app_ctx):
+    """Una por tipo atómico (#931): las 11 de #785 menos las 4 combinaciones,
+    que daban un solo plazo a una solicitud que pide varios actos."""
     entradas = _entradas_resolucion()
-    assert len(entradas) == 11, (
-        f'Esperadas 11 entradas del plazo de resolver y notificar, hay {len(entradas)}: '
+    assert len(entradas) == 7, (
+        f'Esperadas 7 entradas del plazo de resolver y notificar, hay {len(entradas)}: '
         f'{[e.camino for e in entradas]}'
     )
 
 
-def test_hay_una_entrada_por_combinacion_cubierta(app_ctx):
+def test_hay_una_entrada_por_acto_cubierto(app_ctx):
     caminos = {e.camino for e in _entradas_resolucion()}
-    esperados = {f'ANY/{s}' for s in _COMBINACIONES_CUBIERTAS}
+    esperados = {f'ANY/{s}' for s in _ACTOS_CUBIERTOS}
     assert caminos == esperados
 
 
@@ -215,51 +225,72 @@ def test_no_existe_resolucion_ae_sin_sufijo_codigo_muerto_del_172(app_ctx):
 
 
 # ---------------------------------------------------------------------------
-# C) _seleccionar_catalogo devuelve la entrada correcta para cada combinación
+# C) _seleccionar_catalogo devuelve la entrada correcta para cada acto
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize('siglas,esperado', list(_COMBINACIONES_CUBIERTAS.items()))
-def test_seleccionar_catalogo_resolucion_para_combinacion_cubierta(app_ctx, siglas, esperado):
-    """Sin dict de variables (#785): la combinación sale del camino del elemento."""
+@pytest.mark.parametrize('siglas,esperado', list(_ACTOS_CUBIERTOS.items()))
+def test_seleccionar_catalogo_resolucion_para_acto_cubierto(app_ctx, siglas, esperado):
+    """Sin dict de variables (#785): el tipo sale del camino del acto."""
     from app.services.plazos import _seleccionar_catalogo
     valor_esp, unidad_esp, norma_esp = esperado
-    entrada = _seleccionar_catalogo(_solicitud(siglas), 'SOLICITUD', {})
+    entrada = _seleccionar_catalogo(_acto(siglas), 'ACTO', {})
     assert entrada is not None, (
-        f'Sin plazo para tipo_solicitud={siglas} — el seed no cubre la combinación'
+        f'Sin plazo para el acto {siglas} — el seed no lo cubre'
     )
     assert entrada.plazo_valor == valor_esp
     assert entrada.plazo_unidad == unidad_esp
     assert entrada.norma_origen == norma_esp
 
 
+def test_el_acto_pesa_lo_mismo_solo_o_combinado(app_ctx):
+    """El art. 128 no cambia si la AAP viaja sola o dentro de una combinación:
+    el camino del acto lleva su tipo atómico, así que casa con la misma fila
+    la pida una AAP, una AAP+AAC o una AAP+AAC+DUP (#930). Es lo que antes
+    garantizaban, a medias, las filas de combinación y las de fase."""
+    from app.services.plazos import _seleccionar_catalogo
+
+    ids = {
+        _seleccionar_catalogo(_acto('AAP', siglas_solicitud=s), 'ACTO', {}).id
+        for s in ('AAP', 'AAP+AAC', 'AAP+AAC+DUP')
+    }
+    assert len(ids) == 1
+
+
+@pytest.mark.parametrize('siglas', _COMBINACIONES)
+def test_una_combinacion_no_tiene_fila_propia(app_ctx, siglas):
+    """#931: las filas de combinación se retiraron. Una solicitud combinada se
+    mide por sus actos, y cada uno encuentra la suya (test anterior)."""
+    from app.services.plazos import _seleccionar_catalogo
+    assert _seleccionar_catalogo(_acto(siglas), 'ACTO', {}) is None
+
+
 # ---------------------------------------------------------------------------
-# D) Combinaciones fuera de scope → None (deuda de #247)
+# D) Tipos fuera de scope → None (deuda de #247)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize('siglas', _FUERA_DE_SCOPE)
 def test_seleccionar_catalogo_resolucion_fuera_de_scope(app_ctx, siglas):
     """Plazos no cubiertos por el hotfix 448 (deuda controlada de #247)."""
     from app.services.plazos import _seleccionar_catalogo
-    entrada = _seleccionar_catalogo(_solicitud(siglas), 'SOLICITUD', {})
+    entrada = _seleccionar_catalogo(_acto(siglas), 'ACTO', {})
     assert entrada is None, (
-        f'tipo_solicitud={siglas} no debería tener plazo para resolver '
+        f'El acto {siglas} no debería tener plazo para resolver '
         f'todavía (deuda de #247); recibido entrada id={getattr(entrada, "id", "?")}'
     )
 
 
 # ---------------------------------------------------------------------------
-# E) Coherencia con ESF.json — toda combinación válida está cubierta o
-#    documentada como fuera de scope
+# E) Coherencia con ESF.json — todo tipo de solicitud está cubierto, se
+#    descompone en actos cubiertos o está documentado como fuera de scope
 # ---------------------------------------------------------------------------
 
-def test_cobertura_de_combinaciones_es_completa():
-    """No requiere BD — solo coherencia conceptual: las claves de los dos
-    diccionarios cubren todas las siglas de tipos_solicitudes que tienen
-    fase RESOLUCION en su procedimiento."""
-    todas = set(_COMBINACIONES_CUBIERTAS) | set(_FUERA_DE_SCOPE)
-    # Todas las siglas en BD (ver tipos_solicitudes tras paso6.5):
+def test_cobertura_de_tipos_es_completa():
+    """No requiere BD — solo coherencia conceptual: las tres listas cubren
+    todas las siglas de tipos_solicitudes."""
+    todas = set(_ACTOS_CUBIERTOS) | set(_COMBINACIONES) | set(_FUERA_DE_SCOPE)
+    # Todas las siglas en BD (ver tipos_solicitudes tras paso6.5 y #914):
     siglas_bd = {
-        'AAC', 'AAC+DUP', 'AAP', 'AAP+AAC', 'AAP+AAC+DUP',
+        'AAC', 'AAC+DUP', 'AAP', 'AAP+AAC', 'AAP+AAC+DUP', 'AAP+DUP',
         'AAT', 'AE_DEFINITIVA', 'AE_DEFINITIVA+AAT', 'AE_PROVISIONAL',
         'AMPLIACION_PLAZO', 'CIERRE', 'CORRECCION_ERRORES',
         'DESISTIMIENTO', 'DUP', 'INTERESADO', 'OTRO',
@@ -268,63 +299,12 @@ def test_cobertura_de_combinaciones_es_completa():
     }
     faltantes = siglas_bd - todas
     assert not faltantes, (
-        f'Combinaciones no clasificadas (cubiertas ni fuera de scope): {faltantes}'
+        f'Tipos no clasificados (cubiertos, combinados ni fuera de scope): {faltantes}'
     )
 
 
-# ---------------------------------------------------------------------------
-# F) #892/ADR-048 — plazo propio de las fases finalizadoras
-# ---------------------------------------------------------------------------
-
-_FASES_FINALIZADORAS_CUBIERTAS = {
-    'RESOLUCION_DUP': (6, 'MESES', 'Art. 148.1 RD 1955/2000'),
-    'RESOLUCION_AAP': (3, 'MESES', 'Art. 128 RD 1955/2000'),
-    'RESOLUCION_AAC': (3, 'MESES', 'Art. 131.7 RD 1955/2000'),
-}
-
-
-def _fase(codigo):
-    solicitud = MagicMock()
-    solicitud.tipo_solicitud = MagicMock(siglas='AAC+DUP')
-    solicitud.expediente.tipo_expediente = MagicMock(tipo='Distribucion')
-    fase = MagicMock()
-    fase.tipo_fase = MagicMock(codigo=codigo)
-    fase.solicitud = solicitud
-    return fase
-
-
-def test_hay_exactamente_3_entradas_fase(app_ctx):
-    from app.models.catalogo_plazos import CatalogoPlazo
-    entradas = CatalogoPlazo.query.filter_by(tipo_elemento='FASE', activo=True).all()
-    assert len(entradas) == 3, (
-        f'Esperadas 3 entradas de plazo de fase finalizadora, hay {len(entradas)}: '
-        f'{[e.camino for e in entradas]}'
-    )
-
-
-@pytest.mark.parametrize('codigo,esperado', list(_FASES_FINALIZADORAS_CUBIERTAS.items()))
-def test_seleccionar_catalogo_fase_finalizadora(app_ctx, codigo, esperado):
-    from app.services.plazos import _seleccionar_catalogo
-    valor_esp, unidad_esp, norma_esp = esperado
-    entrada = _seleccionar_catalogo(_fase(codigo), 'FASE', {})
-    assert entrada is not None, f'Sin plazo para fase {codigo}'
-    assert entrada.plazo_valor == valor_esp
-    assert entrada.plazo_unidad == unidad_esp
-    assert entrada.norma_origen == norma_esp
-
-
-def test_plazo_de_fase_no_depende_del_tipo_solicitud(app_ctx):
-    """El camino usa 'ANY' en el segmento de solicitud a propósito: el art. 128
-    no cambia si la AAP viaja sola o dentro de una combinación — RESOLUCION_AAP
-    es la misma fase, con el mismo plazo, la incluya AAP+AAC o AAP+AAC+DUP."""
-    from app.services.plazos import _seleccionar_catalogo
-
-    fase_ap_ac = _fase('RESOLUCION_AAP')
-    fase_ap_ac.solicitud.tipo_solicitud = MagicMock(siglas='AAP+AAC')
-    fase_ap_ac_dup = _fase('RESOLUCION_AAP')
-    fase_ap_ac_dup.solicitud.tipo_solicitud = MagicMock(siglas='AAP+AAC+DUP')
-
-    e1 = _seleccionar_catalogo(fase_ap_ac, 'FASE', {})
-    e2 = _seleccionar_catalogo(fase_ap_ac_dup, 'FASE', {})
-    assert e1 is not None and e2 is not None
-    assert e1.id == e2.id
+def test_cada_combinacion_se_descompone_en_actos_cubiertos():
+    """Sin fila propia, una combinación solo tiene plazo si todos sus actos
+    lo tienen."""
+    for siglas in _COMBINACIONES:
+        assert set(siglas.split('+')) <= set(_ACTOS_CUBIERTOS), siglas

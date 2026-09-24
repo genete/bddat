@@ -84,18 +84,20 @@ def test_validar_catalogo_bd_no_disponible_no_lanza():
 # B) plazos.py — defensividad en _seleccionar_catalogo
 # ---------------------------------------------------------------------------
 
-def _solicitud_mock():
-    """Solicitud con la ascendencia que compilar_camino necesita (#785).
+def _acto_mock():
+    """Acto con la ascendencia que compilar_camino necesita (#785).
 
     Sin ella el camino no se puede formar y _seleccionar_catalogo sale antes de
     tocar la BD — que es justo lo que estos tests quieren ejercitar. El nivel es
-    SOLICITUD desde #788: FASE ya no compila camino y saldría igual de pronto,
-    dejando estos tests sin ejercitar nada.
+    ACTO desde #931 (antes SOLICITUD): un nivel sin fila (FASE, TRAMITE) sale
+    igual de pronto, dejando estos tests sin ejercitar nada.
     """
+    from app.services.actos_solicitud import ActoSolicitud
+
     solicitud = MagicMock()
     solicitud.tipo_solicitud = MagicMock(siglas='AAP')
     solicitud.expediente.tipo_expediente = MagicMock(tipo='Distribucion')
-    return solicitud
+    return ActoSolicitud(solicitud=solicitud, siglas='AAP')
 
 
 def test_seleccionar_catalogo_operational_error_retorna_none(caplog):
@@ -110,7 +112,7 @@ def test_seleccionar_catalogo_operational_error_retorna_none(caplog):
                   'connection refused', None, None
               )
         with caplog.at_level(logging.WARNING, logger='app.services.plazos'):
-            result = _seleccionar_catalogo(_solicitud_mock(), 'SOLICITUD', {})
+            result = _seleccionar_catalogo(_acto_mock(), 'ACTO', {})
 
     assert result is None
     assert any('catalogo_plazos no disponible' in m for m in caplog.messages)
@@ -127,7 +129,7 @@ def test_seleccionar_catalogo_programming_error_retorna_none():
               .order_by.return_value.all.side_effect = ProgrammingError(
                   'relation does not exist', None, None
               )
-        result = _seleccionar_catalogo(_solicitud_mock(), 'SOLICITUD', {})
+        result = _seleccionar_catalogo(_acto_mock(), 'ACTO', {})
 
     assert result is None
 

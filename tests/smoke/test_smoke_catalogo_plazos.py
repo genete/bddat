@@ -1,23 +1,22 @@
 """Smoke test — catálogo de plazos legales (/catalogo_plazos/, #632).
 
-Cubre listado (acceso universal, 4 roles), alta en los niveles ESFTT con
-plazo posible (SOLICITUD/FASE finalizadora/TAREA — cascada de campo_fecha),
-edición (incluye condiciones anidadas con el operador BETWEEN, exclusivo de
-este catálogo frente a items_tecnicos/admin_requisitos) y baja lógica
-(activar/desactivar), restringidas a SUPERVISOR/ADMIN — mismo patrón que
-items_tecnicos (#594).
+Cubre listado (acceso universal, 4 roles), alta en los niveles de fila con
+plazo posible (ACTO/TAREA — cascada de campo_fecha), edición (incluye
+condiciones anidadas con el operador BETWEEN, exclusivo de este catálogo frente
+a items_tecnicos/admin_requisitos) y baja lógica (activar/desactivar),
+restringidas a SUPERVISOR/ADMIN — mismo patrón que items_tecnicos (#594).
 
 Sin tests de "eliminar": la baja física está fuera de alcance del issue.
 
 #788 retiró las altas de nivel FASE y TRAMITE: no portan fecha administrativa
-y por tanto no pueden tener plazo. ADR-048 (#892) reabre FASE, acotada a fases
-finalizadoras — el CheckConstraint ya lo admite, y el CRUD exige además que la
-hoja del camino sea `tipos_fases.es_finalizadora=True` (el constraint no
-puede cruzar a esa tabla). TRAMITE sigue excluido sin excepción. El smoke test
-de rechazo cubre la vía que sigue abierta para TRAMITE — un POST directo al
-endpoint, sin pasar por el formulario — con el mismo criterio que el
-CheckConstraint de BD: el CRUD da el error legible, la constraint cubre lo que
-le llega sin pasar por él.
+y por tanto no pueden tener plazo. ADR-048 (#892) reabrió FASE para las fases
+finalizadoras y #931 la volvió a cerrar —el plazo de resolver es del acto, no
+de la fase que lo resuelve—, a la vez que renombraba SOLICITUD a ACTO. Los
+smoke tests de rechazo cubren la vía que sigue abierta para los niveles sin
+fila — un POST directo al endpoint, sin pasar por el formulario — con el mismo
+criterio que el CheckConstraint de BD: el CRUD da el error legible, la
+constraint cubre lo que le llega sin pasar por él. Y el de hoja combinada
+(#931, D10), el invariante del nivel ACTO que ningún CHECK puede expresar.
 
 Estos tests corren contra la BD real de desarrollo (mismo patrón que el resto
 de la suite, ver conftest._login_as) — el fixture autouse de abajo borra al
@@ -82,35 +81,38 @@ def test_listado_accesible_administrativo(usuario_administrativo):
     assert r.status_code == 200
 
 
-def test_listado_no_ofrece_nivel_tramite(usuario_supervisor):
-    """TRAMITE no porta fecha administrativa y no es nivel seleccionable —sin
-    excepción, ADR-048 no lo toca—. `value="TRAMITE"` no aparece en ningún
-    otro select de la página (los de tipos_tramite usan sus propios códigos,
-    no el literal del nivel)."""
+@pytest.mark.parametrize('nivel', [b'TRAMITE', b'FASE', b'SOLICITUD'])
+def test_listado_no_ofrece_niveles_sin_fila(usuario_supervisor, nivel):
+    """TRAMITE no porta fecha administrativa (#788), FASE se retiró en #931 y
+    SOLICITUD es el nombre viejo de ACTO. Ninguno de los tres literales
+    aparece como `value` en la página: los selects de tipos usan sus propios
+    códigos, no el literal del nivel."""
     r = usuario_supervisor.get('/catalogo_plazos/', follow_redirects=True)
     assert r.status_code == 200
-    assert b'value="TRAMITE"' not in r.data
+    assert b'value="' + nivel + b'"' not in r.data
 
 
-def test_listado_si_ofrece_nivel_fase(usuario_supervisor):
-    """ADR-048 (#892): FASE vuelve a ser nivel seleccionable, acotado a fases
-    finalizadoras — el select de nivel del modal de alta ya lo pinta."""
+def test_listado_ofrece_nivel_acto(usuario_supervisor):
+    """#931: el select de nivel del modal de alta dice «Acto», y es el que
+    viene elegido por defecto."""
+    import re
     r = usuario_supervisor.get('/catalogo_plazos/', follow_redirects=True)
     assert r.status_code == 200
-    assert b'value="FASE"' in r.data
+    assert re.search(rb'value="ACTO"\s+selected', r.data)
 
 
 # ---------------------------------------------------------------------------
 # Alta — solo SUPERVISOR/ADMIN — un caso por nivel ESFTT (cascada de campo_fecha)
 # ---------------------------------------------------------------------------
 
-def _datos_maestros_solicitud(app):
-    """Siglas de un tipo de solicitud SIN entrada activa, más un efecto.
+def _datos_maestros_acto(app):
+    """Siglas de un tipo atómico SIN entrada activa de nivel ACTO, más un efecto.
 
-    `.first()` a secas picaría con cualquier tipo, incluido uno de los 11 que
-    llevan el plazo para resolver y notificar desde #788 — y el alta chocaría
-    contra la validación de duplicado ciego de #786. Se elige uno libre, igual
-    que ya hacía el caso de nivel trámite.
+    `.first()` a secas picaría con cualquier tipo, incluido uno de los 7 que
+    llevan el plazo para resolver y notificar — y el alta chocaría contra la
+    validación de duplicado ciego de #786. Se elige uno libre, igual que ya
+    hacía el caso de nivel trámite. Atómico porque la hoja de una fila ACTO no
+    puede ser una combinación (#931, D10).
     """
     with app.app_context():
         from app.models.catalogo_plazos import CatalogoPlazo
@@ -118,12 +120,12 @@ def _datos_maestros_solicitud(app):
         from app.models.efectos_plazo import EfectoPlazo
         caminos_ocupados = {
             camino for (camino,) in CatalogoPlazo.query
-            .filter_by(tipo_elemento='SOLICITUD', activo=True)
+            .filter_by(tipo_elemento='ACTO', activo=True)
             .with_entities(CatalogoPlazo.camino).all()
         }
         tipo = next(
             (t for t in TipoSolicitud.query.order_by(TipoSolicitud.id).all()
-             if f'ANY/{t.siglas}' not in caminos_ocupados),
+             if '+' not in t.siglas and f'ANY/{t.siglas}' not in caminos_ocupados),
             None,
         )
         efecto = EfectoPlazo.query.first()
@@ -132,34 +134,10 @@ def _datos_maestros_solicitud(app):
         return tipo.siglas, efecto.id
 
 
-def _datos_maestros_fase_finalizadora(app):
-    """Código de fase finalizadora SIN entrada activa a nivel FASE, más un
-    efecto — mismo criterio que `_datos_maestros_solicitud`/`_tarea`: elegir
-    una libre en vez de picar con la primera y chocar con #786."""
-    with app.app_context():
-        from app.models.catalogo_plazos import CatalogoPlazo
-        from app.models.tipos_fases import TipoFase
-        from app.models.efectos_plazo import EfectoPlazo
-        caminos_ocupados = {
-            camino for (camino,) in CatalogoPlazo.query
-            .filter_by(tipo_elemento='FASE', activo=True)
-            .with_entities(CatalogoPlazo.camino).all()
-        }
-        tipo_fase = next(
-            (t for t in TipoFase.query.filter_by(es_finalizadora=True).order_by(TipoFase.id).all()
-             if f'ANY/ANY/{t.codigo}' not in caminos_ocupados),
-            None,
-        )
-        efecto = EfectoPlazo.query.first()
-        if tipo_fase is None or efecto is None:
-            pytest.skip('Faltan datos maestros (tipos_fases finalizadoras / efectos_plazo) en esta BD')
-        return tipo_fase.codigo, efecto.id
-
-
 def _datos_maestros_tarea(app):
     """Código de tipo de tarea SIN entrada activa a nivel TAREA, más un efecto.
 
-    Mismo motivo que `_datos_maestros_solicitud`: `.first()` a secas picaba con
+    Mismo motivo que `_datos_maestros_acto`: `.first()` a secas picaba con
     NOTIFICAR en cuanto #776 (2026-08-22) sembró su plazo genérico del art. 40
     LPACAP (`ANY/ANY/ANY/ANY/NOTIFICAR`) — el alta chocaba contra la validación
     de duplicado ciego de #786. Se elige un código libre, igual que ya hacía el
@@ -185,15 +163,15 @@ def _datos_maestros_tarea(app):
         return tipo_tarea.codigo, efecto.id
 
 
-def test_supervisor_puede_crear_nivel_solicitud(usuario_supervisor, app):
-    siglas, efecto_id = _datos_maestros_solicitud(app)
+def test_supervisor_puede_crear_nivel_acto(usuario_supervisor, app):
+    siglas, efecto_id = _datos_maestros_acto(app)
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
-        'tipo_elemento': 'SOLICITUD',
+        'tipo_elemento': 'ACTO',
         'camino_solicitud': siglas,
         'plazo_valor': '3',
         'plazo_unidad': 'MESES',
         'efecto_vencimiento_id': str(efecto_id),
-        'norma_origen': 'Nivel solicitud (#632 smoke)',
+        'norma_origen': 'Nivel acto (#632 smoke)',
         'orden': '999',
     }, follow_redirects=False)
     assert r.status_code == 302
@@ -201,63 +179,64 @@ def test_supervisor_puede_crear_nivel_solicitud(usuario_supervisor, app):
 
     with app.app_context():
         from app.models.catalogo_plazos import CatalogoPlazo
-        creado = CatalogoPlazo.query.filter_by(norma_origen='Nivel solicitud (#632 smoke)').first()
+        creado = CatalogoPlazo.query.filter_by(norma_origen='Nivel acto (#632 smoke)').first()
         assert creado is not None
         assert creado.activo is True
+        assert creado.tipo_elemento == 'ACTO'
+        assert creado.camino == f'ANY/{siglas}'
         assert creado.campo_fecha == {'fk': 'documento_solicitud_id'}
         assert creado.condiciones == []
 
 
-def test_supervisor_puede_crear_nivel_fase_finalizadora(usuario_supervisor, app):
-    """ADR-048 (#892): FASE es nivel seleccionable, acotado a finalizadoras —
-    campo_fecha se fija solo, sin selección (hereda de la solicitud)."""
-    codigo_fase, efecto_id = _datos_maestros_fase_finalizadora(app)
+def test_crear_acto_con_combinacion_es_rechazado(usuario_supervisor, app):
+    """#931 (D10): la hoja de una fila ACTO debe ser un tipo atómico. Con una
+    combinación la fila se guardaría sin error y no casaría nunca: el camino
+    del acto lleva siempre su tipo simple."""
+    with app.app_context():
+        from app.models.efectos_plazo import EfectoPlazo
+        efecto = EfectoPlazo.query.first()
+        assert efecto is not None, 'la semilla debe traer efectos_plazo'
+        efecto_id = efecto.id
+
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
-        'tipo_elemento': 'FASE',
-        'camino_fase': codigo_fase,
-        'plazo_valor': '6',
+        'tipo_elemento': 'ACTO',
+        'camino_solicitud': 'AAP+AAC',
+        'plazo_valor': '3',
         'plazo_unidad': 'MESES',
         'efecto_vencimiento_id': str(efecto_id),
-        'norma_origen': 'Nivel fase finalizadora (#892 smoke)',
+        'norma_origen': 'Acto combinado (#931 smoke)',
+    }, follow_redirects=False)
+    assert r.status_code == 200, 'Debe re-renderizar el formulario con el error, no redirigir'
+    assert 'combinación de actos' in r.get_data(as_text=True)
+
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        assert CatalogoPlazo.query.filter_by(norma_origen='Acto combinado (#931 smoke)').first() is None
+
+
+def test_la_combinacion_sigue_valiendo_como_ancestro_de_una_tarea(usuario_supervisor, app):
+    """Control de D10: en el camino de una tarea el segundo segmento son las
+    siglas reales de la solicitud, y ahí una combinación sí es válida."""
+    codigo_tarea, efecto_id = _datos_maestros_tarea(app)
+    r = usuario_supervisor.post('/catalogo_plazos/crear', data={
+        'tipo_elemento': 'TAREA',
+        'camino_solicitud': 'AAP+AAC',
+        'camino_tarea': codigo_tarea,
+        'campo_fecha_rol': 'CONSUMIDO',
+        'plazo_valor': '10',
+        'plazo_unidad': 'DIAS_HABILES',
+        'efecto_vencimiento_id': str(efecto_id),
+        'norma_origen': 'Tarea bajo combinación (#931 smoke)',
         'orden': '999',
     }, follow_redirects=False)
     assert r.status_code == 302
 
     with app.app_context():
         from app.models.catalogo_plazos import CatalogoPlazo
-        creado = CatalogoPlazo.query.filter_by(norma_origen='Nivel fase finalizadora (#892 smoke)').first()
+        creado = CatalogoPlazo.query.filter_by(
+            norma_origen='Tarea bajo combinación (#931 smoke)').first()
         assert creado is not None
-        assert creado.tipo_elemento == 'FASE'
-        assert creado.camino == f'ANY/ANY/{codigo_fase}'
-        assert creado.campo_fecha == {'fk': 'documento_solicitud_id'}
-        assert creado.campo_fecha_cumplimiento is None
-
-
-def test_crear_nivel_fase_no_finalizadora_es_rechazado(usuario_supervisor, app):
-    """ADR-048: el CRUD exige que la hoja FASE sea finalizadora — el
-    CheckConstraint por sí solo no distingue una fase taxonómica de un acto."""
-    with app.app_context():
-        from app.models.tipos_fases import TipoFase
-        from app.models.efectos_plazo import EfectoPlazo
-        tipo_fase = TipoFase.query.filter_by(es_finalizadora=False).first()
-        efecto = EfectoPlazo.query.first()
-        if tipo_fase is None or efecto is None:
-            pytest.skip('Faltan datos maestros (tipos_fases no finalizadora / efectos_plazo) en esta BD')
-        codigo_fase, efecto_id = tipo_fase.codigo, efecto.id
-
-    r = usuario_supervisor.post('/catalogo_plazos/crear', data={
-        'tipo_elemento': 'FASE',
-        'camino_fase': codigo_fase,
-        'plazo_valor': '1',
-        'plazo_unidad': 'MESES',
-        'efecto_vencimiento_id': str(efecto_id),
-        'norma_origen': 'Fase no finalizadora (#892 smoke)',
-    }, follow_redirects=False)
-    assert r.status_code == 200, 'Debe re-renderizar el formulario con el error, no redirigir'
-
-    with app.app_context():
-        from app.models.catalogo_plazos import CatalogoPlazo
-        assert CatalogoPlazo.query.filter_by(norma_origen='Fase no finalizadora (#892 smoke)').first() is None
+        assert creado.camino == f'ANY/AAP+AAC/ANY/ANY/{codigo_tarea}'
 
 
 def test_supervisor_puede_crear_nivel_tarea(usuario_supervisor, app):
@@ -336,15 +315,15 @@ def test_crear_tarea_sin_cumplimiento_lo_deja_vacio(usuario_supervisor, app):
         assert creado.suspende_plazo_solicitud is False
 
 
-def test_crear_solicitud_se_cumple_con_la_notificacion_al_titular(usuario_supervisor, app):
-    """En el nivel SOLICITUD los dos extremos son fijos: el documento de
+def test_crear_acto_se_cumple_con_la_notificacion_al_titular(usuario_supervisor, app):
+    """En el nivel ACTO los dos extremos son fijos: el documento de
     solicitud abre el plazo y lo cierra la notificación al titular en la fase
     que resuelve el acto, calculada (#930, D9). Y la casilla de suspensión se
     ignora aunque llegue: el art. 22 suspende el plazo de resolver, así que
     marcarlo a él sería suspenderse a sí mismo."""
-    siglas, efecto_id = _datos_maestros_solicitud(app)
+    siglas, efecto_id = _datos_maestros_acto(app)
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
-        'tipo_elemento': 'SOLICITUD',
+        'tipo_elemento': 'ACTO',
         'camino_solicitud': siglas,
         'suspende_plazo_solicitud': '1',   # POST directo: la UI no la ofrece aquí
         'plazo_valor': '3',
@@ -454,13 +433,17 @@ def test_crear_con_tipo_inexistente_es_rechazado(usuario_supervisor, app):
         assert CatalogoPlazo.query.filter_by(norma_origen='Tipo inexistente (#632 smoke)').first() is None
 
 
-def test_crear_nivel_tramite_es_rechazado(usuario_supervisor, app):
-    """#788: aunque el formulario ya no ofrece TRAMITE, el endpoint debe
-    rechazarlo con un error legible si llega igual (POST directo, no por la
-    UI) — no un 500 del CheckConstraint. Mismo criterio que la BD: el CRUD da
-    el error legible, la constraint cubre lo que le llega sin pasar por él.
-    FASE ya no entra aquí — ADR-048 la admite para finalizadoras, ver
-    test_crear_nivel_fase_no_finalizadora_es_rechazado para su propio rechazo."""
+@pytest.mark.parametrize('nivel,camino', [
+    ('TRAMITE', {}),
+    ('FASE', {'camino_fase': 'RESOLUCION_DUP'}),
+    ('SOLICITUD', {'camino_solicitud': 'AAP'}),
+])
+def test_crear_nivel_sin_fila_es_rechazado(usuario_supervisor, app, nivel, camino):
+    """#788 (TRAMITE), #931 (FASE, y SOLICITUD como nombre viejo de ACTO):
+    aunque el formulario no los ofrece, el endpoint debe rechazarlos con un
+    error legible si llegan igual (POST directo, no por la UI) — no un 500 del
+    CheckConstraint. Mismo criterio que la BD: el CRUD da el error legible, la
+    constraint cubre lo que le llega sin pasar por él."""
     with app.app_context():
         from app.models.efectos_plazo import EfectoPlazo
         efecto = EfectoPlazo.query.first()
@@ -468,26 +451,26 @@ def test_crear_nivel_tramite_es_rechazado(usuario_supervisor, app):
             pytest.skip('Faltan datos maestros (efectos_plazo) en esta BD')
         efecto_id = efecto.id
 
+    norma = f'Nivel {nivel} rechazado (#931 smoke)'
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
-        'tipo_elemento': 'TRAMITE',
+        'tipo_elemento': nivel,
+        **camino,
         'plazo_valor': '1',
         'plazo_unidad': 'MESES',
         'efecto_vencimiento_id': str(efecto_id),
-        'norma_origen': 'Nivel TRAMITE rechazado (#788 smoke)',
+        'norma_origen': norma,
     }, follow_redirects=False)
     assert r.status_code == 200, 'Debe re-renderizar el formulario con el error, no un 500'
 
     with app.app_context():
         from app.models.catalogo_plazos import CatalogoPlazo
-        assert CatalogoPlazo.query.filter_by(
-            norma_origen='Nivel TRAMITE rechazado (#788 smoke)'
-        ).first() is None
+        assert CatalogoPlazo.query.filter_by(norma_origen=norma).first() is None
 
 
 def test_tramitador_no_puede_crear(usuario_tramitador, app):
-    siglas, efecto_id = _datos_maestros_solicitud(app)
+    siglas, efecto_id = _datos_maestros_acto(app)
     r = usuario_tramitador.post('/catalogo_plazos/crear', data={
-        'tipo_elemento': 'SOLICITUD',
+        'tipo_elemento': 'ACTO',
         'camino_solicitud': siglas,
         'plazo_valor': '1',
         'plazo_unidad': 'MESES',
@@ -503,19 +486,19 @@ def test_tramitador_no_puede_crear(usuario_tramitador, app):
 # ---------------------------------------------------------------------------
 
 def _crear_para_editar(app, cumplimiento=None):
-    """Fila SOLICITUD de partida, en un camino libre.
+    """Fila ACTO de partida, en un camino libre.
 
-    Las siglas salen de `_datos_maestros_solicitud` y no de un `.first()` ciego:
+    Las siglas salen de `_datos_maestros_acto` y no de un `.first()` ciego:
     la ruta de edición revalida la colisión de camino (#786), así que reeditar
     una fila plantada sobre un camino ya ocupado se bloquearía sin que el test
     llegue a probar lo suyo.
     """
     from app import db
     from app.models.catalogo_plazos import CatalogoPlazo
-    siglas, efecto_id = _datos_maestros_solicitud(app)
+    siglas, efecto_id = _datos_maestros_acto(app)
     with app.app_context():
         item = CatalogoPlazo(
-            tipo_elemento='SOLICITUD',
+            tipo_elemento='ACTO',
             camino=f'ANY/{siglas}',
             campo_fecha={'fk': 'documento_solicitud_id'},
             campo_fecha_cumplimiento=cumplimiento,
@@ -533,7 +516,7 @@ def _crear_para_editar(app, cumplimiento=None):
 def test_supervisor_puede_editar_sin_condiciones(usuario_supervisor, app):
     item_id, siglas, efecto_id = _crear_para_editar(app)
     r = usuario_supervisor.post(f'/catalogo_plazos/{item_id}/editar', data={
-        'tipo_elemento': 'SOLICITUD',
+        'tipo_elemento': 'ACTO',
         'camino_solicitud': siglas,
         'plazo_valor': '2',
         'plazo_unidad': 'DIAS_HABILES',
@@ -562,7 +545,7 @@ def test_supervisor_puede_anadir_condicion_between(usuario_supervisor, app):
         variable_id = variable.id
 
     r = usuario_supervisor.post(f'/catalogo_plazos/{item_id}/editar', data={
-        'tipo_elemento': 'SOLICITUD',
+        'tipo_elemento': 'ACTO',
         'camino_solicitud': siglas,
         'plazo_valor': '3',
         'plazo_unidad': 'MESES',
@@ -593,7 +576,7 @@ def test_editar_rango_con_un_solo_valor_falla(usuario_supervisor, app):
         variable_id = variable.id
 
     r = usuario_supervisor.post(f'/catalogo_plazos/{item_id}/editar', data={
-        'tipo_elemento': 'SOLICITUD',
+        'tipo_elemento': 'ACTO',
         'camino_solicitud': siglas,
         'plazo_valor': '3',
         'plazo_unidad': 'MESES',
@@ -618,7 +601,7 @@ def test_editar_una_fila_de_acto_no_revierte_el_cumplimiento(usuario_supervisor,
     calculado = {'calculado': 'documento_cumplimiento'}
     item_id, siglas, efecto_id = _crear_para_editar(app, cumplimiento=calculado)
     r = usuario_supervisor.post(f'/catalogo_plazos/{item_id}/editar', data={
-        'tipo_elemento': 'SOLICITUD',
+        'tipo_elemento': 'ACTO',
         'camino_solicitud': siglas,
         'plazo_valor': '3',
         'plazo_unidad': 'MESES',
@@ -640,7 +623,25 @@ def test_detalle_rotula_el_cumplimiento_calculado(usuario_supervisor, app):
     r = usuario_supervisor.get(f'/catalogo_plazos/{item_id}/fragmento')
     assert r.status_code == 200
     texto = r.get_data(as_text=True)
-    assert 'notificación al titular en la fase que resuelve este tipo de solicitud (acto)' in texto
+    assert 'notificación al titular en la fase que resuelve este acto' in texto
+
+
+def test_detalle_nombra_el_acto_por_su_tipo(usuario_supervisor, app):
+    """#931 (D7): el nivel de la fila es ACTO, pero la hoja se nombra con el
+    catálogo del nodo que ocupa —tipos_solicitudes—, «AAP — descripción» y no
+    las siglas peladas; y el segmento se rotula «Acto», no «Solicitud»."""
+    item_id, siglas, _efecto_id = _crear_para_editar(app)
+    with app.app_context():
+        from app.models.tipos_solicitudes import TipoSolicitud
+        descripcion = TipoSolicitud.query.filter_by(siglas=siglas).one().descripcion
+
+    r = usuario_supervisor.get(f'/catalogo_plazos/{item_id}/fragmento')
+    assert r.status_code == 200
+    texto = r.get_data(as_text=True)
+    from markupsafe import escape
+    assert str(escape(f'{siglas} — {descripcion}')) in texto
+    assert 'Acto:' in texto
+    assert 'value="Acto"' in texto
 
 
 def test_detalle_avisa_de_un_calculado_desconocido(usuario_supervisor, app):
@@ -666,7 +667,7 @@ def test_cada_propiedad_calculada_tiene_su_etiqueta():
 def test_tramitador_no_puede_editar(usuario_tramitador, app):
     item_id, siglas, efecto_id = _crear_para_editar(app)
     r = usuario_tramitador.post(f'/catalogo_plazos/{item_id}/editar', data={
-        'tipo_elemento': 'SOLICITUD',
+        'tipo_elemento': 'ACTO',
         'camino_solicitud': siglas,
         'plazo_valor': '1',
         'plazo_unidad': 'MESES',
