@@ -11,6 +11,8 @@ Bloques:
   F) El plazo del acto: `obtener_estado_plazo_acto` y `plazos_de_la_solicitud`
      sobre las filas reales del catálogo (D11).
   G) Rendimiento: sobre el árbol ya cargado, solo catálogo e inhábiles (D14).
+  H) Tras la migración `930_plazo_acto_calculado`: el catálogo real y el
+     cumplimiento de extremo a extremo (D6, D7).
 
 Fechas fijas y en el pasado: el modelo rechaza la fecha administrativa futura
 (#824) y bajo `app_ctx` «hoy» puede ser el reloj simulado.
@@ -653,3 +655,122 @@ def test_plazos_sobre_el_arbol_cargado_solo_catalogo_e_inhabiles(arbol_aislado, 
         assert [p.acto for p in plazos] == ['AAP', 'AAC', 'DUP']
 
     assert contar_consultas(arbol_y_plazos) - contar_consultas(cargar_arbol) == 2
+
+
+# ---------------------------------------------------------------------------
+# H) Tras la migración 930: catálogo real y cumplimiento de extremo a extremo
+# ---------------------------------------------------------------------------
+
+_CALCULADO = {'calculado': 'documento_cumplimiento'}
+_ATOMICAS = {'ANY/AAP', 'ANY/AAC', 'ANY/DUP', 'ANY/AAT',
+             'ANY/AE_PROVISIONAL', 'ANY/AE_DEFINITIVA', 'ANY/CIERRE'}
+
+
+class TestCatalogoReal:
+
+    def test_todo_calculado_esta_en_la_lista_cerrada(self, app_ctx):
+        """La red de D5/D7 en lugar de un CHECK: cualquier `calculado` del
+        catálogo, en cualquiera de los dos señaladores, es un nombre que la
+        lectura sabe resolver."""
+        from app.models.catalogo_plazos import CatalogoPlazo
+        from app.services.plazos import CALCULADOS
+        fuera = [
+            (fila.camino, senalador)
+            for fila in CatalogoPlazo.query.all()
+            for senalador in (fila.campo_fecha, fila.campo_fecha_cumplimiento)
+            if senalador and 'calculado' in senalador
+            and senalador['calculado'] not in CALCULADOS
+        ]
+        assert fuera == []
+
+    def test_las_siete_filas_atomicas_se_cumplen_calculadas(self, app_ctx):
+        from app.models.catalogo_plazos import CatalogoPlazo
+        filas = CatalogoPlazo.query.filter_by(tipo_elemento='SOLICITUD').all()
+        atomicas = {f.camino: f.campo_fecha_cumplimiento for f in filas if '+' not in f.camino}
+        assert set(atomicas) == _ATOMICAS
+        assert all(cc == _CALCULADO for cc in atomicas.values()), atomicas
+
+    def test_combinaciones_fases_y_tareas_sin_cambio(self, app_ctx):
+        """Lo que N2 no toca: las 4 combinaciones y las 3 filas de fase las
+        retira N2b; las 14 de tarea siguen con su vínculo (13) o sin
+        señalador (el tablón)."""
+        from app.models.catalogo_plazos import CatalogoPlazo
+        filas = CatalogoPlazo.query.all()
+        combinaciones = [f for f in filas if f.tipo_elemento == 'SOLICITUD' and '+' in f.camino]
+        assert len(combinaciones) == 4
+        assert all(f.campo_fecha_cumplimiento == {'fk': 'documento_cierre_id'}
+                   for f in combinaciones)
+
+        fases = [f for f in filas if f.tipo_elemento == 'FASE']
+        assert len(fases) == 3 and all(f.campo_fecha_cumplimiento is None for f in fases)
+
+        tareas = [f for f in filas if f.tipo_elemento == 'TAREA']
+        con_rol = [f for f in tareas if (f.campo_fecha_cumplimiento or {}).get('rol')]
+        sin_senalador = [f for f in tareas if f.campo_fecha_cumplimiento is None]
+        assert (len(tareas), len(con_rol), len(sin_senalador)) == (14, 13, 1)
+
+
+class TestCumplimientoDeExtremoAExtremo:
+
+    def test_la_aac_cumple_y_la_dup_sigue_en_plazo(self, arbol_aislado, hoy_fijo):
+        """El caso que tumbó la v1: en AAC+DUP, notificada la RESOLUCION (la
+        AAC) el mes 2 y sin resolver la DUP el mes 5, la AAC está cumplida en
+        plazo y la DUP sigue corriendo contra sus 6 meses, no contra 3."""
+        from app.services.plazos import plazos_de_la_solicitud
+        solicitud = _solicitud_desde(arbol_aislado, 'AAC+DUP')
+        fase = arbol_aislado.fase('RESOLUCION', solicitud=solicitud)
+        _notificar(arbol_aislado, fase, 'NOTIFICACION', [
+            ('JUSTIFICANTE_NOTIFICA_DISPOSICION', date(2025, 5, 5), 'CONSUMIDO')])
+
+        hoy_fijo(date(2025, 8, 1))
+        plazos = _por_acto(plazos_de_la_solicitud(solicitud))
+        assert plazos['AAC'].estado == 'CUMPLIDO'
+        assert plazos['AAC'].fecha_cumplimiento == date(2025, 5, 5)
+        assert plazos['AAC'].cumplido_fuera_de_plazo is False
+        assert plazos['AAC'].dias_restantes is None
+        assert plazos['DUP'].estado == 'EN_PLAZO'
+        assert plazos['DUP'].fecha_cumplimiento is None
+
+    def test_notificada_tarde_cumplido_fuera_de_plazo(self, arbol_aislado, hoy_fijo):
+        from app.services.plazos import plazos_de_la_solicitud
+        solicitud = _solicitud_desde(arbol_aislado, 'AAP')
+        fase = arbol_aislado.fase('RESOLUCION', solicitud=solicitud)
+        _notificar(arbol_aislado, fase, 'NOTIFICACION', [
+            ('JUSTIFICANTE_POSTAL_1ER', date(2025, 6, 20), 'CONSUMIDO')])
+
+        hoy_fijo(date(2025, 7, 1))
+        (aap,) = plazos_de_la_solicitud(solicitud)
+        assert aap.estado == 'CUMPLIDO'
+        assert aap.fecha_limite == _LIMITE_3M
+        assert aap.cumplido_fuera_de_plazo is True
+
+    def test_una_notificacion_cumple_dos_plazos_cada_uno_contra_el_suyo(
+            self, arbol_aislado, hoy_fijo):
+        """AE_DEFINITIVA+AAT resueltas en una RESOLUCION: el mismo documento
+        cierra el mes de la AE (tarde) y los 3 meses de la AAT (a tiempo)."""
+        from app.services.plazos import plazos_de_la_solicitud
+        solicitud = _solicitud_desde(arbol_aislado, 'AE_DEFINITIVA+AAT')
+        fase = arbol_aislado.fase('RESOLUCION', solicitud=solicitud)
+        _notificar(arbol_aislado, fase, 'NOTIFICACION', [
+            ('JUSTIFICANTE_NOTIFICA_DISPOSICION', date(2025, 5, 5), 'CONSUMIDO')])
+
+        hoy_fijo(date(2025, 7, 1))
+        plazos = _por_acto(plazos_de_la_solicitud(solicitud))
+        assert {p.estado for p in plazos.values()} == {'CUMPLIDO'}
+        assert plazos['AE_DEFINITIVA'].cumplido_fuera_de_plazo is True
+        assert plazos['AAT'].cumplido_fuera_de_plazo is False
+
+    def test_sin_notificacion_al_titular_vencido_aunque_haya_otras(
+            self, arbol_aislado, hoy_fijo):
+        """La RESOLUCION_DUP con organismos e interesados notificados pero sin
+        la notificación al titular: el plazo de la DUP no se cumple."""
+        from app.services.plazos import plazos_de_la_solicitud
+        solicitud = _solicitud_desde(arbol_aislado, 'DUP')
+        fase = arbol_aislado.fase('RESOLUCION_DUP', solicitud=solicitud)
+        for codigo in ('NOTIFICACION_ORGANISMOS', 'NOTIFICACION_INTERESADOS'):
+            _notificar(arbol_aislado, fase, codigo, [
+                ('JUSTIFICANTE_NOTIFICA_DISPOSICION', date(2025, 5, 5), 'CONSUMIDO')])
+
+        hoy_fijo(date(2025, 10, 1))
+        (dup,) = plazos_de_la_solicitud(solicitud)
+        assert dup.estado == 'VENCIDO' and dup.fecha_cumplimiento is None

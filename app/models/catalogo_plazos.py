@@ -58,15 +58,18 @@ class CatalogoPlazo(db.Model):
         el documento de entrada es polimórfico por diseño — el justificante de
         CONSULTA_SEPARATA depende del canal (BANDEJA / NOTIFICA / POSTAL / SIR).
     CAMPO campo_fecha_cumplimiento: JSONB con el MISMO vocabulario cerrado que
-        `campo_fecha`, apuntando al documento que acredita el cumplimiento
-        (ADR-041 §D). Cada plazo se abre y se cierra en el mismo sitio, así que
-        para una tarea es casi siempre `{'rol': 'PRODUCIDO'}` y para la solicitud
-        `{'fk': 'documento_cierre_id'}`. A nivel FASE queda NULL a propósito
-        (ADR-048 §B): `documento_resultado_id` es la fecha de dictar, no de
-        notificar (art. 21.3.b LPACAP exige las dos, ver Solicitud.documento_cierre_id),
-        y la fase no tiene hoy un cierre propio equivalente — issue pendiente de
-        abrir. Con NULL el plazo de fase nunca alcanza CUMPLIDO, solo
-        EN_PLAZO/VENCIDO (mismo patrón que TABLON_AYUNTAMIENTOS).
+        `campo_fecha` más un tercer portador, apuntando al documento que acredita
+        el cumplimiento (ADR-041 §D). Cada plazo se abre y se cierra en el mismo
+        sitio, así que para una tarea es casi siempre `{'rol': 'PRODUCIDO'}`.
+        Para las filas SOLICITUD atómicas —el acto, ADR-049 §E, #930— es
+        `{'calculado': 'documento_cumplimiento'}`: la propiedad del acto que
+        devuelve el documento que acredita la notificación al titular en la fase
+        que lo resuelve (arts. 21.2 y 40.4 LPACAP); solo nombres de
+        `plazos.CALCULADOS`. Las cuatro combinaciones conservan
+        `{'fk': 'documento_cierre_id'}` hasta que N2b las retire. A nivel FASE
+        queda NULL (ADR-048 §B): con NULL el plazo nunca alcanza CUMPLIDO, solo
+        EN_PLAZO/VENCIDO (mismo patrón que TABLON_AYUNTAMIENTOS); esas filas
+        también las retira N2b.
         `JSONB` igual que su gemela `campo_fecha` (#802): nació como `db.JSON`
         en `778a_plazos_medida_unica.py` por una portabilidad que no sostiene la
         decisión —ni `json` ni `jsonb` existen fuera de PostgreSQL entre los
@@ -128,10 +131,13 @@ class CatalogoPlazo(db.Model):
     )
     campo_fecha_cumplimiento = db.Column(
         JSONB, nullable=True,
-        comment='Referencia al Documento.fecha_administrativa que acredita el '
-                'cumplimiento: {"fk":"documento_cierre_id"} (nivel SOLICITUD) o '
-                '{"rol":"CONSUMIDO|PRODUCIDO"[,"tipo_documento":"..."]} (nivel TAREA). '
-                'NULL = el plazo nunca alcanza CUMPLIDO',
+        # Mismo texto que el COMMENT ON COLUMN de 930_plazo_acto_calculado (D8)
+        comment='Referencia al Documento.fecha_administrativa que acredita el cumplimiento: '
+                '{"calculado":"documento_cumplimiento"} (SOLICITUD atómica: documento que '
+                'acredita la notificación al titular en la fase que resuelve el acto, ADR-049), '
+                '{"fk":"documento_cierre_id"} (SOLICITUD combinada, hasta que se retire) o '
+                '{"rol":"CONSUMIDO|PRODUCIDO"[,"tipo_documento":"..."]} (TAREA). '
+                'NULL = el plazo nunca alcanza CUMPLIDO (#778)',
     )
     suspende_plazo_solicitud = db.Column(
         db.Boolean, nullable=False, default=False, server_default='FALSE',

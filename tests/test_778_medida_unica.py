@@ -584,15 +584,19 @@ class TestCatalogoEnBD:
             db.session.flush()
 
     def test_cumplimiento_usa_el_vocabulario_cerrado(self, app_ctx):
-        """Mismo vocabulario que el señalador de disparo: no hay un tercer
-        portador de fecha al que apuntar."""
+        """Mismo vocabulario que el señalador de disparo más el tercer portador
+        de #930: la fila atómica de SOLICITUD (el acto) se cumple con la
+        propiedad calculada; las combinaciones conservan el ancla de cierre
+        hasta que N2b las retire."""
         from app.models.catalogo_plazos import CatalogoPlazo
         for fila in CatalogoPlazo.query.filter_by(activo=True).all():
             cf = fila.campo_fecha_cumplimiento
             if cf is None:
                 continue
             claves = set(cf)
-            if fila.tipo_elemento == 'SOLICITUD':
+            if fila.tipo_elemento == 'SOLICITUD' and '+' not in fila.camino:
+                assert cf == {'calculado': 'documento_cumplimiento'}, f'Fila {fila.id}: {cf}'
+            elif fila.tipo_elemento == 'SOLICITUD':
                 assert claves == {'fk'}, f'Fila {fila.id}: {cf}'
                 assert cf['fk'] == 'documento_cierre_id', f'Fila {fila.id}: {cf}'
             else:
