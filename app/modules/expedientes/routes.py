@@ -442,7 +442,7 @@ def cert_pdf(cert_id):
     if resultado:
         return resultado
 
-    tipo_cert = cert.documento.tipo_documento.codigo if cert.documento.tipo_documento else ''
+    tipo_cert = cert.tipo
     pdf_bytes = generar_pdf_certificado(cert, expediente, tipo_cert)
 
     from flask import Response
