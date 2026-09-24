@@ -475,7 +475,9 @@ un valor derivado sin tabla (`services/actos_solicitud.py`).
   `INTERESADO` → `RECONOCIMIENTO_INTERESADO`, `AAP`/`AAC` →
   `RESOLUCION_AAP`/`RESOLUCION_AAC` si la solicitud se resuelve partida, y el
   resto → `RESOLUCION`. Dos actos resueltos por la misma fase reciben el mismo
-  documento.
+  documento. Con el `CERT_CUMPLIMIENTO_FASE` de esa fase emitido (#947) no se
+  calcula: se lee el documento que el certificado cita (`services/sellos.py`),
+  aunque después se vincule otro justificante con fecha anterior.
 - **Lectura:** `plazos.plazos_de_la_solicitud(solicitud)`, uno por acto. El
   resultado no se guarda: se calcula en cada lectura. Sin suspensión hasta #796.
 
