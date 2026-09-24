@@ -27,7 +27,8 @@ def montar(app, expediente_seed):
     no es None, su fila con esos kwargs. Devuelve (tarea_id, {codigo: doc_id})."""
     fases = []
 
-    def _montar(vinculos=(), notificacion=None):
+    def _montar(vinculos=(), notificacion=None, codigo_fase='ANALISIS_SOLICITUD',
+                codigo_tramite='NOTIFICACION'):
         from app.models.solicitudes import Solicitud
         from app.services.reloj_simulado import hoy
         from tests.conftest import ArbolESFTT
@@ -35,8 +36,8 @@ def montar(app, expediente_seed):
             arbol = ArbolESFTT(db)
             solicitud = Solicitud.query.filter_by(expediente_id=expediente_seed).first()
             assert solicitud is not None, 'la semilla debe traer una solicitud en el expediente'
-            fase = arbol.fase('ANALISIS_SOLICITUD', solicitud=solicitud)
-            tarea = arbol.tarea(arbol.tramite(fase, 'NOTIFICACION'), 'NOTIFICAR')
+            fase = arbol.fase(codigo_fase, solicitud=solicitud)
+            tarea = arbol.tarea(arbol.tramite(fase, codigo_tramite), 'NOTIFICAR')
             docs = {}
             for codigo, rol in vinculos:
                 doc = arbol.documento(expediente_seed, codigo, f'928c-{tarea.id}-{codigo}',
@@ -104,6 +105,27 @@ def test_get_payload_nuevo(usuario_supervisor, expediente_seed, montar):
     assert d['estado'] == 'PENDIENTE_SEDE'
     assert d['resultados_validos'] == ['CORRECTA', 'RECHAZADA', 'INCORRECTA']
     assert d['es_notificacion_del_titular'] is False        # fase no finalizadora
+
+
+@pytest.mark.parametrize('codigo_fase, codigo_tramite, esperado', [
+    ('RESOLUCION', 'NOTIFICACION', True),
+    ('RESOLUCION_DUP', 'NOTIFICACION', True),
+    ('RESOLUCION_DUP', 'NOTIFICACION_ORGANISMOS', False),
+    ('RESOLUCION_DUP', 'NOTIFICACION_INTERESADOS', False),
+    ('ANALISIS_SOLICITUD', 'REQUERIMIENTO_SUBSANACION', False),
+    ('CONSULTAS', 'CONSULTA_TRASLADO_TITULAR', False),
+])
+def test_get_es_notificacion_del_titular(usuario_supervisor, expediente_seed, montar,
+                                         codigo_fase, codigo_tramite, esperado):
+    """#930 (D10): la NOTIFICAR del trámite NOTIFICACION de una fase
+    finalizadora — el mismo predicado que cierra el plazo del acto. Describe
+    qué notificación es, no qué plazo cierra: las demás tienen el suyo (40.2)."""
+    tarea_id, _ = montar([('RESOLUCION', 'CONSUMIDO')],
+                         codigo_fase=codigo_fase, codigo_tramite=codigo_tramite)
+
+    d = usuario_supervisor.get(_url(expediente_seed, tarea_id)).get_json()
+
+    assert d['es_notificacion_del_titular'] is esperado
 
 
 def test_get_sin_fila(usuario_supervisor, expediente_seed, montar):
