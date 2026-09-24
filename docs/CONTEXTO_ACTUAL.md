@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **#931 (N2b)** mergeado (PR #941): el plazo de resolver solo existe por acto. Fuera las filas de combinación y de fase del catálogo, el plazo de la solicitud y el de la fase; el nivel del catálogo pasa a `ACTO`. La suspensión (`_causas_suspension`) queda conservada pero sin conectar hasta #796. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#796** mergeado (PR #942): la suspensión del art. 22 corre sobre el plazo de cada acto y solo suspende la causa a) (requerimiento de subsanación), que empuja el plazo de todos los actos de la solicitud. La marca de la causa d) (informes, separatas) queda apagada en el catálogo (migración `796_suspension_solo_causa_a`); sigue siendo dato editable. #925 cerrado como superado. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **#796**, siguiente de la cadena principal de ADR-049: conectar la suspensión al plazo de cada acto (causa a), requerimiento de subsanación) y apagar en el catálogo la marca de la causa d) (petición de informes).
+**Próximo:** **#932 (N3)**, siguiente de la cadena de ADR-049: columnas `tipo` y `fase_id` en `certificados`, infraestructura para N4 (`CERT_CUMPLIMIENTO_FASE`).
 
 ---
 

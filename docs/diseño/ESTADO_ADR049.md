@@ -14,14 +14,14 @@
 
 ## Cadena, en orden
 
-| Orden | Issue | Qué es | Capa | Estado (24/09/2026, tras #931) |
+| Orden | Issue | Qué es | Capa | Estado (24/09/2026, tras #796) |
 |---|---|---|---|---|
 | 1 | **#926** | Bug: dos `Documento` con el mismo fichero rompen `mover_a_esftt` — prerrequisito de N1 | Backend | Cerrado (PR #933) |
 | 2 | **#928 (N1)** | Las fechas de notificación solo salen de documentos | Backend | Cerrado (PR #934) |
 | — | **#927** | Entradas múltiples en `tramites_tareas_documentos` — desbloqueado por N1; hace falta antes de N5, en paralelo a la cadena principal | Backend | Cerrado (PR #937) |
 | 3 | **#930 (N2)** | El plazo es del acto; cumplimiento calculado | Backend | Cerrado (PR #939) |
 | 4 | **#931 (N2b)** | Retira filas y funciones antiguas del catálogo; renombra `SOLICITUD` → `ACTO` | Backend | Cerrado (PR #941) |
-| 5 | **#796** | Suspensión del art. 22, ahora por acto | Backend | Diseño fijado (22/09/2026); pendiente de implementar en M3 |
+| 5 | **#796** | Suspensión del art. 22, ahora por acto | Backend | Cerrado (PR #942) |
 | 6 | **#922** | Barras de plazo en el árbol/inspector (a reescribir por acto) | Frontend | Abierto, preexistente |
 | 7 | **#932 (N3)** | Amplía `certificados` (columnas `tipo`, `fase_id`) — infraestructura para N4 | Backend | Creado |
 | 8 | **N4** | `CERT_CUMPLIMIENTO_FASE`: congela el cálculo del cumplimiento | Backend | Sin crear, sin número |
@@ -50,3 +50,4 @@
 - **24/09/2026** — #927 cerrado (PR #937): 8 filas `ENTRADA` en `DATOS_CATASTRALES` (las 4 del issue + 4 que exigía `ESTRUCTURA_FTT.json`). N5 queda desbloqueado por este lado. Derivados fuera de la cadena, abiertos: #935 (`sugerencia_subida` mezcla `ENTRADA` y `SALIDA`), #936 (la tabla no distingue por fase) y #938 (repaso general de la tabla contra `ESTRUCTURA_FTT`). Siguiente de la cadena principal: #930 (N2).
 - **24/09/2026** — #930 (N2) cerrado (PR #939): el acto como unidad del plazo (`services/actos_solicitud.py`), cumplimiento `calculado` por la notificación al titular, `plazos_de_la_solicitud` para #922 y las 7 filas atómicas migradas (`930_plazo_acto_calculado`). Aditivo: las 4 combinaciones, las 3 filas de fase y las dos funciones antiguas siguen ahí para #931 (N2b). De paso, `NORMATIVA_PLAZOS.md` corregido (art. 40 y AAP+AAC por acto). Derivado fuera de la cadena, abierto: #940 (`afectado_por_reformado` de la tasa marcado solo a mano en desarrollo). Siguiente de la cadena principal: #931 (N2b).
 - **24/09/2026** — #931 (N2b) cerrado (PR #941): migración `931_nivel_acto` (fuera las 4 combinaciones y las 3 filas de `FASE`; las 7 atómicas pasan a nivel `ACTO`), retirada del plazo de la solicitud y del de la fase, `EstadoPlazoActo` como única clase y la comunicación de inicio con un plazo por acto. Al verificar el issue contra el código salieron D7–D13; la más seria, D7: el nivel de la fila no es el del nodo del árbol, y renombrar los mapas del nodo habría roto en silencio 3 filas TAREA. `_causas_suspension` se conserva sin llamador para #796 (D8). Siguiente de la cadena principal: #796.
+- **24/09/2026** — #796 cerrado (PR #942): migración `796_suspension_solo_causa_a` (marca apagada en las filas de causa d), por camino) y `_plazos_de_actos` conecta las causas, calculadas una vez por solicitud y aplicadas a todos sus actos: el requerimiento cuelga de `ANALISIS_SOLICITUD`, fase de la solicitud entera. La marca sigue siendo dato editable en la administración del catálogo (decisión de Carlos: no se bloquea). La jurisprudencia del issue queda sin verificar y marcada como tal; solo hará falta leerla en CENDOJ si algún día se implementa la causa d). #925 (suspensión a nivel de fase) cerrado como superado por ADR-049 §E. El test de rendimiento de `plazos_de_la_solicitud` pasa de 2 a 3 sentencias por el catálogo de tareas. Siguiente de la cadena principal: #932 (N3).
