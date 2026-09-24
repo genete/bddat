@@ -37,7 +37,7 @@ from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
 from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
 from app.services.invariantes_esftt import (
-    _check_cierre_fase, _check_completitud_cierre, check_invariante,
+    _check_cierre_fase, _check_completitud_cierre, check_invariante, check_vinculo_sellado,
     diagnostico_tramite_anterior, documento_disparo_comunicacion_admision,
     documentos_consumidos_otras_tareas_cadena,
     es_documento_critico, advertir_documentos_criticos_huerfanos,
@@ -950,13 +950,23 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
         if not doc or doc.expediente_id != expediente.id:
             return ResultadoMutacion(ok=False, error='Documento no válido para este expediente')
 
+    deseados = {(doc_id, 'CONSUMIDO') for doc_id in dict.fromkeys(documentos_consumidos_ids)}
+    if documento_producido_id:
+        deseados.add((documento_producido_id, 'PRODUCIDO'))
+    actuales = {(v.documento_id, v.rol): v for v in ta.vinculos_documento}
+
+    # Sello del cumplimiento (#947, ADR-049 §F, D4): el documento que cita el
+    # CERT_CUMPLIMIENTO_FASE no se desvincula ni cambia de rol (cambiar el rol es
+    # quitar un vínculo y poner otro). Antes de tocar nada, para no dejar el diff a
+    # medias. Añadir documentos a la tarea sigue libre: el justificante final de
+    # POSTAL o NOTIFICA llega después de emitir, a esta misma tarea.
+    for clave, vinculo in actuales.items():
+        if clave not in deseados:
+            res_sello = check_vinculo_sellado(ta, vinculo.documento)
+            if res_sello:
+                return ResultadoMutacion(ok=False, bloqueo=res_sello)
+
     try:
-        deseados = {(doc_id, 'CONSUMIDO') for doc_id in dict.fromkeys(documentos_consumidos_ids)}
-        if documento_producido_id:
-            deseados.add((documento_producido_id, 'PRODUCIDO'))
-
-        actuales = {(v.documento_id, v.rol): v for v in ta.vinculos_documento}
-
         docs_a_liberar = []
         for clave, vinculo in actuales.items():
             if clave not in deseados:

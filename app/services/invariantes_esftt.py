@@ -10,7 +10,9 @@ precondiciones de emisión documental (fin de instrucción, ADR-043 §E / #827),
 integridad estructural del árbol (borrado hoja-a-hoja, #722), decisiones de
 workflow ya fijadas (sellado, ADR-036; completitud de cierre, #723), puertas
 cerradas de irreversibilidad (evidencia notificada, #714/#720) y coherencia con
-un acto ya declarado (el sello de la instrucción, ADR-043 §F / #838).
+un acto ya declarado (el sello de la instrucción, ADR-043 §F / #838; el del
+cumplimiento del plazo de resolver, ADR-049 §F / #947, cuyo criterio vive en
+`services/sellos.py`).
 
 Esa última es la primera que **atraviesa varias acciones**: un mismo hecho —consta
 emitido el certificado de fin de instrucción— gobierna `CREAR` una fase de
@@ -161,7 +163,7 @@ def check_invariante(accion: str, sujeto: str, entidad_id: int,
 
     **Contrato de `EMITIR` (#827, ADR-043 §E).** Tampoco actúa sobre un nodo del
     árbol: `sujeto` es el nivel al que se ancla el documento que se emite y
-    `entidad_id` su id (hoy solo SOLICITUD), con `tipo_codigo` como código del
+    `entidad_id` su id (SOLICITUD, o FASE desde #947), con `tipo_codigo` como código del
     `TipoDocumento` emitido. No es un acto del árbol sino de producción documental
     —por eso no aparece en `mutaciones_arbol`—, pero comparte con el resto la
     naturaleza de invariante: certificar que la instrucción terminó cuando no ha
@@ -359,9 +361,10 @@ def _check_emitir(sujeto: str, entidad_id: int,
     """Precondiciones de la emisión de un certificado interno (#827, ADR-043 §E).
 
     Discrimina por tipo documental, no por sujeto: el sujeto solo dice a qué se
-    ancla. Hoy hay un único caso; el hueco natural para el siguiente es
+    ancla. Dos casos: el fin de instrucción (SOLICITUD) y el cumplimiento del
+    plazo de resolver (FASE, #947). El hueco natural para el siguiente es
     `CERT_CIERRE_SOLICITUD` (ancla implementada en #778, emisión sin dueño), que
-    se ancla al mismo sujeto y exigirá otra cosa muy distinta.
+    se ancla a la solicitud y exigirá otra cosa muy distinta.
     """
     if not tipo_codigo:
         return None
@@ -369,6 +372,41 @@ def _check_emitir(sujeto: str, entidad_id: int,
     if sujeto == 'SOLICITUD' and tipo_codigo == 'CERT_FIN_INSTRUCCION':
         return _check_emitir_cert_fin_instruccion(entidad_id)
 
+    if sujeto == 'FASE' and tipo_codigo == 'CERT_CUMPLIMIENTO_FASE':
+        return _check_emitir_cert_cumplimiento_fase(entidad_id)
+
+    return None
+
+
+def _check_emitir_cert_cumplimiento_fase(fase_id: int) -> Optional[EvaluacionResult]:
+    """No se certifica el cumplimiento de una fase que no resuelve nada, ni una
+    notificación al titular que no consta (#947, ADR-049 §F).
+
+    **Invariante, no regla del motor**: un certificado que dijera «consta la
+    notificación» sin documento que la acredite sería un documento que miente, no
+    una excepción que alguien pueda asumir bajo su responsabilidad. Puerta
+    cerrada; sigue aplicando con el motor en modo global `INACTIVO`.
+
+    Pregunta por el **cálculo** (`calcular_documento_cumplimiento_fase`), no por
+    la lectura con sello: lo que se va a sellar es precisamente lo calculado.
+    """
+    fase = Fase.query.get(fase_id)
+    if fase is None:
+        return None
+    if fase.tipo_fase is None or not fase.tipo_fase.es_finalizadora:
+        return _bloquear(
+            'Solo las fases finalizadoras tienen certificado de cumplimiento: esta '
+            'fase no resuelve ningún acto.'
+        )
+
+    from app.services.notificaciones import calcular_documento_cumplimiento_fase
+
+    if calcular_documento_cumplimiento_fase(fase) is None:
+        return _bloquear(
+            'No se puede certificar el cumplimiento: no consta la notificación al '
+            'titular. Vincule a la tarea «Notificar» del trámite «Notificación» el '
+            'justificante que la acredita.'
+        )
     return None
 
 
@@ -454,7 +492,46 @@ def _check_deshacer(sujeto: str, entidad_id: int,
     if sujeto == 'SOLICITUD' and tipo_codigo == 'CERT_FIN_INSTRUCCION':
         return _check_deshacer_cert_fin_instruccion(entidad_id)
 
+    if sujeto == 'FASE' and tipo_codigo == 'CERT_CUMPLIMIENTO_FASE':
+        return _check_deshacer_cert_cumplimiento_fase(entidad_id)
+
     return None
+
+
+def _check_deshacer_cert_cumplimiento_fase(fase_id: int) -> Optional[EvaluacionResult]:
+    """El certificado de cumplimiento solo se deshace con la fase abierta (#947).
+
+    Emitirlo con la fase cerrada sí se permite —no muta su interior, sella lo que
+    ADR-036 ya sella—, pero deshacerlo reabre la puerta a cambiar lo que había
+    dentro, así que exige el mismo acto previo que cualquier otro cambio: reabrir
+    la fase, con su justificación. Si la resolución es firme, `_check_reabrir` ya
+    cierra esa puerta y con ella esta.
+    """
+    fase = Fase.query.get(fase_id)
+    if fase is None or not fase.finalizada:
+        return None
+    return _bloquear(
+        'Esta fase está cerrada: su certificado de cumplimiento no se deshace con la '
+        'fase sellada. Reábrala antes desde el inspector de la fase; si la solicitud '
+        'ya está resuelta y notificada, la corrección exige un acto administrativo '
+        'expreso, fuera de este flujo.'
+    )
+
+
+def check_vinculo_sellado(tarea, documento) -> Optional[EvaluacionResult]:
+    """Bloqueo si soltar el vínculo de `documento` con `tarea` —desvincularlo o
+    cambiarle el rol— rompería un sello (#947, ADR-049 §F, D4), o None.
+
+    Lo llama `mutaciones_arbol.editar_tarea` por cada vínculo que va a quitar, y
+    por él pasan también el PATCH de `…/notificar` y la vinculación rápida del
+    radar de huérfanos. El criterio y el mensaje son de `services/sellos.py`;
+    aquí solo se le da forma de puerta cerrada: la salida es deshacer el
+    certificado, que el mensaje nombra.
+    """
+    from app.services.sellos import motivo_vinculo_sellado
+
+    motivo = motivo_vinculo_sellado(tarea, documento)
+    return _bloquear(motivo) if motivo else None
 
 
 def _check_deshacer_cert_fin_instruccion(solicitud_id: int) -> Optional[EvaluacionResult]:
