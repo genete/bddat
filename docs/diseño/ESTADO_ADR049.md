@@ -14,11 +14,11 @@
 
 ## Cadena, en orden
 
-| Orden | Issue | Qué es | Capa | Estado (23/09/2026) |
+| Orden | Issue | Qué es | Capa | Estado (24/09/2026) |
 |---|---|---|---|---|
 | 1 | **#926** | Bug: dos `Documento` con el mismo fichero rompen `mover_a_esftt` — prerrequisito de N1 | Backend | Cerrado (PR #933) |
 | 2 | **#928 (N1)** | Las fechas de notificación solo salen de documentos | Backend | Cerrado (PR #934) |
-| — | **#927** | Entradas múltiples en `tramites_tareas_documentos` — desbloqueado por N1; hace falta antes de N5, en paralelo a la cadena principal | Backend | Abierto, siguiente |
+| — | **#927** | Entradas múltiples en `tramites_tareas_documentos` — desbloqueado por N1; hace falta antes de N5, en paralelo a la cadena principal | Backend | Cerrado (PR #937) |
 | 3 | **#930 (N2)** | El plazo es del acto; cumplimiento calculado | Backend | Creado |
 | 4 | **#931 (N2b)** | Retira filas y funciones antiguas del catálogo; renombra `SOLICITUD` → `ACTO` | Backend | Creado |
 | 5 | **#796** | Suspensión del art. 22, ahora por acto | Backend | Diseño fijado (22/09/2026); pendiente de implementar en M3 |
@@ -38,7 +38,7 @@
 
 - ~~N3 y N4 dependen de cómo quede #796~~ — resuelto: #796 fija que solo la causa a) (22.1.a, `REQUERIMIENTO_SUBSANACION`) suspende, automática e inferida como hoy; la causa d) (informes/consultas a organismos) deja de inferirse porque en la práctica no se acuerda ni se comunica. N4 ya no tiene incertidumbre de diseño pendiente de #796; solo necesita que exista el plazo por acto (existe desde N2). #932 (N3) resultó no depender de #796 en absoluto — es infraestructura de esquema pura.
 - **#932 (N3) ya está diseñado y creado**: añade `tipo` y `fase_id` a `certificados`, backfill de las dos filas existentes, backref `Fase.certificados_cumplimiento` (sin chocar con `Fase.certificados` de `CertificadoFase`). Bloquea a N4.
-- N5 depende de #927.
+- N5 dependía de #927, ya cerrado.
 - N6 depende de N3 (#932), N4 y N5. Ya no depende de que #796 modele un acuerdo de suspensión: con solo causa a) activa, el certificado no tiene que declarar suspensiones de informes que nunca llegan a existir jurídicamente.
 
 ## Historial de esta tabla
@@ -47,3 +47,4 @@
 - **22/09/2026** — #796: criterio de suspensión fijado (solo causa a) suspende; causa d) no se implementa, queda como mejora de procedimiento futura sin issue de motor). Sin cambios de código: escrito en el propio issue. Desbloquea el diseño de N3/N4/N6.
 - **22/09/2026** — #932 (N3) diseñado y creado: `tipo`/`fase_id` en `certificados`, alternativa mínima frente a endurecer índices existentes (descartado, prematuro) o unificar con `certificados_fase` (descartado, issue aparte del ADR). Bloquea a N4.
 - **23/09/2026** — #926 y #928 (N1) cerrados. Orden acordado: #927 y luego #930 (N2).
+- **24/09/2026** — #927 cerrado (PR #937): 8 filas `ENTRADA` en `DATOS_CATASTRALES` (las 4 del issue + 4 que exigía `ESTRUCTURA_FTT.json`). N5 queda desbloqueado por este lado. Derivados fuera de la cadena, abiertos: #935 (`sugerencia_subida` mezcla `ENTRADA` y `SALIDA`) y #936 (la tabla no distingue por fase). Siguiente de la cadena principal: #930 (N2).
