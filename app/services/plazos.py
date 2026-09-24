@@ -29,7 +29,8 @@ tipo atómico de la solicitud (`actos_solicitud.ActoSolicitud`, valor derivado
 sin tabla); se mide con la fila atómica del catálogo desde el escrito de la
 solicitud —existe desde el día 1, antes de que nazca la fase que lo
 resolverá— y se cumple con la notificación al titular en esa fase
-(`{"calculado": "documento_cumplimiento"}`). Sin suspensión hasta #796.
+(`{"calculado": "documento_cumplimiento"}`). Lo suspende el requerimiento de
+subsanación (art. 22.1.a; #796).
 
 Hasta #931 hubo dos entradas más, ya retiradas: el plazo de la solicitud (#788,
 el único suspendible) y el de la fase finalizadora (ADR-048, que reabrió para
@@ -55,12 +56,15 @@ La suspensión no es un mecanismo aparte (#778):
     transcurso del plazo máximo legal para resolver», en singular: un reloj no se
     para dos veces) y los días hábiles de la unión empujan el vencimiento.
 
-    Desde #931 el mecanismo entero sigue aquí pero NO está conectado: el plazo
-    del acto se mide sin causas (`_plazos_de_actos` pasa `()`), y
-    `_causas_suspension` no tiene llamador en producción. Lo reconecta #796, que
-    decide contra qué acto corre cada causa; retirado el plazo de la solicitud,
-    que era quien la aplicaba, borrar la pieza obligaba a #796 a reescribirla
-    (#931, D8).
+    Sobre el plazo de cada acto (#796; entre #931 y #796 el mecanismo estuvo
+    desconectado): `_plazos_de_actos` pide las causas de la solicitud con
+    `_causas_suspension` y las aplica a todos sus actos por igual. Solo suspende
+    la causa a) del art. 22.1 (`REQUERIMIENTO_SUBSANACION`): el oficio del
+    requerimiento ya advierte de la suspensión y la levanta el propio titular.
+    La causa d) (informes, separatas) exige acuerdo y dos comunicaciones a los
+    interesados que en la práctica no se hacen, y una suspensión que
+    jurídicamente no existe esconde un plazo vencido; su marca está apagada en
+    el catálogo (migración 796) y no se infiere.
 
     Consecuencia directa: el tope existe por construcción. Ninguna suspensión
     puede crecer sin límite, porque su parada nunca pasa del vencimiento. Antes
@@ -346,11 +350,26 @@ def _plazos_de_actos(actos: list, variables: dict) -> list[EstadoPlazoActo]:
         if disparo is not None:
             medibles[i] = (entrada, disparo)
 
+    # Las causas de suspensión son las de la solicitud, iguales para todos sus
+    # actos (#796): el requerimiento de subsanación cuelga de ANALISIS_SOLICITUD,
+    # una fase de la solicitud entera, y el art. 22 suspende «el plazo máximo
+    # legal para resolver el procedimiento». Se calculan una vez por solicitud.
+    causas_de = {}   # id de la solicitud → [(tarea, entrada, disparo)]
+    for i in medibles:
+        solicitud = actos[i].solicitud
+        if id(solicitud) not in causas_de:
+            causas_de[id(solicitud)] = _causas_suspension(solicitud)
+
     hoy = _hoy()
     inhabiles = frozenset()
     if medibles:
+        # El calendario debe cubrir también los disparos de las causas.
+        desde = min(
+            [d for _, d in medibles.values()]
+            + [disparo for causas in causas_de.values() for _, _, disparo in causas]
+        )
         inhabiles = _obtener_inhabiles_bd(
-            min(d for _, d in medibles.values()),
+            desde,
             hoy + timedelta(days=_margen_dias([e for e, _ in medibles.values()])),
         )
 
@@ -369,10 +388,9 @@ def _plazos_de_actos(actos: list, variables: dict) -> list[EstadoPlazoActo]:
             ))
             continue
         entrada, disparo = medibles[i]
-        # Sin suspensión hasta #796, que rellena aquí las causas del acto
-        # (`_causas_suspension`) y amplía el rango del calendario a sus disparos.
         resultado.append(_estado_con_suspensiones(
-            acto, entrada, disparo, (), inhabiles, hoy, **identidad,
+            acto, entrada, disparo, causas_de[id(acto.solicitud)], inhabiles, hoy,
+            **identidad,
         ))
     return resultado
 
@@ -519,10 +537,8 @@ def calcular_fecha_fin(
 def _causas_suspension(solicitud) -> list[tuple]:
     """Tareas de la solicitud cuya entrada de catálogo suspende, ya con su disparo.
 
-    SIN LLAMADOR EN PRODUCCIÓN desde #931 hasta #796 (D8): quien la usaba era el
-    plazo de la solicitud, retirado; #796 la reconecta al plazo de cada acto y
-    decide contra cuál corre cada causa. Se conserva, con sus pruebas, porque
-    #796 la reutiliza tal cual.
+    La usa `_plazos_de_actos` una vez por solicitud (#796): las causas valen
+    para todos los actos de la solicitud.
 
     Devuelve [(tarea, entrada, disparo)]. Recorre solicitud → fases → trámites →
     tareas: el art. 22 suspende «el plazo máximo legal para resolver un

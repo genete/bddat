@@ -557,25 +557,80 @@ class TestPlazoDelActo:
         assert interesado.fase_resolutora == 'RECONOCIMIENTO_INTERESADO'
         assert interesado.fecha_limite is None
 
-    def test_sin_suspender_hasta_796(self, arbol_aislado, hoy_fijo):
-        """La forma ya prevé la suspensión y hoy vale «sin suspender», aunque la
-        solicitud tenga un requerimiento notificado que suspende en el catálogo:
-        las causas no se conectan al acto hasta #796 (#931, D8)."""
-        from app.services.plazos import _causas_suspension, plazos_de_la_solicitud
+    def _requerimiento(self, arbol, solicitud, notificado, contestado=None):
+        """Requerimiento de subsanación con su espera: notificado (CONSUMIDO) y,
+        si se pasa fecha, contestado (PRODUCIDO)."""
+        fase = arbol.fase('ANALISIS_SOLICITUD', solicitud=solicitud)
+        espera = arbol.tarea(arbol.tramite(fase, 'REQUERIMIENTO_SUBSANACION'), 'ESPERAR_PLAZO')
+        arbol.vincular(espera, arbol.documento(
+            solicitud.expediente_id, 'JUSTIFICANTE_NOTIFICA', f'796-req-{espera.id}',
+            fecha=notificado), 'CONSUMIDO')
+        if contestado is not None:
+            arbol.vincular(espera, arbol.documento(
+                solicitud.expediente_id, 'JUSTIFICANTE_NOTIFICA', f'796-resp-{espera.id}',
+                fecha=contestado), 'PRODUCIDO')
+        return espera
+
+    def test_el_requerimiento_vivo_suspende_todos_los_actos(self, arbol_aislado, hoy_fijo):
+        """Art. 22.1.a (#796): el requerimiento cuelga de ANALISIS_SOLICITUD, fase
+        de la solicitud entera, así que empuja el plazo de cada acto. Entre el
+        20-mar (notificación) y hoy, 1-abr, median 8 días hábiles."""
+        from app.services.plazos import plazos_de_la_solicitud
         hoy_fijo(date(2025, 4, 1))
         solicitud = _solicitud_desde(arbol_aislado, 'AAP+AAC+DUP')
-        fase = arbol_aislado.fase('ANALISIS_SOLICITUD', solicitud=solicitud)
+        self._requerimiento(arbol_aislado, solicitud, date(2025, 3, 20))
+
+        plazos = _por_acto(plazos_de_la_solicitud(solicitud))
+        for acto in ('AAP', 'AAC', 'DUP'):
+            p = plazos[acto]
+            assert p.suspendido is True
+            assert p.suspendido_desde == date(2025, 3, 20)
+            assert p.dias_suspendidos == 8
+            assert p.fecha_limite > p.fecha_limite_sin_suspender
+        assert plazos['AAP'].fecha_limite_sin_suspender == _LIMITE_3M
+        assert plazos['AAP'].fecha_limite == date(2025, 6, 16)   # 8 hábiles después
+        assert plazos['DUP'].fecha_limite_sin_suspender == _LIMITE_6M
+
+    def test_el_requerimiento_contestado_deja_de_suspender_pero_cuenta(
+            self, arbol_aislado, hoy_fijo):
+        """Contestado el 25-mar el reloj vuelve a correr (`suspendido` es
+        «ahora»), pero los 3 días hábiles parados ya empujaron el límite."""
+        from app.services.plazos import plazos_de_la_solicitud
+        hoy_fijo(date(2025, 4, 1))
+        solicitud = _solicitud_desde(arbol_aislado, 'AAP')
+        self._requerimiento(arbol_aislado, solicitud, date(2025, 3, 20), date(2025, 3, 25))
+
+        (aap,) = plazos_de_la_solicitud(solicitud)
+        assert aap.suspendido is False and aap.suspendido_desde is None
+        assert aap.dias_suspendidos == 3
+        assert aap.fecha_limite > aap.fecha_limite_sin_suspender == _LIMITE_3M
+
+    def test_sin_requerimiento_no_hay_suspension(self, arbol_aislado, hoy_fijo):
+        from app.services.plazos import plazos_de_la_solicitud
+        hoy_fijo(date(2025, 4, 1))
+        solicitud = _solicitud_desde(arbol_aislado, 'AAP+AAC+DUP')
+        for p in plazos_de_la_solicitud(solicitud):
+            assert p.suspendido is False and p.dias_suspendidos == 0
+            assert p.fecha_limite_sin_suspender == p.fecha_limite
+
+    def test_la_separata_no_suspende(self, arbol_aislado, hoy_fijo):
+        """Art. 22.1.d (#796): exige acuerdo y dos comunicaciones que no se hacen;
+        contar esa suspensión escondería un plazo vencido. La migración 796 apagó
+        la marca en el catálogo y la separata ya no es causa."""
+        from app.services.plazos import _causas_suspension, plazos_de_la_solicitud
+        hoy_fijo(date(2025, 4, 1))
+        solicitud = _solicitud_desde(arbol_aislado, 'AAP')
+        fase = arbol_aislado.fase('CONSULTAS', solicitud=solicitud)
         espera = arbol_aislado.tarea(
-            arbol_aislado.tramite(fase, 'REQUERIMIENTO_SUBSANACION'), 'ESPERAR_PLAZO')
+            arbol_aislado.tramite(fase, 'CONSULTA_SEPARATA'), 'ESPERAR_PLAZO')
         arbol_aislado.vincular(espera, arbol_aislado.documento(
-            solicitud.expediente_id, 'JUSTIFICANTE_NOTIFICA', f'930-req-{espera.id}',
+            solicitud.expediente_id, 'JUSTIFICANTE_NOTIFICA', f'796-sep-{espera.id}',
             fecha=date(2025, 3, 20)), 'CONSUMIDO')
 
-        assert _causas_suspension(solicitud), 'el requerimiento notificado debe ser causa'
-        for p in plazos_de_la_solicitud(solicitud):
-            assert p.suspendido is False and p.suspendido_desde is None
-            assert p.dias_suspendidos == 0
-            assert p.fecha_limite_sin_suspender == p.fecha_limite
+        assert _causas_suspension(solicitud) == []
+        (aap,) = plazos_de_la_solicitud(solicitud)
+        assert aap.suspendido is False and aap.dias_suspendidos == 0
+        assert aap.fecha_limite == _LIMITE_3M
 
     def test_fase_resolutora_id_cuando_existe(self, arbol_aislado, hoy_fijo):
         from app.services.plazos import plazos_de_la_solicitud
@@ -616,8 +671,10 @@ class TestPlazoDelActo:
 def test_plazos_sobre_el_arbol_cargado_solo_catalogo_e_inhabiles(arbol_aislado, hoy_fijo):
     """Sobre el árbol cargado como lo carga `construir_arbol` (expediente con
     su tipo + `opciones_solicitud()`), los plazos de los actos —incluido
-    recorrer la finalizadora notificada hasta el justificante— cuestan dos
-    sentencias: el catálogo y el calendario, una vez para todos los actos.
+    recorrer la finalizadora notificada hasta el justificante y buscar las
+    causas de suspensión (#796) por todo el árbol— cuestan tres sentencias: el
+    catálogo de los actos, el de las tareas (las causas) y el calendario, cada
+    uno una vez para todos los actos.
 
     Se reproduce la carga en vez de llamar a `construir_arbol` porque este
     devuelve un dict y suelta los objetos: el mapa de identidad es débil y
@@ -657,7 +714,7 @@ def test_plazos_sobre_el_arbol_cargado_solo_catalogo_e_inhabiles(arbol_aislado, 
         plazos = plazos_de_la_solicitud(sol)
         assert [p.acto for p in plazos] == ['AAP', 'AAC', 'DUP']
 
-    assert contar_consultas(arbol_y_plazos) - contar_consultas(cargar_arbol) == 2
+    assert contar_consultas(arbol_y_plazos) - contar_consultas(cargar_arbol) == 3
 
 
 # ---------------------------------------------------------------------------
