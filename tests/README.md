@@ -73,6 +73,12 @@ redundante aunque sea el único que la vigila: `test_899` protege en exclusiva
 cuatro índices parciales y la mutación de Python daba 0. Para esos, la prueba es
 quitar la restricción en la BD de tests y ver quién falla.
 
+Segundo límite: es una **muestra aleatoria**, y en un test de regresión la
+línea que importa es una sola —la del arreglo—. `test_926` salió con 0 en
+exclusiva y resultó ser el único que vigila dos de las tres partes del arreglo
+de #926. Para un test de regresión, la prueba buena es **deshacer ese arreglo
+concreto** y ejecutar la suite.
+
 ---
 
 ## 2. Qué protege cada tipo de test
