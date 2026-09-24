@@ -336,11 +336,12 @@ def test_crear_tarea_sin_cumplimiento_lo_deja_vacio(usuario_supervisor, app):
         assert creado.suspende_plazo_solicitud is False
 
 
-def test_crear_solicitud_ancla_su_certificado_de_cierre(usuario_supervisor, app):
-    """En el nivel SOLICITUD los dos extremos son FK fijas: el documento de
-    solicitud abre el plazo y el certificado de cierre lo cierra. Y la casilla de
-    suspensión se ignora aunque llegue: el art. 22 suspende el plazo de la
-    solicitud, así que marcarla a ella sería suspenderse a sí misma."""
+def test_crear_solicitud_se_cumple_con_la_notificacion_al_titular(usuario_supervisor, app):
+    """En el nivel SOLICITUD los dos extremos son fijos: el documento de
+    solicitud abre el plazo y lo cierra la notificación al titular en la fase
+    que resuelve el acto, calculada (#930, D9). Y la casilla de suspensión se
+    ignora aunque llegue: el art. 22 suspende el plazo de resolver, así que
+    marcarlo a él sería suspenderse a sí mismo."""
     siglas, efecto_id = _datos_maestros_solicitud(app)
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
         'tipo_elemento': 'SOLICITUD',
@@ -359,7 +360,7 @@ def test_crear_solicitud_ancla_su_certificado_de_cierre(usuario_supervisor, app)
         creado = CatalogoPlazo.query.filter_by(norma_origen='Solicitud con cierre (#778 smoke)').first()
         assert creado is not None
         assert creado.campo_fecha == {'fk': 'documento_solicitud_id'}
-        assert creado.campo_fecha_cumplimiento == {'fk': 'documento_cierre_id'}
+        assert creado.campo_fecha_cumplimiento == {'calculado': 'documento_cumplimiento'}
         assert creado.suspende_plazo_solicitud is False
 
 
@@ -501,7 +502,7 @@ def test_tramitador_no_puede_crear(usuario_tramitador, app):
 # Edición (incluye condiciones anidadas y operador BETWEEN) — solo SUPERVISOR/ADMIN
 # ---------------------------------------------------------------------------
 
-def _crear_para_editar(app):
+def _crear_para_editar(app, cumplimiento=None):
     """Fila SOLICITUD de partida, en un camino libre.
 
     Las siglas salen de `_datos_maestros_solicitud` y no de un `.first()` ciego:
@@ -517,6 +518,7 @@ def _crear_para_editar(app):
             tipo_elemento='SOLICITUD',
             camino=f'ANY/{siglas}',
             campo_fecha={'fk': 'documento_solicitud_id'},
+            campo_fecha_cumplimiento=cumplimiento,
             plazo_valor=3,
             plazo_unidad='MESES',
             efecto_vencimiento_id=efecto_id,
@@ -607,6 +609,58 @@ def test_editar_rango_con_un_solo_valor_falla(usuario_supervisor, app):
         from app.models.catalogo_plazos import CatalogoPlazo
         sin_cambios = CatalogoPlazo.query.get(item_id)
         assert sin_cambios.condiciones == []
+
+
+def test_editar_una_fila_de_acto_no_revierte_el_cumplimiento(usuario_supervisor, app):
+    """H3 de #930: la edición reescribe el cumplimiento por nivel, así que
+    abrir y guardar una fila deshacía la migración en silencio. Ahora escribe
+    lo mismo que la migración."""
+    calculado = {'calculado': 'documento_cumplimiento'}
+    item_id, siglas, efecto_id = _crear_para_editar(app, cumplimiento=calculado)
+    r = usuario_supervisor.post(f'/catalogo_plazos/{item_id}/editar', data={
+        'tipo_elemento': 'SOLICITUD',
+        'camino_solicitud': siglas,
+        'plazo_valor': '3',
+        'plazo_unidad': 'MESES',
+        'efecto_vencimiento_id': str(efecto_id),
+        'norma_origen': 'Acto reeditado (#930 smoke)',
+    }, follow_redirects=False)
+    assert r.status_code == 302
+
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        editado = CatalogoPlazo.query.get(item_id)
+        assert editado.norma_origen == 'Acto reeditado (#930 smoke)'
+        assert editado.campo_fecha_cumplimiento == calculado
+
+
+def test_detalle_rotula_el_cumplimiento_calculado(usuario_supervisor, app):
+    item_id, _siglas, _efecto_id = _crear_para_editar(
+        app, cumplimiento={'calculado': 'documento_cumplimiento'})
+    r = usuario_supervisor.get(f'/catalogo_plazos/{item_id}/fragmento')
+    assert r.status_code == 200
+    texto = r.get_data(as_text=True)
+    assert 'notificación al titular en la fase que resuelve este tipo de solicitud (acto)' in texto
+
+
+def test_detalle_avisa_de_un_calculado_desconocido(usuario_supervisor, app):
+    """D5: un nombre fuera de `plazos.CALCULADOS` solo puede llegar por
+    migración o SQL; la lectura lo resuelve a None y esto es lo único que lo
+    dice en la interfaz."""
+    item_id, _siglas, _efecto_id = _crear_para_editar(
+        app, cumplimiento={'calculado': 'no_existe_930'})
+    r = usuario_supervisor.get(f'/catalogo_plazos/{item_id}/fragmento')
+    assert r.status_code == 200
+    texto = r.get_data(as_text=True)
+    assert '⚠ Propiedad calculada desconocida «no_existe_930»' in texto
+    assert 'el plazo no puede cumplirse' in texto
+
+
+def test_cada_propiedad_calculada_tiene_su_etiqueta():
+    """Quien añada una propiedad calculada tiene que decir qué significa."""
+    from app.modules.catalogo_plazos.routes import _CALCULADO_LABEL
+    from app.services.plazos import CALCULADOS
+    assert set(_CALCULADO_LABEL) == set(CALCULADOS)
 
 
 def test_tramitador_no_puede_editar(usuario_tramitador, app):

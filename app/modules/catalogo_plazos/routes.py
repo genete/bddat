@@ -27,8 +27,9 @@ renderizadas por `_campo_fecha_macro.html`:
    opcionalmente, el tipo de documento que desempata cuando dos tareas del
    mismo tipo conviven en un trámite (las dos esperas de los `ANUNCIO_*`).
    TRAMITE sigue sin portar fecha — no hay filas de ese nivel ni forma de
-   crearlas. El cumplimiento de FASE queda fijo a NULL (issue de cierre propio
-   por fase pendiente de abrir).
+   crearlas. El cumplimiento también va fijo por nivel: SOLICITUD, la
+   propiedad calculada del acto (`{"calculado": "documento_cumplimiento"}`,
+   #930, ADR-049 §E); FASE, NULL (las filas de fase se retiran en N2b).
 
 El bloque visible lo decide el servidor según el nivel actual (edición) o el
 valor por defecto del select (alta); el JS de `catalogo-plazos-cascada.js` solo
@@ -67,6 +68,7 @@ from app.models.tipos_tareas import TipoTarea
 from app.models.tipos_tramites import TipoTramite
 from app.models.tramites_tareas import TramiteTarea
 from app.models.tramites_tareas_documentos import TramiteTareaDocumento
+from app.services.plazos import CALCULADOS
 from app.utils.formularios import aplicar_texto
 from app.utils.permisos import tiene_permiso
 
@@ -123,6 +125,16 @@ _ROLES_VALIDOS = {'CONSUMIDO', 'PRODUCIDO'}
 _FK_LABEL = {
     'documento_solicitud_id': 'Fecha administrativa del documento de solicitud',
     'documento_cierre_id': 'Fecha administrativa del certificado de cierre de la solicitud',
+}
+# Una etiqueta por cada nombre de `plazos.CALCULADOS` (#930, D5): quien añada
+# una propiedad calculada tiene que decir aquí qué significa — un test compara
+# las dos listas. El supervisor no teclea el nombre; ve qué es cada valor.
+# «(acto)» durante el interregno N2 → N2b: el nivel aún se llama SOLICITUD.
+_CALCULADO_LABEL = {
+    'documento_cumplimiento': (
+        'Calculado: documento que acredita la notificación al titular en la fase '
+        'que resuelve este tipo de solicitud (acto)'
+    ),
 }
 _ROL_LABEL = {'CONSUMIDO': 'consumido', 'PRODUCIDO': 'producido'}
 
@@ -336,12 +348,23 @@ def _construir_camino(tipo_elemento: str):
 def _campo_fecha_legible(tipo_elemento: str, campo_fecha: dict) -> str:
     """Traduce el JSON de campo_fecha a texto legible.
 
-    Vocabulario cerrado de dos ramas desde #788 (DISEÑO_FECHAS_PLAZOS.md §3.2):
-    `fk` para SOLICITUD, `rol` [+ `tipo_documento` opcional] para TAREA. Ya no
-    existe `via_tarea_tipo` — era la indirección que bajaba de un trámite a su
-    tarea, y con la fila declarada en la tarea sobra.
+    Vocabulario cerrado de tres ramas (DISEÑO_FECHAS_PLAZOS.md §3.2): `fk` para
+    SOLICITUD, `rol` [+ `tipo_documento` opcional] para TAREA (#788) y
+    `calculado` para el cumplimiento del acto (#930). Ya no existe
+    `via_tarea_tipo` — era la indirección que bajaba de un trámite a su tarea,
+    y con la fila declarada en la tarea sobra.
+
+    Un `calculado` fuera de `plazos.CALCULADOS` se rotula como aviso: la lectura
+    lo resuelve a None, así que ese plazo no puede cumplirse, y esta etiqueta es
+    lo único que llega a la interfaz (D5).
     """
     campo_fecha = campo_fecha or {}
+    calculado = campo_fecha.get('calculado')
+    if calculado:
+        if calculado in CALCULADOS:
+            return _CALCULADO_LABEL.get(calculado, f'Calculado: «{calculado}»')
+        return f'⚠ Propiedad calculada desconocida «{calculado}»: el plazo no puede cumplirse'
+
     fk = campo_fecha.get('fk')
     if fk:
         return _FK_LABEL.get(fk, f'Fecha administrativa vía «{fk}»')
@@ -420,14 +443,17 @@ def _construir_campo_cumplimiento(tipo_elemento: str):
     """Traduce la selección del formulario al JSON de campo_fecha_cumplimiento (#778).
 
     Mismo vocabulario cerrado que `campo_fecha` —el problema es el mismo,
-    localizar un documento desde el elemento— con dos diferencias:
+    localizar un documento desde el elemento— con estas diferencias:
 
-    - En SOLICITUD el ancla es `documento_cierre_id`, no `documento_solicitud_id`:
-      uno marca el inicio del plazo para resolver y notificar, el otro el fin.
-      Fijo, sin selección posible, igual que su gemelo.
-    - En FASE queda NULL a propósito (ADR-048 §B): `documento_resultado_id` es
-      la fecha de dictar, no de notificar, y la fase no tiene hoy un cierre
-      propio equivalente a `documento_cierre_id` — issue pendiente de abrir.
+    - En SOLICITUD, la propiedad calculada del acto (#930, ADR-049 §E, D9): el
+      documento que acredita la notificación al titular en la fase que
+      resuelve este tipo de solicitud (arts. 21.2 y 40.4 LPACAP). Fijo por
+      nivel, sin selección posible, igual que su gemelo; y se reescribe en
+      cada alta y edición, así que guardar una fila nunca revierte la
+      migración `930`. Editar desde aquí una de las cuatro combinaciones
+      también le deja `calculado`: la función antigua lo lee como «sin
+      cumplimiento», igual que antes (se retiran en N2b).
+    - En FASE queda NULL (ADR-048 §B): las filas de fase se retiran en N2b.
       Sin selección posible: el formulario ni la ofrece en este nivel.
     - En TAREA el rol puede quedar vacío, y eso no es un formulario a medio
       rellenar: una entrada sin señalador de cumplimiento nunca alcanza CUMPLIDO,
@@ -437,7 +463,7 @@ def _construir_campo_cumplimiento(tipo_elemento: str):
     Devuelve (campo_cumplimiento_dict_o_None, error_msg_o_None).
     """
     if tipo_elemento == 'SOLICITUD':
-        return {'fk': 'documento_cierre_id'}, None
+        return {'calculado': 'documento_cumplimiento'}, None
 
     if tipo_elemento == 'FASE':
         return None, None
