@@ -8,6 +8,7 @@
 **Relacionado:** ADR-021 §4 (datos a catalogar: unidades firmantes), ADR-025 (Context
 Builders), #181 (inspección automática), #552, #553
 **Documento de diseño:** `docs/referencia/DISEÑO_GENERACION_ESCRITOS.md`
+**Ampliada por:** [ADR-050](ADR-050-almacen-documental-privado-por-contenido.md) §J (2026-09-25, pendiente de implementar) — plantillas y fragmentos pasan al almacén de BDDAT, con versiones y **publicación**: una versión nueva no entra en uso hasta que se publica. Se suben desde el navegador (desaparecen `PLANTILLAS_BASE` y el explorador del servidor). Los fragmentos tienen tabla propia, y un fragmento ausente detiene la generación en vez de omitirse. Cada escrito guarda las versiones de plantilla y fragmentos que lo produjeron. El motor trabaja con bytes. §6 «Lo que no cambia» deja de ser cierto en lo del pool y del protocolo `bddat-explorador://`. El formato ODT, el renderizador y la plantilla base canónica en el repositorio no cambian
 
 ---
 
