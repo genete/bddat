@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **#947 (N4)** mergeado (PR #948): el certificado de cumplimiento de la fase finalizadora, con sello se lee y sin sello se calcula; el documento citado queda protegido y se corrige deshaciendo el certificado. Sin PDF: vista HTML única. De paso, el pool deja de dar un 500 al borrar el documento de un certificado o el que cierra una fase. En desarrollo, AT-25 (`RESOLUCION_DUP` #28316) queda con su `NOTIFICACION › NOTIFICAR` y un justificante vinculado, montados para la verificación, sin certificado emitido. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#956 (N4b)** mergeado (PR #957): las fases finalizadoras se cierran emitiendo su `CERT_CIERRE_FASE`, que ocupa `documento_resultado_id`, exige el certificado de cumplimiento y no admite escape a nivel de fase; guarda una foto fija del informe y se deshace reabriendo la fase. El editor ya no deja elegir documento de resultado en ellas. En desarrollo, AT-25 (`RESOLUCION_DUP` #28316) quedó cerrada con los dos certificados y la solicitud resuelta: ya no se puede reabrir, así que no sirve para volver a probar el cierre. Derivados abiertos: #954 y #955. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **N4b (`CERT_CIERRE_FASE`)**, siguiente de la cadena de ADR-049 y previo a N6; sin número todavía: crear y diseñar el issue. Punto de partida: ADR-049 §F (ocupa `documento_resultado_id`, `reabrir_fase` pasa a deshacerlo, informe «¿cómo voy?», exige el de cumplimiento) y lo que #947 dejó para él en «Fuera de este issue».
+**Próximo:** **N5 (notificación multi-destinatario, `Tarea.notificacion` → lista)**, siguiente de la cadena de ADR-049 y previo a N6; sin número todavía: crear y diseñar el issue. Punto de partida: ADR-049 §C/§D y «Lo que este ADR no decide» (cómo se liga cada justificante final a su destinatario).
 
 ---
 

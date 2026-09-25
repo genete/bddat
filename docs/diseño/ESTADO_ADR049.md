@@ -14,7 +14,7 @@
 
 ## Cadena, en orden
 
-| Orden | Issue | Qué es | Capa | Estado (25/09/2026, tras crear #956) |
+| Orden | Issue | Qué es | Capa | Estado (25/09/2026, tras cerrar #956) |
 |---|---|---|---|---|
 | 1 | **#926** | Bug: dos `Documento` con el mismo fichero rompen `mover_a_esftt` — prerrequisito de N1 | Backend | Cerrado (PR #933) |
 | 2 | **#928 (N1)** | Las fechas de notificación solo salen de documentos | Backend | Cerrado (PR #934) |
@@ -25,8 +25,8 @@
 | 6 | **#922** | Barras de plazo en el árbol/inspector (a reescribir por acto) | Frontend | Abierto, preexistente |
 | 7 | **#932 (N3)** | Amplía `certificados` (columnas `tipo`, `fase_id`) — infraestructura para N4 | Backend | Cerrado (PR #944) |
 | 8 | **#947 (N4)** | `CERT_CUMPLIMIENTO_FASE`: congela el cálculo del cumplimiento y protege el documento citado | Backend + inspector | Cerrado (PR #948) |
-| 8b | **#956 (N4b)** | `CERT_CIERRE_FASE`: el cierre de la fase finalizadora (ocupa `documento_resultado_id`; `reabrir_fase` lo deshace) — partido de N4; va antes de N6 | Backend + inspector | Abierto — diseñado, siguiente: implementarlo |
-| 9 | **N5** | Notificación multi-destinatario (`Tarea.notificacion` → lista) | Backend | Sin crear, sin número |
+| 8b | **#956 (N4b)** | `CERT_CIERRE_FASE`: el cierre de la fase finalizadora (ocupa `documento_resultado_id`; `reabrir_fase` lo deshace) — partido de N4; va antes de N6 | Backend + inspector | Cerrado (PR #957) |
+| 9 | **N5** | Notificación multi-destinatario (`Tarea.notificacion` → lista) | Backend | Sin crear, sin número — siguiente de la cadena principal |
 | 10 | **#568** | Edicto tras notificación infructuosa (art. 44) | Backend | Abierto, preexistente |
 | 11 | **N6** | `CERT_CIERRE_SOLICITUD` enumera por acto; cierra #921 y #801 | Backend | Sin crear, sin número |
 | — | **#929** | `NotificarEditor` y demás — acumula lo que N2, N5 y #568 le aportan; se ejecuta una sola vez | Frontend | Abierto, acumulando |
@@ -35,13 +35,13 @@
 
 ## Huecos por definir
 
-**N5 y N6 no tienen todavía número ni borrador** — solo el nombre que les da el pre-ADR §7.3 (congelado, orientativo). Ninguno se ha estudiado en un hilo de trabajo. N4b ya es #956.
+**N5 y N6 no tienen todavía número ni borrador** — solo el nombre que les da el pre-ADR §7.3 (congelado, orientativo). Ninguno se ha estudiado en un hilo de trabajo. N4b fue #956, ya cerrado.
 
 - ~~N3 y N4 dependen de cómo quede #796~~ — resuelto: #796 fija que solo la causa a) (22.1.a, `REQUERIMIENTO_SUBSANACION`) suspende, automática e inferida como hoy; la causa d) (informes/consultas a organismos) deja de inferirse porque en la práctica no se acuerda ni se comunica. N4 ya no tiene incertidumbre de diseño pendiente de #796; solo necesita que exista el plazo por acto (existe desde N2). #932 (N3) resultó no depender de #796 en absoluto — es infraestructura de esquema pura.
 - ~~#932 (N3) bloquea a N4~~ — cerrado: N4 tiene ya `tipo`, `fase_id` y el índice `(fase_id, tipo)`. ~~Queda para N4 decidir si el PDF se guarda al emitir o se genera al vuelo~~ — decidido en #947: ninguna de las dos, vista HTML única y paso a PDF posterior.
 - N5 dependía de #927, ya cerrado.
 - ~~N4b depende de #947 (N4)~~ — cerrado: el cierre ya tiene el certificado de cumplimiento que exigir (`sellos.certificado_cumplimiento(fase)`), el módulo de sellos donde añadir su función y el patrón de vista HTML única (borrador calculado / emitido) que puede reutilizar.
-- N6 depende de N3 (#932), N4 (#947), N4b y N5. Ya no depende de que #796 modele un acuerdo de suspensión: con solo causa a) activa, el certificado no tiene que declarar suspensiones de informes que nunca llegan a existir jurídicamente.
+- N6 depende de N3 (#932), N4 (#947), N4b (#956) y N5; ya solo le falta N5. Ya no depende de que #796 modele un acuerdo de suspensión: con solo causa a) activa, el certificado no tiene que declarar suspensiones de informes que nunca llegan a existir jurídicamente.
 
 ## Historial de esta tabla
 
@@ -57,3 +57,4 @@
 - **24/09/2026** — N4 diseñado y creado como **#947**. Cuatro decisiones: (D1) N4 se parte — solo `CERT_CUMPLIMIENTO_FASE`; `CERT_CIERRE_FASE` pasa a un **N4b** propio, antes de N6, que hasta ahora no figuraba en la cadena aunque N6 lo necesita; (D2) sin PDF: una vista HTML única para el borrador calculado y el certificado emitido, con huella, y paso a PDF posterior; ser certificado se lee de la fila de `certificados`, nunca de la url; (D3) el botón de la fase y la vista van en #947; (D4) se protegen el documento citado y su vínculo, no la tarea `NOTIFICAR` entera (POSTAL y NOTIFICA reciben documentos después de emitir). Hallazgo: el pool daba por borrable el documento de un certificado sin tarea (moriría en `IntegrityError`).
 - **24/09/2026** — #947 (N4) cerrado (PR #948): tipo `CERT_CUMPLIMIENTO_FASE` (migración `947_cert_cumplimiento_fase`), `services/sellos.py` (el módulo único de §F nace con este tipo) y `services/cert_cumplimiento_fase.py`. Al verificar el issue contra el código salieron H1–H9; los que cambian algo fuera del diseño: (H1) la API de la fase necesita `permitir_fase_cerrada` para que emitir con la fase cerrada llegue al servicio; (H2) deshacer comprueba que el certificado no cuelgue de ninguna tarea (la Despensa deja vincularlo); (H3) el bloqueo de edición del pool alcanza a toda fila de `certificados`, también a los dos tipos anteriores; (H4) `_documento_es_referenciado` tampoco veía `doc.fases_resultado` —mismo agujero que el del certificado, arreglado a la vez—; (H5) la apertura mira primero la url (dónde está el papel) y solo entonces la fila (qué se pinta), para no pagar una consulta por documento del pool; (H8) se protege el vínculo del citado con la tarea de la fase sellada, no los que tenga con otras. Siguiente de la cadena principal: N4b (`CERT_CIERRE_FASE`), crear y diseñar el issue.
 - **25/09/2026** — N4b diseñado y creado como **#956**. Seis decisiones: (D1) lo «obligatorio» es lo creado en la fase, completo, más el resultado y el `CERT_CUMPLIMIENTO_FASE`; lo nunca creado lo cubrirá #805 (comentado allí como segundo consumidor), con el hueco preparado; (D2) el certificado de cierre no admite escape a nivel de fase —riesgo de nulidad o anulabilidad, arts. 47.1.e y 48.2 LPACAP—: solo escapes quirúrgicos en tarea o trámite, relatados como salvados; excepción razonada al criterio de #723 y enmienda de la D4 de #928 para las finalizadoras; (D3) el resultado sigue en el editor; (D4) `datos` guarda la foto fija del informe; (D5) `_check_reabrir` sin cambios: el cierre de la última finalizadora es irreversible y se confirma escribiendo «cerrar finalizadora»; (D6) las finalizadoras solo se cierran con su certificado. Derivados abiertos fuera de la cadena: **#954** (el sellado de ADR-036 no protege los datos de los documentos en el pool) y **#955** (certificado de cierre en todas las fases, sin escape a nivel de fase, y la fecha de fin de fase). Descripción del milestone M3 corregida: es pre-producción. Siguiente de la cadena principal: implementar #956.
+- **25/09/2026** — #956 (N4b) cerrado (PR #957): tipo `CERT_CIERRE_FASE` (migración `956_cert_cierre_fase`) y `services/cert_cierre_fase.py`. Cerrar la finalizadora es emitirlo (ocupa `documento_resultado_id`; `editar_fase` ya no lo deja fijar en ellas y el editor no lo ofrece); `reabrir_fase` delega en su `deshacer`. Informe «¿cómo voy?» con los trámites redactados por `informe_instruccion.bloque_tramite`, foto fija en `datos` y frase «cerrar finalizadora» cuando la emisión resuelve la solicitud. De paso, `informe_instruccion` relata la sede justificada como acto salvado (sin `escape`) y las reaperturas de la fase como relato; el de fin de instrucción también se beneficia. Modal de confirmación con frase reutilizable para N6. En desarrollo, AT-25 quedó cerrada y resuelta (irreversible). Siguiente de la cadena principal: N5, crear y diseñar el issue.
