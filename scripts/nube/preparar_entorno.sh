@@ -59,10 +59,14 @@ fallo() {
 # El uv del contenedor (0.8.17) solo conoce 3.14.0rc2 y `uv self update` choca
 # con el límite de la API de GitHub; el de PyPI trae la versión final.
 paso "1. Python $PYTHON_VERSION"
-UV="$(python3 -c 'import uv; print(uv.find_uv_bin())' 2>/dev/null || true)"
+# El uv se busca en el python3 del sistema, no en el del venv: tras el hook de
+# arranque el venv va primero en el PATH y su python3 no trae uv ni pip.
+PY_SISTEMA="$(PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep -vxF "$VENV/bin" | paste -sd:)" command -v python3)" \
+    || fallo "encontrar python3 del sistema"
+UV="$("$PY_SISTEMA" -c 'import uv; print(uv.find_uv_bin())' 2>/dev/null || true)"
 if [ -z "$UV" ]; then
-    python3 -m pip install -q -U uv >> "$LOG" 2>&1 || fallo "instalar uv desde PyPI"
-    UV="$(python3 -c 'import uv; print(uv.find_uv_bin())')"
+    "$PY_SISTEMA" -m pip install -q -U uv >> "$LOG" 2>&1 || fallo "instalar uv desde PyPI"
+    UV="$("$PY_SISTEMA" -c 'import uv; print(uv.find_uv_bin())')"
 fi
 if [ ! -x "$VENV/bin/python" ] || ! "$VENV/bin/python" -c "import sys; sys.exit(sys.version.split()[0] != '$PYTHON_VERSION')" 2>/dev/null; then
     rm -rf "$VENV"
