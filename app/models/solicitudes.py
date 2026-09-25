@@ -75,8 +75,10 @@ class Solicitud(db.Model):
         - Se mantiene como constancia (ADR-049): CERT_CIERRE_SOLICITUD enumera,
           por acto, la resolución y su notificación, y sirve después como
           documento consumido por otras solicitudes
-        - NO es Fase(RESOLUCION).documento_resultado_id: ese es la resolución, y su
-          fecha es la de dictar, anterior a la de notificar. El art. 21.2 obliga a
+        - NO es Fase(RESOLUCION).documento_resultado_id: ese es, desde #956, el
+          CERT_CIERRE_FASE que cierra la fase que resuelve (antes era la propia
+          resolución, cuya fecha es la de dictar, anterior a la de notificar). El
+          cierre de la solicitud es otra cosa. El art. 21.2 obliga a
           «dictar resolución expresa y a notificarla», y el 40.4 fija que basta la
           notificación —o el intento debidamente acreditado—. Con varios
           interesados hay varios intentos y ninguno significa por sí solo «la

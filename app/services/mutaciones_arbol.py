@@ -37,7 +37,8 @@ from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
 from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
 from app.services.invariantes_esftt import (
-    _check_cierre_fase, _check_completitud_cierre, check_invariante, check_vinculo_sellado,
+    _check_cierre_fase, _check_completitud_cierre, check_cierre_finalizadora_por_editor,
+    check_invariante, check_vinculo_sellado,
     diagnostico_tramite_anterior, documento_disparo_comunicacion_admision,
     documentos_consumidos_otras_tareas_cadena,
     es_documento_critico, advertir_documentos_criticos_huerfanos,
@@ -754,12 +755,22 @@ def editar_fase(fase, *, resultado_fase_id: Optional[int],
     registrada en bitácora (una entrada por invariante saltado). No abre las
     puertas cerradas: fase/trámite vacíos siguen sin poder cerrarse (la vía es
     borrar), y el sellado de una fase ya cerrada tampoco se salta con esto.
+
+    Fases finalizadoras (#956, D6): aquí solo se editan el resultado y las
+    observaciones, con la fase abierta. Fijar o cambiar `documento_resultado_id`
+    es puerta cerrada: se cierran con su certificado de cierre
+    (`cert_cierre_fase.emitir`), que no admite escape a nivel de fase (D2).
     """
     # Sellado (#720, ADR-036 §6/§7): solo bloquea si la fase YA estaba cerrada al
     # entrar — el propio cierre (finalizada aún False → True) no se autobloquea.
     res_inv = check_invariante('MUTAR', 'FASE', fase.id)
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    if documento_resultado_id != fase.documento_resultado_id:
+        res_editor = check_cierre_finalizadora_por_editor(fase)
+        if res_editor:
+            return ResultadoMutacion(ok=False, bloqueo=res_editor)
 
     advertencia = None
     bloqueos_forzados = []
@@ -821,7 +832,20 @@ def reabrir_fase(fase, *, justificacion: str) -> ResultadoMutacion:
     Puerta cerrada sin bypass (ADR-036 §4, `_check_reabrir`): si la solicitud ya
     está resuelta y notificada, el acto ya salió fuera — la corrección exige un
     acto administrativo expreso, fuera de este servicio.
+
+    En una fase finalizadora (#956) reabrir es deshacer su certificado de cierre:
+    delega en `cert_cierre_fase.deshacer`, que además borra el certificado y su
+    documento y lo deja en bitácora. Mismos checks y mismo contrato de retorno.
     """
+    if fase.tipo_fase is not None and fase.tipo_fase.es_finalizadora:
+        from app.services import cert_cierre_fase
+        rev = cert_cierre_fase.deshacer(fase, justificacion=justificacion)
+        if rev.bloqueo is not None:
+            return ResultadoMutacion(ok=False, bloqueo=rev.bloqueo)
+        if not rev.ok:
+            return ResultadoMutacion(ok=False, error=rev.error)
+        return ResultadoMutacion(ok=True, ids=[fase.id])
+
     if not fase.finalizada:
         return ResultadoMutacion(ok=False, error='La fase no está cerrada.')
     if not justificacion:

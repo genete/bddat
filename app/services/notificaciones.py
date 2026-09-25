@@ -60,6 +60,12 @@ JUSTIFICANTES_FINALES = (
     'ANUNCIO_PUBLICADO',
 )
 
+# `bitacora.detalle.accion` con que `…/notificar` registra la justificación de no
+# poner en sede una notificación postal (ADR-049 §C). No lleva `escape: True`: no
+# se fuerza ningún bloqueo. La relatan los certificados como acto salvado (#956,
+# `informe_instruccion._relato_sede`).
+ACCION_JUSTIFICAR_SEDE = 'JUSTIFICAR_SEDE'
+
 # RESULTADOS_EFECTUADA (modelo): D1 ratificada — al publicarse el edicto,
 # `resultado` pasa a CORRECTA, así que el filtro de efectos es el mismo para
 # el justificante y para el anuncio.

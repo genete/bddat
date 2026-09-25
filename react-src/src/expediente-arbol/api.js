@@ -117,6 +117,23 @@ export function deleteCertCumplimiento(expedienteId, faseId, justificacion) {
   )
 }
 
+// Cierre de la fase finalizadora con su certificado (POST, #956, ADR-049 §F):
+// emitirlo ES cerrar la fase. body: {confirmacion?} — la frase «cerrar finalizadora»,
+// obligatoria cuando el cierre deja la solicitud resuelta (irreversible, D5).
+// Respuestas 200, con el informe y `enlace_vista` (vista HTML para AppModalLarge):
+//   {emitido:false, limpio:false, pendientes[]} — falta algo; nada creado
+//   {emitido:true, ya_emitido:false}            — fase cerrada ahora
+//   {emitido:true, ya_emitido:true}             — ya estaba
+// 422: {requiere_confirmacion:true, error} si falta la frase (nada creado), o
+// errores reales (fase no finalizadora, catálogo incompleto).
+// Reabrir sigue siendo postReabrirFase: en una finalizadora deshace el certificado.
+export function postCerrarFaseFinalizadora(expedienteId, faseId, confirmacion) {
+  return api.post(
+    `/api/expedientes/${expedienteId}/nodo/fase/${faseId}/certificado-cierre`,
+    confirmacion ? { confirmacion } : {},
+  )
+}
+
 // Contenedor de la tarea ANALIZAR (#442). Respuesta: {resultado, documento_producido,
 // secciones_extendidas, defectos_consolidado, completo}.
 export function getAnalizar(expedienteId, tareaId) {

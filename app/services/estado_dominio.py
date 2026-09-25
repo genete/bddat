@@ -257,6 +257,10 @@ def estado_fase(fase, estados_tramites: list[str]) -> tuple[str, bool]:
         # Solo las finalizadoras requieren resultado_fase_id explícito (el técnico
         # tiene la última palabra). Las intermedias cierran por documento_resultado_id
         # (un certificado de fase); su resultado_fase_id debe quedar NULL → van a CERRAR.
+        # Una finalizadora con resultado va también a CERRAR, pero su cierre es emitir
+        # el CERT_CIERRE_FASE (#956), que además exige el de cumplimiento: «pendiente
+        # de cerrar» no garantiza que el certificado pueda emitirse ya, eso lo dice
+        # su informe.
         es_finalizadora = getattr(fase.tipo_fase, 'es_finalizadora', False)
         if es_finalizadora and fase.resultado_fase_id is None:
             return ('PENDIENTE_ESTUDIO', True)   # 🔴 falta decidir resultado

@@ -75,7 +75,10 @@ REGISTROS_REQUERIDOS: dict = {
                       'JUSTIFICANTE_SEDE',
                       # #947 (N4, ADR-049 §F) — cert_cumplimiento_fase lo emite y
                       # sellos lo lee por código
-                      'CERT_CUMPLIMIENTO_FASE'],
+                      'CERT_CUMPLIMIENTO_FASE',
+                      # #956 (N4b, ADR-049 §F) — cert_cierre_fase lo emite al cerrar
+                      # la fase finalizadora y sellos lo lee por código
+                      'CERT_CIERRE_FASE'],
     # Rol usa 'nombre' como identificador estable — anclado en PERMISOS (app/utils/permisos.py)
     'Rol': ['ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'],
 }

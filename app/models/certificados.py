@@ -26,6 +26,13 @@ class Certificado(db.Model):
             que se derivan del documento y de la fase y no pueden cambiar
             mientras el sello exista. Un id dentro de JSONB no es FK: lo protege
             services/sellos.py.
+        CERT_CIERRE_FASE — la foto fija del informe de cierre de la fase
+            finalizadora (#956, ADR-049 §F, D4): {version, expediente, solicitud,
+            fase, actos, resultado, cierra_solicitud, bloques}, donde `bloques` son
+            `informe_instruccion.Bloque.a_dict()` ya redactados (relato, salvado).
+            Texto, no ids: la vista del emitido lo pinta tal cual y no recalcula,
+            porque ADR-036 no protege los datos de los documentos de la fase en el
+            pool (#954). Su documento es `fases.documento_resultado_id`.
 
     URI: bddat://certificados/{id}  →  resolver_url() devuelve dict completo.
 
@@ -45,14 +52,16 @@ class Certificado(db.Model):
 
     SCOPING POR FASE (N3, ADR-049 §F, #932):
         fase_id es el tercer eje de scoping, NULL salvo en los certificados que
-        cuelgan de una fase (CERT_CUMPLIMIENTO_FASE, N4). Sin reformado_id: las
+        cuelgan de una fase (CERT_CUMPLIMIENTO_FASE, N4; CERT_CIERRE_FASE, N4b). Sin reformado_id: las
         fases finalizadoras no se repiten por ronda (ADR-044 R5). El índice único
         parcial (fase_id, tipo) deja como mucho un certificado de cada tipo por
         fase; por eso `tipo` es columna y no se deduce por join.
 
         El backref es Fase.certificados_cumplimiento, no Fase.certificados: ese
         nombre ya lo ocupa CertificadoFase (tabla certificados_fase, auditoría
-        del motor), que es otra cosa.
+        del motor), que es otra cosa. Carga TODAS las filas de la fase, no solo
+        las de cumplimiento: se filtra por `tipo` (sellos.certificado_cumplimiento,
+        sellos.certificado_cierre).
     """
     __tablename__ = 'certificados'
     __table_args__ = (

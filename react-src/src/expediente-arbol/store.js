@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCertificarFinInstruccion, deleteCertFinInstruccion, postCertificarCumplimiento, deleteCertCumplimiento, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCertificarFinInstruccion, deleteCertFinInstruccion, postCertificarCumplimiento, deleteCertCumplimiento, postCerrarFaseFinalizadora,subirDocumentoPool, getSugerenciaDocumento } from './api.js'
 import { showToast } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -95,6 +95,12 @@ export const useArbolStore = create((set, get) => ({
   // --- certificado de cumplimiento de la fase finalizadora (#947, ADR-049 §F) ---
   certificandoCumplimiento: false,
   deshaciendoCumplimiento: false,
+
+  // --- cierre de la fase finalizadora con su certificado (#956, ADR-049 §F) ---
+  cerrandoFase: false,
+  // Confirmación pendiente antes de cerrar: null | 'simple' | 'frase'. 'frase' cuando
+  // el cierre deja la solicitud resuelta (irreversible, D5): hay que escribirla.
+  confirmacionCierre: null,
 
   // --- menú contextual (S3b-4) ---
   menuCtx: null,           // { x, y, sel } | null
@@ -468,6 +474,59 @@ export const useArbolStore = create((set, get) => ({
         showToast(e.payload.error || e.payload.motivo, 'danger')
       } else {
         showToast(e.message || 'No se pudo certificar el cumplimiento', 'danger')
+      }
+    }
+  },
+
+  // El botón «Cerrar la fase» de la finalizadora (#956). Qué confirmación pedir lo
+  // decide `cierra_solicitud` (del detalle del inspector):
+  //   - no deja la solicitud resuelta → confirmación normal y, al aceptar, el POST;
+  //   - la deja resuelta (irreversible, D5) → primero el POST sin frase, que o bien
+  //     devuelve el informe con lo que falta (no hace falta escribir nada para oír
+  //     «todavía no»), o bien un 422 `requiere_confirmacion` → modal con la frase.
+  solicitarCierreFase: async () => {
+    const cert = get().detalle && get().detalle.cert_cierre
+    if (!cert) return
+    if (cert.cierra_solicitud) {
+      await get().cerrarFase(null)
+    } else {
+      set({ confirmacionCierre: 'simple' })
+    }
+  },
+
+  cancelarCierreFase: () => set({ confirmacionCierre: null }),
+
+  // El POST de cierre. Tres desenlaces sin error —cerrada, ya estaba, falta algo— y
+  // en todos se abre la vista del certificado en el modal grande: el emitido, o el
+  // informe con lo que falta. El 422 con `requiere_confirmacion` pide la frase.
+  cerrarFase: async (confirmacion) => {
+    const { expedienteId, seleccion } = get()
+    if (!seleccion || seleccion.tipo !== 'fase' || !expedienteId) return
+    set({ cerrandoFase: true })
+    try {
+      const res = await postCerrarFaseFinalizadora(expedienteId, seleccion.id, confirmacion)
+      set({ cerrandoFase: false, confirmacionCierre: null })
+      if (res.emitido && !res.ya_emitido) {
+        showToast('Fase cerrada con su certificado de cierre', 'success')
+        await get().refrescarArbol()
+      } else if (!res.emitido) {
+        showToast('La fase todavía no puede cerrarse: vea qué falta', 'warning')
+      }
+      if (window.AppModalLarge && res.enlace_vista) {
+        window.AppModalLarge.open(res.enlace_vista, { title: 'Certificado de cierre de la fase' })
+      }
+    } catch (e) {
+      set({ cerrandoFase: false })
+      if (e.status === 401 || e.status === 403) return
+      if (e.status === 422 && e.payload && e.payload.requiere_confirmacion) {
+        set({ confirmacionCierre: 'frase' })
+        return
+      }
+      set({ confirmacionCierre: null })
+      if (e.status === 422 && e.payload && (e.payload.error || e.payload.motivo)) {
+        showToast(e.payload.error || e.payload.motivo, 'danger')
+      } else {
+        showToast(e.message || 'No se pudo cerrar la fase', 'danger')
       }
     }
   },

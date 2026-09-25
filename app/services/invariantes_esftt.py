@@ -361,10 +361,11 @@ def _check_emitir(sujeto: str, entidad_id: int,
     """Precondiciones de la emisión de un certificado interno (#827, ADR-043 §E).
 
     Discrimina por tipo documental, no por sujeto: el sujeto solo dice a qué se
-    ancla. Dos casos: el fin de instrucción (SOLICITUD) y el cumplimiento del
-    plazo de resolver (FASE, #947). El hueco natural para el siguiente es
-    `CERT_CIERRE_SOLICITUD` (ancla implementada en #778, emisión sin dueño), que
-    se ancla a la solicitud y exigirá otra cosa muy distinta.
+    ancla. Tres casos: el fin de instrucción (SOLICITUD), el cumplimiento del
+    plazo de resolver (FASE, #947) y el cierre de la fase finalizadora (FASE,
+    #956). El hueco natural para el siguiente es `CERT_CIERRE_SOLICITUD` (ancla
+    implementada en #778, emisión sin dueño), que se ancla a la solicitud y
+    exigirá otra cosa muy distinta.
     """
     if not tipo_codigo:
         return None
@@ -375,6 +376,64 @@ def _check_emitir(sujeto: str, entidad_id: int,
     if sujeto == 'FASE' and tipo_codigo == 'CERT_CUMPLIMIENTO_FASE':
         return _check_emitir_cert_cumplimiento_fase(entidad_id)
 
+    if sujeto == 'FASE' and tipo_codigo == 'CERT_CIERRE_FASE':
+        return _check_emitir_cert_cierre_fase(entidad_id)
+
+    return None
+
+
+def _check_emitir_cert_cierre_fase(fase_id: int) -> Optional[EvaluacionResult]:
+    """No se cierra con certificado lo que no es una finalizadora abierta, ni sin
+    la notificación al titular certificada, ni con la fase a medio hacer (#956,
+    ADR-049 §F).
+
+    **Invariante, no regla del motor**, y puerta cerrada sin escape (D2): un
+    certificado que dijera «está hecho todo lo obligatorio» con un trámite a medias
+    o sin notificación al titular sería un documento que miente. Sigue aplicando con
+    el motor en modo global `INACTIVO`.
+
+    El informe (`cert_cierre_fase.revisar`) ya cubre todos estos supuestos y dice
+    además por qué; esto es la última palabra, y por eso solo nombra el primero que
+    encuentra.
+    """
+    fase = Fase.query.get(fase_id)
+    if fase is None:
+        return None
+    if fase.tipo_fase is None or not fase.tipo_fase.es_finalizadora:
+        return _bloquear(
+            'Solo las fases finalizadoras se cierran con certificado de cierre: esta '
+            'fase no resuelve ningún acto.'
+        )
+    if fase.finalizada:
+        return _bloquear(
+            'Esta fase ya está cerrada. Para volver a cerrarla con su certificado, '
+            'reábrala antes desde el inspector.'
+        )
+
+    from app.services.sellos import certificado_cumplimiento
+
+    if certificado_cumplimiento(fase) is None:
+        return _bloquear(
+            'No se puede cerrar la fase: no consta certificado el cumplimiento. Emita '
+            'antes el certificado de cumplimiento, que acredita la notificación al '
+            'titular.'
+        )
+    if fase.resultado_fase_id is None:
+        return _bloquear(
+            'No se puede cerrar la fase sin resultado: fíjelo antes en el editor de la '
+            'fase.'
+        )
+    if fase.planificada:
+        return _bloquear('No se puede cerrar una fase sin trámites: no hay nada hecho '
+                         'que certificar.')
+    abierto = next((t for t in sorted(fase.tramites, key=lambda t: t.id)
+                    if not t.finalizado), None)
+    if abierto is not None:
+        nombre = abierto.tipo_tramite.nombre if abierto.tipo_tramite else f'#{abierto.id}'
+        return _bloquear(
+            f'No se puede cerrar la fase: el trámite "{nombre}" no está completo. '
+            'Complételo, o use el escape de la propia tarea si lo admite.'
+        )
     return None
 
 
@@ -790,7 +849,9 @@ def _check_mutar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
 
     `editar_fase`/`reabrir_fase` no llaman a este check sobre su propia fase:
     son los dos actos que legítimamente tocan `resultado_fase_id`/
-    `documento_resultado_id` (cerrar la primera vez, o reabrir).
+    `documento_resultado_id` (cerrar la primera vez, o reabrir). En las
+    finalizadoras (#956) esos dos actos son `cert_cierre_fase.emitir` y
+    `cert_cierre_fase.deshacer`, al que delega `reabrir_fase`.
 
     Sin contexto de aplicación no se aplica: en producción una mutación real
     siempre corre dentro de una request Flask con contexto activo; su ausencia
@@ -1383,10 +1444,39 @@ def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[Evaluaci
 # Completitud del cierre de fase (#723, hallazgo de sesión)
 # ---------------------------------------------------------------------------
 
+def check_cierre_finalizadora_por_editor(fase: Fase) -> Optional[EvaluacionResult]:
+    """Bloqueo si `editar_fase` intenta fijar `documento_resultado_id` en una fase
+    finalizadora (#956, D6), o None.
+
+    Una finalizadora solo se cierra con su certificado de cierre: en ella
+    `documento_resultado_id` solo puede ser el `CERT_CIERRE_FASE`, que lo pone
+    `cert_cierre_fase.emitir`. Puerta cerrada, porque el editor saltaría todo lo
+    que el certificado comprueba —el cumplimiento, los trámites, el resultado— y
+    el certificado no admite escape a nivel de fase (D2). El mensaje nombra la
+    salida en vez de prohibir a secas.
+    """
+    if fase.tipo_fase is None or not fase.tipo_fase.es_finalizadora:
+        return None
+    return _bloquear(
+        'Esta fase es finalizadora: no se cierra eligiendo un documento de resultado, '
+        'sino con su certificado de cierre. Use el botón «Cierre de la fase» del '
+        'inspector; el resultado y las observaciones sí se editan aquí.'
+    )
+
+
 def _check_completitud_cierre(fase: Fase) -> Optional[EvaluacionResult]:
     """Guardia de completitud del cierre de fase (#723): `editar_fase` no
     comprobaba nada antes de fijar `documento_resultado_id`, así que se podía
     cerrar una fase vacía o con trámites a medias sin ningún aviso.
+
+    **Solo para las fases no finalizadoras** (#956). Las finalizadoras ya no se
+    cierran por `editar_fase` (D6) sino con su certificado de cierre, que no
+    admite escape a nivel de fase (D2): cerrar la fase que resuelve con un
+    organismo o un interesado sin notificar es zona de nulidad o anulabilidad
+    (arts. 47.1.e y 48.2 LPACAP), por mucho que se justifique. Eso **enmienda la
+    D4 de #928 para las finalizadoras**: la sede pendiente dejó de forzarse aquí,
+    al cerrar la fase; queda el escape quirúrgico de su propia tarea
+    (`sede_justificacion`), que el certificado relata como salvado.
 
     Reutiliza `Fase.pdte_cierre`/`Tramite.planificado` (las properties que ya
     gobiernan árbol y seguimiento) en vez de reescribir el criterio en SQL —

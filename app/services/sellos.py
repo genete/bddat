@@ -14,9 +14,12 @@ le hace a un sello:
   `notificaciones.documento_cumplimiento_fase` antepone al cálculo.
 
 Una función por tipo de certificado y un solo punto de comprobación, sin motor
-declarativo genérico (§F). Nace con un único tipo, `CERT_CUMPLIMIENTO_FASE`; el
-sello de `CERT_FIN_INSTRUCCION` (#838) sigue en `invariantes_esftt` hasta que se
-mude aquí (N7/N9).
+declarativo genérico (§F). Nació con `CERT_CUMPLIMIENTO_FASE` (#947); #956 (N4b)
+añade `CERT_CIERRE_FASE`, que no cita documentos —sella la fase entera, y eso ya
+lo hace ADR-036 por `documento_resultado_id`— pero sí necesita decir por qué su
+propio documento no se toca y cuál es la salida. El sello de
+`CERT_FIN_INSTRUCCION` (#838) sigue en `invariantes_esftt` hasta que se mude aquí
+(N7/N9).
 
 SER CERTIFICADO NO DEPENDE DE LA URL (#947, D2)
 ===============================================
@@ -48,23 +51,37 @@ from app.models.documentos import Documento
 log = logging.getLogger(__name__)
 
 CERT_CUMPLIMIENTO_FASE = 'CERT_CUMPLIMIENTO_FASE'
+CERT_CIERRE_FASE = 'CERT_CIERRE_FASE'
 
 
 # ---------------------------------------------------------------------------
 # ¿Qué dice el sello? — lectura
 # ---------------------------------------------------------------------------
 
-def certificado_cumplimiento(fase) -> Optional[Certificado]:
-    """El `CERT_CUMPLIMIENTO_FASE` emitido de `fase`, o `None`.
+def _certificado_de_fase(fase, tipo: str) -> Optional[Certificado]:
+    """El certificado de `tipo` emitido de `fase`, o `None`.
 
     En memoria sobre `fase.certificados_cumplimiento`, que el árbol carga con
     `opciones_solicitud()`: leer el sello no cuesta una sentencia por fase. El
+    backref carga **todas** las filas de `certificados` de la fase —su nombre es
+    de cuando solo existía el de cumplimiento—, así que se filtra por `tipo`. El
     índice único `(fase_id, tipo)` (#932) garantiza que hay como mucho uno.
     """
-    return next(
-        (c for c in fase.certificados_cumplimiento if c.tipo == CERT_CUMPLIMIENTO_FASE),
-        None,
-    )
+    return next((c for c in fase.certificados_cumplimiento if c.tipo == tipo), None)
+
+
+def certificado_cumplimiento(fase) -> Optional[Certificado]:
+    """El `CERT_CUMPLIMIENTO_FASE` emitido de `fase`, o `None`."""
+    return _certificado_de_fase(fase, CERT_CUMPLIMIENTO_FASE)
+
+
+def certificado_cierre(fase) -> Optional[Certificado]:
+    """El `CERT_CIERRE_FASE` emitido de `fase`, o `None` (#956).
+
+    Emitido, su documento es `fase.documento_resultado_id`: la fase finalizadora
+    está cerrada por él y solo por él (D6).
+    """
+    return _certificado_de_fase(fase, CERT_CIERRE_FASE)
 
 
 def documento_citado(certificado) -> Optional[Documento]:
@@ -155,6 +172,14 @@ def motivo_sellado(documento) -> Optional[str]:
             f'Este documento es el certificado de cumplimiento de la fase '
             f'«{_nombre_fase(propio.fase)}»: no se edita ni se borra desde el pool. '
             f'Para retirarlo, deshágalo desde el inspector de la fase.'
+        )
+    if propio.tipo == CERT_CIERRE_FASE:
+        # Su salida no es «deshacerlo» sino reabrir la fase (#956): el certificado
+        # ES el cierre, y reabrir una finalizadora es retirarlo.
+        return (
+            f'Este documento es el certificado de cierre de la fase '
+            f'«{_nombre_fase(propio.fase)}»: no se edita ni se borra desde el pool. '
+            f'Para retirarlo, reabra la fase desde el inspector.'
         )
     nombre = documento.tipo_doc.nombre if documento.tipo_doc else propio.tipo
     return (
