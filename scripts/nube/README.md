@@ -49,8 +49,22 @@ se elige el rol y se envía otra vez. En los dos casos se entra en
 entorno los bloquea, la app funciona pero se ve rota: sin estilos, con
 `bootstrap is not defined` y los modales y menús desplegados. **Se arregla en
 claude.ai**, en la configuración del entorno, apartado *Network access*,
-añadiendo esos dos dominios. `arrancar_app.sh` y `captura.mjs` avisan cuando
-están bloqueados.
+añadiendo esos dos dominios.
+
+Mientras tanto, hay un apaño **solo para las capturas**. `arrancar_app.sh`
+descarga de npm, que sí es accesible, Bootstrap 5.3.3 y bootstrap-icons 1.11.1 en
+`~/.cache/bddat-cdn`, y `captura.mjs` sirve desde ahí las peticiones al CDN:
+
+| Recurso del CDN | Se sirve | Fidelidad |
+|---|---|---|
+| `bootstrap-icons@1.11.1` | el mismo paquete de npm | idéntico |
+| `bootstrap.bundle.min.js` de la Junta | el de Bootstrap 5.3.3 | equivalente (modales, menús) |
+| `custom-jda-bootstrap.css` | `bootstrap.min.css` estándar | **aproximado**: sin colores ni fuentes de la Junta |
+| `fonts.css`, `all.css` de la Junta | vacíos | se pierden las fuentes y los iconos propios de la Junta |
+
+La captura sale legible, pero **no sirve para juzgar detalles visuales finos**.
+`captura.mjs` lo avisa cada vez que usa la copia, y deja de usarla en cuanto el
+CDN responde.
 
 ## Lo que sigue necesitando el PC (#949 §D)
 

@@ -89,9 +89,27 @@ fi
 
 # Aviso de los CDN: sin ellos las páginas se ven rotas (sin CSS de la Junta ni
 # Bootstrap: «bootstrap is not defined», modales desplegados).
+BLOQUEADO=0
 for host in cdn.juntadeandalucia.es cdn.jsdelivr.net; do
     if [ "$(curl -s -o /dev/null --max-time 5 -w '%{http_code}' "https://$host/")" = "000" ]; then
-        echo "AVISO: $host bloqueado por la red del entorno: la interfaz saldrá sin estilos."
-        echo "       Permitirlo en claude.ai → entorno → Network access."
+        echo "AVISO: $host bloqueado por la red del entorno. Permitirlo en claude.ai → entorno → Network access."
+        BLOQUEADO=1
     fi
 done
+
+# Mientras estén bloqueados, captura.mjs sirve una copia local desde npm (que sí
+# es accesible): iconos idénticos y Bootstrap estándar en lugar de la CSS de la
+# Junta, es decir, estilos APROXIMADOS. El navegador del usuario no la ve.
+CACHE_CDN="$HOME/.cache/bddat-cdn"
+if [ "$BLOQUEADO" = 1 ] && [ ! -f "$CACHE_CDN/bootstrap/dist/css/bootstrap.min.css" ]; then
+    mkdir -p "$CACHE_CDN"
+    (
+        cd "$CACHE_CDN"
+        npm pack -q bootstrap@5.3.3 bootstrap-icons@1.11.1 > /dev/null
+        rm -rf bootstrap bootstrap-icons
+        tar -xzf bootstrap-5.3.3.tgz && mv package bootstrap
+        tar -xzf bootstrap-icons-1.11.1.tgz && mv package bootstrap-icons
+    ) >> "$HOME/.cache/bddat-react.log" 2>&1 \
+        && echo "copia local de Bootstrap en $CACHE_CDN: captura.mjs la usará (estilos aproximados)" \
+        || echo "AVISO: no se pudo descargar la copia local de Bootstrap; las capturas saldrán sin estilos"
+fi
