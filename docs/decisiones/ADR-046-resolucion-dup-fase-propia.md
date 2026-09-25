@@ -6,6 +6,7 @@
 **Enmienda:** ADR-045 §"Lo que este ADR no decide" (cierra la pregunta ahí dejada abierta) · `ESTRUCTURA_ESF.md`/`.json` · `ESTRUCTURA_FTT.md`/`.json` · `TIPOS_DOCUMENTOS_CATALOGO.md`
 **Origen:** continuación de `docs/diseño/PRE-ADR-resolucion-doble-acto-dup.md` (alternativa 3.2, ya confirmada ahí) tras cerrar el issue #911. Sesión 2026-09-12. Detalle estructural completo en `docs/diseño/DISEÑO_RESOLUCION_DUP.md`.
 **Issues:** ninguno abierto todavía — este ADR y su diseño asociado son el material de partida para abrirlos
+**Enmendado por:** ADR-051 §G (2026-09-26, sin implementar; lo implementa N5). §C: `NOTIFICACION_ORGANISMOS` y `NOTIFICACION_INTERESADOS` se funden en `NOTIFICACION`; los grupos del art. 148.2 los distingue la fuente de cada `NOTIFICAR` y desaparece `_TRAMITES_CON_NOTIFICACION_MULTIPLE`. También cae la alternativa descartada de fusionar organismos e interesados en un solo trámite.
 
 ---
 
