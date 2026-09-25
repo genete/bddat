@@ -671,9 +671,10 @@ class TestPlazoDelActo:
 # G) Rendimiento (D14; precedente #907)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize('con_certificado', [False, True], ids=['calculado', 'sellado'])
+@pytest.mark.parametrize('sellos', [(), ('cumplimiento',), ('cumplimiento', 'cierre')],
+                         ids=['calculado', 'sellado', 'cerrada'])
 def test_plazos_sobre_el_arbol_cargado_solo_catalogo_e_inhabiles(
-        arbol_aislado, hoy_fijo, con_certificado):
+        arbol_aislado, hoy_fijo, sellos):
     """Sobre el árbol cargado como lo carga `construir_arbol` (expediente con
     su tipo + `opciones_solicitud()`), los plazos de los actos —incluido
     recorrer la finalizadora notificada hasta el justificante y buscar las
@@ -683,7 +684,9 @@ def test_plazos_sobre_el_arbol_cargado_solo_catalogo_e_inhabiles(
 
     También con el `CERT_CUMPLIMIENTO_FASE` emitido (#947): el certificado viene
     en la carga del árbol y el documento que cita, entre los vínculos de su
-    tarea, así que leer el sello no añade ninguna.
+    tarea, así que leer el sello no añade ninguna. Y con la fase cerrada por su
+    `CERT_CIERRE_FASE` (#956): el backref de la fase trae las dos filas, y el
+    filtro por tipo es en memoria.
 
     Se reproduce la carga en vez de llamar a `construir_arbol` porque este
     devuelve un dict y suelta los objetos: el mapa de identidad es débil y
@@ -706,8 +709,10 @@ def test_plazos_sobre_el_arbol_cargado_solo_catalogo_e_inhabiles(
         ('JUSTIFICANTE_NOTIFICA_DISPOSICION', date(2025, 3, 20), 'CONSUMIDO'),
         ('JUSTIFICANTE_NOTIFICA', date(2025, 3, 24), 'PRODUCIDO'),
     ])
-    if con_certificado:
+    if 'cumplimiento' in sellos:
         _sellar(arbol_aislado, fase, tarea)
+    if 'cierre' in sellos:
+        _cerrar_con_certificado(arbol_aislado, fase)
     expediente_id = solicitud.expediente_id
 
     def cargar_arbol():
@@ -747,6 +752,27 @@ def _sellar(arbol, fase, tarea):
     arbol.db.session.add(Certificado(documento_id=doc.id, tipo='CERT_CUMPLIMIENTO_FASE',
                                      fase_id=fase.id, datos={'documento_id': citado.id},
                                      generado_en=datetime.now(UTC).replace(tzinfo=None)))
+    arbol.db.session.flush()
+
+
+def _cerrar_con_certificado(arbol, fase):
+    """El certificado de cierre a pelo (#956), por el mismo motivo que `_sellar`:
+    solo importa que la fase quede cerrada por él al cargar el árbol."""
+    from datetime import UTC, datetime
+
+    from app.models.certificados import Certificado
+    from app.models.documentos import Documento
+    from app.models.tipos_documentos import TipoDocumento
+    tipo = TipoDocumento.query.filter_by(codigo='CERT_CIERRE_FASE').first()
+    assert tipo is not None, 'la migración 956 debe traer CERT_CIERRE_FASE'
+    doc = Documento(expediente_id=fase.solicitud.expediente_id, tipo_doc_id=tipo.id,
+                    url='bddat://certificados/0')
+    arbol.db.session.add(doc)
+    arbol.db.session.flush()
+    arbol.db.session.add(Certificado(documento_id=doc.id, tipo='CERT_CIERRE_FASE',
+                                     fase_id=fase.id, datos={'bloques': []},
+                                     generado_en=datetime.now(UTC).replace(tzinfo=None)))
+    fase.documento_resultado_id = doc.id
     arbol.db.session.flush()
 
 

@@ -68,7 +68,8 @@ class TestCatalogoBaseTrasUpgrade:
         # +10 en #914: 8 del diseño original + 2 de REQUERIMIENTO_RBDA_DEFINITIVA
         # +3 en #928 (N1): JUSTIFICANTE_NOTIFICA_DISPOSICION, JUSTIFICANTE_POSTAL_1ER, JUSTIFICANTE_SEDE
         # +1 en #947 (N4): CERT_CUMPLIMIENTO_FASE
-        assert TipoDocumento.query.count() == 78
+        # +1 en #956 (N4b): CERT_CIERRE_FASE
+        assert TipoDocumento.query.count() == 79
 
 
 class TestCodigosQueElCodigoEspera:
