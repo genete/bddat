@@ -45,3 +45,9 @@ el navegador (cambia el viewport real, verificado). Login de dos pasos: memoria
 Ficheros: sin nombre → auto-genera `page-TIMESTAMP.png` en `.playwright-mcp/` (correcto).
 Con nombre propio → **SIEMPRE** prefijar `.playwright-mcp/nombre.png`, si no guarda suelto
 en la raíz del repo.
+
+**En una sesión en la nube** no hay Playwright MCP ni memorias locales: arrancar la app
+con `bash scripts/nube/arrancar_app.sh` y verificar con
+`node scripts/nube/captura.mjs <ruta> [--usuario X --rol Y]`, que hace el login de dos pasos
+y guarda la captura en `.playwright-mcp/`. Datos sintéticos, no los del PC. Detalle y
+límites en `scripts/nube/README.md`.
