@@ -448,7 +448,8 @@ def cert_pdf(cert_id):
     try:
         pdf_bytes = generar_pdf_certificado(cert, expediente, tipo_cert)
     except NotImplementedError:
-        # CERT_CUMPLIMIENTO_FASE (#947) no tiene PDF: se consulta en su vista HTML.
+        # CERT_CUMPLIMIENTO_FASE (#947) y CERT_CIERRE_FASE (#956) no tienen PDF: se
+        # consultan en su vista HTML.
         # Solo se llega aquí por acceso directo — `info_apertura_documento` ya lo
         # manda al modal —, y un 400 explícito es mejor que un 500.
         abort(400, description='Este certificado no tiene PDF: se consulta en su vista.')
@@ -980,10 +981,12 @@ def pool_descargar_documento(id, doc_id):
         partes = url[len('bddat://'):].split('/')
         recurso = partes[0] if partes else ''
         if recurso == 'certificados':
-            # Qué se pinta lo dice la fila, no la url (#947, D2): el certificado de
-            # cumplimiento no tiene PDF, se consulta en su vista (como un diagnóstico).
+            # Qué se pinta lo dice la fila, no la url (#947, D2): los certificados de
+            # cumplimiento y de cierre de la fase no tienen PDF, se consultan en su
+            # vista (como un diagnóstico).
             cert = doc.certificado
-            if cert is not None and cert.tipo == sellos.CERT_CUMPLIMIENTO_FASE:
+            if cert is not None and cert.tipo in (sellos.CERT_CUMPLIMIENTO_FASE,
+                                                  sellos.CERT_CIERRE_FASE):
                 abort(400, description='Este certificado no tiene PDF: se consulta en su vista.')
             return redirect(url_for('expedientes.cert_pdf', cert_id=int(partes[1])))
         if recurso == 'diagnosticos':
@@ -1055,6 +1058,34 @@ def cert_cumplimiento_fase_vista(id, fase_id):
 
     from app.services.cert_cumplimiento_fase import vista
     return render_template('expedientes/_cert_cumplimiento_fase_fragmento.html',
+                           vista=vista(fase))
+
+
+@bp.route('/<int:id>/fases/<int:fase_id>/certificado-cierre')
+@login_required
+def cert_cierre_fase_vista(id, fase_id):
+    """Fragmento modal grande — el certificado de cierre de la fase finalizadora (#956).
+
+    Mismo patrón que `cert_cumplimiento_fase_vista`: vista única para los dos
+    momentos y siempre de solo lectura. Sin emitir, el informe «¿cómo voy?»
+    calculado al vuelo (hecho, pendiente, salvado), sin guardar nada; emitido, la
+    foto fija de `certificados.datos` (D4), que no se recalcula, con su huella. Se
+    abre desde el bloque «Cierre de la fase» del inspector y, emitido, desde su
+    documento en el pool, la Despensa o el inspector (`info_apertura_documento`).
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return '', 403
+
+    fase = Fase.query.get_or_404(fase_id)
+    if fase.solicitud.expediente_id != id:
+        abort(404)
+    if fase.tipo_fase is None or not fase.tipo_fase.es_finalizadora:
+        abort(404)
+
+    from app.services.cert_cierre_fase import vista
+    return render_template('expedientes/_cert_cierre_fase_fragmento.html',
                            vista=vista(fase))
 
 

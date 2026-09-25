@@ -917,7 +917,8 @@ def reabrir_fase_nodo(expediente_id, nodo_id):
 
     Único camino para tocar el interior de una fase FINALIZADA: retira su
     resultado/documento de cierre y queda en bitácora. Body JSON:
-    {justificacion} — obligatoria siempre, no hay reapertura silenciosa.
+    {justificacion} — obligatoria siempre, no hay reapertura silenciosa. En una
+    finalizadora (#956) es deshacer su certificado de cierre, que se borra.
 
     Bloqueo (422, `puede_escapar: false`): la solicitud ya está resuelta y
     notificada — puerta cerrada, ADR-036 §4.
@@ -1119,6 +1120,64 @@ def deshacer_cert_cumplimiento_fase_nodo(expediente_id, nodo_id):
         payload['error'] = res.error
         return jsonify(payload), 422
     return jsonify(res.a_dict()), 200
+
+
+# =============================================================================
+# ENDPOINT 8sexies: Cerrar la fase finalizadora con su certificado (#956,
+# ADR-049 §F)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/fase/<int:nodo_id>'
+              '/certificado-cierre', methods=['POST'])
+@login_required
+def emitir_cert_cierre_fase_nodo(expediente_id, nodo_id):
+    """
+    POST .../nodo/fase/<fase_id>/certificado-cierre — el botón «Cierre de la fase»
+    de la finalizadora (#956). Emitir el certificado **es** cerrar la fase.
+
+    Body JSON opcional: {confirmacion}. Obligatoria (la frase
+    `cert_cierre_fase.FRASE_CONFIRMACION`) cuando el cierre deja la solicitud
+    resuelta, que lo hace irreversible (D5); se exige aquí para que no se salte
+    llamando a la API.
+
+    Respuestas 200, todas con el informe (`cert_cierre_fase.Emision.a_dict`) y
+    `enlace_vista`:
+    - quedan pendientes → `emitido: false`; nada creado;
+    - emitido ahora → `emitido: true`;
+    - ya estaba → `emitido: true, ya_emitido: true`.
+
+    422 para errores de verdad: fase no finalizadora, catálogo sin el tipo, o falta
+    la confirmación del cierre irreversible (`requiere_confirmacion: true`, nada
+    creado). 422 de bloqueo (`puede_escapar: false`) solo si la puerta cerrada
+    discrepara del informe. Reabrir sigue siendo `POST …/reabrir`.
+
+    Con la fase cerrada se resuelve igualmente (`permitir_fase_cerrada`): si la
+    cerró este certificado se devuelve el existente, y si la cerró un documento
+    anterior a #956, el mensaje es el del invariante («reábrala antes»).
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    # Mismo permiso que cerrar o reabrir una fase y que los otros certificados.
+    if verificar_acceso_expediente(expediente, 'gestionar_estructura'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        fase = _resolver_nodo(expediente, 'fase', nodo_id, permitir_fase_cerrada=True)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    from app.services.cert_cierre_fase import emitir
+
+    datos = request.get_json(silent=True) or {}
+    res = emitir(fase, confirmacion=datos.get('confirmacion'))
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    payload = res.a_dict()
+    payload['enlace_vista'] = url_for('expedientes.cert_cierre_fase_vista',
+                                      id=expediente.id, fase_id=fase.id)
+    if res.error:
+        payload['error'] = res.error
+        return jsonify(payload), 422
+    return jsonify(payload), 200
 
 
 # =============================================================================
@@ -2406,7 +2465,7 @@ def patch_notificar(expediente_id, tarea_id):
         bitacora_svc.registrar(
             current_user.id, 'ALTERAR', 'notificaciones', notif.id,
             detalle={
-                'accion': 'JUSTIFICAR_SEDE',
+                'accion': notif_svc.ACCION_JUSTIFICAR_SEDE,
                 'texto': sede_justificacion,
                 'sujeto': build_sujeto(expediente, tarea.tramite),
             },

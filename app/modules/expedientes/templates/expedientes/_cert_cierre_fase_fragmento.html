@@ -1,0 +1,143 @@
+{# _cert_cierre_fase_fragmento.html — Certificado de cierre de la fase finalizadora (#956, ADR-049 §F).
+   No extiende base_app.html. Inyectado por AppModalLarge (ADR-023 §6), como el de cumplimiento.
+
+   Vista ÚNICA para los dos momentos: sin emitir, el informe «¿cómo voy?» calculado
+   al vuelo (qué falta, qué se salvó, lo hecho), sin guardar nada; emitido, la foto
+   fija de `certificados.datos` (D4), que no se recalcula. Siempre de solo lectura:
+   emitir y reabrir son gestos del inspector.
+
+   Datos: `vista` (services/cert_cierre_fase.Vista). Los textos llegan ya redactados
+   por cada nodo (informe_instruccion, §E bis): aquí no se compone ninguna frase.
+#}
+<div class="p-3">
+
+  <div class="mb-3">
+    {% if vista.emitido %}
+      <span class="badge text-bg-success">
+        <i class="bi bi-lock-fill me-1"></i>Fase cerrada — certificado emitido
+      </span>
+    {% elif vista.falta %}
+      <span class="badge text-bg-secondary">
+        <i class="bi bi-slash-circle me-1"></i>Sin certificado de cierre
+      </span>
+    {% elif not vista.limpio %}
+      <span class="badge text-bg-warning">
+        <i class="bi bi-exclamation-triangle me-1"></i>La fase todavía no puede cerrarse
+      </span>
+    {% else %}
+      <span class="badge text-bg-light border">
+        <i class="bi bi-pencil me-1"></i>Borrador — lista para cerrar, sin emitir
+      </span>
+    {% endif %}
+  </div>
+
+  <p class="small mb-3">
+    {% if vista.emitido %}
+      Consta hecho todo lo que el expediente registra como obligatorio en esta fase,
+      incluida la notificación al titular. Este certificado la cierra: su interior
+      queda sellado y solo se corrige reabriéndola, lo que deja sin efecto el
+      certificado. Su contenido se fijó al emitirlo y no se recalcula.
+    {% elif vista.falta %}
+      {{ vista.falta }}
+    {% elif not vista.limpio %}
+      Resuelva lo que falta y vuelva a pedir el cierre cuando quiera. No se ha creado
+      ningún documento. Este informe se calcula al abrirlo y no se guarda.
+    {% else %}
+      Si se cerrara ahora, el certificado diría lo que sigue. Este borrador se calcula
+      al abrirlo y no se guarda.
+    {% endif %}
+  </p>
+
+  {% if not vista.emitido and vista.limpio and vista.cierra_solicitud %}
+    <div class="alert alert-danger small py-2">
+      <i class="bi bi-exclamation-octagon me-1"></i>
+      Cerrar esta fase deja la solicitud resuelta y, con la notificación ya hecha,
+      <strong>no podrá reabrirse</strong> dentro de BDDAT: cualquier corrección exigirá
+      un acto administrativo expreso.
+    </div>
+  {% endif %}
+
+  {# col-lg-2: el modal grande ocupa casi toda la ventana (mismo criterio que el de cumplimiento). #}
+  <dl class="row small mb-3">
+    <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Expediente</dt>
+    <dd class="col-sm-8 col-lg-10">{{ vista.expediente }} · {{ vista.solicitud }}</dd>
+
+    <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Fase</dt>
+    <dd class="col-sm-8 col-lg-10">{{ vista.fase }}</dd>
+
+    <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Actos que resuelve</dt>
+    <dd class="col-sm-8 col-lg-10">{{ vista.actos | join(', ') if vista.actos else '—' }}</dd>
+
+    <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Resultado</dt>
+    <dd class="col-sm-8 col-lg-10">{{ vista.resultado or '—' }}</dd>
+  </dl>
+
+  {% if vista.pendientes %}
+    <h6 class="small text-uppercase text-muted mt-3">Qué falta</h6>
+    <ul class="list-group list-group-flush mb-3">
+      {% for b in vista.pendientes %}
+        <li class="list-group-item px-0 py-2">
+          <div class="small fw-semibold">{{ b.titulo }}</div>
+          {% for linea in b.pendiente %}
+            <div class="small">{{ linea }}</div>
+          {% endfor %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if vista.advertencia %}
+    <div class="alert alert-warning small py-2">
+      <i class="bi bi-info-circle me-1"></i>{{ vista.advertencia }}
+    </div>
+  {% endif %}
+
+  {% if vista.salvados %}
+    <h6 class="small text-uppercase text-muted mt-3">Actos salvados con criterio del tramitador</h6>
+    <p class="small text-muted mb-2">
+      Se hicieron por su vía de escape, con justificación, en la tarea o el trámite
+      donde estaba la falta. No impiden cerrar; constan aquí porque la resolución
+      debe poder motivarlos.
+    </p>
+    <ul class="list-group list-group-flush mb-3">
+      {% for b in vista.salvados %}
+        <li class="list-group-item px-0 py-2">
+          <div class="small fw-semibold">{{ b.titulo }}</div>
+          {% for linea in b.salvado %}
+            <div class="small text-muted">{{ linea }}</div>
+          {% endfor %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if vista.relato %}
+    <h6 class="small text-uppercase text-muted mt-3">
+      {% if vista.emitido %}Lo hecho en la fase{% else %}Lo hecho hasta ahora{% endif %}
+    </h6>
+    <div class="mb-3">
+      {% for linea in vista.relato %}
+        <div class="small">{{ linea }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {# Huella: un papel siempre lleva a su fila de `certificados`. #}
+  <div class="border-top pt-2 small text-muted">
+    {% if vista.emitido %}
+      Certificado nº {{ vista.certificado_id }} · Documento nº {{ vista.documento_certificado_id }}
+      · Emitido el {{ vista.emitido_en or '—' }} · {{ vista.expediente }}
+      · Fase nº {{ vista.fase_id }} ({{ vista.fase }})
+    {% else %}
+      Borrador calculado el {{ vista.calculado_en }} · {{ vista.expediente }}
+      · Fase nº {{ vista.fase_id }} ({{ vista.fase }}) · No emitido
+    {% endif %}
+  </div>
+
+  <div class="d-flex justify-content-end border-top pt-3 mt-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-modal-large-close>
+      Cerrar
+    </button>
+  </div>
+
+</div>

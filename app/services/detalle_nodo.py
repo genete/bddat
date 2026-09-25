@@ -38,7 +38,16 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.organismos_expediente import OrganismoExpediente
 from app.services.arbol_expediente import ID_VERSION_INICIAL_BASE, plazo_tarea
-from app.services.sellos import CERT_CUMPLIMIENTO_FASE, certificado_cumplimiento
+from app.services.sellos import (
+    CERT_CIERRE_FASE, CERT_CUMPLIMIENTO_FASE, certificado_cierre, certificado_cumplimiento,
+)
+
+# Certificados sin PDF, que se consultan en su vista HTML (#947, #956): tipo → endpoint
+# de la vista, que recibe `id` (expediente) y `fase_id`.
+_VISTA_CERTIFICADO_FASE = {
+    CERT_CUMPLIMIENTO_FASE: 'expedientes.cert_cumplimiento_fase_vista',
+    CERT_CIERRE_FASE:       'expedientes.cert_cierre_fase_vista',
+}
 
 log = logging.getLogger(__name__)
 
@@ -121,8 +130,9 @@ def info_apertura_documento(exp_id: int, doc, *, estricto: bool = True) -> dict:
     bddat:// (ADR-006) no tiene fichero físico: el enlace despacha por recurso (#610).
     - certificados/<id>: la url dice «no hay papel, se pinta»; QUÉ se pinta lo dice
       la fila de `certificados` (su `tipo`), nunca la url (#947, D2). El
-      CERT_CUMPLIMIENTO_FASE se consulta en su vista HTML (`abrir_en` 'modal', como
-      un diagnóstico); los demás, PDF generado on-demand (cert_pdf, `abrir_en`
+      CERT_CUMPLIMIENTO_FASE y el CERT_CIERRE_FASE (#956) se consultan en su vista
+      HTML (`abrir_en` 'modal', como un diagnóstico); los demás, PDF generado
+      on-demand (cert_pdf, `abrir_en`
       'enlace': el consumidor sigue el href en pestaña nueva). La fila solo se lee
       para los certificados: el resto del pool no paga esa consulta.
     - diagnosticos/<id>: sin representación física — se consulta en un modal
@@ -142,9 +152,9 @@ def info_apertura_documento(exp_id: int, doc, *, estricto: bool = True) -> dict:
         recurso = partes[0] if partes else ''
         if recurso == 'certificados':
             cert = doc.certificado
-            if cert is not None and cert.tipo == CERT_CUMPLIMIENTO_FASE:
+            if cert is not None and cert.tipo in _VISTA_CERTIFICADO_FASE:
                 return {
-                    'enlace': url_for('expedientes.cert_cumplimiento_fase_vista',
+                    'enlace': url_for(_VISTA_CERTIFICADO_FASE[cert.tipo],
                                       id=exp_id, fase_id=cert.fase_id),
                     'externo': False,
                     'puede_abrir': True,
@@ -361,7 +371,32 @@ def _detalle_fase(exp, fase_id: int) -> dict:
         }
         if cert is not None:
             documentos.append(_serializar_documento(exp.id, cert.documento, 'PRODUCIDO'))
+        payload['cert_cierre'] = _cert_cierre(exp, fase)
     return payload
+
+
+def _cert_cierre(exp, fase) -> dict:
+    """El cierre de la fase finalizadora para el inspector (#956).
+
+    Solo lo que el bloque «Cierre de la fase» necesita para decidir qué pintar y qué
+    confirmación pedir; qué falta lo dice el informe al pulsar, como en el fin de
+    instrucción. El documento del certificado ya sale en la lista de la fase: es su
+    `documento_resultado`.
+
+    `cierra_solicitud` decide la confirmación: si cerrar esta fase deja la solicitud
+    resuelta, el cierre es irreversible y se pide escribir la frase (D5).
+    """
+    from app.services.cert_cierre_fase import cierra_solicitud
+
+    cert = certificado_cierre(fase)
+    return {
+        'emitido': cert is not None,
+        'documento_id': cert.documento_id if cert else None,
+        'certificado_id': cert.id if cert else None,
+        'enlace_vista': url_for('expedientes.cert_cierre_fase_vista',
+                                id=exp.id, fase_id=fase.id),
+        'cierra_solicitud': cierra_solicitud(fase),
+    }
 
 
 def _direccion_organismo(oe) -> Optional[str]:
