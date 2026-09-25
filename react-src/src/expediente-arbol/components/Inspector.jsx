@@ -17,6 +17,7 @@ import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
 import AnalizarEditor from './AnalizarEditor.jsx'
 import ElaborarEditor from './ElaborarEditor.jsx'
 import NotificarEditor from './NotificarEditor.jsx'
+import ModalConfirmacionFrase from './ModalConfirmacionFrase.jsx'
 
 const ETIQUETA_TIPO = {
   expediente: 'Expediente',
@@ -642,6 +643,132 @@ function SelloCumplimiento({ cert }) {
   )
 }
 
+// Frase del cierre irreversible (D5). La compara también el backend
+// (`cert_cierre_fase.FRASE_CONFIRMACION`): si se cambia aquí, cambiarla allí.
+const FRASE_CIERRE_FINALIZADORA = 'cerrar finalizadora'
+
+// Cierre de la fase finalizadora (#956, ADR-049 §F): se cierra con su certificado de
+// cierre, no eligiendo un documento en el editor (D6). Junto a «Cumplimiento del
+// plazo», con el mismo gesto: el botón pregunta y, si no falta nada, cierra; si
+// falta, abre el informe con lo que falta y no crea nada. «Ver cómo va» abre ese
+// mismo informe sin intentar cerrar.
+//
+// Emitido, solo queda verlo: reabrir la fase —que en una finalizadora es deshacer el
+// certificado— sigue siendo ReabrirFase, sin cambios de interfaz.
+function CierreFase({ nodo }) {
+  const detalle   = useArbolStore((s) => s.detalle)
+  const cerrando  = useArbolStore((s) => s.cerrandoFase)
+  const solicitar = useArbolStore((s) => s.solicitarCierreFase)
+
+  const cert = detalle && detalle.cert_cierre
+  if (!cert) return null
+
+  const verVista = () => window.AppModalLarge && window.AppModalLarge.open(
+    cert.enlace_vista, { title: 'Certificado de cierre de la fase' })
+
+  // Cerrada antes de #956 con un documento del pool: no hay certificado que ver, y
+  // para cerrarla con él hay que reabrirla (ReabrirFase, debajo).
+  if (!cert.emitido && nodo && nodo.estado === 'FINALIZADA') {
+    return (
+      <div className="small text-muted px-2 py-2 rounded border bg-light mb-3">
+        <i className="bi bi-info-circle me-1" />
+        Esta fase se cerró antes de existir el certificado de cierre, con un documento
+        de resultado. Para cerrarla con su certificado, reábrala.
+      </div>
+    )
+  }
+
+  if (cert.emitido) {
+    return (
+      <div className="d-flex flex-column gap-2 px-2 py-2 rounded border border-success-subtle bg-success-subtle mb-3">
+        <span className="small">
+          <i className="bi bi-lock-fill me-1" />
+          <strong>Fase cerrada con su certificado de cierre.</strong> Consta hecho todo
+          lo obligatorio, incluida la notificación al titular.
+        </span>
+        <button type="button" className="btn btn-sm btn-outline-success align-self-start"
+                onClick={verVista}>
+          <i className="bi bi-eye me-1" />Ver el certificado
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border bg-light mb-3">
+      <span className="small">
+        <i className="bi bi-flag me-1" />
+        <strong>Cierre de la fase.</strong> Se cierra con su certificado de cierre, que
+        exige el resultado fijado, los trámites completos y el cumplimiento certificado.
+      </span>
+      <span className="small text-muted">
+        Si no falta nada, la fase se cierra en el acto; si falta algo, verá qué es y no
+        se creará ningún documento. Los escapes se hacen en la tarea o el trámite, no aquí.
+      </span>
+      {cert.cierra_solicitud && (
+        <span className="small text-danger">
+          <i className="bi bi-exclamation-octagon me-1" />
+          Cerrarla deja la solicitud resuelta: el cierre será irreversible.
+        </span>
+      )}
+      <div className="d-flex gap-2">
+        <button type="button" className="btn btn-sm btn-primary"
+                disabled={cerrando} onClick={solicitar}>
+          {cerrando ? 'Revisando…' : '🔒 Cerrar la fase'}
+        </button>
+        <button type="button" className="btn btn-sm btn-outline-secondary"
+                disabled={cerrando} onClick={verVista}>
+          Ver cómo va
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Las dos confirmaciones del cierre (D5), en el mismo modal reutilizable: normal si
+// la solicitud sigue abierta después (se puede reabrir), con la frase escrita si el
+// cierre la deja resuelta y ya no hay vuelta atrás dentro de BDDAT.
+function ModalConfirmacionCierre() {
+  const modo     = useArbolStore((s) => s.confirmacionCierre)
+  const cerrando = useArbolStore((s) => s.cerrandoFase)
+  const cerrar   = useArbolStore((s) => s.cerrarFase)
+  const cancelar = useArbolStore((s) => s.cancelarCierreFase)
+
+  const irreversible = modo === 'frase'
+  return (
+    <ModalConfirmacionFrase
+      abierto={modo !== null}
+      titulo={irreversible ? 'Cerrar la fase y resolver la solicitud' : 'Cerrar la fase'}
+      frase={irreversible ? FRASE_CIERRE_FINALIZADORA : null}
+      textoAccion="Cerrar la fase"
+      variante={irreversible ? 'danger' : 'primary'}
+      enviando={cerrando}
+      onConfirmar={(frase) => cerrar(frase)}
+      onCancelar={cancelar}
+    >
+      {irreversible ? (
+        <>
+          <p className="mb-2">
+            No falta nada: la fase puede cerrarse. Al hacerlo la solicitud queda
+            <strong> resuelta</strong> y, como la resolución ya está notificada,
+            <strong> ninguna de sus fases podrá reabrirse</strong> dentro de BDDAT.
+          </p>
+          <p className="mb-0 text-muted">
+            Cualquier corrección posterior exigirá un acto administrativo expreso
+            (revocación, rectificación…), fuera de este flujo.
+          </p>
+        </>
+      ) : (
+        <p className="mb-0">
+          Se revisará la fase y, si no falta nada, quedará cerrada con su certificado
+          de cierre. Si falta algo, verá qué es y no se cerrará. Podrá reabrirla después,
+          con justificación.
+        </p>
+      )}
+    </ModalConfirmacionFrase>
+  )
+}
+
 // El informe de la revisión cuando NO se consolidó (#827, ADR-043 §E). Modal propio
 // con clases de Bootstrap y sin su JS: el bundle de la isla no carga bootstrap.js y
 // el contenido viene de la respuesta del POST, no de una URL — así que ni
@@ -976,9 +1103,10 @@ function InspectorEdicion({ nodo }) {
   // Bisagra instrucción → resolución (#827): acción de la solicitud, mismo criterio
   // de emplazamiento que la de CONSULTAS — junto al Editor, no en su lugar.
   const esSolicitud = seleccion.tipo === 'solicitud'
-  // Cumplimiento del plazo (#947): acción de la fase finalizadora, mismo
-  // emplazamiento — junto al Editor. Qué fases lo tienen lo decide el backend
-  // (`cert_cumplimiento` solo viene en las finalizadoras).
+  // Cumplimiento del plazo (#947) y cierre de la fase (#956): acciones de la fase
+  // finalizadora, mismo emplazamiento — junto al Editor. Qué fases las tienen lo
+  // decide el backend (`cert_cumplimiento`/`cert_cierre` solo vienen en las
+  // finalizadoras).
   const esFase = seleccion.tipo === 'fase'
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
@@ -988,7 +1116,9 @@ function InspectorEdicion({ nodo }) {
         {!borrarPendienteConfirm && esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
         {!borrarPendienteConfirm && esSolicitud && <CertFinInstruccion />}
         {!borrarPendienteConfirm && esFase && <CertCumplimientoFase />}
+        {!borrarPendienteConfirm && esFase && <CierreFase nodo={nodo} />}
         {esSolicitud && <ModalInformeFinInstruccion />}
+        {esFase && <ModalConfirmacionCierre />}
         {borrarPendienteConfirm
           ? <ConfirmacionBorrado nodo={nodo} />
           : esAnalizar
