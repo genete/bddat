@@ -33,6 +33,12 @@ class Fase(db.Model):
         - FK a DOCUMENTOS (public schema)
         - Su presencia define que la fase está FINALIZADA
         - La transición NULL→NOT NULL está sujeta a validación por motor de reglas
+        - En las fases FINALIZADORAS (#956, ADR-049 §F) solo puede ser su
+          CERT_CIERRE_FASE: lo pone `cert_cierre_fase.emitir` (emitirlo ES cerrar
+          la fase) y lo quita `reabrir_fase`, que en ellas deshace el certificado.
+          `editar_fase` rechaza fijarlo (D6). No es el documento de la resolución:
+          ese es el ELABORAR de la fase, y la fecha que cuenta es la de su
+          notificación (CERT_CUMPLIMIENTO_FASE)
 
     CAMPO REFORMADO_ID (ADR-044 §E, R3 #895):
         - NULLABLE: NULL significa versión inicial del proyecto (la anterior al

@@ -124,18 +124,17 @@ def _esquema_fase(exp, fase_id: int) -> dict:
         {'valor': t.id, 'texto': t.nombre}
         for t in TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all()
     ]
-    opciones_doc = _pool_docs(exp)
+    campos = [_campo_select('resultado_fase_id', 'Resultado',
+                            fase.resultado_fase_id, opciones_resultado)]
+    # Las finalizadoras se cierran con su certificado de cierre, nunca eligiendo un
+    # documento (#956, D6): sin el campo, el formulario no lo envía y `editar_fase`
+    # conserva el que haya.
+    if not (fase.tipo_fase and fase.tipo_fase.es_finalizadora):
+        campos.append(_campo_select('documento_resultado_id', 'Documento resultado',
+                                    fase.documento_resultado_id, _pool_docs(exp)))
+    campos.append(_campo_textarea('observaciones', 'Observaciones', fase.observaciones))
 
-    return {
-        'nodo': {'tipo': 'fase', 'id': fase.id},
-        'campos': [
-            _campo_select('resultado_fase_id', 'Resultado',
-                          fase.resultado_fase_id, opciones_resultado),
-            _campo_select('documento_resultado_id', 'Documento resultado',
-                          fase.documento_resultado_id, opciones_doc),
-            _campo_textarea('observaciones', 'Observaciones', fase.observaciones),
-        ],
-    }
+    return {'nodo': {'tipo': 'fase', 'id': fase.id}, 'campos': campos}
 
 
 def _esquema_tramite(exp, tramite_id: int) -> dict:

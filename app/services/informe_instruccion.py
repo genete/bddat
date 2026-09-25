@@ -228,9 +228,12 @@ def revisar(solicitud) -> Informe:
     abriera por la vía de escape que §A admite, que es justo el estado en que #814
     encontró AT-15—.
     """
-    escapes = _escapes_del_arbol(solicitud)
-
+    # Primero la precarga: el índice de escapes lee `tarea.notificacion` para
+    # recoger las justificaciones de sede (#956), y sin el árbol cargado sería una
+    # consulta por tarea.
     _precargar(solicitud)
+
+    escapes = _escapes_del_arbol(solicitud)
 
     instruccion = [
         f for f in sorted(solicitud.fases, key=lambda f: f.id)
@@ -334,7 +337,8 @@ def _tarea(tarea, escapes: dict) -> tuple[str, Optional[Bloque]]:
     plazo = _plazo(tarea) if codigo == 'ESPERAR_PLAZO' else None
     estado = sem.estado_tarea(tarea, plazo=plazo)
 
-    salvado = _relato_escapes(escapes, 'tareas', tarea.id, f'la tarea «{nombre}»')
+    salvado = (relato_escapes(escapes, 'tareas', tarea.id, f'la tarea «{nombre}»')
+               + (_relato_sede(escapes, tarea, nombre) if codigo == 'NOTIFICAR' else ()))
 
     if estado == 'FIN':
         if not salvado:
@@ -361,7 +365,7 @@ def _tramite(tramite, escapes: dict) -> tuple[str, Optional[Bloque]]:
             hijos.append(bloque_ta)
 
     estado, _propio = sem.estado_tramite(tramite, estados_tareas)
-    salvado = (_relato_escapes(escapes, 'tramites', tramite.id, f'el trámite «{nombre}»')
+    salvado = (relato_escapes(escapes, 'tramites', tramite.id, f'el trámite «{nombre}»')
                + _de_hijos(hijos, 'salvado'))
 
     if tramite.finalizado:
@@ -396,7 +400,7 @@ def _fase(fase, escapes: dict) -> tuple[str, Optional[Bloque]]:
             hijos.append(bloque_tr)
 
     estado, _propio = sem.estado_fase(fase, estados_tramites)
-    salvado = _relato_escapes(escapes, 'fases', fase.id, f'la fase «{nombre}»') + \
+    salvado = relato_escapes(escapes, 'fases', fase.id, f'la fase «{nombre}»') + \
         _de_hijos(hijos, 'salvado')
 
     if fase.finalizada:
@@ -461,8 +465,8 @@ def _solicitud(solicitud, instruccion: list, estados_fases: list,
     encabezado = f'Solicitud #{solicitud.id} ({siglas}){presentada}.'
     version = _cabecera_version(instruccion)
 
-    salvado = _relato_escapes(escapes, 'solicitudes', solicitud.id,
-                              f'la solicitud #{solicitud.id}')
+    salvado = relato_escapes(escapes, 'solicitudes', solicitud.id,
+                             f'la solicitud #{solicitud.id}')
     reversiones = _relato_reversiones(solicitud)
 
     if not instruccion:
@@ -691,18 +695,49 @@ def _escapes_del_arbol(solicitud) -> dict:
     borró es irrecuperable. Añadir `solicitud_id` al detalle lo resolvería donde ya
     se compone, y no depende del log completo de transacciones que #614 espera.
     """
+    ids = _ids_vacios()
+    ids['solicitudes'].append(solicitud.id)
+    for fase in solicitud.fases:
+        _ids_de_fase(fase, ids)
+    return _indice_bitacora(ids, f'solicitud {solicitud.id}')
+
+
+def escapes_de_fase(fase) -> dict:
+    """Los escapes del subárbol de una sola fase, con el mismo índice que
+    `_escapes_del_arbol`: lo consume el certificado de cierre de la fase
+    finalizadora (#956), que redacta sus trámites con `bloque_tramite`."""
+    ids = _ids_vacios()
+    _ids_de_fase(fase, ids)
+    return _indice_bitacora(ids, f'fase {fase.id}')
+
+
+def _ids_vacios() -> dict:
+    return {'solicitudes': [], 'fases': [], 'tramites': [], 'tareas': [],
+            'notificaciones': []}
+
+
+def _ids_de_fase(fase, ids: dict) -> None:
+    """Añade a `ids` los de la fase y su subárbol. Las `notificaciones` entran por
+    la justificación de sede (#956): se registra sobre la fila `Notificacion`, no
+    sobre la tarea."""
+    ids['fases'].append(fase.id)
+    for tramite in fase.tramites:
+        ids['tramites'].append(tramite.id)
+        for tarea in tramite.tareas:
+            ids['tareas'].append(tarea.id)
+            notif = getattr(tarea, 'notificacion', None)
+            if notif is not None:
+                ids['notificaciones'].append(notif.id)
+
+
+def _indice_bitacora(ids: dict, etiqueta: str) -> dict:
+    """Una consulta a bitácora sobre los nodos de `ids`; devuelve las filas que el
+    informe relata —escapes y justificaciones de sede— indexadas por
+    `(tabla, registro_id)`, en orden de alta."""
     from sqlalchemy import and_, or_
 
     from app.models.bitacora import Bitacora
-
-    ids: dict[str, list] = {'solicitudes': [solicitud.id], 'fases': [],
-                            'tramites': [], 'tareas': []}
-    for fase in solicitud.fases:
-        ids['fases'].append(fase.id)
-        for tramite in fase.tramites:
-            ids['tramites'].append(tramite.id)
-            for tarea in tramite.tareas:
-                ids['tareas'].append(tarea.id)
+    from app.services.notificaciones import ACCION_JUSTIFICAR_SEDE
 
     condiciones = [and_(Bitacora.tabla == tabla, Bitacora.registro_id.in_(valores))
                    for tabla, valores in ids.items() if valores]
@@ -715,8 +750,8 @@ def _escapes_del_arbol(solicitud) -> dict:
                  .order_by(Bitacora.id)
                  .all())
     except (OperationalError, ProgrammingError) as exc:
-        log.warning('informe_instruccion: bitácora no disponible para solicitud %s — %s',
-                    solicitud.id, exc)
+        log.warning('informe_instruccion: bitácora no disponible para %s — %s',
+                    etiqueta, exc)
         return {}
 
     indice: dict = {}
@@ -724,20 +759,32 @@ def _escapes_del_arbol(solicitud) -> dict:
         detalle = fila.detalle or {}
         # El filtro es en Python y no en SQL a propósito: `detalle` es JSON (no
         # JSONB) y el conjunto ya está acotado a los nodos de una solicitud.
-        if not detalle.get('escape'):
+        #
+        # Entran dos clases de fila, y cada lector se queda con la suya:
+        # `relato_escapes` con las de `escape: True`, `_relato_sede` con las de
+        # JUSTIFICAR_SEDE. La justificación de sede no lleva `escape` a propósito
+        # (#956): no se forzó ningún bloqueo, y la frase de escape sería falsa.
+        if not detalle.get('escape') and detalle.get('accion') != ACCION_JUSTIFICAR_SEDE:
             continue
         indice.setdefault((fila.tabla, fila.registro_id), []).append(fila)
     return indice
 
 
-def _relato_escapes(escapes: dict, tabla: str, registro_id: int, sobre: str) -> tuple:
+def relato_escapes(escapes: dict, tabla: str, registro_id: int, sobre: str,
+                   *, excluir_acciones: frozenset = frozenset()) -> tuple:
     """Los escapes de un nodo, ya redactados. Tupla vacía si no hubo ninguno.
 
     `sobre` nombra el elemento en la frase («la fase «Consultas»»): el certificado
     lo lee alguien que no tiene el árbol delante, así que «se forzó el bloqueo para
     modificar este elemento» no le dice nada.
+
+    `excluir_acciones` deja fuera las filas cuyo `detalle.accion` otro relato ya
+    cuenta: el certificado de cierre de la fase relata las reaperturas de la propia
+    fase como historia (`relato_reaperturas_fase`), no como escape salvado (#956).
     """
-    filas = escapes.get((tabla, registro_id))
+    filas = [f for f in escapes.get((tabla, registro_id), ())
+             if (f.detalle or {}).get('escape')
+             and (f.detalle or {}).get('accion') not in excluir_acciones]
     if not filas:
         return ()
 
@@ -760,6 +807,81 @@ def _relato_escapes(escapes: dict, tabla: str, registro_id: int, sobre: str) -> 
         motivo = _citable(detalle.get('motivo'))
         if motivo:
             frase += f'. El sistema advertía: «{motivo}»'
+        frases.append(frase + '.')
+    return tuple(frases)
+
+
+def _relato_sede(escapes: dict, tarea, nombre: str) -> tuple:
+    """La sede «justificada» de una `NOTIFICAR` postal, redactada como acto salvado
+    (#956). Tupla vacía si la sede no está justificada.
+
+    Es el escape quirúrgico por excelencia del cierre de una fase: no poner a
+    disposición en la sede electrónica una notificación en papel (art. 42.1
+    LPACAP) se justifica en la propia tarea, no forzando nada. Por eso su bitácora
+    (`ALTERAR notificaciones`, `accion: JUSTIFICAR_SEDE`) no lleva `escape: True`
+    —la frase de `relato_escapes`, «forzó el bloqueo del motor…», sería falsa— y
+    se redacta aquí con la suya.
+
+    Se relata por el estado **actual** (`estado_sede == 'JUSTIFICADA'`) y con el
+    texto vigente: si después se vinculó el justificante de sede, la justificación
+    dejó de ser la vía y no se cuenta. De la bitácora solo se toman quién y cuándo
+    —la última entrada con texto—; sin ella, la frase sigue siendo cierta.
+    """
+    from app.services.notificaciones import ACCION_JUSTIFICAR_SEDE, estado_sede
+
+    notif = getattr(tarea, 'notificacion', None)
+    if notif is None or estado_sede(tarea) != 'JUSTIFICADA':
+        return ()
+
+    filas = [f for f in escapes.get(('notificaciones', notif.id), ())
+             if (f.detalle or {}).get('accion') == ACCION_JUSTIFICAR_SEDE
+             and (f.detalle or {}).get('texto')]
+    ultima = filas[-1] if filas else None
+    cuando = f'El {_fecha(ultima.created_at)}, ' if ultima and ultima.created_at else ''
+    quien = _quien(ultima.usuario_id) if ultima else ''
+    sujeto = f'{quien} justificó' if quien else 'se justificó'
+    if not cuando:
+        sujeto = sujeto[0].upper() + sujeto[1:]
+    frase = (f'{cuando}{sujeto} no poner a disposición del destinatario en la sede '
+             f'electrónica la notificación en papel de la tarea «{nombre}» (art. 42.1 '
+             f'LPACAP)')
+    justificacion = _citable(notif.sede_justificacion)
+    if justificacion:
+        frase += f', con esta justificación: «{justificacion}»'
+    return (frase + '.',)
+
+
+def relato_reaperturas_fase(escapes: dict, fase, *, codigo_cert: str) -> tuple:
+    """Las reaperturas anteriores de `fase`, ya redactadas (#956).
+
+    Van al **relato** del certificado de cierre, no a lo salvado: mismo criterio
+    que `_relato_reversiones` con el fin de instrucción. Reabrir la finalizadora
+    es deshacer su certificado de cierre (ADR-049 §F), un hecho de la historia de
+    la fase que quien lea el certificado necesita conocer —que la fase se cerró,
+    se reabrió y por qué—, no una desviación bajo criterio.
+
+    Salen del mismo índice de escapes porque `reabrir_fase` registra con
+    `escape: True` y `accion: REABRIR` (ADR-036, #720), y también así lo hace
+    `cert_cierre_fase.deshacer`, que añade el certificado retirado
+    (`tipo_documento`). Una reapertura anterior a #956 no lo lleva y se redacta sin
+    mencionar certificado.
+    """
+    frases = []
+    nombre = fase.tipo_fase.nombre if fase.tipo_fase else f'Fase #{fase.id}'
+    for fila in escapes.get(('fases', fase.id), ()):
+        detalle = fila.detalle or {}
+        if not detalle.get('escape') or detalle.get('accion') != 'REABRIR':
+            continue
+        cuando = f'El {_fecha(fila.created_at)}, ' if fila.created_at else ''
+        quien = _quien(fila.usuario_id)
+        sujeto = f'{quien} reabrió' if quien else 'se reabrió'
+        frase = f'{cuando}{sujeto} la fase «{nombre}», que estaba cerrada'
+        if detalle.get('tipo_documento') == codigo_cert:
+            frase += (', y dejó' if quien else ', y se dejó') + \
+                ' sin efecto su certificado de cierre anterior'
+        justificacion = _citable(detalle.get('justificacion'))
+        if justificacion:
+            frase += f', con esta justificación: «{justificacion}»'
         frases.append(frase + '.')
     return tuple(frases)
 
