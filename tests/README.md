@@ -64,9 +64,8 @@ Qué hace, por si hay que tocarlo (cada paso comprueba antes si ya está hecho):
 
 El hook exporta también `COVERAGE_CORE=ctrace` (ver §Cobertura).
 
-**Resultado esperado:** el mismo que en el PC, sin skips. Hasta que se fusione
-#953 (PR #959), la única diferencia es
-`test_365::test_ruta_local_absoluta_con_unidad_rechazada`, que falla en Linux.
+**Resultado esperado:** el mismo que en el PC, sin skips ni fallos. La última
+diferencia, `test_365` en Linux, la cerró #953.
 
 ### Cobertura
 
