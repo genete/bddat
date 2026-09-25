@@ -51,6 +51,19 @@
     ]
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-/d/BDDAT}/.claude/hooks/session-start.sh\"",
+            "timeout": 600,
+            "statusMessage": "Preparando el entorno de tests (solo en la nube)"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",

@@ -36,15 +36,37 @@ pytest -rs                                     # ver por qué se saltó algo
 
 ### Fuera del PC de desarrollo (sesión en la nube, Linux)
 
-Verificado el 2026-09-24 con la suite completa. Lo que hay que saber:
+**Automático (#949).** Al abrir una sesión de Claude Code en la nube, el hook
+`SessionStart` (`.claude/hooks/session-start.sh`) ejecuta
+[`scripts/nube/preparar_entorno.sh`](../scripts/nube/preparar_entorno.sh) y deja
+`pytest` listo, con el venv en el `PATH`. En el PC no hace nada: solo actúa con
+`CLAUDE_CODE_REMOTE=true`.
 
-- **Python 3.14**: el código usa `uuid.uuid7`. Con 3.12 no arranca.
-- **Rol `claude_desktop`**: 32 migraciones hacen `GRANT … TO claude_desktop`.
-  Crearlo antes de migrar: `CREATE ROLE claude_desktop NOLOGIN`.
-- **LibreOffice**: `test_182` y `test_732` lo buscan en `C:\Program Files\…`;
-  sin él se saltan y el tope de skips pone la sesión en rojo. Es esperado.
-- **`test_365::test_ruta_local_absoluta_con_unidad_rechazada`** falla en Linux:
-  `C:/…` no es ruta absoluta fuera de Windows.
+```bash
+bash scripts/nube/preparar_entorno.sh    # relanzar a mano: idempotente, ~2 s si ya está todo
+python scripts/preparar_bd_test.py --recrear   # BD de tests desde cero (el script no recrea)
+```
+
+**Cuándo relanzarlo:** si los tests dan «connection refused», el contenedor se ha
+reciclado y PostgreSQL se ha parado. El detalle de cada paso queda en
+`~/.cache/bddat-nube.log`.
+
+Qué hace, por si hay que tocarlo (cada paso comprueba antes si ya está hecho):
+
+| Paso | Qué | Por qué |
+|---|---|---|
+| Python 3.14.7 | venv en `~/.venvs/bddat` con `uv` de PyPI, `requirements.txt` y `pytest-cov` | el código usa `uuid.uuid7`; el `uv` del contenedor solo conoce 3.14.0rc2 |
+| PostgreSQL 16 | arranca el cluster Debian si existe; si no, crea uno propio con `initdb` | los contenedores no son todos iguales |
+| Roles | `bddat_admin` con `CREATEDB`, `claude_desktop` `NOLOGIN`, base `bddat` | `--recrear` necesita `CREATEDB`; 32 migraciones hacen `GRANT … TO claude_desktop` |
+| `.env` | lo genera **solo si no existe**, con las rutas en `docs_prueba/` y `docs_prueba_test/` | está en `.gitignore` |
+| BD de tests | `preparar_bd_test.py` sin `--recrear` (~1 s) | aplica las migraciones pendientes |
+| LibreOffice Writer | `apt-get install libreoffice-writer` si falta | el contenedor trae solo `libreoffice-core`: sin Writer, `soffice` no abre un `.odt` y aun así devuelve 0 (`test_182`, `test_732`) |
+
+El hook exporta también `COVERAGE_CORE=ctrace` (ver §Cobertura).
+
+**Resultado esperado:** el mismo que en el PC, sin skips. Hasta que se fusione
+#953 (PR #959), la única diferencia es
+`test_365::test_ruta_local_absoluta_con_unidad_rechazada`, que falla en Linux.
 
 ### Cobertura
 
