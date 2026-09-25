@@ -165,3 +165,4 @@ fi
 
 echo "preparar_entorno: listo — $(IFS=';'; echo "${RESUMEN[*]}" | sed 's/;/; /g')"
 echo "Tests: pytest (el venv ya está en el PATH). Si PostgreSQL se para: bash scripts/nube/preparar_entorno.sh"
+echo "Interfaz: bash scripts/nube/arrancar_app.sh y node scripts/nube/captura.mjs <ruta> (ver scripts/nube/README.md)"
