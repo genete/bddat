@@ -1,9 +1,15 @@
 import os
+import re
 
 from sqlalchemy import event
 from sqlalchemy.orm import validates
 
 from app import db
+
+# Letra de unidad de Windows, con barra o sin ella (`C:/…`, `C:doc.pdf`): en
+# ningún caso es relativa a FILESYSTEM_BASE (#953).
+_PREFIJO_UNIDAD = re.compile(r'^[A-Za-z]:')
+
 
 class Documento(db.Model):
     """
@@ -58,8 +64,9 @@ class Documento(db.Model):
         - Ruta local (sin '://'): fichero en el servidor de archivos, SIEMPRE
           relativa a FILESYSTEM_BASE, nunca absoluta (ADR-032, corrección de
           la regresión de #180). @validates('url') rechaza ruta absoluta o
-          que escape de FILESYSTEM_BASE. ruta_absoluta() resuelve al momento
-          de uso.
+          que escape de FILESYSTEM_BASE, con el mismo veredicto en cualquier
+          sistema, y guarda '/' como separador (#953). ruta_absoluta()
+          resuelve al momento de uso.
         - 'http://' / 'https://': recurso externo.
         - 'bddat://<recurso>/<id>': registro interno de BD sin fichero físico.
           Tablas activas: diagnosticos, certificados.
@@ -194,6 +201,13 @@ class Documento(db.Model):
 
     @validates('url')
     def _validar_url(self, key, value):
+        """Mismo veredicto en Windows y en Linux (#953): no usa `os.path`, cuyas
+        reglas dependen del sistema del servidor (en Linux, `C:/…` no es absoluta
+        y `..\\` no es un ascenso).
+
+        La ruta local se guarda con `/`, el formato que ya usan todos los que
+        escriben `url`: una `\\` se convierte en `/` en vez de rechazarse, así
+        quien pega una ruta relativa copiada de Windows la ve guardada bien."""
         if value is None:
             return value
         if '://' in value:
@@ -201,14 +215,14 @@ class Documento(db.Model):
                 raise ValueError(f'Esquema de URL no admitido: {value!r}')
             return value
         # Esquema local (ADR-032): siempre relativa a FILESYSTEM_BASE, nunca absoluta.
-        if value.startswith(('/', '\\')) or os.path.isabs(value):
+        canonica = value.replace('\\', '/')
+        if canonica.startswith('/') or _PREFIJO_UNIDAD.match(canonica):
             raise ValueError(
                 f'Ruta local debe ser relativa a FILESYSTEM_BASE, no absoluta: {value!r}'
             )
-        normalizada = os.path.normpath(value)
-        if normalizada == '..' or normalizada.startswith('..' + os.sep):
+        if '..' in canonica.split('/'):
             raise ValueError(f'Ruta local no puede salir de FILESYSTEM_BASE: {value!r}')
-        return value
+        return canonica
 
     @validates('fecha_administrativa')
     def _validar_fecha_administrativa(self, key, value):

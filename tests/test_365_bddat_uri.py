@@ -68,6 +68,44 @@ class TestValidarUrl:
         with pytest.raises(ValueError, match='no puede salir de FILESYSTEM_BASE'):
             _validar_url(stub, 'url', 'AT-1/../../otro/doc.pdf')
 
+    # #953: el veredicto no depende del sistema del servidor. Sin skipif a
+    # propósito: estos casos tienen que dar lo mismo en Windows y en Linux.
+    @pytest.mark.parametrize('url', [
+        'C:/datos/doc.pdf',
+        'C:\\datos\\doc.pdf',
+        'C:doc.pdf',                       # relativa a la unidad: pasaba incluso en Windows
+        'c:/datos/doc.pdf',
+        '\\\\servidor\\recurso\\doc.pdf',  # UNC
+        '\\datos\\doc.pdf',
+    ])
+    def test_ruta_absoluta_rechazada_en_cualquier_plataforma(self, url):
+        stub = _StubDoc(fecha_administrativa=None)
+        with pytest.raises(ValueError, match='relativa a FILESYSTEM_BASE'):
+            _validar_url(stub, 'url', url)
+
+    @pytest.mark.parametrize('url', [
+        '..\\..\\etc\\doc.pdf',
+        'AT-1\\..\\..\\doc.pdf',
+        'AT-1/../doc.pdf',                 # no escapa, pero ningún escritor produce '..'
+        'AT-1/sub/..',
+        '..',
+    ])
+    def test_ascenso_rechazado_con_cualquier_separador(self, url):
+        stub = _StubDoc(fecha_administrativa=None)
+        with pytest.raises(ValueError, match='no puede salir de FILESYSTEM_BASE'):
+            _validar_url(stub, 'url', url)
+
+    def test_barra_invertida_se_guarda_con_barra(self):
+        """Una ruta relativa copiada de Windows se guarda en el formato canónico,
+        que es el único que `ruta_absoluta()` sabe resolver en Linux."""
+        stub = _StubDoc(fecha_administrativa=None)
+        assert _validar_url(stub, 'url', 'AT-1\\sub\\doc.pdf') == 'AT-1/sub/doc.pdf'
+
+    def test_nombre_con_dos_puntos_seguidos_admitido(self):
+        """Solo un segmento `..` entero es un ascenso: `informe..v2.pdf` no lo es."""
+        stub = _StubDoc(fecha_administrativa=None)
+        assert _validar_url(stub, 'url', 'AT-1/informe..v2.pdf') == 'AT-1/informe..v2.pdf'
+
     def test_http_admitido(self):
         stub = _StubDoc(fecha_administrativa=None)
         resultado = _validar_url(stub, 'url', 'http://example.com/doc.pdf')
