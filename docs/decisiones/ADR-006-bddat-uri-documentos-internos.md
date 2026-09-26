@@ -5,7 +5,7 @@ fecha: 2026-05-11
 estado: implementada (#365, enmendada #425)
 ---
 
-> **Ampliada por [ADR-050](ADR-050-almacen-documental-privado-por-contenido.md)** (2026-09-25, pendiente de implementar): el esquema «ruta local» de `documentos.url` desaparece. Un fichero propio es una versión en `documento_versiones`, guardada en el almacén direccionado por contenido, y `url` queda solo para `http(s)://` y `bddat://`, con `CHECK` de que un documento tiene una cosa o la otra. `bddat://` y el contrato de `resolver_url()` para ese esquema no cambian; para un fichero propio, `resolver_url()` lee del almacén.
+> **Ampliada por [ADR-050](ADR-050-almacen-documental-privado-por-contenido.md)** (2026-09-25, pendiente de implementar): el esquema «ruta local» de `documentos.url` desaparece. Un fichero propio se guarda en el almacén direccionado por contenido y la ficha apunta a él por su hash (`documentos.fichero_sha256`). `url` queda solo para `http(s)://` y `bddat://`, con `CHECK` de que un documento tiene una cosa o la otra. `bddat://` y el contrato de `resolver_url()` para ese esquema no cambian; para un fichero propio, `resolver_url()` lee del almacén.
 
 ## Decisión
 `documentos.url` admite tres esquemas: ruta local, `http(s)://`, y `bddat://`.
