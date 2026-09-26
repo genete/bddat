@@ -1,7 +1,7 @@
 # ADR-050 — BDDAT, único dueño de los ficheros: almacén privado direccionado por contenido y edición sin acceso al servidor de ficheros
 
 **Estado:** Adoptada — sin implementar. Se implementa **después de N6** (cierre de la cadena de ADR-049) y **antes de producción** (§I)
-**Fecha:** 2026-09-25 · **Enmendada:** 2026-09-26 — **sin sistema de versiones** en ningún sitio: un documento apunta a un fichero y editarlo lo sustituye (§C, §F); el PDF para firma es un documento sincronizado con su borrador (§D); una sola plantilla vigente en BDDAT, con el versionado a cargo del supervisor y la trazabilidad por hash (§J); «Guardar como» (§D), el mismo fichero en otro expediente (§H) y qué fichero subir (§E)
+**Fecha:** 2026-09-25 · **Enmendada:** 2026-09-26 — **sin sistema de versiones** en ningún sitio: un documento apunta a un fichero y editarlo lo sustituye (§C, §F); el PDF para firma es un documento sincronizado con su borrador (§D); una sola plantilla vigente en BDDAT, con el versionado a cargo del supervisor y la trazabilidad por hash (§J); «Guardar como» (§D), el mismo fichero en otro expediente (§H) y qué fichero subir (§E) · **Enmendada (revisión de diseño), mismo día:** el almacén se habla desde un puerto agnóstico, con la identidad de almacenamiento (`ref`) separada de la identidad de contenido (`contenido_sha256`, calculada por BDDAT) — pensado para poder sustituir el adaptador de filesystem por un gestor documental corporativo el día de mañana (§B, §C); manifiestos particionados por año de solicitud (§H); el buzón por usuario se aparca hasta que haya métricas que lo justifiquen (Alternativas)
 **Sobrepasa:** ADR-032 §1-§4 (entrada al pool, rutas relativas en `Documento.url`, movimiento al vincular, naming con MD5 en `pool/`). ADR-032 no queda derogado: describe lo que hay implementado hasta que este ADR se ejecute, y su nota de cabecera lo remite aquí
 **Amplía:** ADR-006 (el esquema «ruta local» de `documentos.url` desaparece; `http(s)://` y `bddat://` siguen) · ADR-035 (plantillas y fragmentos pasan al almacén y se suben desde el navegador; §6 «lo que no cambia» deja de ser cierto en lo del pool y del protocolo `bddat-explorador://`)
 **No cambia:** ADR-010 (N:M documento-tarea) · ADR-027 (pertenencia al expediente por naturaleza, no por mecanismo de almacenamiento) · ADR-044 (reformados como documentos aparte) · el sellado de ADR-036 y de #947 (§F se apoya en él)
@@ -53,43 +53,59 @@ Los usuarios dejan de necesitar acceso a los ficheros de los expedientes. La cus
 | Zona | Configuración | Escribe | Lee | Contenido |
 |---|---|---|---|---|
 | **Almacén** | `ALMACEN_BASE` | solo la cuenta de servicio de BDDAT | solo la cuenta de servicio | el contenido de cada fichero, una vez |
-| **Buzón** | `BUZON_BASE/<usuario>/` | cada usuario en la suya | usuarios y BDDAT | ficheros pendientes de importar |
 | **Archivo** | `ARCHIVO_BASE` | solo BDDAT | los usuarios, solo lectura | exportación legible de los expedientes finalizados (§H) |
+
+Una tercera zona, **Buzón** (`BUZON_BASE/<usuario>/`, escritura de cada usuario en la suya), se valoró para no obligar a pasar por el navegador ficheros que ya están en el share. Se aparca sin pedirla a Informática hasta que haga falta (§H, Alternativas descartadas §N).
 
 Si la política del servidor de ficheros no permite una carpeta sin acceso de usuarios, la alternativa es el almacén en el disco del servidor de la aplicación con réplica nocturna al share. Funciona igual para BDDAT, pero saca la custodia de donde está hoy.
 
-### B — Almacén direccionado por contenido
+### B — Puerto de almacenamiento agnóstico, y su adaptador de filesystem
+
+BDDAT no toca el disco directamente: todo lo que necesita leer, escribir o borrar contenido pasa por un **puerto de almacenamiento**, una interfaz mínima e independiente de dónde vivan los bytes:
+
+- `escribir(bytes) -> ref`
+- `leer(ref) -> bytes`
+- `existe(ref) -> bool`
+- `borrar(ref)`
+
+`ref` es **opaca** para el resto de BDDAT: ningún servicio de negocio asume su formato, su longitud, ni que dos contenidos iguales produzcan la misma `ref`. Eso es asunto exclusivo de cada adaptador.
+
+**Identidad de contenido, aparte de identidad de almacenamiento.** Deduplicar, avisar de «este fichero ya está en otro expediente» (§H) y dar trazabilidad (§J) son necesidades de BDDAT, no del backend. Por eso `ficheros` (§C) guarda las dos cosas por separado: `ref` (lo que entiende el adaptador) y `contenido_sha256` (el hash del contenido, calculado por BDDAT mientras el fichero entra, con independencia de qué adaptador esté detrás).
+
+Flujo de escritura, igual con cualquier adaptador:
+
+1. BDDAT calcula el SHA-256 **a trozos**, sin cargar el fichero entero en memoria, mientras lo recibe.
+2. Si ya existe una fila en `ficheros` con ese `contenido_sha256`, se reutiliza su `ref`: no se llama al adaptador.
+3. Si no, se llama a `escribir()`, que devuelve una `ref` nueva, y se crea la fila en `ficheros` con esa `ref` y ese `contenido_sha256`.
+4. Solo entonces las filas de negocio (`documentos`...) y el commit. Si el commit falla, queda una fila de `ficheros` sin referencias, que no hace daño y que recoge la limpieza (§G).
+
+**Un contenido ya escrito no se modifica nunca.** Cambiar el contenido de un documento es escribir uno nuevo y apuntar la ficha a él (§F). **Ninguna petición web borra nada del almacén.** Solo `borrar(ref)`, invocado por el proceso de limpieza (§G).
+
+**Por qué importa la separación:** un adaptador futuro contra un gestor documental corporativo (p. ej. Alfresco, que ya usa la Junta) identifica el contenido por un `nodeId` de su propio repositorio, no por su hash, y puede darle dos nodos distintos a dos subidas del mismo contenido si nadie se lo impide antes. Con el puerto agnóstico, ese adaptador solo tiene que implementar las cuatro operaciones de arriba — la deduplicación, el aviso de duplicado y la trazabilidad siguen funcionando igual, porque dependen de `contenido_sha256`, que calcula BDDAT y nunca el backend.
+
+**El adaptador de hoy: filesystem direccionado por contenido.**
 
 ```
 ALMACEN_BASE/
   sha256/3a/f1/3af1c9…e07b      ← 64 caracteres hexadecimales, sin extensión
   .tmp/                          ← escrituras en curso
-  manifiestos/AT-123.json        ← §H
+  manifiestos/2026/AT-123.json   ← §H, particionado por año de solicitud
 ```
 
-- **El nombre es el SHA-256 completo del contenido.** Sin extensión ni nombre original: eso vive en la BD. Sin extensión, nadie abre el fichero con doble clic, y el nombre no choca con nada de Windows (caracteres prohibidos, nombres reservados, longitud).
-- **SHA-256 y no MD5.** El hash pasa a ser la identidad del fichero, no una comprobación. Fabricar dos PDF distintos con el mismo MD5 es trivial y está documentado; con MD5, uno podría hacerse pasar por el otro en el almacén. El coste de calcularlo es despreciable.
-- **Dos niveles de subcarpetas** (2 + 2 caracteres): listar en SMB una carpeta con decenas de miles de ficheros es lento.
-- **Escritura:**
-  1. el fichero se escribe **a trozos** en `.tmp/`, calculando el hash mientras se escribe, sin cargarlo entero en memoria;
-  2. `fsync`;
-  3. si el destino ya existe, es el mismo contenido: se borra el temporal y se reutiliza (deduplicación);
-  4. si no, se renombra, que es atómico dentro del mismo share;
-  5. después, las filas de BD y el commit.
-
-  Si el commit falla, queda un fichero sin referencias, que no hace daño y que recoge la limpieza (§G).
-- **Un fichero del almacén no se modifica nunca.** Cambiar el contenido de un documento es escribir un fichero nuevo y apuntar la ficha a él (§F).
-- **Ninguna petición web borra nada del almacén.** Solo borra el proceso de limpieza (§G).
+- **El nombre en disco es el SHA-256 completo del contenido**, y ese SHA-256 hace de `ref` en este adaptador — coincide con `contenido_sha256` porque este backend concreto es, precisamente, un almacén direccionado por contenido; no es un contrato que el resto de BDDAT pueda dar por hecho con otro adaptador. Sin extensión ni nombre original: eso vive en la BD. Sin extensión, nadie abre el fichero con doble clic, y el nombre no choca con nada de Windows (caracteres prohibidos, nombres reservados, longitud).
+- **Dos niveles de subcarpetas** (2 + 2 caracteres, del propio hash): listar en SMB una carpeta con decenas de miles de ficheros es lento. 256 × 256 = 65.536 carpetas hoja reparten el árbol.
+- **Escritura interna de `escribir()`:** a trozos en `.tmp/`; `fsync`; si el destino ya existe (mismo hash) se borra el temporal y se reutiliza — red de seguridad ante una carrera entre dos subidas simultáneas del mismo contenido, además de la comprobación de BDDAT del paso 2 de arriba; si no, se renombra, atómico dentro del mismo share.
 
 ### C — Modelo de datos
 
 **Sin sistema de versiones** (enmienda del 2026-09-26, motivo en §F): una ficha apunta a un fichero, y cambiar el contenido cambia ese puntero.
 
-**`ficheros`**: el contenido físico. No sabe nada de expedientes, nombres ni tareas.
+**`ficheros`**: el contenido, más su identidad frente al almacén. No sabe nada de expedientes, nombres ni tareas.
 
 | Columna | Nota |
 |---|---|
-| `sha256` `char(64)` PK | nombre en el almacén |
+| `ref` `text` PK | identidad frente al adaptador de almacenamiento (§B); con el adaptador de filesystem de hoy es el SHA-256 hex |
+| `contenido_sha256` `char(64)` UNIQUE | identidad de contenido, calculada por BDDAT con independencia del adaptador; la usan la deduplicación, el aviso de «ya existe» (§H) y la integridad (§G) |
 | `tamano` `bigint` | |
 | `formato` `text` | MIME **detectado por el contenido** (§E) |
 | `creado_en`, `verificado_en` | la segunda la actualiza la comprobación de integridad |
@@ -102,18 +118,18 @@ ALMACEN_BASE/
 |---|---|
 | `id`, `expediente_id`, `tipo_doc_id`, `fecha_administrativa`, `asunto`, `prioridad`, `observaciones` | sin cambios |
 | `nombre` | **nueva**: nombre visible y de descarga, editable. Al subir, el nombre del fichero tal cual llegó (UTF-8, sin sanear). Hoy se deduce de la `url` |
-| `fichero_sha256` | **nueva**, FK a `ficheros`: el contenido actual |
+| `fichero_ref` | **nueva**, FK a `ficheros.ref`: el contenido actual |
 | `contenido_modificado_en` | **nueva**: cuándo cambió el contenido por última vez. Es la `getlastmodified` del WebDAV (§D) |
-| `origen_sha256` | **nueva**, solo en el PDF para firma: el hash del borrador del que salió (§D). **No** es FK ni cuenta como referencia para la limpieza |
-| `plantilla_sha256` | **nueva**, solo en borradores generados, FK a `ficheros`: la plantilla exacta con que se generó (§J) |
+| `origen_sha256` | **nueva**, solo en el PDF para firma: el hash **de contenido** del borrador del que salió (§D) — identidad de contenido, no de almacenamiento. **No** es FK ni cuenta como referencia para la limpieza |
+| `plantilla_ref` | **nueva**, solo en borradores generados, FK a `ficheros.ref`: la plantilla exacta con que se generó (§J) |
 | `url` | **solo** `http(s)://` y `bddat://` (ADR-006). `NULL` para un fichero propio |
-| `hash_md5` | **desaparece**: el hash es `fichero_sha256` |
+| `hash_md5` | **desaparece**: la identidad de almacenamiento es `fichero_ref`; la deduplicación por contenido la da `ficheros.contenido_sha256` |
 | `tipo_contenido` | **desaparece**: el formato es `ficheros.formato` |
 | `borrado_en` | **nueva**: papelera |
 
-Restricción: `CHECK ((url IS NULL) <> (fichero_sha256 IS NULL))`. Un documento es un fichero propio o una referencia, nunca las dos cosas ni ninguna.
+Restricción: `CHECK ((url IS NULL) <> (fichero_ref IS NULL))`. Un documento es un fichero propio o una referencia, nunca las dos cosas ni ninguna.
 
-**`generacion_fragmentos`** (`documento_id`, `nombre_fragmento`, `fichero_sha256` FK a `ficheros`): los fragmentos exactos insertados en un borrador generado (§J). Es la única tabla nueva además de `ficheros`, `fragmentos` y `sesiones_edicion`.
+**`generacion_fragmentos`** (`documento_id`, `nombre_fragmento`, `fichero_ref` FK a `ficheros.ref`): los fragmentos exactos insertados en un borrador generado (§J). Es la única tabla nueva además de `ficheros`, `fragmentos` y `sesiones_edicion`.
 
 **`sesiones_edicion`**: la edición por WebDAV (§D). Está en BD y no en memoria porque, con varios workers, cada petición puede caer en uno distinto (ANALISIS_DESPLIEGUE §3).
 
@@ -134,14 +150,14 @@ Restricción: `CHECK ((url IS NULL) <> (fichero_sha256 IS NULL))`. Un documento 
 
 | Operación | BD | Almacén |
 |---|---|---|
-| Subir, importar del buzón, aportar desde otro expediente (§H) | ficha nueva | escribe (o reutiliza) |
+| Subir, aportar desde otro expediente (§H) | ficha nueva | escribe (o reutiliza) |
 | Vincular / desvincular | fila en `documentos_tarea` | **nada** |
-| Generar escrito | ficha del borrador con `plantilla_sha256` y `generacion_fragmentos` | escribe |
-| Regenerar | cambia `fichero_sha256` si el contenido cambia; confirmación expresa si el borrador se retocó a mano (§F) | escribe |
-| Editar en LibreOffice | cada `PUT` cambia `fichero_sha256`; una entrada de bitácora por sesión | escribe |
+| Generar escrito | ficha del borrador con `plantilla_ref` y `generacion_fragmentos` | escribe |
+| Regenerar | cambia `fichero_ref` si el contenido cambia; confirmación expresa si el borrador se retocó a mano (§F) | escribe |
+| Editar en LibreOffice | cada `PUT` cambia `fichero_ref`; una entrada de bitácora por sesión | escribe |
 | Descargar el PDF para firma | si está desfasado, se regenera antes de servirlo (§D) | escribe si regenera |
 | Descargar / abrir cualquier otro | nada | lee |
-| Sustituir por error | cambia `fichero_sha256`, con motivo; prohibida si está sellado (§F) | escribe |
+| Sustituir por error | cambia `fichero_ref`, con motivo; prohibida si está sellado (§F) | escribe |
 | Borrar | `borrado_en = now()` | **nada** |
 
 La matriz de 8 casos de #730 se reduce a dos: mismo contenido que el actual, no pasa nada; contenido distinto, se sustituye. Desaparecen las colisiones de nombre y los ficheros apartados.
@@ -156,16 +172,16 @@ La matriz de 8 casos de #730 se reduce a dos: mismo contenido que el actual, no 
 
 **El PDF para firma lo genera el servidor** (decisión de Carlos: «preferentemente el servidor»), con `soffice --headless --convert-to pdf`. Exige LibreOffice en la imagen del servidor (pedido en #151) con las fuentes permitidas por ADR-035 §5.
 
-**Siempre sincronizado con el borrador.** Su ficha guarda `origen_sha256`, el hash del borrador del que salió. Si el borrador actual tiene otro, el PDF está desfasado:
+**Siempre sincronizado con el borrador.** Su ficha guarda `origen_sha256`, el hash de contenido del borrador del que salió. Si el borrador actual tiene otro, el PDF está desfasado:
 
 - **al descargarlo**, si está desfasado, BDDAT lo regenera antes de servirlo. Es la garantía: el PDF que llega al Portafirmas sale siempre del último borrador guardado;
 - **en segundo plano**, al cerrarse una sesión de edición, se regenera también, para que la descarga sea inmediata. Es una comodidad, no la garantía.
 
-Regenerar cambia el `fichero_sha256` de la ficha del PDF. El PDF anterior se queda sin referencias y lo recoge la limpieza (§G). El paso de descarga muestra la hora de la última edición guardada en BDDAT (ver «Guardar como», abajo).
+Regenerar cambia el `fichero_ref` de la ficha del PDF. El PDF anterior se queda sin referencias y lo recoge la limpieza (§G). El paso de descarga muestra la hora de la última edición guardada en BDDAT (ver «Guardar como», abajo).
 
 **Al vincular el PDF firmado, el borrador y su PDF quedan congelados:** no se pueden editar, regenerar ni sustituir. Así el borrador conservado es siempre el que dio lugar a la firma, y la cadena **firmado ← borrador ← plantilla + fragmentos** (§J) se sostiene sin versiones. El enlace del firmado con su tarea sale del código del pie (`BDDAT-<tarea>-<letra>`, #182), porque el Portafirmas reescribe el PDF y su hash no coincide.
 
-**Edición: WebDAV servido por BDDAT.** El botón «Editar» abre el `.odt` en LibreOffice desde una URL con token (`/dav/<token>/<nombre>.odt`). Cada «Guardar» hace un `PUT`, que BDDAT convierte en un fichero nuevo y en el nuevo `fichero_sha256` del borrador. La prueba de concepto lo verificó con LibreOffice 24.2 y fija cuatro requisitos de implementación:
+**Edición: WebDAV servido por BDDAT, sobre el puerto de almacenamiento (§B).** El botón «Editar» abre el `.odt` en LibreOffice desde una URL con token (`/dav/<token>/<nombre>.odt`). Cada «Guardar» de LibreOffice hace un `PUT` contra BDDAT — el primer salto, igual que hoy. BDDAT recibe esos bytes y sigue el mismo camino que cualquier otra entrada de documento (§B): calcula su `contenido_sha256` y, si es nuevo, llama a `escribir()` del puerto — el segundo salto, hacia el almacén agnóstico. El resultado es la nueva `fichero_ref` del borrador. La prueba de concepto lo verificó con LibreOffice 24.2 contra el adaptador de filesystem, y fija cuatro requisitos de implementación:
 
 1. **`getlastmodified` estable**: `contenido_modificado_en`, no «ahora». LibreOffice la compara al abrir, tras el `LOCK` y antes del `PUT`; si cambia sin motivo, **aborta el guardado sin enviarlo** (`ErrorCodeIOException 0x11b`).
 2. **Guardar sin cambios no produce los mismos bytes** (LibreOffice reescribe `styles.xml` y `settings.xml`). Sin versiones esto no acumula nada: cada `PUT` sustituye al anterior. Para no llenar la bitácora, se anota **un cambio por sesión**: de `sha256_al_abrir` al último hash, al cerrarse.
@@ -225,8 +241,8 @@ Los formatos por confirmar no son urgentes (decisión de Carlos): se añaden cua
 
 Cómo se cambia el contenido de un documento sin versiones:
 
-- **Edición y regeneración del borrador:** cambian `fichero_sha256`. **Regenerar desde la plantilla destruye los retoques hechos a mano**, así que, si el borrador se editó desde que se generó (lo dice la bitácora), la regeneración pide confirmación expresa: «vas a perder los cambios hechos a mano».
-- **Sustituir por error** («subí el fichero equivocado»): cambia `fichero_sha256`, con **motivo obligatorio** y bitácora, y está **prohibido si el documento está sellado o lo cita un certificado** (`sellos.motivo_sellado`). Es lo que hoy no existe: un cambio visible en lugar de un cambio de `url` sin rastro.
+- **Edición y regeneración del borrador:** cambian `fichero_ref`. **Regenerar desde la plantilla destruye los retoques hechos a mano**, así que, si el borrador se editó desde que se generó (lo dice la bitácora), la regeneración pide confirmación expresa: «vas a perder los cambios hechos a mano».
+- **Sustituir por error** («subí el fichero equivocado»): cambia `fichero_ref`, con **motivo obligatorio** y bitácora, y está **prohibido si el documento está sellado o lo cita un certificado** (`sellos.motivo_sellado`). Es lo que hoy no existe: un cambio visible en lugar de un cambio de `url` sin rastro.
 - **Red de seguridad, solo para el administrador:** el fichero anterior se queda sin referencias, pero la limpieza lo conserva durante los días de la papelera (§G), y la bitácora dice cuál era. Ante un desastre, un administrador puede recuperarlo. **No es un «volver atrás» del usuario**, y no tiene botón.
 - **Sin purgas:** lo que ya no se usa lo recoge la limpieza.
 
@@ -234,31 +250,31 @@ Cómo se cambia el contenido de un documento sin versiones:
 
 Un proceso programado, nocturno:
 
-1. marca `sin_referencias_desde` en los ficheros a los que no apunta nada, y la quita si han vuelto a tener referencias. **Cuentan como referencia:** `documentos.fichero_sha256` y `documentos.plantilla_sha256` de documentos sin borrar, `generacion_fragmentos.fichero_sha256`, `plantillas.fichero_sha256` y `fragmentos.fichero_sha256`. **No cuenta:** `documentos.origen_sha256`, que solo sirve para saber si el PDF está desfasado;
-2. borra del almacén los que llevan más de N días sin referencias, y luego su fila;
+1. marca `sin_referencias_desde` en los ficheros a los que no apunta nada, y la quita si han vuelto a tener referencias. **Cuentan como referencia:** `documentos.fichero_ref` y `documentos.plantilla_ref` de documentos sin borrar, `generacion_fragmentos.fichero_ref`, `plantillas.fichero_ref` y `fragmentos.fichero_ref`. **No cuenta:** `documentos.origen_sha256`, que es identidad de contenido, no de almacenamiento, y solo sirve para saber si el PDF está desfasado;
+2. borra del almacén (`borrar(ref)` del puerto, §B) los que llevan más de N días sin referencias, y luego su fila;
 3. borra definitivamente los documentos con `borrado_en` de hace más de N días;
 4. lo registra todo en la bitácora.
 
-Con la deduplicación, un fichero compartido por dos documentos solo se borra cuando **ninguno** lo usa. Lo resuelve la consulta, sin contadores. La comprobación periódica de integridad relee cada fichero y recalcula su SHA-256: si no coincide, `CORRUPTO`; si no está, `AUSENTE`. El resultado aparece en el panel del supervisor, y el hash dice qué fichero exacto pedir a Informática de una copia de seguridad. **Restaurar:** primero el almacén y luego la BD. Si sobran ficheros, son huérfanos y los recoge la limpieza; nunca faltan.
+Con la deduplicación, un fichero compartido por dos documentos solo se borra cuando **ninguno** lo usa. Lo resuelve la consulta, sin contadores. La comprobación periódica de integridad relee cada fichero (`leer(ref)`) y recalcula su `contenido_sha256`: si no coincide, `CORRUPTO`; si no está, `AUSENTE`. El resultado aparece en el panel del supervisor, y el hash dice qué fichero exacto pedir a Informática de una copia de seguridad. **Restaurar:** primero el almacén y luego la BD. Si sobran ficheros, son huérfanos y los recoge la limpieza; nunca faltan.
 
 ### H — Entrada de documentos y N009
 
 **N009, «expediente reconstruible sin BDDAT»: manifiesto siempre, exportación al finalizar** (decisión de Carlos):
 
-- **Manifiesto por expediente, siempre.** `ALMACEN_BASE/manifiestos/AT-123.json` se rehace cuando cambia el expediente. Lista cada documento con su nombre, tipo, fecha administrativa, SHA-256, tareas y **la ruta ESFTT que le tocaría**, calculada con `ruta_esftt_documento`, que se conserva. Con el almacén y los manifiestos, un script corto reconstruye el árbol legible sin BDDAT ni PostgreSQL.
+- **Manifiesto por expediente, siempre.** `ALMACEN_BASE/manifiestos/<año-solicitud>/AT-123.json` (año de la solicitud del expediente, 4 cifras) se rehace cuando cambia el expediente. La partición por año evita que `manifiestos/` crezca sin límite en un único directorio — mismo motivo que el sharding del almacén (§B). Lista cada documento con su nombre, tipo, fecha administrativa, hash de contenido, tareas y **la ruta ESFTT que le tocaría**, calculada con `ruta_esftt_documento`, que se conserva. Con el almacén y los manifiestos, un script corto reconstruye el árbol legible sin BDDAT ni PostgreSQL.
 - **Exportación bajo demanda:** «Exportar expediente» genera un ZIP con el árbol ESFTT legible y el manifiesto.
 - **Exportación automática al finalizar el expediente:** el mismo árbol se escribe en `ARCHIVO_BASE`, de solo lectura para los usuarios. Si el expediente se reabre (por un recurso, por ejemplo), la exportación se rehace al volver a finalizar; la anterior se conserva con fecha y no se sobrescribe.
 
 Al escribir el árbol legible, y solo entonces, se adaptan los nombres a Windows (caracteres prohibidos, nombres reservados, longitud de ruta), como hoy en `rutas_esftt.py`.
 
-**Buzón.** Sustituye al registro in situ (`pool_explorador_fs` + `pool_registrar_rutas`), que es justo la puerta trasera. Conserva lo que ADR-032 quiso mantener al descartar «solo subida por navegador»: no obligar a pasar por el navegador ficheros que ya están en el share. BDDAT lista el buzón del usuario, el usuario elige ficheros y metadatos, BDDAT los copia al almacén y mueve el original a `_importados/<fecha>/`. La importación la dispara el usuario, no un proceso automático, porque tipo y fecha necesitan a una persona.
+**Entrada de documentos en fase 1: solo subida multipart desde el navegador**, para cualquier origen (disco del usuario o carpeta de red ya montada). El registro in situ (`pool_explorador_fs` + `pool_registrar_rutas`) — la puerta trasera que este ADR cierra — desaparece sin sustituto directo: un mecanismo de «buzón» por usuario en el share se valoró y se aparca (ver Alternativas descartadas) hasta que haya datos reales de que el coste de una subida por navegador para ficheros grandes es un problema, y no solo una posibilidad.
 
 **El mismo fichero en otro expediente** (enmienda del 2026-09-26). Caso típico: un proyecto tramitado en un expediente que hace falta en otro, por ejemplo una modificación de instalaciones en servicio que necesita el proyecto original y el de modificación.
 
 - **Se crea una ficha nueva en el expediente B** apuntando al mismo fichero: por ADR-027 un documento pertenece a un solo expediente, y los datos de la ficha son distintos. En particular, **la fecha administrativa en B no es la de A**: en B el documento se aporta con otra fecha y otro registro. BDDAT sugiere tipo y asunto desde el documento de A, pero la fecha la pone quien lo registra.
 - **Nada de lo que se haga en un expediente afecta al otro:** sellar, sustituir o borrar el documento en A no toca el de B, y el fichero solo lo borra la limpieza cuando ninguno lo usa.
 - **«Aportar desde otro expediente»** es la vía principal: un listado plano de documentos de todos los expedientes, con búsqueda por tipo, nombre, expediente y fecha. El usuario elige y se crea la ficha en el expediente actual, sin volver a subir nada.
-- **Aviso por hash al subir**, como ayuda: si el fichero ya existe, BDDAT avisa («este fichero ya está en AT-123 como "Proyecto de ejecución…"») y ofrece crear la ficha con esos datos como sugerencia. Si ya existe **en el mismo expediente**, el aviso es de duplicado (N077). **Límite:** solo detecta ficheros idénticos byte a byte. Un PDF con el sello de registro de la Junta siempre es distinto del original, así que en ese caso no hay aviso posible; por eso la vía fiable es «Aportar desde otro expediente», y de ahí la norma de uso de §E.
+- **Aviso por hash al subir**, como ayuda: si el fichero ya existe (mismo `contenido_sha256`), BDDAT avisa («este fichero ya está en AT-123 como "Proyecto de ejecución…"») y ofrece crear la ficha con esos datos como sugerencia. Si ya existe **en el mismo expediente**, el aviso es de duplicado (N077). **Límite:** solo detecta ficheros idénticos byte a byte. Un PDF con el sello de registro de la Junta siempre es distinto del original, así que en ese caso no hay aviso posible; por eso la vía fiable es «Aportar desde otro expediente», y de ahí la norma de uso de §E.
 
 ### I — Secuenciación
 
@@ -276,7 +292,7 @@ Fases, con tamaños estimados por comparación con los PR de la cadena (#934 N1:
 | 0 | Revalidar la tabla de consumidores (§M) y crear los issues | — |
 | 1 | Almacén, `ficheros`, columnas nuevas de `documentos`, subida, descarga, lectores, «Aportar desde otro expediente», migración de datos de desarrollo | N1 |
 | 2 | Vincular sin mover; regeneración de 8 casos → 2; PDF de `CERT_FIN_INSTRUCCION` al almacén | N2b (más borrar que escribir) |
-| 3 | Fuera explorador del servidor, registro in situ y `explorer`; buzón | mediano |
+| 3 | Fuera explorador del servidor, registro in situ y `explorer` | mediano |
 | 4 | Plantillas y fragmentos (§J) | mediano |
 | 5 | Edición por WebDAV, sesiones en BD, lanzador en el cliente; verificación en Windows | mediano |
 | 6 | PDF para firma en el servidor, sincronizado con el borrador | pequeño; depende del Dockerfile (#330) |
@@ -294,16 +310,16 @@ Las fases 0-4 van antes de producción. Las fases 5-7 pueden ir al ritmo del des
 
 **Decisión** (enmienda del 2026-09-26, propuesta de Carlos): **una sola plantilla vigente en BDDAT, y el versionado a cargo del supervisor, fuera de BDDAT.** La primera redacción tenía versiones con publicación; se retiran (alternativa K).
 
-- **Datos:** `plantillas` conserva sus metadatos; `ruta_plantilla` se sustituye por `fichero_sha256`. **Nueva** `fragmentos` (`id`, `nombre` único —la clave de `{{r Nombre }}`—, `descripcion`, `activo`, `fichero_sha256`).
+- **Datos:** `plantillas` conserva sus metadatos; `ruta_plantilla` se sustituye por `fichero_ref`. **Nueva** `fragmentos` (`id`, `nombre` único —la clave de `{{r Nombre }}`—, `descripcion`, `activo`, `fichero_ref`).
 - **El supervisor edita en su PC, no en BDDAT:** parte de la base canónica, edita en Writer y guarda sus copias donde quiera (ese es su versionado). Para cambiar la plantilla vigente, **la sube desde el navegador**. BDDAT la valida (`validar_plantilla` y canonicidad de #727): si pasa, **sustituye a la vigente en una sola transacción**; si no, no cambia nada.
 - **No hace falta bloquear la generación durante el cambio:** la sustitución es atómica, y un escrito que se genere a la vez usa la plantilla anterior o la nueva, las dos válidas. Nunca ve una plantilla a medias.
 - **La señal de «plantilla en revisión» ya existe: `plantillas.activo`.** Si el supervisor sabe que la vigente está mal y no quiere que nadie genere con ella mientras la corrige, la desactiva. Los tramitadores ven «plantilla en revisión» en lugar de «Generar», y al subir la corregida la reactiva.
 - **Probar antes de sustituir** (la necesidad A2, que estaba aplazada): se sube el candidato, se genera un escrito de prueba con un expediente real sin guardar nada, y se descarta o se confirma la sustitución. El candidato descartado no lo referencia nada y lo recoge la limpieza.
 - **Trazabilidad, sin tablas de versiones:**
-  1. cada borrador generado guarda `plantilla_sha256`, y `generacion_fragmentos` los hashes de los fragmentos insertados (el motor ya devuelve la lista de insertados; solo falta guardarla);
+  1. cada borrador generado guarda `plantilla_ref`, y `generacion_fragmentos` las referencias de los fragmentos exactos insertados (el motor ya devuelve la lista de insertados; solo falta guardarlas);
   2. la limpieza no borra un fichero referenciado: como el borrador se conserva (congelado tras la firma, §D), **la plantilla y los fragmentos exactos que lo produjeron siguen en el almacén y se pueden descargar desde el escrito**;
   3. cada sustitución de plantilla o fragmento va a la bitácora (hash anterior, hash nuevo, quién, cuándo, motivo): es el historial dentro de BDDAT.
-- **Aviso de plantilla desfasada:** si el borrador de una tarea se generó con una plantilla distinta de la vigente (`plantilla_sha256` ≠ `plantillas.fichero_sha256`), el editor lo indica («generado con una plantilla anterior»). El tramitador decide si regenera.
+- **Aviso de plantilla desfasada:** si el borrador de una tarea se generó con una plantilla distinta de la vigente (`plantilla_ref` ≠ `plantillas.fichero_ref`), el editor lo indica («generado con una plantilla anterior»). El tramitador decide si regenera.
 - **Fragmentos:** se sustituyen igual, subiendo el fichero. Antes de confirmar se muestra en cuántas plantillas se usa, porque el cambio las afecta a todas a la vez; que es lo que se quiere (p. ej. el pie de recurso tras un cambio legal), pero con el alcance a la vista. El nombre no se puede cambiar si alguna plantilla lo usa. Subir una plantilla exige que existan todos los fragmentos que cita. **Al generar, un fragmento que falte detiene la generación con error.**
 - **Motor:** `generar_escrito` trabaja con bytes en vez de rutas. Recibe la plantilla y una función que devuelve el fragmento vigente por nombre. No toca el disco, y los tests dejan de necesitar carpetas temporales.
 - **Las bases canónicas siguen en el repositorio** (`app/data/plantillas_base/`): son código y se versionan con git. Desaparece el paso de copiarlas a `PLANTILLAS_BASE` (ANALISIS_DESPLIEGUE §9).
@@ -323,8 +339,8 @@ En `ConfiguracionSistema`, que ya existe. Cada cambio va a la bitácora. Los lí
 
 ### L — Migración
 
-- Cada documento con ruta local: se lee el fichero, se guarda en el almacén y se rellenan `fichero_sha256`, `nombre` (el nombre original sin el prefijo de hash del pool, `3af1c9e0_`) y `contenido_modificado_en`. Los que no se encuentren salen en un informe.
-- Cada plantilla: su fichero pasa a `fichero_sha256`. Cada `.odt` de `fragmentos/`: fila en `fragmentos` con su `fichero_sha256`. Los borradores ya generados quedan sin `plantilla_sha256` (no hay forma fiable de saber con cuál se generaron).
+- Cada documento con ruta local: se lee el fichero, se guarda en el almacén y se rellenan `fichero_ref`, `nombre` (el nombre original sin el prefijo de hash del pool, `3af1c9e0_`) y `contenido_modificado_en`. Los que no se encuentren salen en un informe.
+- Cada plantilla: su fichero pasa a `fichero_ref`. Cada `.odt` de `fragmentos/`: fila en `fragmentos` con su `fichero_ref`. Los borradores ya generados quedan sin `plantilla_ref` (no hay forma fiable de saber con cuál se generaron).
 - Sin producción, es un script de una tarde; se valida contra la BD de desarrollo del PC.
 
 ### M — Consumidores (REGLAS_DESARROLLO §Análisis de impacto previo)
@@ -335,14 +351,14 @@ Inventario del 2026-09-25 sobre `develop` en `d3bb6e0`, ajustado a la enmienda d
 
 | Consumidor | Acción |
 |---|---|
-| `app/models/documentos.py` | **Actualizar**: `url` solo `http(s)`/`bddat`; `nombre`, `fichero_sha256`, `contenido_modificado_en`, `origen_sha256`, `plantilla_sha256`, `borrado_en`; fuera `hash_md5`, `tipo_contenido`, `ruta_absoluta()` y la rama local del validador; `resolver_url()` lee del almacén |
-| `app/models/plantillas.py` | **Actualizar**: `ruta_plantilla` → `fichero_sha256` |
+| `app/models/documentos.py` | **Actualizar**: `url` solo `http(s)`/`bddat`; `nombre`, `fichero_ref`, `contenido_modificado_en`, `origen_sha256`, `plantilla_ref`, `borrado_en`; fuera `hash_md5`, `tipo_contenido`, `ruta_absoluta()` y la rama local del validador; `resolver_url()` lee del almacén |
+| `app/models/plantillas.py` | **Actualizar**: `ruta_plantilla` → `fichero_ref` |
 | `app/models/certificados_fase.py` | **Actualizar**: fuera `ruta_pdf` (ruta absoluta en disco) |
-| Modelos nuevos: `ficheros`, `fragmentos`, `generacion_fragmentos`, `sesiones_edicion` | **Crear** |
+| Modelos nuevos: `ficheros` (`ref` + `contenido_sha256` por separado, §B), `fragmentos`, `generacion_fragmentos`, `sesiones_edicion` | **Crear** |
 | `app/services/rutas_esftt.py` | **Actualizar**: se conserva `ruta_esftt_documento` (manifiesto y exportación); **eliminar** `mover_a_esftt`, `mover_a_pool`, `nombre_pool_unico`, `ruta_pool_documento`, `ruta_destino_esftt_fichero` y el MD5 |
 | `app/services/ingesta_pool.py` | **Actualizar**: escribe en el almacén; aviso de fichero existente (§H) |
 | `app/services/regeneracion_escritos.py` | **Actualizar**: 8 casos → 2; confirmación si hay retoques; fuera el apartado de ficheros |
-| `app/services/generador_escritos.py`, `generador_escritos_odt.py`, `generador_escritos_docx.py` | **Actualizar**: bytes, fragmentos por tabla, fragmento ausente = error, `plantilla_sha256` y `generacion_fragmentos`; fuera `guardar_documento` a ruta y `_ruta_plantilla` |
+| `app/services/generador_escritos.py`, `generador_escritos_odt.py`, `generador_escritos_docx.py` | **Actualizar**: bytes, fragmentos por tabla, fragmento ausente = error, `plantilla_ref` y `generacion_fragmentos`; fuera `guardar_documento` a ruta y `_ruta_plantilla` |
 | `app/services/generador_cert.py`, `cert_fin_instruccion.py` | **Actualizar**: PDF al almacén; fuera `_borrar_pdf` (lo hace la limpieza) |
 | `app/services/mutaciones_arbol.py` | **Actualizar**: fuera las llamadas a `mover_*`; la lectura del hook de #717 pasa por el almacén; congelar borrador y PDF al vincular el firmado |
 | `app/services/extraccion_texto_documento.py`, `context_builders/contexto_analisis_documental.py` | **Actualizar**: leen del almacén |
@@ -350,13 +366,13 @@ Inventario del 2026-09-25 sobre `develop` en `d3bb6e0`, ajustado a la enmienda d
 | `app/services/sellos.py` | **Actualizar**: `motivo_sellado` también impide cambiar el fichero |
 | `app/services/detalle_nodo.py` | **Actualizar**: `puede_abrir_carpeta` desaparece; «Editar» / descargar |
 | `app/config.py` | **Actualizar**: `FILESYSTEM_BASE` → `ALMACEN_BASE`, `BUZON_BASE`, `ARCHIVO_BASE`; fuera `PLANTILLAS_BASE` |
-| Servicios nuevos: almacén, WebDAV, conversión y sincronización del PDF para firma, limpieza, integridad, manifiesto y exportación, detección de formato | **Crear** |
+| Servicios nuevos: puerto de almacenamiento + adaptador de filesystem (CAS), WebDAV, conversión y sincronización del PDF para firma, limpieza, integridad, manifiesto y exportación, detección de formato | **Crear** |
 
 **Rutas, módulos, plantillas HTML y JS**
 
 | Consumidor | Acción |
 |---|---|
-| `expedientes/routes.py`: `pool_explorador_fs`, `pool_registrar_rutas` | **Eliminar** (buzón) |
+| `expedientes/routes.py`: `pool_explorador_fs`, `pool_registrar_rutas` | **Eliminar** (registro in situ; sin sustituto directo en fase 1, §H) |
 | `expedientes/routes.py`: `pool_abrir_en_carpeta`, `abrir_carpeta_expediente` | **Eliminar** (absorbe #853) |
 | `expedientes/routes.py`: descarga, subida, `pool_editar_documento`, `pool_borrar_documento` | **Actualizar**: almacén; la `url` deja de ser editable (sustitución con motivo); borrar va a la papelera; descarga del PDF para firma con regeneración si está desfasado |
 | Ruta nueva: «Aportar desde otro expediente» (listado plano con búsqueda) | **Crear** |
@@ -406,6 +422,7 @@ Inventario del 2026-09-25 sobre `develop` en `d3bb6e0`, ajustado a la enmienda d
 ## Por qué
 
 - **Una sola fuente de verdad.** La BD dice qué hay y el almacén solo guarda bytes que nadie más puede tocar. Los problemas de la lista del contexto no se parchean uno a uno: desaparecen con su causa.
+- **Sustituible sin tocar el resto de BDDAT.** El almacén se habla desde un puerto de cuatro operaciones (`escribir`/`leer`/`existe`/`borrar` sobre una referencia opaca, §B); un gestor documental corporativo (p. ej. Alfresco, que ya usa la Junta) sería un adaptador nuevo, no una reescritura de los servicios que hoy dependen del almacén.
 - **La custodia sigue donde está.** El almacén vive en el share corporativo, con su copia de seguridad. Como los ficheros no cambian nunca, la copia incremental es trivial, y el hash identifica qué recuperar.
 - **Más sencillo, no más complejo.** Se borra más código del que se escribe: movimientos, colisiones, sufijos, la matriz de regeneración, el explorador del servidor, el registro in situ y los `explorer` del servidor. Y sin versiones no hay que gestionar historiales, purgas ni «volver atrás».
 - **La edición se conserva sin la puerta trasera.** La prueba de concepto demostró que LibreOffice edita contra BDDAT sin acceso al share, con bloqueo.
@@ -443,7 +460,7 @@ Daría atomicidad con los metadatos. Pero con proyectos de cientos de MB, los ba
 
 ### D. Almacén de objetos S3 (MinIO, Garage) con bloqueo WORM
 
-Un cliente HTTP con timeouts evitaría el cuelgue de CIFS, y el bloqueo WORM daría inmutabilidad incluso frente a administradores. Pero es otro servicio que operar, sin equipo de sistemas, y sus datos acabarían en el disco del PC dedicado, no en el share corporativo. Revisar si Informática llega a ofrecer S3.
+Un cliente HTTP con timeouts evitaría el cuelgue de CIFS, y el bloqueo WORM daría inmutabilidad incluso frente a administradores. Pero es otro servicio que operar, sin equipo de sistemas, y sus datos acabarían en el disco del PC dedicado, no en el share corporativo. Revisar si Informática llega a ofrecer S3. El puerto de almacenamiento agnóstico (§B) deja esta puerta abierta sin comprometer nada ahora: un adaptador S3, o contra un gestor documental como Alfresco, implementaría las mismas cuatro operaciones sin tocar el resto de BDDAT.
 
 ### E. Gestor documental o edición en el navegador (Nextcloud, Alfresco, Collabora u OnlyOffice por WOPI)
 
@@ -480,3 +497,7 @@ Evitaba una ficha para el PDF, pero obligaba a inventar un mecanismo propio de a
 ### M. Deshabilitar «Guardar como» en LibreOffice
 
 Se puede con su configuración, pero la desactiva para todos los documentos del puesto, no solo para los de BDDAT. Se prefieren las mitigaciones de §D.
+
+### N. Buzón por usuario en el share, desde la fase 1 (aparcada, no descartada)
+
+ADR-032 justificaba mantener una vía sin subida multipart para no forzar «una vuelta innecesaria por el navegador» con ficheros que el servidor ya tiene al lado. Sigue siendo cierto para proyectos grandes, pero ese doble salto de red ocurre, como mucho, una vez por expediente (al dar de alta) — y el propio fichero grande ya cruzó la red del usuario una vez, al bajarlo de PTWANDA/BandeJA. Construir una infraestructura permanente (`BUZON_BASE/<usuario>/`, sus permisos, `_importados/<fecha>/`, el listado en la UI) para ahorrar un trámite ocasional, sin datos de que sea un problema real, no se justifica ahora. La fase 1 entra solo por subida multipart (§H); si la migración o el uso real muestran que los ficheros grandes son una fricción de verdad, se retoma esta alternativa con datos delante.
