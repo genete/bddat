@@ -14,7 +14,7 @@
 
 ## Cadena, en orden
 
-| Orden | Issue | Qué es | Capa | Estado (27/09/2026, tras cerrar #964) |
+| Orden | Issue | Qué es | Capa | Estado (27/09/2026, tras cerrar #966) |
 |---|---|---|---|---|
 | 1 | **#926** | Bug: dos `Documento` con el mismo fichero rompen `mover_a_esftt` — prerrequisito de N1 | Backend | Cerrado (PR #933) |
 | 2 | **#928 (N1)** | Las fechas de notificación solo salen de documentos | Backend | Cerrado (PR #934) |
@@ -26,9 +26,9 @@
 | 7 | **#932 (N3)** | Amplía `certificados` (columnas `tipo`, `fase_id`) — infraestructura para N4 | Backend | Cerrado (PR #944) |
 | 8 | **#947 (N4)** | `CERT_CUMPLIMIENTO_FASE`: congela el cálculo del cumplimiento y protege el documento citado | Backend + inspector | Cerrado (PR #948) |
 | 8b | **#956 (N4b)** | `CERT_CIERRE_FASE`: el cierre de la fase finalizadora (ocupa `documento_resultado_id`; `reabrir_fase` lo deshace) — partido de N4; va antes de N6 | Backend + inspector | Cerrado (PR #957) |
-| — | **#964**, **#966** | Retiran las `NOTIFICAR` que el procedimiento no tiene (`ANUNCIO_BOE`, `ANUNCIO_PRENSA`; `PORTAL_TRANSPARENCIA` a un solo ELABORAR) — antes de sembrar las fuentes de N5a-2 | Backend | #964 cerrado (PR #978); #966 abierto |
+| — | **#964**, **#966** | Retiran las `NOTIFICAR` que el procedimiento no tiene (`ANUNCIO_BOE`, `ANUNCIO_PRENSA`; `PORTAL_TRANSPARENCIA` a un solo ELABORAR) — antes de sembrar las fuentes de N5a-2 | Backend | Cerrados (PR #978 y #979) |
 | 9 | **#967 (N5a-1)** | Toda `NOTIFICAR` guarda su destinatario: representante en la solicitud, ficha y fuente desde que nace la tarea, sin destinatario no avanza (ADR-051 §B, §K) | Backend | Cerrado (PR #973) |
-| 9b | **#968 (N5a-2)** | Fuentes por fase y trámite, `tramites_destinatario`, servicio de destinatarios, invariante «nadie falta ni sobra», escritos (ADR-051 §C-§E, §H, §L, §M) | Backend | Abierto; depende de #966 (#967 y #964, cerrados). Al sustituir `FUENTES_POR_TRAMITE` por `notificacion_fuentes`, retirar los dos tests de catálogo de `test_967_destinatario_notificacion.py`; los sustituye el test de cobertura de fuentes del propio #968 |
+| 9b | **#968 (N5a-2)** | Fuentes por fase y trámite, `tramites_destinatario`, servicio de destinatarios, invariante «nadie falta ni sobra», escritos (ADR-051 §C-§E, §H, §L, §M) | Backend | Abierto; ya no espera a nada (#967, #964 y #966, cerrados). Al sustituir `FUENTES_POR_TRAMITE` por `notificacion_fuentes`, retirar los dos tests de catálogo de `test_967_destinatario_notificacion.py`; los sustituye el test de cobertura de fuentes del propio #968 |
 | 9b-bis | **#971** | Expediente-tipo `RESOLUCION_CON_ORGANISMOS`: consultas cerradas, resolución notificada con el botón a solicitante (con representante) y organismos, certificados de cumplimiento y de cierre; enganchado a la semilla de tests | Scripts + tests | Abierto; depende de #968, lo usa #969 |
 | 9c | **#969 (N5a-3)** | Un solo `NOTIFICACION` en `RESOLUCION_DUP` y plazo cumplido por la notificación de fuente `SOLICITANTE` (ADR-051 §F, §G) | Backend | Abierto; depende de #968 |
 | 10 | **#568** | Edicto tras notificación infructuosa (art. 44) | Backend | Abierto, preexistente |
@@ -45,7 +45,7 @@
 - ~~#932 (N3) bloquea a N4~~ — cerrado: N4 tiene ya `tipo`, `fase_id` y el índice `(fase_id, tipo)`. ~~Queda para N4 decidir si el PDF se guarda al emitir o se genera al vuelo~~ — decidido en #947: ninguna de las dos, vista HTML única y paso a PDF posterior.
 - N5 dependía de #927, ya cerrado.
 - ~~N4b depende de #947 (N4)~~ — cerrado: el cierre ya tiene el certificado de cumplimiento que exigir (`sellos.certificado_cumplimiento(fase)`), el módulo de sellos donde añadir su función y el patrón de vista HTML única (borrador calculado / emitido) que puede reutilizar.
-- N6 depende de N3 (#932), N4 (#947), N4b (#956) y N5 (#967, #968, #969); ya solo le falta N5. Ya no depende de que #796 modele un acuerdo de suspensión: con solo causa a) activa, el certificado no tiene que declarar suspensiones de informes que nunca llegan a existir jurídicamente.
+- N6 depende de N3 (#932), N4 (#947), N4b (#956) y N5 (#967, #968, #969); ya solo le faltan #968 y #969 (#967, cerrado). Ya no depende de que #796 modele un acuerdo de suspensión: con solo causa a) activa, el certificado no tiene que declarar suspensiones de informes que nunca llegan a existir jurídicamente.
 
 ## Historial de esta tabla
 
@@ -69,3 +69,4 @@
 - **27/09/2026** — Fuera de la cadena: #974 cerrado (PR #975), retirados `scripts/seed_listado.py` y `scripts/verificar_seed.py`. Ya estaban obsoletos antes de #967 (el porqué, en la nota de #974 en la cabecera de ADR-030). Sin cambios de código en `app/` ni en tests.
 - **27/09/2026** — Datos de desarrollo tras #967: expedientes-tipo recreados (AT-35, AT-36, AT-37) y borrados los viejos (AT-29, AT-32, AT-33) y AT-25, que mezclaba el dummy de análisis con la resolución forzada al verificar #956 y tenía cuatro `NOTIFICAR` sin destinatario que el circuito ya no deja fijar (decisión de Carlos). Toda `NOTIFICAR` de la base tiene ya ficha, fuente y destinatario.
 - **27/09/2026** — **#964 cerrado (PR #978)**. Migración `964_anuncios_ip_secuencias`: `ANUNCIO_BOJA` sin ELABORAR; `ANUNCIO_BOE` y `ANUNCIO_PRENSA` sin `NOTIFICAR`, solo dos esperas, y el plazo de IP cuenta desde `JUSTIFICANTE_BOE` / `JUSTIFICANTE_PRENSA` (cambia con él la clave de `catalogo_plazos`). Obstáculo que el issue no preveía: la precedencia de #823 (puerta cerrada) daba por universal que toda espera lleva `NOTIFICAR` antes, y BOE y prensa no habrían podido abrirla nunca. Decisión de Carlos: el caso «ninguna `NOTIFICAR`» lo decide la secuencia de `tramites_tareas`, con aviso al supervisor en tablas maestras; las `NOTIFICAR` creadas se siguen exigiendo. `_SE_RETIRAN` de `test_967` queda en `PORTAL_TRANSPARENCIA`. Guardas nuevas: JSON ↔ `tramites_tareas` para todo el catálogo y clave de plazo ↔ mapa de documentos (esta destapó que las dos filas del plazo de admisión de #776 usan un documento que el mapa no declara; quedan como excepción declarada, para #938). `generar_documentos_dummy.py --solo-csv`; derivado fuera de la cadena, abierto: **#977** (el modo completo borra `doc_proyecto_reformado.pdf`). Siguiente: #966.
+- **27/09/2026** — **#966 cerrado (PR #979)**. `ESTRUCTURA_FTT.json` y migración `966_portal_un_elaborar`: `PORTAL_TRANSPARENCIA` es un solo ELABORAR que consume lo expuesto (anuncio y, opcionales, boletines publicados, tablón, proyecto, RBDA) y produce `JUSTIFICANTE_PORTAL`, la URL. Decisión de Carlos: se reutiliza el tipo (el prefijo lo mantiene como documento crítico de #738). `_SE_RETIRAN` fuera de `test_967`: ningún trámite con `NOTIFICAR` queda sin fuente. Con el criterio nuevo de `tests/README.md` §3 se retiraron los dos manifiestos de filas del catálogo que había añadido #964. #968 ya no espera a nada.

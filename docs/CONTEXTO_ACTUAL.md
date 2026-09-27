@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **#964** (2026-09-27): los anuncios de información pública siguen al JSON: BOE y prensa sin `NOTIFICAR`, BOJA sin ELABORAR. La espera sin notificación previa la decide la secuencia del catálogo (`tramites_tareas`), con aviso al supervisor en tablas maestras. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#966** (2026-09-27): el portal de transparencia es un solo ELABORAR que produce la URL (`JUSTIFICANTE_PORTAL`). Ningún trámite del catálogo tiene `NOTIFICAR` sin fuente. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **#966**: `PORTAL_TRANSPARENCIA` a un solo ELABORAR. Con #964, requisito de #968 (N5a-2).
+**Próximo:** **#968 (N5a-2)**: fuentes por fase y trámite, `tramites_destinatario` y el invariante «nadie falta ni sobra». Ya no espera a nada: #967, #964 y #966 están cerrados.
 
 ---
 
