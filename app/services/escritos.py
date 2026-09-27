@@ -75,6 +75,16 @@ class ContextoBaseExpediente:
 
         Fecha:
             fecha_hoy           — Fecha actual en formato DD/MM/YYYY
+
+    Destinatario (#968, ADR-051 §H) — solo con tarea, en `construir_contexto`:
+        destinatario_nombre       — A quién va el escrito (el representante, si lo hay)
+        destinatario_nif          — Su NIF
+        destinatario_dir          — Dict {calle, cp, municipio, provincia, nif, email}
+                                    — el email es el de aviso de la notificación
+        destinatario_en_nombre_de — Nombre del representado, o None si va directo
+        Las pide al servicio de destinatarios; este módulo no decide ni escribe.
+        None en todas si el trámite no tiene un destinatario único (la
+        ELABORACION de la resolución no imprime destinatario).
     """
 
     def __init__(self, expediente):
@@ -210,6 +220,7 @@ def construir_contexto(plantilla, expediente, db_session, tarea=None) -> dict:
         RuntimeError — Si el Context Builder especificado no se puede cargar.
     """
     ctx = ContextoBaseExpediente(expediente).get_contexto()
+    ctx.update(variables_destinatario(tarea))
 
     # Documento de entrada: el primer documento consumido por la tarea (ADR-010)
     if tarea:
@@ -226,6 +237,38 @@ def construir_contexto(plantilla, expediente, db_session, tarea=None) -> dict:
     ctx.update(ejecutar_consultas(expediente, db_session))
 
     return ctx
+
+
+VARIABLES_DESTINATARIO = ('destinatario_nombre', 'destinatario_nif', 'destinatario_dir',
+                          'destinatario_en_nombre_de')
+
+
+def variables_destinatario(tarea) -> dict:
+    """Las variables `destinatario_*` del escrito (#968, ADR-051 §H), pedidas al
+    servicio de destinatarios: el destinatario del trámite de la tarea, si tiene
+    uno solo y resuelto. Todas None si no — quien exige que exista antes de
+    generar es la ruta (`api_escritos`), no el contexto."""
+    vacias = dict.fromkeys(VARIABLES_DESTINATARIO)
+    if tarea is None or tarea.tramite is None:
+        return vacias
+    from app.services.destinatarios_notificacion import destinatario_del_tramite
+    destino = destinatario_del_tramite(tarea.tramite).destinatario
+    if destino is None:
+        return vacias
+    entidad = destino.entidad
+    src = destino.direccion or entidad
+    direccion = ContextoBaseExpediente._dir_a_dict(src)
+    if not direccion['nif']:
+        direccion['nif'] = entidad.nif or ''
+    if not direccion['email']:
+        direccion['email'] = entidad.email or ''
+    return {
+        'destinatario_nombre': entidad.nombre_completo,
+        'destinatario_nif': direccion['nif'] or None,
+        'destinatario_dir': direccion,
+        'destinatario_en_nombre_de': (destino.en_nombre_de.nombre_completo
+                                      if destino.en_nombre_de else None),
+    }
 
 
 def cargar_context_builder(nombre_clase: str):
