@@ -631,6 +631,21 @@ class ArbolESFTT:
         self.db.session.flush()
         return n
 
+    def notificar_hecha(self, tramite, *, sufijo='notificada'):
+        """NOTIFICAR del trámite efectuada: justificante final como producido y
+        resultado CORRECTA. Con destinatario (el del builder, el solicitante).
+
+        Desde #968 un trámite que notifica según `notificacion_fuentes` no está
+        terminado sin su NOTIFICAR; los tests que necesitan un trámite completo
+        para probar otra cosa la añaden con esto."""
+        from app.services.reloj_simulado import hoy
+        tarea = self.tarea(tramite, 'NOTIFICAR')
+        justificante = self.documento(tramite.fase.solicitud.expediente_id,
+                                      'JUSTIFICANTE_NOTIFICA', f'{sufijo}-{tarea.id}', fecha=hoy())
+        self.vincular(tarea, justificante, 'PRODUCIDO')
+        self.notificacion(tarea, resultado='CORRECTA')
+        return tarea
+
     def diagnostico(self, tarea, resultado, defectos=None):
         """Diagnóstico PRODUCIDO por `tarea` (ANALIZAR): Documento + Diagnostico + vínculo.
 

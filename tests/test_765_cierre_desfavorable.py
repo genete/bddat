@@ -239,6 +239,11 @@ class TestCierreForzable:
             ('ANALISIS_DOCUMENTAL', 'desfavorable', False),
             ('REQUERIMIENTO_SUBSANACION', 'favorable', False),
         ])
+        # El requerimiento se notificó al solicitante: sin eso el trámite no
+        # está completo desde #968 (ADR-051 §E).
+        requerimiento = next(t for t in fase.tramites
+                             if t.tipo_tramite.codigo == 'REQUERIMIENTO_SUBSANACION')
+        arbol_esftt.notificar_hecha(requerimiento)
         return fase
 
     def test_bloquea_sin_justificacion(self, arbol_esftt):
