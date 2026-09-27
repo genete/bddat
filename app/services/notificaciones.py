@@ -22,12 +22,14 @@ Desde #947 (N4), con el `CERT_CUMPLIMIENTO_FASE` emitido se lee de él
 
 Destinatario (#967, N5a-1; ADR-051 §B/§K): una `NOTIFICAR` por destinatario
 (ADR-051 §A), así que la tarea sigue teniendo una sola fila y las funciones de
-fechas no cambian de firma. Aquí viven las fuentes provisionales de cada
-trámite (`FUENTES_POR_TRAMITE`, hasta `notificacion_fuentes` en N5a-2), la regla
-«notificar al solicitante» (`destinatario_solicitante`), la copia del
-destinatario (`copiar_destinatario`) y las preguntas de las que cuelga el
-bloqueo sin destinatario (`tiene_justificante`, `tuvo_escape_sin_destinatario`).
-Escribir es de `mutaciones_arbol` (`crear_tarea`, `fijar_destinatario`).
+fechas no cambian de firma. Aquí viven la regla «notificar al solicitante»
+(`destinatario_solicitante`), la copia del destinatario (`copiar_destinatario`)
+y las preguntas de las que cuelga el bloqueo sin destinatario
+(`tiene_justificante`, `tuvo_escape_sin_destinatario`). Qué fuentes tiene cada
+trámite y a quién hay que notificar por cada una es de
+`services/destinatarios_notificacion.py` (#968, N5a-2). Escribir es de
+`mutaciones_arbol` (`crear_tarea`, `fijar_destinatario`,
+`anadir_notificaciones_que_faltan`).
 
 `RESULTADOS`, `RESULTADOS_EFECTUADA` y `TIPOS_JUSTIFICANTE_PREVIO` viven en
 `app.models.notificaciones` (junto al CHECK de `resultado`, 928c); se
@@ -328,54 +330,6 @@ def resultados_validos(canal: str) -> tuple:
 # Destinatario de la NOTIFICAR (#967, N5a-1 — ADR-051 §B, §C, §K)
 # ---------------------------------------------------------------------------
 
-# Fuentes de cada (tipo de fase, tipo de trámite) con NOTIFICAR — ADR-051 §C,
-# «Contenido sembrado». **Provisional**: lo sustituye la tabla
-# `notificacion_fuentes` en N5a-2. Un par que no esté aquí admite cualquier
-# fuente de `FUENTES`, que entonces hay que indicar al crear la tarea: es una
-# `NOTIFICAR` forzada fuera de la secuencia del catálogo (p. ej. en `ANUNCIO_BOE`,
-# `ANUNCIO_PRENSA` o `PORTAL_TRANSPARENCIA`, que no la tienen desde #964 y #966).
-# Los dos trámites de notificación de la DUP que se funden en N5a-3 (§G) llevan
-# las fuentes que heredará su `NOTIFICACION`.
-_RESOLUCION_COMUN = ('SOLICITANTE', 'ORGANISMOS_CONSULTADOS', 'ORGANO_AMBIENTAL',
-                     'INTERESADOS_RECONOCIDOS')
-FUENTES_POR_TRAMITE = {
-    ('ANALISIS_SOLICITUD', 'COMUNICACION_INICIO_ADMISION'): ('SOLICITANTE',),
-    ('ANALISIS_SOLICITUD', 'REQUERIMIENTO_SUBSANACION'): ('SOLICITANTE',),
-    ('DATOS_CATASTRALES', 'REMISION_ACUERDO_DATOS'): ('SOLICITANTE',),
-    ('DATOS_CATASTRALES', 'REQUERIMIENTO_CATASTRALES'): ('SOLICITANTE',),
-    ('DATOS_CATASTRALES', 'TOMA_RAZON_RBDA'): ('SOLICITANTE',),
-    ('CONSULTAS', 'CONSULTA_SEPARATA'): ('ORGANISMO_DEL_TRAMITE',),
-    ('CONSULTAS', 'CONSULTA_TRASLADO_ORGANISMO'): ('ORGANISMO_DEL_TRAMITE',),
-    ('CONSULTAS', 'CONSULTA_TRASLADO_TITULAR'): ('SOLICITANTE',),
-    ('INFORMACION_PUBLICA', 'ANUNCIO_TITULAR'): ('SOLICITANTE',),
-    ('INFORMACION_PUBLICA', 'RECEPCION_ALEGACION'): ('SOLICITANTE',),
-    ('INFORMACION_PUBLICA', 'ANUNCIO_BOJA'): ('BOLETIN',),
-    ('INFORMACION_PUBLICA', 'ANUNCIO_BOP'): ('BOLETIN',),
-    ('INFORMACION_PUBLICA', 'TABLON_AYUNTAMIENTOS'): ('AYUNTAMIENTO',),
-    ('CONSULTA_MINISTERIO', 'SOLICITUD_INFORME'): ('MINISTERIO',),
-    ('COMPATIBILIDAD_AMBIENTAL', 'SOLICITUD_COMPATIBILIDAD'): ('ORGANO_AMBIENTAL',),
-    ('FIGURA_AMBIENTAL_EXTERNA', 'SOLICITUD_FIGURA'): ('ORGANO_AMBIENTAL',),
-    ('AAU_AAUS_INTEGRADA', 'REMISION_RESULTADO_IP_CONSULTAS'): ('ORGANO_AMBIENTAL',),
-    ('AAU_AAUS_INTEGRADA', 'RECEPCION_DICTAMEN'): ('ORGANO_AMBIENTAL',),
-    ('AAU_AAUS_INTEGRADA', 'RECEPCION_PROPUESTA_INF_VINC'): ('ORGANO_AMBIENTAL',),
-    ('AAU_AAUS_INTEGRADA', 'DISCREPANCIA_INF_VINC'): ('ORGANO_SUPERIOR',),
-    ('RESOLUCION', 'NOTIFICACION'): _RESOLUCION_COMUN,
-    ('RESOLUCION_AAP', 'NOTIFICACION'): _RESOLUCION_COMUN,
-    ('RESOLUCION_AAC', 'NOTIFICACION'): _RESOLUCION_COMUN,
-    ('RESOLUCION_DUP', 'NOTIFICACION'): ('SOLICITANTE', 'ORGANISMOS_CONSULTADOS',
-                                         'PROPIETARIOS_DUP', 'INTERESADOS_RECONOCIDOS'),
-    ('RESOLUCION_DUP', 'NOTIFICACION_ORGANISMOS'): ('ORGANISMOS_CONSULTADOS',),
-    ('RESOLUCION_DUP', 'NOTIFICACION_INTERESADOS'): ('PROPIETARIOS_DUP',
-                                                     'INTERESADOS_RECONOCIDOS'),
-    ('RESOLUCION', 'PUBLICACION'): ('BOLETIN',),
-    ('RESOLUCION_AAP', 'PUBLICACION'): ('BOLETIN',),
-    ('RESOLUCION_DUP', 'PUBLICACION_BOE'): ('BOLETIN',),
-    ('RESOLUCION_DUP', 'PUBLICACION_BOJA'): ('BOLETIN',),
-    ('RESOLUCION_DUP', 'PUBLICACION_BOP'): ('BOLETIN',),
-    ('RESOLUCION_DUP', 'REQUERIMIENTO_RBDA_DEFINITIVA'): ('SOLICITANTE',),
-    ('RECONOCIMIENTO_INTERESADO', 'NOTIFICACION'): ('SOLICITANTE',),
-}
-
 # Qué dirección de la entidad se copia según la fuente (ADR-051 §B: «cada
 # fuente lleva un rol»). Los roles de propietarios e interesados llegan con
 # #431/#432; hasta entonces toman la de titular, como el solicitante.
@@ -405,31 +359,6 @@ ACCION_FIJAR_DESTINATARIO = 'FIJAR_DESTINATARIO'
 # justificante, la fila queda fija»).
 _TIPOS_JUSTIFICANTE = (set(CANAL_POR_TIPO_DOC) | set(JUSTIFICANTES_CUMPLIMIENTO)
                        | set(TIPOS_JUSTIFICANTE_PREVIO))
-
-
-def fuentes_del_tramite(tramite) -> Optional[tuple]:
-    """Fuentes admitidas en `tramite` (`FUENTES_POR_TRAMITE`), o `None` si el
-    par (fase, trámite) no está declarado: entonces vale cualquiera de
-    `FUENTES`, indicada a mano."""
-    clave = (_codigo(tramite.fase.tipo_fase), _codigo(tramite.tipo_tramite))
-    return FUENTES_POR_TRAMITE.get(clave)
-
-
-def resolver_fuente(tramite, fuente: Optional[str]) -> tuple[Optional[str], Optional[str]]:
-    """(fuente, error) de una `NOTIFICAR` nueva en `tramite` (ADR-051 §B): con
-    una sola fuente la toma sola; con varias, o sin declarar, hay que indicarla.
-    Una fuente indicada tiene que ser de las del trámite."""
-    admitidas = fuentes_del_tramite(tramite)
-    if fuente is not None:
-        if fuente not in (admitidas or FUENTES):
-            opciones = ', '.join(admitidas or FUENTES)
-            return None, f'Fuente «{fuente}» no válida para este trámite. Opciones: {opciones}.'
-        return fuente, None
-    if admitidas is not None and len(admitidas) == 1:
-        return admitidas[0], None
-    opciones = ', '.join(admitidas or FUENTES)
-    return None, (f'Indica la fuente de la notificación (a quién y por qué se notifica). '
-                  f'Opciones: {opciones}.')
 
 
 @dataclass(frozen=True)
@@ -473,15 +402,21 @@ def destinatario_solicitante(solicitud) -> Optional[Destinatario]:
 
 
 def copiar_destinatario(notif, destino: Destinatario, *, ahora) -> None:
-    """Copia el destinatario en la fila (ADR-051 §B): entidad, representación,
-    nombre, NIF, dirección postal y canales electrónicos. La copia es lo que
+    """Copia el destinatario en la fila (ADR-051 §B): entidad, representación
+    (con nombre y NIF del representado), nombre, NIF, dirección postal y canales
+    electrónicos. Es el único sitio que escribe esas columnas. La copia es lo que
     vale; `direccion_origen_id` queda solo como referencia. No valida ni
     comprueba si está congelada: eso es de `mutaciones_arbol.fijar_destinatario`."""
     entidad, src = destino.entidad, destino.direccion
     postal = src if src is not None else entidad
     mun = getattr(postal, 'municipio', None)
+    representado = destino.en_nombre_de
     notif.entidad_id = entidad.id
-    notif.en_nombre_de_entidad_id = destino.en_nombre_de.id if destino.en_nombre_de else None
+    notif.en_nombre_de_entidad_id = representado.id if representado else None
+    # Foto fija del representado (#968): la necesita el envío (Notifica lleva
+    # al interesado y a su representante, cada uno con su NIF).
+    notif.dest_en_nombre_de_nombre = representado.nombre_completo if representado else None
+    notif.dest_en_nombre_de_nif = representado.nif if representado else None
     notif.direccion_origen_id = src.id if src is not None else None
     notif.dest_nombre = entidad.nombre_completo
     notif.dest_nif = (src.nif if src is not None and src.nif else None) or entidad.nif

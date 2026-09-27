@@ -53,6 +53,7 @@ from app.services.codigo_seguimiento import extraer_tarea_id
 from app.services.extraccion_texto_documento import extraer_texto
 from app.services.reformados import ultimo_reformado
 from app.services import notificaciones as notif_svc
+from app.services import destinatarios_notificacion as dest_svc
 
 log = logging.getLogger(__name__)
 
@@ -665,15 +666,17 @@ def crear_tarea(tramite, tipo_tarea, *, justificacion: Optional[str] = None,
 
     Una `NOTIFICAR` nace con su fila de `notificaciones` y su `fuente` (#967,
     ADR-051 §B): si el trámite tiene una sola fuente la toma; si tiene varias,
-    o no están declaradas, hay que indicarla. `fuente` se ignora en los demás
-    tipos. Es el único camino de creación de tareas de la aplicación.
+    o no están declaradas, hay que indicarla. Y nace ya con su destinatario si
+    se sabe (#968, §D): el primero de su fuente a quien aún falta notificar.
+    `fuente` se ignora en los demás tipos. Es el único camino de creación de
+    tareas de la aplicación.
     """
     res_inv = check_invariante('MUTAR', 'TRAMITE', tramite.id)
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
 
     if tipo_tarea.codigo == 'NOTIFICAR':
-        fuente, error_fuente = notif_svc.resolver_fuente(tramite, fuente)
+        fuente, error_fuente = dest_svc.resolver_fuente(tramite, fuente)
         if error_fuente:
             return ResultadoMutacion(ok=False, error=error_fuente)
 
@@ -703,7 +706,13 @@ def crear_tarea(tramite, tipo_tarea, *, justificacion: Optional[str] = None,
     db.session.add(tarea)
     db.session.flush()
     if tipo_tarea.codigo == 'NOTIFICAR':
-        db.session.add(Notificacion(tarea_id=tarea.id, fuente=fuente, numero_intento=1))
+        notif = Notificacion(tarea_id=tarea.id, fuente=fuente, numero_intento=1)
+        db.session.add(notif)
+        db.session.flush()
+        esperado = dest_svc.siguiente_esperado(tramite, fuente)
+        if esperado is not None:
+            _copiar_destinatario(tarea, notif, dest_svc.como_destinatario(esperado),
+                                 origen='AL_CREAR')
 
     advertencia = _advertencia_dict(res_eval)
     if justificacion:
@@ -854,23 +863,30 @@ def editar_solicitud(sol, *, observaciones: Optional[str],
 def fijar_destinatario(ta, *, entidad_id: Optional[int] = None,
                        en_nombre_de_entidad_id: Optional[int] = None,
                        direccion_id: Optional[int] = None) -> ResultadoMutacion:
-    """Rellena o refresca el destinatario de una `NOTIFICAR` (#967, ADR-051 §B):
-    copia en su fila entidad, representación, nombre, NIF y dirección.
+    """Rellena o refresca el destinatario de una `NOTIFICAR` (#967, ADR-051 §B;
+    #968, §D y §H): copia en su fila entidad, representación, nombre, NIF y
+    dirección.
 
-    - Sin `entidad_id` y con fuente `SOLICITANTE`: la regla de §K
-      (`notif_svc.destinatario_solicitante`), representante incluido.
-    - Con `entidad_id`: esa entidad, en nombre de `en_nombre_de_entidad_id` si
-      se indica, con la dirección `direccion_id` (de esa entidad) o, si no, la
-      de su rol según la fuente, o su principal.
+    Con el servicio de destinatarios (#968) solo admite a quien corresponde
+    notificar por la fuente de la tarea: así no nace una notificación que sobre.
+
+    - Sin `entidad_id`: refresca la que ya tiene, o toma el primero de su fuente
+      a quien aún falta notificar.
+    - Con `entidad_id` (y `en_nombre_de_entidad_id` si se notifica a un
+      representante): en las fuentes que se eligen en el trámite (§L) es la
+      elección del usuario, que queda en `tramites_destinatario` —salvo que el
+      trámite tenga ELABORAR, donde se elige al elaborar el escrito—; en las
+      demás tiene que ser alguien de la fuente, y su representación la decide
+      la regla de la fuente (§K), no la petición.
+    - `direccion_id`, una dirección del receptor que sustituye a la de su rol.
+    - Trámite sin fuentes (una `NOTIFICAR` forzada fuera de la secuencia del
+      catálogo): como en #967, cualquier entidad; sin ella, solo la fuente
+      `SOLICITANTE` se resuelve sola.
 
     Se puede cambiar o refrescar mientras la tarea no tenga ningún
     justificante; desde el primero queda fijo. Tras un escape sin destinatario
-    no admite rellenarlo. El destinatario elegido a mano, hasta que N5a-2
-    traiga el servicio de destinatarios.
+    no admite rellenarlo.
     """
-    from datetime import datetime, timezone
-    from app.models.entidad import Entidad
-
     if ta.tipo_tarea.codigo != 'NOTIFICAR':
         return ResultadoMutacion(ok=False, error='Solo una tarea NOTIFICAR tiene destinatario.')
     res_inv = check_invariante('MUTAR', 'TAREA', ta.id)
@@ -887,54 +903,310 @@ def fijar_destinatario(ta, *, entidad_id: Optional[int] = None,
         return ResultadoMutacion(
             ok=False, error='La notificación ya tiene un justificante: su destinatario queda fijo.')
 
-    if entidad_id is None:
-        if notif.fuente != 'SOLICITANTE':
-            return ResultadoMutacion(
-                ok=False, error='Indica la entidad destinataria: solo la notificación al '
-                                'solicitante se resuelve sola.')
-        destino = notif_svc.destinatario_solicitante(ta.tramite.fase.solicitud)
-        if destino is None:
-            return ResultadoMutacion(ok=False, error='La solicitud no tiene solicitante.')
+    tramite = ta.tramite
+    if en_nombre_de_entidad_id is not None and en_nombre_de_entidad_id == entidad_id:
+        return ResultadoMutacion(ok=False, error='Una entidad no se representa a sí misma.')
+
+    if dest_svc.fuentes_del_tramite(tramite) is None:
+        destino, error = _destino_sin_fuentes(notif, tramite, entidad_id, en_nombre_de_entidad_id)
+        if error:
+            return ResultadoMutacion(ok=False, error=error)
     else:
-        entidad = db.session.get(Entidad, entidad_id)
-        if entidad is None:
-            return ResultadoMutacion(ok=False, error=f'Entidad {entidad_id} no encontrada.')
-        en_nombre_de = None
-        if en_nombre_de_entidad_id is not None:
-            en_nombre_de = db.session.get(Entidad, en_nombre_de_entidad_id)
-            if en_nombre_de is None:
+        if entidad_id is not None and dest_svc.es_elegida_en_tramite(tramite, notif.fuente):
+            if dest_svc.tiene_elaborar(tramite):
                 return ResultadoMutacion(
-                    ok=False, error=f'Entidad representada {en_nombre_de_entidad_id} no encontrada.')
-            if en_nombre_de.id == entidad.id:
+                    ok=False, error='El destinatario de este trámite se elige al elaborar su '
+                                    'escrito, no en la notificación.')
+            titular_id = en_nombre_de_entidad_id or entidad_id
+            representante_id = entidad_id if en_nombre_de_entidad_id is not None else None
+            error = _elegir_destinatario(tramite, notif.fuente, titular_id, representante_id)
+            if error:
+                db.session.rollback()
+                return ResultadoMutacion(ok=False, error=error)
+            db.session.flush()
+
+        if entidad_id is not None:
+            titular_id = en_nombre_de_entidad_id or entidad_id
+            esperado = next((e for e in _esperados(tramite, notif.fuente)
+                             if e.titular_id == titular_id), None)
+            if esperado is None:
+                etiqueta = dest_svc.ETIQUETA_FUENTE.get(notif.fuente, notif.fuente)
                 return ResultadoMutacion(
-                    ok=False, error='Una entidad no se representa a sí misma.')
-        if direccion_id is not None:
-            direccion = db.session.get(DireccionNotificacion, direccion_id)
-            if direccion is None or direccion.entidad_id != entidad.id:
-                return ResultadoMutacion(
-                    ok=False, error='La dirección indicada no es de la entidad destinataria.')
+                    ok=False, error=f'La entidad {titular_id} no es a quien corresponde notificar '
+                                    f'como {etiqueta} en este trámite.')
         else:
-            direccion = notif_svc.direccion_de_rol(entidad.id, notif.fuente)
-        destino = notif_svc.Destinatario(entidad=entidad, en_nombre_de=en_nombre_de,
-                                         direccion=direccion)
+            esperado = (dest_svc.esperado_de(ta)
+                        or dest_svc.siguiente_esperado(tramite, notif.fuente))
+            if esperado is None:
+                estado = dest_svc.estado_del_tramite(tramite)
+                hueco = estado.huecos.get(notif.fuente) if estado else None
+                return ResultadoMutacion(
+                    ok=False, error=(f'No se sabe a quién notificar: {hueco}.' if hueco else
+                                     'No queda nadie a quien notificar por esta fuente.'))
+        destino = dest_svc.como_destinatario(esperado)
+
+    if direccion_id is not None:
+        direccion = db.session.get(DireccionNotificacion, direccion_id)
+        if direccion is None or direccion.entidad_id != destino.entidad.id:
+            db.session.rollback()
+            return ResultadoMutacion(
+                ok=False, error='La dirección indicada no es de la entidad destinataria.')
+        destino = notif_svc.Destinatario(entidad=destino.entidad,
+                                         en_nombre_de=destino.en_nombre_de, direccion=direccion)
 
     try:
-        notif_svc.copiar_destinatario(notif, destino, ahora=datetime.now(timezone.utc))
+        _copiar_destinatario(ta, notif, destino, origen='MANUAL', siempre=True)
+        db.session.commit()
+        return ResultadoMutacion(ok=True, ids=[notif.id])
+    except Exception as e:
+        db.session.rollback()
+        return ResultadoMutacion(ok=False, error=str(e))
+
+
+def _destino_sin_fuentes(notif, tramite, entidad_id, en_nombre_de_entidad_id):
+    """(Destinatario, error) de una `NOTIFICAR` en un trámite sin fuentes
+    declaradas: la vía de #967, a mano."""
+    from app.models.entidad import Entidad
+    if entidad_id is None:
+        if notif.fuente != 'SOLICITANTE':
+            return None, ('Indica la entidad destinataria: solo la notificación al '
+                          'solicitante se resuelve sola.')
+        destino = notif_svc.destinatario_solicitante(tramite.fase.solicitud)
+        if destino is None:
+            return None, 'La solicitud no tiene solicitante.'
+        return destino, None
+    entidad = db.session.get(Entidad, entidad_id)
+    if entidad is None:
+        return None, f'Entidad {entidad_id} no encontrada.'
+    en_nombre_de = None
+    if en_nombre_de_entidad_id is not None:
+        en_nombre_de = db.session.get(Entidad, en_nombre_de_entidad_id)
+        if en_nombre_de is None:
+            return None, f'Entidad representada {en_nombre_de_entidad_id} no encontrada.'
+    return notif_svc.Destinatario(entidad=entidad, en_nombre_de=en_nombre_de,
+                                  direccion=notif_svc.direccion_de_rol(entidad.id, notif.fuente)), None
+
+
+def _esperados(tramite, fuente) -> list:
+    estado = dest_svc.estado_del_tramite(tramite)
+    return [e for e in estado.esperados if e.fuente == fuente] if estado else []
+
+
+def _copiar_destinatario(ta, notif, destino, *, origen: str, siempre: bool = False) -> bool:
+    """Copia `destino` en la fila y lo deja en bitácora si cambió algo (o
+    siempre, cuando lo pide el usuario). No hace commit. Devuelve si cambió.
+
+    Al crear la tarea (`origen='AL_CREAR'`) no se anota: el acto es crearla, y
+    `crear_tarea` tampoco anota las creaciones normales."""
+    from datetime import datetime, timezone
+    campos = ('entidad_id', 'en_nombre_de_entidad_id', 'direccion_origen_id', 'dest_nombre',
+              'dest_nif', 'dest_direccion', 'dest_codigo_postal', 'dest_municipio',
+              'dest_provincia', 'dest_email', 'dest_dir3', 'dest_sir',
+              'dest_en_nombre_de_nombre', 'dest_en_nombre_de_nif')
+    antes = tuple(getattr(notif, c) for c in campos)
+    notif_svc.copiar_destinatario(notif, destino, ahora=datetime.now(timezone.utc))
+    cambio = antes != tuple(getattr(notif, c) for c in campos)
+    if origen != 'AL_CREAR' and (cambio or siempre):
         bitacora_svc.registrar(
             current_user.id, 'ALTERAR', 'notificaciones', notif.id,
             detalle={
                 'accion': notif_svc.ACCION_FIJAR_DESTINATARIO,
+                'origen': origen,
                 'entidad_id': notif.entidad_id,
                 'en_nombre_de_entidad_id': notif.en_nombre_de_entidad_id,
                 'direccion_origen_id': notif.direccion_origen_id,
                 'sujeto': build_sujeto(ta.tramite.fase.solicitud.expediente, ta.tramite),
             },
         )
+    return cambio
+
+
+# `bitacora.detalle.accion` al elegir el destinatario de un trámite (§L).
+ACCION_ELEGIR_DESTINATARIO = 'ELEGIR_DESTINATARIO'
+
+
+def _elegir_destinatario(tramite, fuente, entidad_id, representante_id) -> Optional[str]:
+    """Escribe la elección del usuario en `tramites_destinatario` (ADR-051 §L)
+    y refresca las `NOTIFICAR` del trámite que aún no tienen justificante. No
+    hace commit. Devuelve el error, o `None`."""
+    from app.models.entidad import Entidad
+    from app.models.tramites_destinatario import TramiteDestinatario
+
+    if not dest_svc.es_elegida_en_tramite(tramite, fuente):
+        return 'El destinatario de este trámite no se elige: sale de los datos del expediente.'
+    entidad = db.session.get(Entidad, entidad_id)
+    if entidad is None:
+        return f'Entidad {entidad_id} no encontrada.'
+    rol = dest_svc.ROL_ELEGIBLE.get(fuente)
+    if rol == 'publicador' and not entidad.rol_publicador:
+        return f'«{entidad.nombre_completo}» no tiene rol de publicador.'
+    if rol == 'consultado' and not entidad.rol_consultado:
+        return f'«{entidad.nombre_completo}» no tiene rol de organismo consultado.'
+    if representante_id is not None:
+        if representante_id == entidad_id:
+            return 'Una entidad no se representa a sí misma.'
+        if db.session.get(Entidad, representante_id) is None:
+            return f'Entidad representante {representante_id} no encontrada.'
+
+    fijadas = [ta for ta in tramite.tareas
+               if ta.tipo_tarea and ta.tipo_tarea.codigo == 'NOTIFICAR'
+               and ta.notificacion is not None and ta.notificacion.fuente == fuente
+               and ta.notificacion.entidad_id is not None
+               and notif_svc.tiene_justificante(ta)]
+    if any((ta.notificacion.en_nombre_de_entidad_id or ta.notificacion.entidad_id) != entidad_id
+           for ta in fijadas):
+        return ('El trámite ya notificó a otro destinatario (tiene justificante): no se puede '
+                'cambiar la elección.')
+
+    fila = tramite.destinatario_elegido
+    if fila is None:
+        fila = TramiteDestinatario(tramite_id=tramite.id, entidad_id=entidad_id,
+                                   representante_entidad_id=representante_id)
+        db.session.add(fila)
+    else:
+        fila.entidad_id = entidad_id
+        fila.representante_entidad_id = representante_id
+    db.session.flush()
+    db.session.refresh(tramite)
+    bitacora_svc.registrar(
+        current_user.id, 'ALTERAR', 'tramites', tramite.id,
+        detalle={'accion': ACCION_ELEGIR_DESTINATARIO, 'fuente': fuente,
+                 'entidad_id': entidad_id, 'representante_entidad_id': representante_id,
+                 'sujeto': build_sujeto(tramite.fase.solicitud.expediente, tramite)},
+    )
+
+    for ta in sorted(tramite.tareas, key=lambda t: t.id):
+        notif = ta.notificacion if ta.tipo_tarea and ta.tipo_tarea.codigo == 'NOTIFICAR' else None
+        if (notif is None or notif.fuente != fuente or notif_svc.tiene_justificante(ta)
+                or notif_svc.tuvo_escape_sin_destinatario(ta)):
+            continue
+        esperado = dest_svc.siguiente_esperado(tramite, fuente) or dest_svc.esperado_de(ta)
+        if esperado is not None:
+            _copiar_destinatario(ta, notif, dest_svc.como_destinatario(esperado),
+                                 origen='ELECCION_TRAMITE')
+            db.session.flush()
+    return None
+
+
+def registrar_destinatario_tramite(tramite, *, entidad_id: int,
+                                   representante_entidad_id: Optional[int] = None
+                                   ) -> ResultadoMutacion:
+    """Guarda el destinatario que el usuario elige para un trámite (ADR-051 §L):
+    desde el ELABORAR, al generar su escrito (§H), o desde su `NOTIFICAR` si no
+    hay ELABORAR (`fijar_destinatario`). Solo en trámites cuya fuente se elige
+    en el trámite. Refresca las `NOTIFICAR` del trámite sin justificante."""
+    res_inv = check_invariante('MUTAR', 'TRAMITE', tramite.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+    fuentes = dest_svc.fuentes_del_tramite(tramite) or ()
+    if len(fuentes) != 1:
+        return ResultadoMutacion(
+            ok=False, error='Este trámite no tiene un destinatario único que elegir.')
+    try:
+        error = _elegir_destinatario(tramite, fuentes[0], entidad_id, representante_entidad_id)
+        if error:
+            db.session.rollback()
+            return ResultadoMutacion(ok=False, error=error)
         db.session.commit()
-        return ResultadoMutacion(ok=True, ids=[notif.id])
+        return ResultadoMutacion(ok=True, ids=[tramite.destinatario_elegido.id])
     except Exception as e:
         db.session.rollback()
         return ResultadoMutacion(ok=False, error=str(e))
+
+
+@dataclass
+class ResultadoPoblado:
+    """Lo que hizo el botón «añadir las notificaciones que faltan» (§D)."""
+    ok: bool
+    creadas: list[int] = field(default_factory=list)
+    rellenadas: list[int] = field(default_factory=list)
+    refrescadas: list[int] = field(default_factory=list)
+    pendientes: list[str] = field(default_factory=list)
+    bloqueo: Optional[EvaluacionResult] = None
+    error: Optional[str] = None
+
+
+def anadir_notificaciones_que_faltan(tramite) -> ResultadoPoblado:
+    """El botón «añadir las notificaciones que faltan» (ADR-051 §D), el mismo
+    en todos los trámites. Idempotente por (trámite, fuente, titular):
+
+    1. Refresca la dirección de las `NOTIFICAR` con destinatario y sin
+       justificante (todavía no se ha enviado nada).
+    2. Rellena las `NOTIFICAR` con fuente y sin entidad.
+    3. Crea una `NOTIFICAR` —por `crear_tarea`, con sus guardas— para cada uno
+       a quien aún falta notificar.
+    4. Si falta elegir a alguien y se elige en la propia `NOTIFICAR` (trámite
+       sin ELABORAR), crea una vacía para elegirlo ahí; si se elige al
+       elaborar, lo dice.
+
+    No toca las que sobran: se corrige su origen y se borran a mano (§D).
+    """
+    from app.models.tipos_tareas import TipoTarea
+
+    res_inv = check_invariante('MUTAR', 'TRAMITE', tramite.id)
+    if res_inv:
+        return ResultadoPoblado(ok=False, bloqueo=res_inv)
+    if dest_svc.fuentes_del_tramite(tramite) is None:
+        return ResultadoPoblado(ok=False, error='Este trámite no notifica a nadie según el '
+                                                'catálogo de fuentes.')
+    resultado = ResultadoPoblado(ok=True)
+    try:
+        for ta in sorted(tramite.tareas, key=lambda t: t.id):
+            notif = ta.notificacion if ta.tipo_tarea and ta.tipo_tarea.codigo == 'NOTIFICAR' else None
+            if (notif is None or notif_svc.tiene_justificante(ta)
+                    or notif_svc.tuvo_escape_sin_destinatario(ta)):
+                continue
+            if notif.entidad_id is not None:
+                esperado = dest_svc.esperado_de(ta)
+                if esperado is not None and _copiar_destinatario(
+                        ta, notif, dest_svc.como_destinatario(esperado), origen='BOTON'):
+                    resultado.refrescadas.append(ta.id)
+            else:
+                esperado = dest_svc.siguiente_esperado(tramite, notif.fuente)
+                if esperado is not None:
+                    _copiar_destinatario(ta, notif, dest_svc.como_destinatario(esperado),
+                                         origen='BOTON')
+                    resultado.rellenadas.append(ta.id)
+            db.session.flush()
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return ResultadoPoblado(ok=False, error=str(e))
+
+    tipo_notificar = TipoTarea.query.filter_by(codigo='NOTIFICAR').first()
+    for _ in range(1000):   # tope defensivo: cada vuelta cubre a alguien o sale
+        estado = dest_svc.estado_del_tramite(tramite)
+        falta = next((f for f in estado.faltan if f.titular_id is not None), None)
+        if falta is None:
+            break
+        res = crear_tarea(tramite, tipo_notificar, fuente=falta.fuente)
+        if not res.ok:
+            resultado.ok = False
+            resultado.bloqueo, resultado.error = res.bloqueo, res.error
+            return resultado
+        resultado.creadas.extend(res.ids)
+        nueva = db.session.get(Tarea, res.ids[0])
+        if nueva.notificacion is None or nueva.notificacion.entidad_id is None:
+            # No debería ocurrir: crear_tarea la rellena con el primero que falta.
+            resultado.ok = False
+            resultado.error = 'La notificación creada no recibió destinatario.'
+            return resultado
+
+    estado = dest_svc.estado_del_tramite(tramite)
+    for falta in [f for f in estado.faltan if f.titular_id is None]:
+        vacia = any(ta.notificacion is not None and ta.notificacion.fuente == falta.fuente
+                    and ta.notificacion.entidad_id is None
+                    for ta in tramite.tareas if ta.tipo_tarea and ta.tipo_tarea.codigo == 'NOTIFICAR')
+        if (not vacia and dest_svc.es_elegida_en_tramite(tramite, falta.fuente)
+                and not dest_svc.tiene_elaborar(tramite)):
+            res = crear_tarea(tramite, tipo_notificar, fuente=falta.fuente)
+            if not res.ok:
+                resultado.ok = False
+                resultado.bloqueo, resultado.error = res.bloqueo, res.error
+                return resultado
+            resultado.creadas.extend(res.ids)
+    resultado.pendientes = dest_svc.motivos(tramite)
+    return resultado
 
 
 def editar_fase(fase, *, resultado_fase_id: Optional[int],
