@@ -120,7 +120,8 @@ ahí el criterio se sostiene con la revisión y esta regla.
 
 ## Tests
 
-Cómo ejecutar la suite, qué protege cada tipo de test y reglas al escribirlos:
+Cómo ejecutar la suite, qué protege cada tipo de test, cuándo escribir uno (y
+cuándo no) y reglas al escribirlos:
 [`tests/README.md`](../../tests/README.md).
 
 ### Smoke tests pytest (ADR-019 Fase 1)
