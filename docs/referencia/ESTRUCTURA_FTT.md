@@ -1,9 +1,9 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-09-27 (#964 — anuncios de INFORMACION_PUBLICA: BOE y prensa sin NOTIFICAR, BOP y tablón con su ELABORAR, como ya decía el JSON)
+> Última sincronización: 2026-09-27 (#966 — PORTAL_TRANSPARENCIA a un solo ELABORAR; antes, #964: BOE y prensa sin NOTIFICAR, BOP y tablón con su ELABORAR)
 
-**Versión:** 6.6 | **Fecha:** 2026-09-24
+**Versión:** 6.6 | **Fecha:** 2026-09-27
 
 Este documento es la versión legible por humanos del JSON estructural. El JSON es la fuente de verdad para código e IA; este MD es la referencia de consulta rápida.
 
@@ -135,7 +135,7 @@ Destinatario del NOTIFICAR: en `CONSULTA_SEPARATA`, cada organismo por su canal 
 | `ANUNCIO_PRENSA` | F+F | EP → EP | Publica el titular, avisado por `ANUNCIO_TITULAR`: sin NOTIFICAR. Doble espera: hasta que aporta `JUSTIFICANTE_PRENSA` (sin plazo) + plazo alegaciones (#964) |
 | `ANUNCIO_BOJA` | F+F | NOTIFICAR → EP → EP | Sin oficio: el anuncio se sube a SIBOJA. Doble espera: hasta `ANUNCIO_PUBLICADO` + plazo alegaciones (#368, #964) |
 | `TABLON_AYUNTAMIENTOS` | C | ELABORAR → NOTIFICAR → EP | Oficio (`OFICIO_TABLON`) por ayuntamiento; el certificado llega en EP.documento_producido |
-| `PORTAL_TRANSPARENCIA` | C | ELABORAR → NOTIFICAR → EP | Patrón C (#371, elimina PUBLICAR) |
+| `PORTAL_TRANSPARENCIA` | A (solo ELABORAR) | ELABORAR | Consume lo que se expone (anuncio, boletines publicados, tablón, proyecto, RBDA) y produce `JUSTIFICANTE_PORTAL`, la URL de la entrada. Sin NOTIFICAR ni EP: no se notifica a nadie y cada plazo lo lleva su boletín (#966) |
 | `ANUNCIO_TITULAR` | B | ELABORAR → NOTIFICAR | Notificación al titular sobre publicación IP (#369) |
 | `RECEPCION_ALEGACION` | A+C | ANALIZAR → ELABORAR → NOTIFICAR → EP | ANALIZAR clasifica al alegante. El traslado de la alegación (NOTIFICAR) se dirige al titular |
 | `ANALISIS_ALEGACIONES` | A | ANALIZAR | Resultado referenciado en plantilla de resolución |
