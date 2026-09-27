@@ -82,6 +82,13 @@
             El orden de esta lista es el orden real de ejecución. Cada paso puede exigir
             documentos de ENTRADA (que ya deben existir) y/o de SALIDA (que la tarea produce).
         </div>
+        <div class="form-text mb-2">
+            <i class="fas fa-lock me-1"></i>
+            Si la secuencia lleva NOTIFICAR, ninguna ESPERAR_PLAZO de este trámite puede
+            crearse hasta que la notificación esté hecha, y ese bloqueo no admite
+            justificación. Si no lo lleva, la espera no exige notificación previa, salvo
+            que se haya creado alguna forzando la secuencia (#964).
+        </div>
 
         <div data-pasos-list>
             {% for paso in pasos %}
