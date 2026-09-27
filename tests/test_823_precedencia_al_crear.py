@@ -7,15 +7,17 @@ Los dos checks del issue, más el contrato de la rama:
   - Punto 1: un ESPERAR_PLAZO exige que TODAS las tareas NOTIFICAR de su propio
     trámite estén completas (producido + Notificacion.resultado CORRECTA, mismo
     criterio que Tramite.finalizado). Sin ninguna NOTIFICAR instanciada también
-    bloquea: la lista vacía no vale por vacuidad.
+    bloquea si la secuencia del trámite en `tramites_tareas` la lleva: la lista
+    vacía no vale por vacuidad.
   - Punto 2: no se abre otro trámite de la cadena de subsanación con el anterior
     DE LA CADENA sin finalizar — filtrando por TRAMITES_CADENA_SUBSANACION, no por
     "el trámite anterior de la fase" (que con un COMUNICACION_INICIO_ADMISION
     intercalado no vería el requerimiento vivo).
   - Ambos son puerta cerrada: `puede_escapar=False` y `justificacion` no los abre.
 
-Verificado en catálogo antes de escribir esto: los 19 tipos de trámite con
-ESPERAR_PLAZO tienen NOTIFICAR antes, así que el punto 1 es universal.
+Hasta #964 los 19 tipos de trámite con ESPERAR_PLAZO tenían NOTIFICAR antes y
+el punto 1 se daba por universal. Desde #964, `ANUNCIO_BOE` y `ANUNCIO_PRENSA`
+son solo dos esperas: el caso «ninguna NOTIFICAR» lo decide el catálogo.
 """
 import pytest
 from flask_login import login_user
@@ -163,6 +165,34 @@ class TestCrearEsperarPlazo:
 
         assert res is not None
         assert 'falta el justificante definitivo' in res.norma_compilada
+
+    def test_sin_notificar_en_la_secuencia_no_bloquea(self, arbol_esftt):
+        """#964: `ANUNCIO_BOE` no lleva NOTIFICAR en `tramites_tareas` —lo
+        publica el titular, avisado por `ANUNCIO_TITULAR`—, así que no hay
+        notificación que esperar y la espera se abre sin ninguna."""
+        from app.services.invariantes_esftt import check_invariante
+
+        fase = arbol_esftt.fase('INFORMACION_PUBLICA')
+        tramite = arbol_esftt.tramite(fase, 'ANUNCIO_BOE')
+
+        assert check_invariante('CREAR', 'TAREA', tramite.id,
+                                tipo_codigo='ESPERAR_PLAZO') is None
+
+    def test_notificar_forzada_fuera_de_la_secuencia_se_exige(self, arbol_esftt):
+        """La lectura del catálogo solo cubre el caso «no hay ninguna»: una
+        NOTIFICAR creada en `ANUNCIO_BOE` forzando el orden se exige completa
+        como cualquier otra, y sin escape."""
+        from app.services.invariantes_esftt import check_invariante
+
+        fase = arbol_esftt.fase('INFORMACION_PUBLICA')
+        tramite = arbol_esftt.tramite(fase, 'ANUNCIO_BOE')
+        _notificar(arbol_esftt, tramite)  # sin justificante
+
+        res = check_invariante('CREAR', 'TAREA', tramite.id, tipo_codigo='ESPERAR_PLAZO')
+
+        assert res is not None
+        assert res.puede_escapar is False
+        assert 'falta el justificante de la notificación' in res.norma_compilada
 
     def test_otro_tipo_de_tarea_no_se_ve_afectado(self, arbol_esftt):
         """El check es una dependencia semántica concreta, no "respetar
