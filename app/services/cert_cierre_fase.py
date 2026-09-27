@@ -154,7 +154,8 @@ def revisar(fase) -> Informe:
     """El informe de cierre de `fase`, sin crear nada. Se puede repetir.
 
     Orden de los bloques: la fase habla de sí misma (encabezado, resultado,
-    notificación al titular, reaperturas y escapes propios) y después cada trámite.
+    notificación al solicitante, reaperturas y escapes propios) y después cada
+    trámite.
     El estado «pendiente de cerrar» de la propia fase **no** cuenta como pendiente:
     es el acto que se está haciendo (como las reglas del art. 82.1 en el de
     instrucción). Sí cuenta que falte el resultado (D3).
@@ -227,14 +228,16 @@ def _bloques_de_fase(fase, escapes: dict) -> list:
         nodo=('fase', fase.id),
     ))
 
-    # 2. La notificación al titular, por su certificado (#947). Sin escape posible.
+    # 2. La notificación al solicitante, por su certificado (#947). Sin escape
+    # posible. «Solicitante», no «titular», desde #968 (ADR-051 §E, §K): cada
+    # solicitud se contesta a su solicitante.
     cumplimiento = sellos.certificado_cumplimiento(fase)
     if cumplimiento is None:
         bloques.append(Bloque(
-            PENDIENTE, 'Notificación al titular',
+            PENDIENTE, 'Notificación al solicitante',
             pendiente=('No consta certificado el cumplimiento: emita antes el '
                        'certificado de cumplimiento de la fase, que acredita la '
-                       'notificación al titular.',),
+                       'notificación al solicitante.',),
             nodo=('fase', fase.id),
         ))
     else:
@@ -248,8 +251,8 @@ def _bloques_de_fase(fase, escapes: dict) -> list:
         momento = sellos.momento_emision(cumplimiento)
         emitido = f', emitido el {momento.strftime("%d/%m/%Y")}' if momento else ''
         bloques.append(Bloque(
-            PASA, 'Notificación al titular',
-            relato=(f'Consta la notificación al titular{detalle}, según el certificado '
+            PASA, 'Notificación al solicitante',
+            relato=(f'Consta la notificación al solicitante{detalle}, según el certificado '
                     f'de cumplimiento nº {cumplimiento.id}{emitido}.',),
             nodo=('fase', fase.id),
         ))
