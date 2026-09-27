@@ -241,9 +241,13 @@ def _hook_notificar(tarea) -> Optional[dict]:
     documento_id = (producido.id if producido is not None
                     and _tipo_codigo(producido) in notif_svc.JUSTIFICANTES_FINALES else None)
 
+    # Con representante, el justificante puede traer su NIF o el del
+    # representado: los dos son de esta notificación.
     nif_justificante = parseo.identificador_destinatario if parseo else None
-    if (nif_justificante and notif.dest_nif
-            and _normalizar_nif(nif_justificante) != _normalizar_nif(notif.dest_nif)):
+    nifs_de_la_ficha = {_normalizar_nif(n) for n in (
+        notif.dest_nif, notif.en_nombre_de.nif if notif.en_nombre_de else None) if n}
+    if (nif_justificante and nifs_de_la_ficha
+            and _normalizar_nif(nif_justificante) not in nifs_de_la_ficha):
         avisos.append(
             f'El justificante vinculado va dirigido al NIF «{nif_justificante}», distinto '
             f'del destinatario registrado («{notif.dest_nif}»). Puede haberse vinculado '
@@ -827,8 +831,11 @@ def _validar_representante(solicitante_id: int, representante_id: Optional[int]
 def editar_solicitud(sol, *, observaciones: Optional[str],
                      representante_entidad_id=_NO_TOCAR) -> ResultadoMutacion:
     """Observaciones y representante de la solicitud (#967, ADR-051 §K). El
-    representante es opcional; sin pasarlo no se toca, `None` lo quita."""
+    representante es opcional; sin pasarlo no se toca, `None` lo quita. Solo se
+    valida —y se avisa— cuando cambia: la ruta reenvía siempre el valor actual."""
     advertencia = None
+    if representante_entidad_id == sol.representante_entidad_id:
+        representante_entidad_id = _NO_TOCAR
     if representante_entidad_id is not _NO_TOCAR:
         error, advertencia = _validar_representante(sol.entidad_id, representante_entidad_id)
         if error:

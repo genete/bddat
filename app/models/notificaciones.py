@@ -66,7 +66,10 @@ class Notificacion(db.Model):
     mera existencia de la fila, que desde #967 existe siempre.
     """
     __tablename__ = 'notificaciones'
-    __table_args__ = {'schema': 'public'}
+    __table_args__ = (
+        db.Index('idx_notificaciones_entidad', 'entidad_id'),
+        {'schema': 'public'},
+    )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
@@ -130,7 +133,6 @@ class Notificacion(db.Model):
         db.Integer,
         db.ForeignKey('public.entidades.id'),
         nullable=True,
-        index=True,
         comment='A quién se envía (el representante, si lo hay). NULL = sin destinatario',
     )
     en_nombre_de_entidad_id = db.Column(
@@ -160,9 +162,12 @@ class Notificacion(db.Model):
         comment='Cuándo se copió el destinatario. Fijo desde el primer justificante',
     )
 
+    # La ficha se borra con su tarea (#967): toda NOTIFICAR la tiene, así que
+    # sin la cascada el ORM intentaría dejarla huérfana (`tarea_id` NOT NULL).
     tarea = db.relationship(
         'Tarea',
-        backref=db.backref('notificacion', uselist=False),
+        backref=db.backref('notificacion', uselist=False,
+                           cascade='all, delete-orphan', passive_deletes=True),
     )
     documento = db.relationship(
         'Documento',

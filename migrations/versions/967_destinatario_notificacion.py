@@ -49,6 +49,10 @@ def upgrade():
     """)
 
     op.execute('ALTER TABLE public.notificaciones ALTER COLUMN canal DROP NOT NULL')
+    op.execute("""
+        COMMENT ON COLUMN public.notificaciones.canal IS
+        'NOTIFICA | BANDEJA | SIR | POSTAL. NULL hasta el primer justificante (#712, #967)'
+    """)
 
     op.execute('ALTER TABLE public.notificaciones ADD COLUMN fuente VARCHAR(30)')
     op.execute("UPDATE public.notificaciones SET fuente = 'SOLICITANTE'")
@@ -123,4 +127,5 @@ def downgrade():
     # admite (ADR-034/#928: fila ⇒ justificante).
     op.execute('DELETE FROM public.notificaciones WHERE canal IS NULL')
     op.execute('ALTER TABLE public.notificaciones ALTER COLUMN canal SET NOT NULL')
+    op.execute('COMMENT ON COLUMN public.notificaciones.canal IS NULL')
     op.execute('ALTER TABLE public.solicitudes DROP COLUMN representante_entidad_id')
