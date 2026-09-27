@@ -535,7 +535,7 @@ Cobertura amplia del backend de motor, plazos, ESFTT, documentos y CBs. La UI pr
 
 | Familia | Ficheros | Propósito |
 |---|---|---|
-| Seeds | `seed_listado.py`, `seed_motor_variables.py`, `verificar_seed.py` | Datos de prueba (incluye los 11 escenarios T01-T11 del listado inteligente). `seed_demo.py` retirado en #814 — sus 10 expedientes narrativos no pasaban por el circuito real |
+| Seeds | `seed_motor_variables.py` | Datos de prueba. `seed_demo.py` retirado en #814 — sus 10 expedientes narrativos no pasaban por el circuito real. `seed_listado.py` y `verificar_seed.py` retirados en #974 — sus 11 escenarios T01-T11 del listado inteligente se escribían sin pasar por los servicios y sus estados esperados llevaban obsoletos desde #558 |
 | Fixtures dummy | `generar_documentos_dummy.py` | #814 — banco de PDFs dummy por tipo de documento (`EXTERNO` + `INTERNO` + `AMBOS`, 64) + catálogo de uso, en `tests/fixtures/documentos_dummy/` |
 | Expedientes-tipo | `expedientes_dummy/analisis_doc_dos_vueltas.py`, `expedientes_dummy/limpiar_reciclables.py` | #814 — expedientes reproducibles por el circuito real (wizard + `mutaciones_arbol` + subida multipart), catalogados en `scripts/expedientes_dummy/README.md`; qué existe en la base lo dice la marca `[DUMMY:<CODIGO>]` de `Solicitud.observaciones`, no un fichero. Los scripts de creación nunca borran: marcan `[RECICLAR]` en `Solicitud.observaciones`, y `limpiar_reciclables.py` es el borrado genérico de lo marcado (dry-run por defecto, SQL directo — el circuito real prohíbe a propósito borrar evidencia notificada, #722) |
 | SQL bootstrap | `crear_usuario_admin.sql`, `datos_roles.sql`, `data/municipios.sql` | Carga inicial fuera de Alembic |

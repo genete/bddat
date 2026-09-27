@@ -22,6 +22,19 @@ issues ni implementado: verificado en #814 que los ~31 tests que hoy tocan
 motor_reglas/plazos/assembler/requisitos/generador_escritos usan mocks o
 fabrican su propio dato por test, no el patrón declarativo de §10.
 
+**Nota (#974, 2026-09-27):** `scripts/seed_listado.py` y `scripts/verificar_seed.py`
+retirados. #967 los dejó sin poder ejecutarse —escriben el árbol sin pasar por los
+servicios y sus `NOTIFICAR` nacerían sin ficha de notificación (ADR-051 §B)—, pero
+ya estaban obsoletos antes: desde la eliminación de fechas ESFTT (`eb73fa7`) una
+fase solo está finalizada con `documento_resultado_id`, que el script nunca fijaba,
+y desde #558 los estados esperados de `verificar_seed.py` ya no eran los del núcleo
+(`PENDIENTE_ELABORAR` desapareció; un `ELABORAR` o un `ESPERAR_PLAZO` sin documentos
+es `PENDIENTE_TRAMITAR`). Fallaba en 8 de sus 12 casos. La vía mantenida para datos
+de prueba son los expedientes-tipo de `scripts/expedientes_dummy/` (#814). Las
+menciones a ambos scripts en «Lo que ya existe», §2 y §10 describen el estado de
+julio de 2026; el dict `ESPERADOS` que §10 toma como plantilla se consulta en el
+historial de git.
+
 ## Contexto
 
 El desarrollo de BDDAT necesita datos en base de datos para dos usos distintos:
