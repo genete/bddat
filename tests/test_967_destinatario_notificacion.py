@@ -398,11 +398,6 @@ def test_editar_solicitud_sin_representante_no_lo_toca(con_usuario, arbol_aislad
 # Catálogo: la lista provisional de fuentes (hasta `notificacion_fuentes`, #968)
 # ---------------------------------------------------------------------------
 
-# Trámites con NOTIFICAR que ADR-051 §C deja fuera porque su NOTIFICAR se retira
-# (`ANUNCIO_BOE` y `ANUNCIO_PRENSA` ya no la tienen desde #964).
-_SE_RETIRAN = {'PORTAL_TRANSPARENCIA'}
-
-
 def _pares_con_notificar():
     filas = db.session.execute(db.text("""
         SELECT DISTINCT tf.codigo, tt.codigo
@@ -417,9 +412,9 @@ def _pares_con_notificar():
 
 
 def test_toda_notificar_del_catalogo_tiene_fuente(app_ctx):
-    sin_fuente = {par for par in _pares_con_notificar()
-                  if par not in notif_svc.FUENTES_POR_TRAMITE and par[1] not in _SE_RETIRAN}
-    assert sin_fuente == set()
+    """Sin excepciones desde #964 y #966, que retiraron las NOTIFICAR de
+    `ANUNCIO_BOE`, `ANUNCIO_PRENSA` y `PORTAL_TRANSPARENCIA` (ADR-051 §C)."""
+    assert _pares_con_notificar() - set(notif_svc.FUENTES_POR_TRAMITE) == set()
 
 
 def test_las_fuentes_provisionales_existen_en_el_catalogo(app_ctx):

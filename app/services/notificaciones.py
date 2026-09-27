@@ -331,11 +331,11 @@ def resultados_validos(canal: str) -> tuple:
 # Fuentes de cada (tipo de fase, tipo de trámite) con NOTIFICAR — ADR-051 §C,
 # «Contenido sembrado». **Provisional**: lo sustituye la tabla
 # `notificacion_fuentes` en N5a-2. Un par que no esté aquí admite cualquier
-# fuente de `FUENTES`, que entonces hay que indicar al crear la tarea: una
-# `NOTIFICAR` forzada fuera de la secuencia del catálogo (p. ej. en `ANUNCIO_BOE`
-# o `ANUNCIO_PRENSA`, que no la tienen desde #964) y la de `PORTAL_TRANSPARENCIA`,
-# que ADR-051 retira en #966. Los dos trámites de notificación de la DUP que se
-# funden en N5a-3 (§G) llevan las fuentes que heredará su `NOTIFICACION`.
+# fuente de `FUENTES`, que entonces hay que indicar al crear la tarea: es una
+# `NOTIFICAR` forzada fuera de la secuencia del catálogo (p. ej. en `ANUNCIO_BOE`,
+# `ANUNCIO_PRENSA` o `PORTAL_TRANSPARENCIA`, que no la tienen desde #964 y #966).
+# Los dos trámites de notificación de la DUP que se funden en N5a-3 (§G) llevan
+# las fuentes que heredará su `NOTIFICACION`.
 _RESOLUCION_COMUN = ('SOLICITANTE', 'ORGANISMOS_CONSULTADOS', 'ORGANO_AMBIENTAL',
                      'INTERESADOS_RECONOCIDOS')
 FUENTES_POR_TRAMITE = {
