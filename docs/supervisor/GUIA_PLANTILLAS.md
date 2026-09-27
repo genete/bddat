@@ -35,6 +35,15 @@ Estos campos están **siempre disponibles** en cualquier plantilla, sin configur
 | `{{responsable_nombre}}` | Nombre completo del tramitador asignado |
 | `{{municipios}}` | Lista de municipios afectados |
 | `{{fecha_hoy}}` | Fecha actual en formato DD/MM/AAAA |
+| `{{destinatario_nombre}}` | A quién va el escrito (su representante, si lo tiene) |
+| `{{destinatario_nif}}` | NIF del destinatario |
+| `{{destinatario_dir.calle}}`, `.cp`, `.municipio`, `.provincia`, `.email` | Dirección y correo de aviso del destinatario |
+| `{{destinatario_en_nombre_de}}` | A quién representa el destinatario; vacío si va directo |
+
+Los campos `destinatario_*` solo se rellenan en escritos de trámites con un único
+destinatario (oficios, requerimientos, separatas, anuncios…); el de la resolución no
+lleva destinatario. Si el trámite necesita uno y nadie lo ha elegido, el escrito no se
+genera hasta elegirlo.
 
 ---
 

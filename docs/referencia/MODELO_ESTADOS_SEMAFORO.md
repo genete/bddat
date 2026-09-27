@@ -122,12 +122,21 @@ con la **barra de progreso** (§9).
 | Nodo | Situación | Estado | Color |
 |---|---|---|---|
 | Cualquiera | sin hijos (planificado) | PENDIENTE_TRAMITAR | 🔴 |
+| Trámite | todas sus tareas en FIN, pero falta alguien por notificar o sobra una notificación (#968) | PENDIENTE_TRAMITAR (propio) | 🔴 |
 | Fase finalizadora | `PDTE_CIERRE` sin `resultado_fase` (falta decidir) | PENDIENTE_ESTUDIO | 🔴 |
 | Fase finalizadora | `PDTE_CIERRE` con resultado, falta formalizar | PENDIENTE_CERRAR | 🟠 |
 | Fase intermedia | `PDTE_CIERRE` (cierra por certificado; `resultado_fase` NULL) | PENDIENTE_CERRAR | 🟠 |
 | Solicitud | todas las pistas en FIN pero aún EN_TRAMITE | PENDIENTE_CERRAR | 🟠 |
 | Cualquiera | en curso con hijos | **mayor prioridad** del subárbol (§5) |
 | Cualquiera | finalizado | FIN | 🟢 |
+
+**«¿A quién falta notificar?» (#968, ADR-051 §E).** Un trámite que notifica según el
+catálogo de fuentes (`notificacion_fuentes`) no está terminado mientras falte alguien
+a quien notificar o sobre una notificación. La `NOTIFICAR` que falta no existe y no
+puede pintarse: por eso, si todas las tareas del trámite están en FIN, el rojo lo lleva
+**el propio trámite**, como uno sin tareas — el rojo es la caja que falta. Con tareas
+en curso manda su agregado, que ya dice que hay trabajo. Solo vigila las
+notificaciones; las demás tareas que falten según `tramites_tareas` no (#980).
 
 ---
 
