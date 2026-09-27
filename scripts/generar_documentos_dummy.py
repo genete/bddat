@@ -28,7 +28,15 @@ de tipos — si el catálogo cambia, basta con reejecutar.
 
 Uso:
     python scripts/generar_documentos_dummy.py
+    python scripts/generar_documentos_dummy.py --solo-csv
+
+`--solo-csv` regenera solo catalogo_uso.csv y no toca la carpeta (#964): es lo
+que pide un cambio de tramites_tareas_documentos. El modo completo reescribe
+todos los PDF —cambian aunque su contenido no, por la fecha de creación que
+lleva el PDF— y borra también los fixtures que no genera este script, como
+doc_proyecto_reformado.pdf (#903), que hay que recuperar de git.
 """
+import argparse
 import csv
 import os
 import shutil
@@ -199,6 +207,11 @@ def _generar_pdfs(tipos, destino_dir):
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Banco de documentos dummy y catálogo de uso (#814).')
+    parser.add_argument('--solo-csv', action='store_true',
+                        help='regenera solo catalogo_uso.csv, sin borrar ni reescribir los PDF')
+    args = parser.parse_args()
+
     conn = _conectar()
     try:
         with conn.cursor() as cur:
@@ -208,10 +221,10 @@ def main():
     finally:
         conn.close()
 
-    shutil.rmtree(DESTINO_DIR, ignore_errors=True)
-    os.makedirs(DESTINO_DIR, exist_ok=True)
-
-    _generar_pdfs(tipos, DESTINO_DIR)
+    if not args.solo_csv:
+        shutil.rmtree(DESTINO_DIR, ignore_errors=True)
+        os.makedirs(DESTINO_DIR, exist_ok=True)
+        _generar_pdfs(tipos, DESTINO_DIR)
 
     ruta_csv = os.path.join(DESTINO_DIR, 'catalogo_uso.csv')
     _escribir_csv(tipos, usos_tt, usos_rl, ruta_csv)
