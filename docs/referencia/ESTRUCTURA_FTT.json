@@ -3,7 +3,7 @@
     "version": "6.6",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-09-24",
+    "fecha_actualizacion": "2026-09-27",
     "ref_diseño": [
       "docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md",
       "docs/referencia/DISEÑO_CONSULTAS_ORGANISMOS.md",
@@ -304,10 +304,10 @@
         {
           "codigo": "PORTAL_TRANSPARENCIA",
           "nombre": "Portal de Transparencia",
-          "descripcion": "Publicación en portal web institucional",
-          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
-          "patron": "C",
-          "nota": "Controlamos fecha de publicación y plazo. PUBLICAR eliminado → patrón C (#371)."
+          "descripcion": "Exposición en el portal de transparencia de los documentos de la información pública",
+          "tareas_indicativas": ["ELABORAR"],
+          "patron": "A (solo ELABORAR)",
+          "nota": "El administrativo abre en el portal una entrada que expone los documentos de la IP; BDDAT no modela la operación en el portal, solo guarda su URL. ELABORAR consume lo que se expone (ANUNCIO_IP y, según el expediente, los boletines publicados, el certificado del tablón, el proyecto, la RBDA) y produce JUSTIFICANTE_PORTAL, la URL de la entrada. Sin NOTIFICAR: no se notifica a nadie. Sin ESPERAR_PLAZO: cada plazo de IP lo lleva su boletín (#966; antes patrón C, #371)."
         },
         {
           "codigo": "ANUNCIO_TITULAR",
