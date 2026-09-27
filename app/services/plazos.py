@@ -1006,13 +1006,14 @@ def _documento_por_rol(tarea, rol: str, tipo_documento: Optional[str] = None):
 
     `tipo_documento` desempata cuando dos tareas del mismo tipo conviven en un
     trámite y el camino no las distingue — las dos esperas de un ANUNCIO_*, donde
-    la que cuenta los 30 días de exposición es la que consume el
-    ANUNCIO_PUBLICADO. Es opcional a propósito: la entrada del ESPERAR_PLAZO de
-    CONSULTA_SEPARATA está declarada polimórfica en `tramites_tareas_documentos`
-    porque el justificante depende del canal (BANDEJA / NOTIFICA / POSTAL / SIR),
-    y ahí no se puede nombrar un tipo ni hace falta — esa espera es única en su
-    trámite. Para el rol PRODUCIDO tampoco hace falta nunca: el vínculo de salida
-    es único por tarea.
+    la que cuenta los 30 días de exposición es la que consume la publicación
+    (ANUNCIO_PUBLICADO en BOP; JUSTIFICANTE_BOE / JUSTIFICANTE_PRENSA, que aporta
+    el titular, en BOE y prensa, #964). Es opcional a propósito: la entrada del
+    ESPERAR_PLAZO de CONSULTA_SEPARATA está declarada polimórfica en
+    `tramites_tareas_documentos` porque el justificante depende del canal
+    (BANDEJA / NOTIFICA / POSTAL / SIR), y ahí no se puede nombrar un tipo ni hace
+    falta — esa espera es única en su trámite. Para el rol PRODUCIDO tampoco hace
+    falta nunca: el vínculo de salida es único por tarea.
     """
     if rol == 'PRODUCIDO':
         producido = getattr(tarea, 'documento_producido', None)
