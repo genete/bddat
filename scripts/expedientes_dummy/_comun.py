@@ -286,8 +286,9 @@ def notificar(tarea_notif, doc_consumido_id, doc_justificante_id, fecha, etiquet
     """Cierra NOTIFICAR de verdad — vincula el justificante como PRODUCIDO
     y fija el resultado CORRECTA de su Notificacion (ADR-034/ADR-049).
 
-    Desde #928 el hook de `editar_tarea` (`_hook_notificar`) crea la fila al
-    vincular cualquier justificante con canal —parseable o no—, pero nunca
+    El hook de `editar_tarea` (`_hook_notificar`) registra el canal en la fila
+    —que desde #967 nace con la tarea— al vincular cualquier justificante con
+    canal —parseable o no—, pero nunca
     escribe `resultado`: lo fija el usuario (PATCH /nodo/tarea/<id>/notificar).
     Aquí se replica ese PATCH — sin él la tarea queda en
     PENDIENTE_RESULTADO_NOTIFICACION y, desde #823, el ESPERAR_PLAZO
@@ -301,20 +302,60 @@ def notificar(tarea_notif, doc_consumido_id, doc_justificante_id, fecha, etiquet
     `canal`: NOTIFICA para el titular; SIR es el canal entre administraciones,
     el que corresponde a las comunicaciones a organismos. Debe coincidir con
     el tipo del justificante: el hook deriva el canal del tipo de documento.
+
+    Desde #967 (ADR-051 §B) una NOTIFICAR sin destinatario no admite vínculos:
+    antes de vincular se fija con `fijar_destinatario_de` —lo que hará el
+    usuario a mano hasta que N5a-2 traiga el servicio de destinatarios—.
     """
     from app.models.notificaciones import Notificacion
     from app.services import mutaciones_arbol as svc
 
+    fijar_destinatario_de(tarea_notif, etiqueta)
     check(svc.editar_tarea(tarea_notif, documentos_consumidos_ids=[doc_consumido_id],
                            documento_producido_id=doc_justificante_id, notas=None),
           f'vincular producido NOTIFICAR {etiqueta}')
     notif = Notificacion.query.filter_by(tarea_id=tarea_notif.id).first()
     if notif is None or notif.canal != canal:
-        print(f"ABORTADO al notificar {etiqueta}: el hook no creó la notificación "
+        print(f"ABORTADO al notificar {etiqueta}: el hook no registró la notificación "
               f"con canal {canal} (¿tipo del justificante {doc_justificante_id}?)")
         sys.exit(1)
     notif.resultado = 'CORRECTA'
     db.session.commit()
+
+
+def fijar_destinatario_de(tarea_notif, etiqueta):
+    """Fija el destinatario de una NOTIFICAR por la vía real
+    (`mutaciones_arbol.fijar_destinatario`, #967) según su fuente:
+
+    - `SOLICITANTE`: la regla de ADR-051 §K (el representante de la solicitud
+      si lo tiene; si no, el solicitante).
+    - `ORGANISMO_DEL_TRAMITE`: el organismo ligado al trámite
+      (`tramites_organismos`), en la dirección elegida en sus consultas si la
+      hay (ADR-051 §C).
+
+    Los expedientes-tipo no tienen notificaciones de otras fuentes; si
+    apareciera una, el script aborta en vez de adivinar.
+    """
+    from app.models.tramites_organismos import TramiteOrganismo
+    from app.services import mutaciones_arbol as svc
+
+    fuente = tarea_notif.notificacion.fuente
+    if fuente == 'SOLICITANTE':
+        res = svc.fijar_destinatario(tarea_notif)
+    elif fuente == 'ORGANISMO_DEL_TRAMITE':
+        vinculo = TramiteOrganismo.query.filter_by(tramite_id=tarea_notif.tramite_id).first()
+        if vinculo is None:
+            print(f"ABORTADO al fijar el destinatario de {etiqueta}: el trámite "
+                  f"{tarea_notif.tramite_id} no tiene organismo ligado")
+            sys.exit(1)
+        oe = vinculo.organismo_expediente
+        res = svc.fijar_destinatario(tarea_notif, entidad_id=oe.organismo_id,
+                                     direccion_id=oe.direccion_notificacion_id)
+    else:
+        print(f"ABORTADO al fijar el destinatario de {etiqueta}: fuente {fuente} "
+              "sin regla en los expedientes-tipo")
+        sys.exit(1)
+    check(res, f'fijar destinatario NOTIFICAR {etiqueta}')
 
 
 # ---------------------------------------------------------------------------

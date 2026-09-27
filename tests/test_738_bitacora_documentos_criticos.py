@@ -113,7 +113,7 @@ class TestBitacoraDesvincularDocumentoCritico:
 
         db.session.add(DocumentoTarea(tarea_id=tarea.id, documento_id=doc.id, rol='PRODUCIDO'))
         db.session.add(Notificacion(
-            tarea_id=tarea.id, documento_id=doc.id, canal='NOTIFICA',
+            fuente='SOLICITANTE', tarea_id=tarea.id, documento_id=doc.id, canal='NOTIFICA',
             identificador_envio='82541676',
             resultado='CORRECTA',
         ))
@@ -210,7 +210,7 @@ class TestDocumentoEsReferenciadoNotificacion:
         doc = _documento(expediente_id, tipo_doc.id)
 
         db.session.add(Notificacion(
-            tarea_id=tarea.id, documento_id=doc.id, canal='NOTIFICA',
+            fuente='SOLICITANTE', tarea_id=tarea.id, documento_id=doc.id, canal='NOTIFICA',
             resultado='CORRECTA',
         ))
         db.session.flush()

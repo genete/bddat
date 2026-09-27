@@ -777,7 +777,7 @@ def _check_borrar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
     """
     if sujeto == 'TAREA':
         tarea = Tarea.query.get(entidad_id)
-        if tarea and tarea.notificacion:
+        if tarea and tarea.notificacion and tarea.notificacion.registrada:
             return _bloquear(
                 'No se puede eliminar una tarea con una notificación ya registrada: es la '
                 'evidencia de un acto comunicado y no puede perderse.'

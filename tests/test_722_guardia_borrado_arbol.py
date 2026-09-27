@@ -92,7 +92,7 @@ class TestBorrarTarea:
         from app import db
 
         _, _, _, tarea = _fase_con_tramite_y_tarea('REQUERIMIENTO_SUBSANACION', 'NOTIFICAR')
-        db.session.add(Notificacion(tarea_id=tarea.id, canal='NOTIFICA'))
+        db.session.add(Notificacion(fuente='SOLICITANTE', tarea_id=tarea.id, canal='NOTIFICA'))
         db.session.flush()
 
         res = svc.borrar_tarea(tarea)

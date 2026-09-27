@@ -276,7 +276,7 @@ class TestReabrirFase:
                              tipo_tarea_id=_tipo(TipoTarea, 'NOTIFICAR').id)
         db.session.add(tarea_notif)
         db.session.flush()
-        db.session.add(Notificacion(tarea_id=tarea_notif.id, canal='NOTIFICA'))
+        db.session.add(Notificacion(fuente='SOLICITANTE', tarea_id=tarea_notif.id, canal='NOTIFICA'))
         db.session.flush()
 
         _cerrar_fase(fase_fin)

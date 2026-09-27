@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **N5 diseñado** y ADR-051 enmendado (2026-09-27): toda `NOTIFICAR` guarda su destinatario —el solicitante o su representante, guardado por solicitud—, que siempre fija el usuario; un trámite no termina mientras falte o sobre alguien. Partido en **#967**, **#968** y **#969**. De paso, **#966** (portal de transparencia a un solo ELABORAR). Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#967 (N5a-1)** (2026-09-27): toda `NOTIFICAR` nace con su ficha y su fuente, y sin destinatario no admite documentos, salvo escape justificado e irreversible; la solicitud guarda su representante (ADR-051 §B, §K). Solo servidor: hasta #929 no hay pantalla para fijar el destinatario ni el representante, así que en el navegador una `NOTIFICAR` solo avanza forzando el escape. `seed_listado.py` queda en desuso. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **#967 (N5a-1)**: destinatario en la ficha de notificación, desde que nace la tarea, y sin destinatario no avanza. Antes de #968 tienen que estar cerrados #964 y #966.
+**Próximo:** **#964** y **#966**: retirar las `NOTIFICAR` que el procedimiento no tiene (`ANUNCIO_BOE`, `ANUNCIO_PRENSA`; `PORTAL_TRANSPARENCIA` a un solo ELABORAR). Son requisito de #968 (N5a-2).
 
 ---
 

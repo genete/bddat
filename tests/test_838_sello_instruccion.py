@@ -217,8 +217,7 @@ class TestSelloAlReabrir:
         fase_fin = arbol_esftt.fase('RESOLUCION', solicitud=sol)
         tramite = arbol_esftt.tramite(fase_fin, 'ELABORACION')
         tarea = arbol_esftt.tarea(tramite, 'NOTIFICAR')
-        db.session.add(Notificacion(tarea_id=tarea.id, canal='NOTIFICA'))
-        db.session.flush()
+        arbol_esftt.notificacion(tarea)
         _cerrar(arbol_esftt, fase_fin)
         assert sol.estado.startswith('RESUELTA')
 

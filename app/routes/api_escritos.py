@@ -189,6 +189,12 @@ def _preparar_generacion(data):
     if not tarea or not expediente:
         raise _ErrorGenerar('Tarea no encontrada', 404)
 
+    # Una NOTIFICAR no produce escritos: su producido es el justificante final,
+    # y vincular aquí se saltaría el bloqueo sin destinatario y el hook de
+    # NOTIFICAR, que solo pasan por `editar_tarea` (#967, ADR-051 §B).
+    if tarea.tipo_tarea and tarea.tipo_tarea.codigo == 'NOTIFICAR':
+        raise _ErrorGenerar('Los escritos se generan en la tarea ELABORAR, no en NOTIFICAR', 422)
+
     if not puede_editar_expediente(expediente):
         raise _ErrorGenerar('Sin permisos de edición sobre este expediente', 403)
 

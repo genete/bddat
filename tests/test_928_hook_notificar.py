@@ -2,9 +2,10 @@
 Tests #928 (N1, 928c) — el acto de notificar sin fechas en la fila: hook de
 `editar_tarea`, RECHAZADA y sede en el resto del sistema.
 
-  - Hook (§6): crea la fila con cualquiera de los seis justificantes con canal,
-    siempre con `resultado = NULL` (D2); SEDE y ANUNCIO_PUBLICADO no la crean;
-    desvincular el último justificante la borra si no hay resultado y la
+  - Hook (§6): cualquiera de los seis justificantes con canal registra la
+    notificación en la fila —que desde #967 nace con la tarea—, siempre con
+    `resultado = NULL` (D2); SEDE y ANUNCIO_PUBLICADO no la registran;
+    desvincular el último justificante la vacía si no hay resultado y la
     conserva si lo hay (D16); avisa —y deja bitácora— del rol incoherente con el
     tipo y de canales distintos (D17).
   - RECHAZADA y sede (§7): `Tramite.finalizado`, `_check_crear_esperar_plazo`.
@@ -70,11 +71,13 @@ def _guardar(tarea, consumidos=(), producido=None):
 
 
 def _fila(tarea):
-    return Notificacion.query.filter_by(tarea_id=tarea.id).first()
+    """La fila de la tarea. Desde #967 existe siempre (nace con la NOTIFICAR):
+    el hook ya no la crea ni la borra, fija o vacía su canal."""
+    return Notificacion.query.filter_by(tarea_id=tarea.id).one()
 
 
 # ---------------------------------------------------------------------------
-# Hook: creación de la fila
+# Hook: el primer justificante con canal registra la notificación
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize('codigo,rol,canal', [
@@ -85,10 +88,11 @@ def _fila(tarea):
     ('JUSTIFICANTE_BANDEJA', 'PRODUCIDO', 'BANDEJA'),
     ('JUSTIFICANTE_SIR', 'PRODUCIDO', 'SIR'),
 ])
-def test_hook_crea_fila_sin_resultado_con_cada_tipo_con_canal(
+def test_hook_registra_sin_resultado_con_cada_tipo_con_canal(
         con_usuario, arbol_aislado, fs_tmp, codigo, rol, canal):
     tarea = _tarea_notificar(arbol_aislado)
     doc = _doc(tarea, codigo, fs_tmp)
+    assert not _fila(tarea).registrada
 
     res = _guardar(tarea, consumidos=[doc] if rol == 'CONSUMIDO' else [],
                    producido=doc if rol == 'PRODUCIDO' else None)
@@ -96,7 +100,7 @@ def test_hook_crea_fila_sin_resultado_con_cada_tipo_con_canal(
     assert res.ok is True, res.error
     assert res.advertencia is None
     notif = _fila(tarea)
-    assert notif is not None
+    assert notif.registrada
     assert notif.canal == canal
     assert notif.resultado is None
     assert notif.numero_intento == 1
@@ -108,8 +112,9 @@ def test_hook_crea_fila_sin_resultado_con_cada_tipo_con_canal(
     ('JUSTIFICANTE_SEDE', 'CONSUMIDO'),
     ('ANUNCIO_PUBLICADO', 'PRODUCIDO'),
 ])
-def test_hook_sede_y_anuncio_no_crean_fila(con_usuario, arbol_aislado, fs_tmp, codigo, rol):
-    """La sede no es una notificación; el edicto es de #568 (D15)."""
+def test_hook_sede_y_anuncio_no_registran(con_usuario, arbol_aislado, fs_tmp, codigo, rol):
+    """La sede no es una notificación; el edicto es de #568 (D15): ninguno fija
+    el canal de la fila."""
     tarea = _tarea_notificar(arbol_aislado)
     doc = _doc(tarea, codigo, fs_tmp)
 
@@ -117,7 +122,8 @@ def test_hook_sede_y_anuncio_no_crean_fila(con_usuario, arbol_aislado, fs_tmp, c
                    producido=doc if rol == 'PRODUCIDO' else None)
 
     assert res.ok is True, res.error
-    assert _fila(tarea) is None
+    assert _fila(tarea).canal is None
+    assert not _fila(tarea).registrada
 
 
 def test_hook_previo_y_final_mismo_canal_una_sola_fila(con_usuario, arbol_aislado, fs_tmp):
@@ -140,17 +146,23 @@ def test_hook_previo_y_final_mismo_canal_una_sola_fila(con_usuario, arbol_aislad
 # Hook: desvincular (D16)
 # ---------------------------------------------------------------------------
 
-def test_desvincular_ultimo_justificante_sin_resultado_borra_la_fila(
+def test_desvincular_ultimo_justificante_sin_resultado_vacia_la_fila(
         con_usuario, arbol_aislado, fs_tmp):
+    """D16, desde #967: la fila no se borra —nace y muere con la tarea—, pero
+    vuelve a estar como sin justificante: sin canal, documento ni remesa."""
     tarea = _tarea_notificar(arbol_aislado)
     doc = _doc(tarea, 'JUSTIFICANTE_POSTAL_1ER', fs_tmp)
     assert _guardar(tarea, consumidos=[doc]).ok
-    assert _fila(tarea) is not None
+    assert _fila(tarea).registrada
 
     res = _guardar(tarea)
 
     assert res.ok is True, res.error
-    assert _fila(tarea) is None
+    notif = _fila(tarea)
+    assert not notif.registrada
+    assert (notif.canal, notif.documento_id, notif.identificador_envio,
+            notif.numero_intento) == (None, None, None, 1)
+    assert notif.fuente == 'SOLICITANTE'           # la fuente no cambia nunca
 
 
 def test_desvincular_ultimo_justificante_con_resultado_conserva_la_fila(
@@ -165,8 +177,9 @@ def test_desvincular_ultimo_justificante_con_resultado_conserva_la_fila(
     res = _guardar(tarea)
 
     assert res.ok is True, res.error
-    assert _fila(tarea) is not None
+    assert _fila(tarea).registrada
     assert _fila(tarea).resultado == 'INCORRECTA'
+    assert _fila(tarea).canal == 'POSTAL'
 
 
 def test_desvincular_uno_de_dos_justificantes_conserva_la_fila(con_usuario, arbol_aislado, fs_tmp):
@@ -179,7 +192,7 @@ def test_desvincular_uno_de_dos_justificantes_conserva_la_fila(con_usuario, arbo
 
     assert res.ok is True, res.error
     notif = _fila(tarea)
-    assert notif is not None
+    assert notif.registrada
     assert notif.documento_id is None  # sigue al producido, que ya no hay
 
 

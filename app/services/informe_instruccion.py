@@ -679,6 +679,9 @@ _FIN_DEL_ESCAPE = {
     ('BORRAR', None):       'borrar {sobre}',
     ('ALTERAR', None):      'modificar {sobre}',
     ('ALTERAR', 'REABRIR'): 'reabrir {sobre}, que estaba cerrada',
+    # `notificaciones.ACCION_SIN_DESTINATARIO` (#967, ADR-051 §B)
+    ('ALTERAR', 'NOTIFICAR_SIN_DESTINATARIO'):
+        'vincular documentos a {sobre} sin haber fijado su destinatario',
 }
 
 

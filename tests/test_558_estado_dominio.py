@@ -23,7 +23,8 @@ def _doc(tipo_codigo=None):
 
 def _notif(resultado, numero_intento=1, canal='NOTIFICA', sede_justificacion=None):
     return SimpleNamespace(resultado=resultado, numero_intento=numero_intento, canal=canal,
-                           sede_justificacion=sede_justificacion)
+                           sede_justificacion=sede_justificacion,
+                           registrada=canal is not None or resultado is not None)
 
 
 def _tarea(codigo, *, consumidos=(), producido=None, notificacion=None):

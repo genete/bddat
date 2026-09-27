@@ -1,7 +1,7 @@
 # Modelo de estados-semáforo y decoradores del nodo ESFTT
 
 **Estado:** Vigente
-**Fecha:** 2026-05-30 (actualizado 2026-07-23 — nuevo estado `PENDIENTE_RESULTADO_NOTIFICACION`, ADR-034/#657/#658; 2026-09-23 — `RECHAZADA`, justificantes previos y nuevo estado `PENDIENTE_SEDE`, ADR-049/#928)
+**Fecha:** 2026-05-30 (actualizado 2026-07-23 — nuevo estado `PENDIENTE_RESULTADO_NOTIFICACION`, ADR-034/#657/#658; 2026-09-23 — `RECHAZADA`, justificantes previos y nuevo estado `PENDIENTE_SEDE`, ADR-049/#928; 2026-09-27 — la fila de `Notificacion` nace con la tarea, ADR-051/#967)
 **Relacionado:** #500 (vista de árbol), #558 (núcleo unificado), ADR-016, ADR-034, ADR-049,
 `app/services/estado_dominio.py` (núcleo), `app/services/seguimiento.py`,
 mockup `docs/mockups/Mockup_Nodo_Arbol.html`.
@@ -76,16 +76,18 @@ firma lo hace el usuario; se automatizará con scheduler + Playwright (futuro).
 ### NOTIFICAR  *(absorbe el azul de la antigua PUBLICAR)*
 Usa el modelo `Notificacion` (`resultado` CORRECTA|RECHAZADA|INCORRECTA|NULL, `numero_intento`
 1|2, este último solo en POSTAL), anclado a `tarea_id` (ADR-034, #657/#658 — corrige ADR-008).
-Desde ADR-049 (#928) la fila nace al vincular el primer justificante con canal —previo o final—
-y el resultado lo fija el usuario. "Documento que notificar" son los consumidos que **no** son
+Desde ADR-051 (#967) la fila nace con la tarea, con su fuente y, antes de vincular nada, su
+destinatario; el primer justificante con canal —previo o final— fija el canal (ADR-049, #928) y
+el resultado lo fija el usuario. Sin destinatario la tarea no admite documentos, así que se
+queda en PENDIENTE_TRAMITAR. "Documento que notificar" son los consumidos que **no** son
 un justificante previo (`documentos_a_notificar`: la puesta a disposición en Notifica, el 1.er
 intento postal y la sede también se vinculan como consumidos, pero no cuentan).
 `RECHAZADA` da la notificación por efectuada igual que `CORRECTA` (art. 41.5).
 | Situación | Estado | Color |
 |---|---|---|
 | sin documento que notificar | PENDIENTE_TRAMITAR | 🔴 |
-| documento presente, sin fila `Notificacion` (falta el justificante) | PENDIENTE_NOTIFICAR | 🔵 |
-| fila con `resultado IS NULL`, o CORRECTA/RECHAZADA sin el justificante final producido | PENDIENTE_RESULTADO_NOTIFICACION | 🔵 |
+| documento presente, fila sin canal (falta el justificante) | PENDIENTE_NOTIFICAR | 🔵 |
+| fila con canal y `resultado IS NULL`, o CORRECTA/RECHAZADA sin el justificante final producido | PENDIENTE_RESULTADO_NOTIFICACION | 🔵 |
 | CORRECTA/RECHAZADA con producido, POSTAL sin `JUSTIFICANTE_SEDE` ni `sede_justificacion` (art. 42.1) | PENDIENTE_SEDE | 🟠 |
 | CORRECTA/RECHAZADA con producido y sede puesta, justificada o no aplicable | FIN | 🟢 |
 | INCORRECTA, `numero_intento = 1` (no practicada: repetirla) | NOTIFICACION_FALLIDA | 🟠 |

@@ -71,11 +71,12 @@ def _url(expediente_id, tarea_id, sufijo=''):
 def _notif(app, tarea_id):
     from app.models.notificaciones import Notificacion
     with app.app_context():
-        n = Notificacion.query.filter_by(tarea_id=tarea_id).first()
-        return None if n is None else {
-            c: getattr(n, c) for c in ('id', 'canal', 'resultado', 'numero_intento',
-                                       'observaciones', 'sede_justificacion', 'documento_id')
-        }
+        # Desde #967 la fila nace con la tarea: lo que cuenta es si está
+        # `registrada` (hay justificante con canal o resultado).
+        n = Notificacion.query.filter_by(tarea_id=tarea_id).one()
+        return {c: getattr(n, c) for c in ('id', 'canal', 'resultado', 'numero_intento',
+                                           'observaciones', 'sede_justificacion',
+                                           'documento_id', 'registrada')}
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +96,9 @@ def test_get_payload_nuevo(usuario_supervisor, expediente_seed, montar):
     assert len(d['notificaciones']) == 1
     fila = d['notificaciones'][0]
     assert fila['canal'] == 'POSTAL' and fila['resultado'] == 'CORRECTA'
-    assert fila['destinatario'] is None                     # hueco N5
+    assert fila['fuente'] == 'SOLICITANTE'                  # #967
+    assert fila['destinatario']['entidad_id'] is not None   # lo pone el builder
+    assert d['destinatario']['fijado'] is True and d['destinatario']['editable'] is False
     assert 'fecha_puesta_disposicion' not in fila and 'fecha_resultado' not in fila
     assert d['documento_producido']['id'] == docs['JUSTIFICANTE_POSTAL']
     assert [p['id'] for p in d['justificantes_previos']] == [docs['JUSTIFICANTE_POSTAL_1ER']]
@@ -133,7 +136,11 @@ def test_get_sin_fila(usuario_supervisor, expediente_seed, montar):
 
     d = usuario_supervisor.get(_url(expediente_seed, tarea_id)).get_json()
 
-    assert d['notificaciones'] == []
+    # Desde #967 la fila existe desde que nace la tarea, sin canal ni resultado.
+    assert len(d['notificaciones']) == 1
+    assert d['notificaciones'][0]['canal'] is None
+    assert d['notificaciones'][0]['resultado'] is None
+    assert d['resultados_validos'] == []
     assert d['fechas'] == {'cumplimiento': None, 'efectos': None}
     assert d['sede'] == {'aplica': False, 'estado': None}
     assert d['estado'] == 'PENDIENTE_NOTIFICAR'
@@ -167,7 +174,7 @@ def test_patch_documento_previo_como_producido_422(usuario_supervisor, expedient
 
     assert r.status_code == 422
     assert 'consumido' in r.get_json()['error']
-    assert _notif(app, tarea_id) is None
+    assert _notif(app, tarea_id)['registrada'] is False
 
 
 def test_patch_rechazada_en_bandeja_422(usuario_supervisor, expediente_seed, montar):
@@ -304,7 +311,7 @@ def test_patch_422_no_deja_la_vinculacion_a_medias(usuario_supervisor, expedient
     assert r.status_code == 422
     d = usuario_supervisor.get(_url(expediente_seed, tarea_id)).get_json()
     assert d['documento_producido'] is None
-    assert d['notificaciones'] == []
+    assert d['notificaciones'][0]['canal'] is None          # sin registrar (#967)
 
 
 # ---------------------------------------------------------------------------
@@ -327,7 +334,7 @@ def test_parsear_documento_resultado_sugerido(usuario_supervisor, expediente_see
 
     assert r.status_code == 200, r.get_data(as_text=True)
     assert r.get_json()['resultado_sugerido'] == sugerido
-    assert _notif(app, tarea_id) is None
+    assert _notif(app, tarea_id)['registrada'] is False     # no escribe nada
 
 
 def test_parsear_documento_rechaza_tipo_ajeno(usuario_supervisor, expediente_seed, montar):

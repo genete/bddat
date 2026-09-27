@@ -171,31 +171,38 @@ def _avisos_rol_incoherente(tarea) -> list[str]:
 
 def _hook_notificar(tarea) -> Optional[dict]:
     """Hook de NOTIFICAR (#657/#658/#712; rehecho en #928, ADR-049 §B y §6 del
-    issue). Se llama en cada `editar_tarea` de una NOTIFICAR, con la tarea ya
-    con sus vínculos resueltos: los consumidos (justificantes previos) importan
-    tanto como el producido.
+    issue; desde #967 ya no crea ni borra la fila, ADR-051 §B). Se llama en
+    cada `editar_tarea` de una NOTIFICAR, con la tarea ya con sus vínculos
+    resueltos: los consumidos (justificantes previos) importan tanto como el
+    producido. La fila existe siempre: nace con la tarea (`crear_tarea`).
 
     - Docs con canal = vínculos cuyo tipo está en `MAPA_CANAL_POR_TIPO_DOC`.
       Canal: el del PRODUCIDO si lo tiene; si no, el de los previos.
-    - Sin fila y con algún doc con canal → la crea con ese canal, para
-      cualquier canal (no solo el parseable), `documento_id` = el PRODUCIDO si
-      es un justificante final, e `identificador_envio` del parseo si lo hay.
-    - Con fila → cotejo de canal y de remesa (#658/#712); `documento_id`
+    - Fila sin canal y algún doc con canal → fija el canal, para cualquier
+      canal (no solo el parseable), `documento_id` = el PRODUCIDO si es un
+      justificante final, e `identificador_envio` del parseo si lo hay.
+    - Fila con canal → cotejo de canal y de remesa (#658/#712); `documento_id`
       sigue al PRODUCIDO.
-    - Sin ningún doc con canal y `resultado IS NULL` → borra la fila (D16):
-      sin justificante y sin resultado no hay constancia de nada. Con
-      resultado se conserva (constancia de un acto comunicado).
+    - En los dos casos, cotejo del NIF del justificante de Notifica con el del
+      destinatario copiado (#967, ADR-051 §B).
+    - Sin ningún doc con canal y `resultado IS NULL` → vacía lo que puso el
+      primer justificante (D16; hasta #967 borraba la fila): sin justificante y
+      sin resultado no hay constancia de nada. Con resultado se conserva.
     - **Nunca escribe `resultado`** (D2): lo fija el usuario con el PATCH; el
       parser solo lo propone (`parsear_documento`). Ni fechas: no existen.
 
-    Avisos no bloqueantes (canal incoherente, remesa distinta, rol incoherente
-    con el tipo): se devuelven al cliente y quedan en bitácora (D17).
+    Avisos no bloqueantes (canal incoherente, remesa o NIF distintos, rol
+    incoherente con el tipo): se devuelven al cliente y quedan en bitácora (D17).
     """
     if tarea.tipo_tarea.codigo != 'NOTIFICAR':
         return None
 
     avisos = _avisos_rol_incoherente(tarea)
     notif = Notificacion.query.filter_by(tarea_id=tarea.id).first()
+    if notif is None:
+        # No debería pasar desde #967: toda NOTIFICAR nace con su fila. Una
+        # tarea anterior sin recrear no se repara aquí — el hook ya no crea filas.
+        return _cerrar_avisos_notificar(tarea, avisos)
 
     con_canal = [
         (v.documento, MAPA_CANAL_POR_TIPO_DOC[_tipo_codigo(v.documento)])
@@ -204,8 +211,12 @@ def _hook_notificar(tarea) -> Optional[dict]:
     ]
 
     if not con_canal:
-        if notif is not None and notif.resultado is None:
-            db.session.delete(notif)
+        if notif.resultado is None:
+            notif.canal = None
+            notif.documento_id = None
+            notif.identificador_envio = None
+            notif.numero_intento = 1
+            notif.sede_justificacion = None
         return _cerrar_avisos_notificar(tarea, avisos)
 
     producido = tarea.documento_producido
@@ -230,11 +241,24 @@ def _hook_notificar(tarea) -> Optional[dict]:
     documento_id = (producido.id if producido is not None
                     and _tipo_codigo(producido) in notif_svc.JUSTIFICANTES_FINALES else None)
 
-    if notif is None:
-        db.session.add(Notificacion(
-            tarea=tarea, canal=canal, documento_id=documento_id,
-            identificador_envio=remesa, numero_intento=1,
-        ))
+    # Con representante, el justificante puede traer su NIF o el del
+    # representado: los dos son de esta notificación.
+    nif_justificante = parseo.identificador_destinatario if parseo else None
+    nifs_de_la_ficha = {_normalizar_nif(n) for n in (
+        notif.dest_nif, notif.en_nombre_de.nif if notif.en_nombre_de else None) if n}
+    if (nif_justificante and nifs_de_la_ficha
+            and _normalizar_nif(nif_justificante) not in nifs_de_la_ficha):
+        avisos.append(
+            f'El justificante vinculado va dirigido al NIF «{nif_justificante}», distinto '
+            f'del destinatario registrado («{notif.dest_nif}»). Puede haberse vinculado '
+            'el justificante de otro destinatario.'
+        )
+
+    if notif.canal is None:
+        notif.canal = canal
+        notif.documento_id = documento_id
+        notif.identificador_envio = remesa
+        notif.numero_intento = 1
         return _cerrar_avisos_notificar(tarea, avisos)
 
     # #712: el documento vinculado manda sobre el canal anotado — el canal se
@@ -258,6 +282,24 @@ def _hook_notificar(tarea) -> Optional[dict]:
     notif.documento_id = documento_id
     notif.identificador_envio = notif.identificador_envio or remesa
     return _cerrar_avisos_notificar(tarea, avisos)
+
+
+def _bloqueo_sin_destinatario() -> EvaluacionResult:
+    """Bloqueo forzable de una `NOTIFICAR` sin destinatario (ADR-051 §B). Mismo
+    convenio que los invariantes: el mensaje va en `norma_compilada`."""
+    return EvaluacionResult(
+        permitido=False, nivel='BLOQUEAR', variables_trigger={},
+        norma_compilada=(
+            'Esta notificación no tiene destinatario: fija antes a quién se notifica. '
+            'Si se fuerza con justificación, la notificación quedará sin destinatario '
+            'para siempre.'
+        ),
+        url_norma='', puede_escapar=True,
+    )
+
+
+def _normalizar_nif(nif: str) -> str:
+    return ''.join(c for c in nif.upper() if c.isalnum())
 
 
 def _cerrar_avisos_notificar(tarea, avisos: list[str]) -> Optional[dict]:
@@ -425,6 +467,7 @@ def _validar_ancla_solicitud(documento_id: Optional[int], expediente_id: int) ->
 
 def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
                     *, documento_solicitud_id: Optional[int] = None,
+                    representante_entidad_id: Optional[int] = None,
                     justificacion: Optional[str] = None) -> ResultadoMutacion:
     """Crea una o varias solicitudes (multi-tipo). Valida motor para todos antes de persistir.
 
@@ -452,6 +495,12 @@ def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
     if error_ancla:
         return ResultadoMutacion(ok=False, error=error_ancla)
 
+    # Representante de la solicitud (#967, ADR-051 §K): error si no vale, aviso
+    # si no figura como autorizado. El aviso del motor, si lo hay, manda.
+    error_rep, aviso_rep = _validar_representante(entidad_id, representante_entidad_id)
+    if error_rep:
+        return ResultadoMutacion(ok=False, error=error_rep)
+
     # Fase 1: evaluar motor para todos los tipos; si alguno bloquea, rechazar todo.
     # Se conserva la evaluación de cada tipo (evaluaciones) para poder auditar y
     # devolver la advertencia en Fase 2 sin re-evaluar contra el objeto ya persistido.
@@ -473,7 +522,8 @@ def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
         for tipo in tipos:
             sol = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
                             tipo_solicitud_id=tipo.id,
-                            documento_solicitud_id=documento_solicitud_id)
+                            documento_solicitud_id=documento_solicitud_id,
+                            representante_entidad_id=representante_entidad_id)
             db.session.add(sol)
             db.session.flush()
             res_eval = evaluaciones.get(tipo.id)
@@ -493,7 +543,8 @@ def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
         db.session.rollback()
         return ResultadoMutacion(ok=False, error=str(e))
 
-    return ResultadoMutacion(ok=True, ids=[s.id for s in creadas], advertencia=advertencia)
+    return ResultadoMutacion(ok=True, ids=[s.id for s in creadas],
+                             advertencia=advertencia or aviso_rep)
 
 
 def crear_fase(solicitud, tipo_fase, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
@@ -608,10 +659,23 @@ def crear_tramite(fase, tipo_tramite, *, justificacion: Optional[str] = None) ->
     return ResultadoMutacion(ok=True, ids=[tramite.id], advertencia=_advertencia_dict(res_eval))
 
 
-def crear_tarea(tramite, tipo_tarea, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
+def crear_tarea(tramite, tipo_tarea, *, justificacion: Optional[str] = None,
+                fuente: Optional[str] = None) -> ResultadoMutacion:
+    """Crea una tarea del trámite.
+
+    Una `NOTIFICAR` nace con su fila de `notificaciones` y su `fuente` (#967,
+    ADR-051 §B): si el trámite tiene una sola fuente la toma; si tiene varias,
+    o no están declaradas, hay que indicarla. `fuente` se ignora en los demás
+    tipos. Es el único camino de creación de tareas de la aplicación.
+    """
     res_inv = check_invariante('MUTAR', 'TRAMITE', tramite.id)
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    if tipo_tarea.codigo == 'NOTIFICAR':
+        fuente, error_fuente = notif_svc.resolver_fuente(tramite, fuente)
+        if error_fuente:
+            return ResultadoMutacion(ok=False, error=error_fuente)
 
     # Precedencia al crear (#823): el ESPERAR_PLAZO exige el NOTIFICAR del propio
     # trámite completo. Va antes de `check_orden_tarea` a propósito — aquel es el
@@ -638,6 +702,8 @@ def crear_tarea(tramite, tipo_tarea, *, justificacion: Optional[str] = None) -> 
     tarea = Tarea(tramite_id=tramite.id, tipo_tarea_id=tipo_tarea.id)
     db.session.add(tarea)
     db.session.flush()
+    if tipo_tarea.codigo == 'NOTIFICAR':
+        db.session.add(Notificacion(tarea_id=tarea.id, fuente=fuente, numero_intento=1))
 
     advertencia = _advertencia_dict(res_eval)
     if justificacion:
@@ -735,11 +801,137 @@ def crear_organismo(fase, entidad, *, via: str, documento_id: Optional[int] = No
 # EDITAR
 # ===========================================================================
 
-def editar_solicitud(sol, *, observaciones: Optional[str]) -> ResultadoMutacion:
+_NO_TOCAR = object()
+
+
+def _validar_representante(solicitante_id: int, representante_id: Optional[int]
+                           ) -> tuple[Optional[str], Optional[dict]]:
+    """(error, advertencia) del representante de una solicitud (ADR-051 §K).
+    Error si la entidad no existe o es el propio solicitante; aviso —sin
+    impedirlo— si no figura como autorizada del solicitante en
+    `autorizados_titular`."""
+    if representante_id is None:
+        return None, None
+    from app.models.entidad import Entidad
+    from app.models.autorizados_titular import AutorizadoTitular
+    if db.session.get(Entidad, representante_id) is None:
+        return f'Entidad representante {representante_id} no encontrada.', None
+    if representante_id == solicitante_id:
+        return 'El representante no puede ser el propio solicitante.', None
+    autorizado = AutorizadoTitular.query.filter_by(
+        titular_entidad_id=solicitante_id, autorizado_entidad_id=representante_id,
+        activo=True,
+    ).first()
+    if autorizado is None:
+        return None, {'motivo': 'El representante no figura como autorizado del solicitante. '
+                                'Se guarda igualmente: compruebe la representación.'}
+    return None, None
+
+
+def editar_solicitud(sol, *, observaciones: Optional[str],
+                     representante_entidad_id=_NO_TOCAR) -> ResultadoMutacion:
+    """Observaciones y representante de la solicitud (#967, ADR-051 §K). El
+    representante es opcional; sin pasarlo no se toca, `None` lo quita. Solo se
+    valida —y se avisa— cuando cambia: la ruta reenvía siempre el valor actual."""
+    advertencia = None
+    if representante_entidad_id == sol.representante_entidad_id:
+        representante_entidad_id = _NO_TOCAR
+    if representante_entidad_id is not _NO_TOCAR:
+        error, advertencia = _validar_representante(sol.entidad_id, representante_entidad_id)
+        if error:
+            return ResultadoMutacion(ok=False, error=error)
     try:
         sol.observaciones = observaciones or None
+        if representante_entidad_id is not _NO_TOCAR:
+            sol.representante_entidad_id = representante_entidad_id
         db.session.commit()
-        return ResultadoMutacion(ok=True)
+        return ResultadoMutacion(ok=True, advertencia=advertencia)
+    except Exception as e:
+        db.session.rollback()
+        return ResultadoMutacion(ok=False, error=str(e))
+
+
+def fijar_destinatario(ta, *, entidad_id: Optional[int] = None,
+                       en_nombre_de_entidad_id: Optional[int] = None,
+                       direccion_id: Optional[int] = None) -> ResultadoMutacion:
+    """Rellena o refresca el destinatario de una `NOTIFICAR` (#967, ADR-051 §B):
+    copia en su fila entidad, representación, nombre, NIF y dirección.
+
+    - Sin `entidad_id` y con fuente `SOLICITANTE`: la regla de §K
+      (`notif_svc.destinatario_solicitante`), representante incluido.
+    - Con `entidad_id`: esa entidad, en nombre de `en_nombre_de_entidad_id` si
+      se indica, con la dirección `direccion_id` (de esa entidad) o, si no, la
+      de su rol según la fuente, o su principal.
+
+    Se puede cambiar o refrescar mientras la tarea no tenga ningún
+    justificante; desde el primero queda fijo. Tras un escape sin destinatario
+    no admite rellenarlo. El destinatario elegido a mano, hasta que N5a-2
+    traiga el servicio de destinatarios.
+    """
+    from datetime import datetime, timezone
+    from app.models.entidad import Entidad
+
+    if ta.tipo_tarea.codigo != 'NOTIFICAR':
+        return ResultadoMutacion(ok=False, error='Solo una tarea NOTIFICAR tiene destinatario.')
+    res_inv = check_invariante('MUTAR', 'TAREA', ta.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+    notif = ta.notificacion
+    if notif is None:
+        return ResultadoMutacion(ok=False, error='La tarea no tiene ficha de notificación.')
+    if notif_svc.tuvo_escape_sin_destinatario(ta):
+        return ResultadoMutacion(
+            ok=False, error='Esta notificación avanzó sin destinatario por escape justificado '
+                            'y ya no admite fijarlo.')
+    if notif_svc.tiene_justificante(ta):
+        return ResultadoMutacion(
+            ok=False, error='La notificación ya tiene un justificante: su destinatario queda fijo.')
+
+    if entidad_id is None:
+        if notif.fuente != 'SOLICITANTE':
+            return ResultadoMutacion(
+                ok=False, error='Indica la entidad destinataria: solo la notificación al '
+                                'solicitante se resuelve sola.')
+        destino = notif_svc.destinatario_solicitante(ta.tramite.fase.solicitud)
+        if destino is None:
+            return ResultadoMutacion(ok=False, error='La solicitud no tiene solicitante.')
+    else:
+        entidad = db.session.get(Entidad, entidad_id)
+        if entidad is None:
+            return ResultadoMutacion(ok=False, error=f'Entidad {entidad_id} no encontrada.')
+        en_nombre_de = None
+        if en_nombre_de_entidad_id is not None:
+            en_nombre_de = db.session.get(Entidad, en_nombre_de_entidad_id)
+            if en_nombre_de is None:
+                return ResultadoMutacion(
+                    ok=False, error=f'Entidad representada {en_nombre_de_entidad_id} no encontrada.')
+            if en_nombre_de.id == entidad.id:
+                return ResultadoMutacion(
+                    ok=False, error='Una entidad no se representa a sí misma.')
+        if direccion_id is not None:
+            direccion = db.session.get(DireccionNotificacion, direccion_id)
+            if direccion is None or direccion.entidad_id != entidad.id:
+                return ResultadoMutacion(
+                    ok=False, error='La dirección indicada no es de la entidad destinataria.')
+        else:
+            direccion = notif_svc.direccion_de_rol(entidad.id, notif.fuente)
+        destino = notif_svc.Destinatario(entidad=entidad, en_nombre_de=en_nombre_de,
+                                         direccion=direccion)
+
+    try:
+        notif_svc.copiar_destinatario(notif, destino, ahora=datetime.now(timezone.utc))
+        bitacora_svc.registrar(
+            current_user.id, 'ALTERAR', 'notificaciones', notif.id,
+            detalle={
+                'accion': notif_svc.ACCION_FIJAR_DESTINATARIO,
+                'entidad_id': notif.entidad_id,
+                'en_nombre_de_entidad_id': notif.en_nombre_de_entidad_id,
+                'direccion_origen_id': notif.direccion_origen_id,
+                'sujeto': build_sujeto(ta.tramite.fase.solicitud.expediente, ta.tramite),
+            },
+        )
+        db.session.commit()
+        return ResultadoMutacion(ok=True, ids=[notif.id])
     except Exception as e:
         db.session.rollback()
         return ResultadoMutacion(ok=False, error=str(e))
@@ -945,10 +1137,17 @@ def editar_tramite(tr, *, observaciones: Optional[str]) -> ResultadoMutacion:
 
 def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
                  documento_producido_id: Optional[int],
-                 notas: Optional[str]) -> ResultadoMutacion:
+                 notas: Optional[str],
+                 justificacion: Optional[str] = None) -> ResultadoMutacion:
     """Actualiza vínculos documentales + notas de la tarea.
 
     `resultado` (NOTIFICAR) es una @property de Notificacion — no editable aquí.
+
+    Una `NOTIFICAR` sin destinatario no admite vínculos nuevos, consumidos ni
+    producidos (#967, ADR-051 §B), y sin producido no se da por hecha. Se fuerza
+    con `justificacion`: queda en bitácora como escape sobre la tarea y desde
+    entonces la tarea queda sin destinatario para siempre. Desvincular sigue
+    libre. `justificacion` no fuerza nada más.
 
     Vínculos por diff, no clear()+recrear (#667): un guardado que no cambia
     los documentos no debe tocar sus filas DOCUMENTOS_TAREA — eso es lo que
@@ -990,7 +1189,23 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
             if res_sello:
                 return ResultadoMutacion(ok=False, bloqueo=res_sello)
 
+    escape_sin_destinatario = False
+    if (deseados - set(actuales)) and notif_svc.falta_destinatario(ta):
+        if not justificacion:
+            return ResultadoMutacion(ok=False, bloqueo=_bloqueo_sin_destinatario())
+        escape_sin_destinatario = True
+
     try:
+        if escape_sin_destinatario:
+            bitacora_svc.registrar(
+                current_user.id, 'ALTERAR', 'tareas', ta.id,
+                detalle={
+                    'escape': True,
+                    'accion': notif_svc.ACCION_SIN_DESTINATARIO,
+                    'justificacion': justificacion,
+                    'sujeto': build_sujeto(expediente, ta.tramite),
+                },
+            )
         docs_a_liberar = []
         for clave, vinculo in actuales.items():
             if clave not in deseados:

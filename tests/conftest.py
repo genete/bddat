@@ -540,6 +540,17 @@ class ArbolESFTT:
         ta = Tarea(tramite_id=tramite.id, tipo_tarea_id=self._tipo(TipoTarea, codigo_tarea).id)
         self.db.session.add(ta)
         self.db.session.flush()
+        if codigo_tarea == 'NOTIFICAR':
+            # Invariante de #967 (ADR-051 §B): toda NOTIFICAR nace con su fila y
+            # su fuente. El builder le pone ya destinatario —el solicitante—
+            # porque los tests que lo usan prueban otra cosa; los que prueban el
+            # bloqueo sin destinatario crean la tarea por `crear_tarea`.
+            from app.models.notificaciones import Notificacion
+            solicitante_id = tramite.fase.solicitud.entidad_id
+            self.db.session.add(Notificacion(
+                tarea_id=ta.id, fuente='SOLICITANTE', numero_intento=1,
+                entidad_id=solicitante_id, dest_nombre='Destinatario de prueba'))
+            self.db.session.flush()
         return ta
 
     def documento(self, expediente_id, codigo_tipo_doc, sufijo, *, fecha=None):
@@ -602,20 +613,21 @@ class ArbolESFTT:
 
     def notificacion(self, tarea, resultado=None, canal='NOTIFICA', numero_intento=None,
                      sede_justificacion=None):
-        """Fila de `notificaciones` fabricada directamente, sin pasar por el
-        hook de `editar_tarea`. Sin fechas (#928): las da la
-        `fecha_administrativa` de los justificantes que vincule el test."""
+        """Rellena la fila de `notificaciones` de la tarea directamente, sin
+        pasar por el hook de `editar_tarea`. La fila ya existe desde que nace
+        la tarea (#967); si no, se crea con fuente SOLICITANTE. Sin fechas
+        (#928): las da la `fecha_administrativa` de los justificantes que
+        vincule el test."""
         from app.models.notificaciones import Notificacion
-        kwargs = dict(
-            tarea_id=tarea.id,
-            resultado=resultado,
-            canal=canal,
-            sede_justificacion=sede_justificacion,
-        )
+        n = Notificacion.query.filter_by(tarea_id=tarea.id).first()
+        if n is None:
+            n = Notificacion(tarea_id=tarea.id, fuente='SOLICITANTE', numero_intento=1)
+            self.db.session.add(n)
+        n.resultado = resultado
+        n.canal = canal
+        n.sede_justificacion = sede_justificacion
         if numero_intento is not None:
-            kwargs['numero_intento'] = numero_intento
-        n = Notificacion(**kwargs)
-        self.db.session.add(n)
+            n.numero_intento = numero_intento
         self.db.session.flush()
         return n
 

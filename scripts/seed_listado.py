@@ -11,10 +11,19 @@ Uso:
     python scripts/seed_listado.py
 
 Prerequisito: haber ejecutado `flask db upgrade` (tipos de fase y trámite vienen de migraciones).
+
+**En desuso desde #967; pendiente de retirar.** Escribe el árbol directamente,
+sin pasar por los servicios, y desde #967 toda NOTIFICAR debe nacer con su
+fila de `notificaciones` y su fuente: sus T05 y T09 dejarían la base
+incoherente. No se ejecuta; los expedientes-tipo de `scripts/expedientes_dummy/`
+son la vía mantenida.
 """
 import sys
 import os
 from datetime import date
+
+sys.exit('seed_listado.py está en desuso desde #967 (sus NOTIFICAR nacerían sin ficha '
+         'de notificación) y pendiente de retirar. Usa scripts/expedientes_dummy/.')
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
