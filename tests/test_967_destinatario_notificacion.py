@@ -14,8 +14,8 @@ Tests #967 (N5a-1) — toda NOTIFICAR guarda su destinatario (ADR-051 §B, §K).
 
 Desde #968 la NOTIFICAR nace ya con su destinatario si se sabe, y solo admite a
 quien corresponde por su fuente: los casos «sin destinatario» se montan en un
-trámite cuyo destinatario se elige a mano (`ANUNCIO_BOJA`, boletín sin elegir)
-y los de entidad arbitraria, en uno sin fuentes (`ANUNCIO_BOE`). Los dos tests
+trámite cuyo destinatario se elige a mano y los de entidad arbitraria, en uno
+sin fuentes (`ArbolESFTT.tramite_sin_destinatario` / `tramite_sin_fuentes`). Los dos tests
 de la lista provisional de fuentes los sustituye el de cobertura de
 `test_968_fuentes_destinatarios.py`.
 
@@ -57,18 +57,6 @@ def _tipo_tarea(codigo):
 def _tramite(arbol, codigo_fase='ANALISIS_SOLICITUD', codigo_tramite='COMUNICACION_INICIO_ADMISION'):
     fase = arbol.fase(codigo_fase, solicitud=arbol.solicitud_propia())
     return arbol.tramite(fase, codigo_tramite)
-
-
-def _tramite_sin_destinatario(arbol):
-    """Trámite cuya NOTIFICAR nace sin destinatario: el boletín del anuncio en
-    BOJA se elige a mano y aún no se ha elegido (#968, ADR-051 §L)."""
-    return _tramite(arbol, 'INFORMACION_PUBLICA', 'ANUNCIO_BOJA')
-
-
-def _tramite_sin_fuentes(arbol):
-    """Trámite sin fuentes declaradas: su NOTIFICAR, forzada fuera de la
-    secuencia, admite cualquier entidad indicada (la vía de #967)."""
-    return _tramite(arbol, 'INFORMACION_PUBLICA', 'ANUNCIO_BOE')
 
 
 def _crear_notificar(tramite, fuente=None):
@@ -185,7 +173,7 @@ def test_la_ficha_se_borra_con_la_tarea(con_usuario, arbol_aislado):
 # ---------------------------------------------------------------------------
 
 def test_vincular_sin_destinatario_se_bloquea_con_escape(con_usuario, arbol_aislado, fs_tmp):
-    tarea = _crear_notificar(_tramite_sin_destinatario(arbol_aislado))
+    tarea = _crear_notificar(arbol_aislado.tramite_sin_destinatario())
     doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', fs_tmp)
 
     res = _vincular(tarea, producido=doc)
@@ -200,7 +188,7 @@ def test_vincular_sin_destinatario_se_bloquea_con_escape(con_usuario, arbol_aisl
 
 def test_escape_sin_destinatario_queda_en_bitacora_y_es_para_siempre(
         con_usuario, arbol_aislado, fs_tmp):
-    tarea = _crear_notificar(_tramite_sin_destinatario(arbol_aislado))
+    tarea = _crear_notificar(arbol_aislado.tramite_sin_destinatario())
     doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', fs_tmp)
 
     res = _vincular(tarea, producido=doc, justificacion='Se notificó en papel en ventanilla')
@@ -223,7 +211,7 @@ def test_escape_sin_destinatario_queda_en_bitacora_y_es_para_siempre(
 
 def test_escape_sin_destinatario_se_relata(con_usuario, arbol_aislado, fs_tmp):
     from app.services.informe_instruccion import escapes_de_fase, relato_escapes
-    tarea = _crear_notificar(_tramite_sin_destinatario(arbol_aislado))
+    tarea = _crear_notificar(arbol_aislado.tramite_sin_destinatario())
     doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', fs_tmp)
     assert _vincular(tarea, producido=doc, justificacion='Motivo del escape').ok
 
@@ -364,7 +352,7 @@ def test_fijar_destinatario_deja_bitacora(con_usuario, arbol_aislado):
     ('B99999999', 'A-00000000', False),   # el justificante trae al representado
 ])
 def test_cotejo_del_nif(con_usuario, arbol_aislado, fs_tmp, nif_ficha, nif_representado, avisa):
-    tarea = _crear_notificar(_tramite_sin_fuentes(arbol_aislado), fuente='BOLETIN')
+    tarea = _crear_notificar(arbol_aislado.tramite_sin_fuentes(), fuente='BOLETIN')
     receptor = _entidad('Receptor', nif=nif_ficha)
     representado = _entidad('Representado', nif=nif_representado) if nif_representado else None
     assert svc.fijar_destinatario(
@@ -451,11 +439,7 @@ def notificar_http(app, expediente_seed):
                          .order_by(Solicitud.id).first())
             assert solicitud is not None, 'la semilla debe traer una solicitud en el expediente'
             fase = arbol.fase(codigo_fase, solicitud=solicitud)
-            tarea = arbol.tarea(arbol.tramite(fase, codigo_tramite), 'NOTIFICAR')
-            notif = tarea.notificacion
-            notif.fuente = fuente
-            notif.entidad_id = None                 # el builder lo pone; aquí no
-            notif.dest_nombre = None
+            tarea = arbol.notificar_sin_destinatario(arbol.tramite(fase, codigo_tramite), fuente)
             db.session.commit()
             fases.append(fase.id)
             return tarea.id

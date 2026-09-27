@@ -232,12 +232,8 @@ def test_escape_sin_destinatario_cubre_su_fuente(con_usuario, arbol_aislado):
     de su fuente: si no, el trámite no podría terminarse nunca."""
     from app.services import bitacora as bitacora_svc
     from app.services.notificaciones import ACCION_SIN_DESTINATARIO
-    solicitud = arbol_aislado.solicitud_propia()
-    fase = arbol_aislado.fase('INFORMACION_PUBLICA', solicitud=solicitud)
-    tramite = arbol_aislado.tramite(fase, 'ANUNCIO_BOJA')
-    tarea = arbol_aislado.tarea(tramite, 'NOTIFICAR')
-    tarea.notificacion.fuente, tarea.notificacion.entidad_id = 'BOLETIN', None
-    db.session.flush()
+    tramite = arbol_aislado.tramite_sin_destinatario()
+    tarea = arbol_aislado.notificar_sin_destinatario(tramite, 'BOLETIN')
     assert [f.fuente for f in dest_svc.estado_del_tramite(tramite).faltan] == ['BOLETIN']
 
     bitacora_svc.registrar(con_usuario.id, 'ALTERAR', 'tareas', tarea.id,
@@ -253,9 +249,7 @@ def test_escape_sin_destinatario_cubre_su_fuente(con_usuario, arbol_aislado):
 
 def test_eleccion_en_notificar_sin_elaborar_queda_en_el_tramite(con_usuario, arbol_aislado):
     from app.models.tramites_destinatario import TramiteDestinatario
-    solicitud = arbol_aislado.solicitud_propia()
-    tramite = arbol_aislado.tramite(arbol_aislado.fase('INFORMACION_PUBLICA', solicitud=solicitud),
-                                    'ANUNCIO_BOJA')
+    tramite = arbol_aislado.tramite_sin_destinatario()
     boja = _entidad('Boletín Oficial de Prueba', rol_publicador=True)
     res = svc.crear_tarea(tramite, db.session.query(TipoTarea).filter_by(codigo='NOTIFICAR').one(),
                           justificacion='test #968')
@@ -274,9 +268,7 @@ def test_con_elaborar_se_elige_al_elaborar_no_en_la_notificar(con_usuario, arbol
     tramite = arbol_aislado.tramite(arbol_aislado.fase('INFORMACION_PUBLICA', solicitud=solicitud),
                                     'TABLON_AYUNTAMIENTOS')
     ayto = _entidad('Ayuntamiento de Prueba', rol_publicador=True)
-    tarea = arbol_aislado.tarea(tramite, 'NOTIFICAR')
-    tarea.notificacion.fuente, tarea.notificacion.entidad_id = 'AYUNTAMIENTO', None
-    db.session.flush()
+    tarea = arbol_aislado.notificar_sin_destinatario(tramite, 'AYUNTAMIENTO')
 
     res = svc.fijar_destinatario(tarea, entidad_id=ayto.id)
 
