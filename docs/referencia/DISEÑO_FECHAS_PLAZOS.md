@@ -1023,7 +1023,7 @@ El documento producido llega por una de dos vías:
 - **Caso B — plazo agotado sin respuesta:** el tramitador dispara la generación de un certificado interno (`CERT_PLAZO_CUMPLIDO`), que se vincula como `PRODUCIDO`. La generación está controlada: solo se permite si `plazos.py` confirma que el plazo del elemento está `VENCIDO`; en caso contrario se rechaza. La `fecha_administrativa` del certificado generado es la fecha de vencimiento calculada.
 
 `documento_referencia` (el documento cuyo rol está configurado en `campo_fecha.rol` del `catalogo_plazos`) sigue determinando **desde cuándo se cuenta el plazo**, no si la tarea está completa:
-- **`rol: CONSUMIDO`** (caso habitual): el documento que inicia el período de espera llega antes de que el plazo empiece (p. ej. `ANUNCIO_PUBLICADO` para los trámites `ANUNCIO_BOP/BOJA`).
+- **`rol: CONSUMIDO`** (caso habitual): el documento que inicia el período de espera llega antes de que el plazo empiece (p. ej. `ANUNCIO_PUBLICADO` para los trámites `ANUNCIO_BOP/BOJA`, y `JUSTIFICANTE_BOE` / `JUSTIFICANTE_PRENSA` para `ANUNCIO_BOE/PRENSA`, #964).
 - **`rol: PRODUCIDO`** (caso retroactivo): el documento llega cuando el período ya ha concluido y porta como `fecha_administrativa` la fecha de inicio del período (p. ej. `CERT_PLAZO_TABLON` para `TABLON_AYUNTAMIENTOS` — el ayuntamiento certifica cuándo empezó la exposición). Ver #416.
 
 **Papel real de `estado_plazo` para esta tarea:** no decide la completitud (eso lo decide, como siempre, la existencia del documento producido). Decide (1) si la acción de generar el certificado del Caso B está permitida, y (2) qué fecha administrativa lleva ese certificado. El Assembler consulta `plazos.py` para las variables `estado_plazo`/`efecto_plazo` de la tarea igual que para cualquier otro elemento con plazo — no hay una rama de cálculo separada para `ESPERAR_PLAZO`.
@@ -1158,15 +1158,18 @@ segmento), no en una condición sobre `tipo_solicitud`:
 > publicación** (art. 125 RD 1955/2000), que corre desde la fecha de
 > publicación de ese anuncio concreto, no desde la solicitud ni desde ningún
 > acto de la fase `INFORMACION_PUBLICA`. Modelado hoy en nivel TAREA: la
-> segunda `ESPERAR_PLAZO` de `ANUNCIO_BOE`/`ANUNCIO_BOP`/`ANUNCIO_PRENSA` (ids
-> 8/9/10 en BD; 30 días naturales; `campo_fecha:
-> {"rol":"CONSUMIDO","tipo_documento":"ANUNCIO_PUBLICADO"}`) — el
+> segunda `ESPERAR_PLAZO` de `ANUNCIO_BOE`/`ANUNCIO_BOP`/`ANUNCIO_PRENSA` (30
+> días hábiles; `campo_fecha: {"rol":"CONSUMIDO","tipo_documento": …}`, con el
+> documento de la publicación que consume esa espera: `ANUNCIO_PUBLICADO` en
+> BOP, que obtiene la Administración de la plataforma del boletín, y
+> `JUSTIFICANTE_BOE` / `JUSTIFICANTE_PRENSA` en BOE y prensa, que aporta el
+> titular — **#964**; hasta entonces las tres decían `ANUNCIO_PUBLICADO`). El
 > `tipo_documento` distingue esa espera de la primera, que aguarda
 > indefinidamente a que la publicación exista — sin fila propia en
 > `catalogo_plazos` (**#789**, cerrado por diseño: ver §2.4).
 > `ANUNCIO_BOJA` no tiene fila propia todavía (hueco de poblado señalado en
-> #788 §10). Las tres filas existentes llevan `norma_origen` en `PLACEHOLDER`
-> pendiente de cita exacta — deuda de **#782**, no de este issue.
+> #788 §10). Las tres filas citan ya su norma: art. 125.1 RD 1955/2000 en BOE y
+> BOP, art. 144 en prensa (#782; replicado para una base limpia en #849).
 
 **Diferencias respecto al seed previo (172, código muerto):** descartado `RESOLUCION_AE` (sin sufijo — no existe ese tipo_solicitud); añadido `RESOLUCION_DUP` (procedimiento DUP autónomo, ausente del 172); CIERRE corregido (art. 137 → art. 138; el 137 corresponde al informe del operador, no a la resolución; RD 88/2026 solo modifica art. 137); combinadas con AAC (`AAP+AAC`, `AAP+AAC+DUP`, `AAC+DUP`) consolidadas en la fila AAC porque art. 131.7 fija el plazo conjunto; `AE_DEFINITIVA+AAT` consume el plazo de AE_DEFINITIVA.
 

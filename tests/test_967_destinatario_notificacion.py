@@ -141,7 +141,8 @@ def test_varias_fuentes_hay_que_indicarla(con_usuario, arbol_aislado):
 
 
 def test_tramite_sin_fuentes_declaradas_admite_cualquiera_indicada(con_usuario, arbol_aislado):
-    """`ANUNCIO_BOE` sale del catálogo con #964: mientras, se indica a mano."""
+    """Una NOTIFICAR forzada fuera de la secuencia (`ANUNCIO_BOE` no la lleva
+    desde #964) no tiene fuentes declaradas: se indica a mano."""
     tramite = _tramite(arbol_aislado, 'INFORMACION_PUBLICA', 'ANUNCIO_BOE')
     res = svc.crear_tarea(tramite, _tipo_tarea('NOTIFICAR'), justificacion='test #967')
     assert not res.ok
@@ -397,8 +398,9 @@ def test_editar_solicitud_sin_representante_no_lo_toca(con_usuario, arbol_aislad
 # Catálogo: la lista provisional de fuentes (hasta `notificacion_fuentes`, #968)
 # ---------------------------------------------------------------------------
 
-# Trámites con NOTIFICAR que ADR-051 §C deja fuera porque su NOTIFICAR se retira.
-_SE_RETIRAN = {'ANUNCIO_BOE', 'ANUNCIO_PRENSA', 'PORTAL_TRANSPARENCIA'}
+# Trámites con NOTIFICAR que ADR-051 §C deja fuera porque su NOTIFICAR se retira
+# (`ANUNCIO_BOE` y `ANUNCIO_PRENSA` ya no la tienen desde #964).
+_SE_RETIRAN = {'PORTAL_TRANSPARENCIA'}
 
 
 def _pares_con_notificar():

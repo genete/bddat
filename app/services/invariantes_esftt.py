@@ -235,7 +235,9 @@ def _check_crear(sujeto: str, padre_id: int,
 
     **No es "respetar `tramites_tareas.orden`"** (ADR-037 §C): ese patrón es una
     sugerencia de la despensa (`tipos_creables.es_siguiente`), no una precondición.
-    Lo que se comprueba son dependencias semánticas concretas, nombradas.
+    Lo que se comprueba son dependencias semánticas concretas, nombradas. La de
+    `ESPERAR_PLAZO` lee `tramites_tareas` desde #964, pero no el orden: solo si el
+    trámite tiene una notificación que esperar.
 
     La rama `FASE` no es de #823 sino del sello de la instrucción (#838, ADR-043
     §F): abrir una fase de instrucción nueva y reabrir una ya cerrada son el mismo
@@ -261,9 +263,14 @@ def _check_crear_esperar_plazo(tramite_id: int) -> Optional[EvaluacionResult]:
     (#823 punto 1): un `ESPERAR_PLAZO` exige que **todas** las tareas `NOTIFICAR`
     de su propio trámite estén completas.
 
-    Universal, sin lista de casos: los 19 tipos de trámite del catálogo que
-    tienen `ESPERAR_PLAZO` tienen `NOTIFICAR` antes (verificado en
-    `tramites_tareas`), así que no hace falta acotarlo por tipo.
+    Sin lista de casos: lo que decide si el trámite tiene una notificación que
+    esperar es su secuencia en el catálogo (`tramites_tareas`), no el código.
+    Hasta #964 todos los trámites con `ESPERAR_PLAZO` llevaban `NOTIFICAR` antes y
+    la regla se daba por universal; desde #964, `ANUNCIO_BOE` y `ANUNCIO_PRENSA`
+    son solo dos esperas —los publica el titular, a quien se lo notificó
+    `ANUNCIO_TITULAR`— y sin esta lectura nunca podrían abrirse. Las `NOTIFICAR`
+    ya creadas se exigen completas siempre, estén o no en la secuencia (una
+    forzada fuera de ella también cuenta).
 
     "Completa" = `notificacion_efectuada` (#928): documento producido **y**
     resultado CORRECTA o RECHAZADA (art. 41.5: el rechazo da el trámite por
@@ -276,9 +283,10 @@ def _check_crear_esperar_plazo(tramite_id: int) -> Optional[EvaluacionResult]:
 
     **Todas**, no "alguna": los cuatro `ANUNCIO_*` tienen dos `ESPERAR_PLAZO`, y
     un trámite puede llegar a tener más de una `NOTIFICAR` instanciada. Sin
-    ninguna instanciada también bloquea —la lista vacía no se da por buena por
-    vacuidad, mismo agujero que #723 tapó en `Tramite.finalizado`—: si aún no
-    existe la tarea de notificar, con más razón no hay nada notificado.
+    ninguna instanciada también bloquea si la secuencia la lleva —la lista vacía
+    no se da por buena por vacuidad, mismo agujero que #723 tapó en
+    `Tramite.finalizado`—: si aún no existe la tarea de notificar, con más razón
+    no hay nada notificado.
     """
     from app.services import estado_dominio as ed
 
@@ -291,6 +299,8 @@ def _check_crear_esperar_plazo(tramite_id: int) -> Optional[EvaluacionResult]:
         key=lambda t: t.id,
     )
     if not notificar:
+        if not _secuencia_lleva_notificar(tramite.tipo_tramite_id):
+            return None
         return _bloquear(
             'No se puede abrir la espera de plazo: este trámite todavía no tiene la '
             'tarea de notificación. El plazo se cuenta desde que el acto se notifica, '
@@ -310,6 +320,29 @@ def _check_crear_esperar_plazo(tramite_id: int) -> Optional[EvaluacionResult]:
         f'está completa — {ed.motivo(ed.estado_tarea(pendiente))}. El plazo no '
         f'empieza a contar hasta que la notificación consta practicada.'
     )
+
+
+def _secuencia_lleva_notificar(tipo_tramite_id: int) -> bool:
+    """La secuencia del tipo de trámite en `tramites_tareas` incluye `NOTIFICAR`.
+
+    Si el catálogo no responde se da por que sí: es lo que la regla suponía de
+    todos los trámites antes de #964, y ante la duda una puerta cerrada no se abre.
+    """
+    from app.models.tipos_tareas import TipoTarea
+    from app.models.tramites_tareas import TramiteTarea
+
+    try:
+        return db.session.query(
+            TramiteTarea.query
+            .join(TipoTarea, TipoTarea.id == TramiteTarea.tipo_tarea_id)
+            .filter(TramiteTarea.tipo_tramite_id == tipo_tramite_id,
+                    TipoTarea.codigo == 'NOTIFICAR')
+            .exists()
+        ).scalar()
+    except (OperationalError, ProgrammingError):
+        log.warning('precedencia de ESPERAR_PLAZO: catálogo tramites_tareas no '
+                    'disponible; se exige la notificación')
+        return True
 
 
 def _check_crear_vuelta_cadena(fase_id: int) -> Optional[EvaluacionResult]:

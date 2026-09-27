@@ -3,7 +3,12 @@
 Requieren BD con migraciones 345 aplicadas:
     345_tramites_tareas        (crea la tabla)
     345_seed_tramites_tareas   (pobla las 24 secuencias)
+
+La sección F compara el catálogo con `docs/referencia/ESTRUCTURA_FTT.json` (#964).
 """
+import json
+from pathlib import Path
+
 import pytest
 
 
@@ -56,26 +61,6 @@ def test_todos_tramites_tienen_tarea(app_ctx):
         .count()
     )
     assert tramites_con_tarea == total_tramites
-
-
-def test_anuncio_boe_doble_esperar_plazo(app_ctx):
-    """ANUNCIO_BOE tiene exactamente 2 tareas ESPERAR_PLAZO en órdenes distintos."""
-    from app import db
-    from app.models.tramites_tareas import TramiteTarea
-    from app.models.tipos_tramites import TipoTramite
-    from app.models.tipos_tareas import TipoTarea
-
-    boe = db.session.query(TipoTramite).filter_by(codigo='ANUNCIO_BOE').one()
-    esperar = db.session.query(TipoTarea).filter_by(codigo='ESPERAR_PLAZO').one()
-
-    filas = (
-        db.session.query(TramiteTarea)
-        .filter_by(tipo_tramite_id=boe.id, tipo_tarea_id=esperar.id)
-        .order_by(TramiteTarea.orden)
-        .all()
-    )
-    assert len(filas) == 2
-    assert filas[0].orden != filas[1].orden
 
 
 def test_consulta_orm_secuencia_ordenada(app_ctx):
@@ -146,7 +131,7 @@ def test_requerimiento_subsanacion_usa_elaborar(app_ctx):
 
 
 # ---------------------------------------------------------------------------
-# D) #368 — REDACTAR_ANUNCIO y ANUNCIO_BOJA
+# D) #368 — REDACTAR_ANUNCIO (ANUNCIO_BOJA, con los demás anuncios en F)
 # ---------------------------------------------------------------------------
 
 def test_redactar_anuncio_secuencia(app_ctx):
@@ -164,26 +149,6 @@ def test_redactar_anuncio_secuencia(app_ctx):
     )
     codigos = [tt.tipo_tarea.codigo for tt in secuencia]
     assert codigos == ['ELABORAR']
-
-
-def test_anuncio_boja_doble_esperar_plazo(app_ctx):
-    """ANUNCIO_BOJA tiene exactamente 2 tareas ESPERAR_PLAZO en órdenes distintos."""
-    from app import db
-    from app.models.tramites_tareas import TramiteTarea
-    from app.models.tipos_tramites import TipoTramite
-    from app.models.tipos_tareas import TipoTarea
-
-    boja = db.session.query(TipoTramite).filter_by(codigo='ANUNCIO_BOJA').one()
-    esperar = db.session.query(TipoTarea).filter_by(codigo='ESPERAR_PLAZO').one()
-
-    filas = (
-        db.session.query(TramiteTarea)
-        .filter_by(tipo_tramite_id=boja.id, tipo_tarea_id=esperar.id)
-        .order_by(TramiteTarea.orden)
-        .all()
-    )
-    assert len(filas) == 2
-    assert filas[0].orden != filas[1].orden
 
 
 # ---------------------------------------------------------------------------
@@ -205,3 +170,73 @@ def test_anuncio_titular_secuencia(app_ctx):
     )
     codigos = [tt.tipo_tarea.codigo for tt in secuencia]
     assert codigos == ['ELABORAR', 'NOTIFICAR']
+
+
+# ---------------------------------------------------------------------------
+# F) #964 — anuncios de INFORMACION_PUBLICA y guarda contra ESTRUCTURA_FTT.json
+# ---------------------------------------------------------------------------
+
+def _secuencia(codigo_tramite):
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tramites import TipoTramite
+
+    tramite = TipoTramite.query.filter_by(codigo=codigo_tramite).one()
+    filas = (TramiteTarea.query.filter_by(tipo_tramite_id=tramite.id)
+             .order_by(TramiteTarea.orden).all())
+    return [f.tipo_tarea.codigo for f in filas]
+
+
+# Secuencia exacta, no recuento: los tests anteriores solo contaban las dos
+# ESPERAR_PLAZO de BOE y BOJA, y pasaban con el catálogo mal (#964).
+SECUENCIAS_ANUNCIOS = {
+    'ANUNCIO_BOE': ['ESPERAR_PLAZO', 'ESPERAR_PLAZO'],
+    'ANUNCIO_PRENSA': ['ESPERAR_PLAZO', 'ESPERAR_PLAZO'],
+    'ANUNCIO_BOJA': ['NOTIFICAR', 'ESPERAR_PLAZO', 'ESPERAR_PLAZO'],
+    'ANUNCIO_BOP': ['ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO', 'ESPERAR_PLAZO'],
+    'TABLON_AYUNTAMIENTOS': ['ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO'],
+}
+
+
+@pytest.mark.parametrize('codigo', sorted(SECUENCIAS_ANUNCIOS))
+def test_secuencia_exacta_anuncios_ip(app_ctx, codigo):
+    assert _secuencia(codigo) == SECUENCIAS_ANUNCIOS[codigo]
+
+
+# Trámites del JSON sin poblar en BD a propósito: la consulta al operador del
+# sistema (#450). Al poblarlos, quitarlos de aquí.
+_SOLO_EN_JSON = {'SOLICITUD_INFORME_OPERADOR', 'RECEPCION_INFORME_OPERADOR'}
+
+
+def _secuencias_json():
+    """{codigo de trámite: {secuencia, …}} de `tareas_indicativas`, fase a fase."""
+    ruta = Path(__file__).resolve().parents[1] / 'docs' / 'referencia' / 'ESTRUCTURA_FTT.json'
+    datos = json.loads(ruta.read_text(encoding='utf-8'))
+    por_tramite = {}
+    for fase in datos['FASES']:
+        for tramite in fase.get('tramites', []):
+            secuencia = tuple(tramite.get('tareas_indicativas') or ())
+            por_tramite.setdefault(tramite['codigo'], set()).add(secuencia)
+    return por_tramite
+
+
+def test_json_da_una_sola_secuencia_por_tramite():
+    """Un trámite que comparten varias fases (NOTIFICACION, RECEPCION_INFORME…)
+    tiene una sola secuencia en `tramites_tareas`: el JSON no puede darle dos."""
+    dobles = {c: s for c, s in _secuencias_json().items() if len(s) > 1}
+    assert dobles == {}
+
+
+def test_tramites_tareas_sigue_al_json(app_ctx):
+    """Guarda de #964: la secuencia de cada trámite en el catálogo es la de
+    `ESTRUCTURA_FTT.json`, la fuente de verdad. Es lo que habría cazado los
+    anuncios de IP al cerrar #414, que corrigió el JSON sin migración."""
+    from app.models.tipos_tramites import TipoTramite
+
+    en_json = {c: list(next(iter(s))) for c, s in _secuencias_json().items()}
+    en_bd = {t.codigo: _secuencia(t.codigo) for t in TipoTramite.query.all()}
+
+    assert set(en_json) - set(en_bd) == _SOLO_EN_JSON
+    assert set(en_bd) - set(en_json) == set()
+    distintos = {c: {'json': en_json[c], 'bd': en_bd[c]}
+                 for c in set(en_json) & set(en_bd) if en_json[c] != en_bd[c]}
+    assert distintos == {}

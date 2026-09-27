@@ -1,7 +1,7 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-09-24 (#930 — el NOTIFICAR de NOTIFICACION en RESOLUCION/_AAP/_AAC es la notificación al titular que cumple el plazo del acto)
+> Última sincronización: 2026-09-27 (#964 — anuncios de INFORMACION_PUBLICA: BOE y prensa sin NOTIFICAR, BOP y tablón con su ELABORAR, como ya decía el JSON)
 
 **Versión:** 6.6 | **Fecha:** 2026-09-24
 
@@ -130,11 +130,11 @@ Destinatario del NOTIFICAR: en `CONSULTA_SEPARATA`, cada organismo por su canal 
 | Trámite | Patrón | Tareas indicativas | Nota |
 |---|---|---|---|
 | `REDACTAR_ANUNCIO` | A (solo ELABORAR) | ELABORAR | Produce ANUNCIO_IP; consumido por ANUNCIO_* y TABLON (#368) |
-| `ANUNCIO_BOE` | F+F | NOTIFICAR → EP → EP | Doble espera: hasta publicación + plazo alegaciones |
-| `ANUNCIO_BOP` | F+F | NOTIFICAR → EP → EP | Doble espera: hasta publicación + plazo alegaciones |
-| `ANUNCIO_PRENSA` | F+F | NOTIFICAR → EP → EP | Doble espera: hasta publicación + plazo alegaciones |
-| `ANUNCIO_BOJA` | F+F | NOTIFICAR → EP → EP | Doble espera: hasta publicación + plazo alegaciones (#368) |
-| `TABLON_AYUNTAMIENTOS` | C (sin ELABORAR) | NOTIFICAR → EP | Certificado llega en EP.documento_producido |
+| `ANUNCIO_BOE` | F+F | EP → EP | Publica el titular, avisado por `ANUNCIO_TITULAR`: sin NOTIFICAR. Doble espera: hasta que aporta `JUSTIFICANTE_BOE` (sin plazo) + plazo alegaciones (#964) |
+| `ANUNCIO_BOP` | C+F | ELABORAR → NOTIFICAR → EP → EP | Oficio (`OFICIO_PUBLICAR_BOLETIN`) + remisión al BOP. Doble espera: hasta `ANUNCIO_PUBLICADO` + plazo alegaciones |
+| `ANUNCIO_PRENSA` | F+F | EP → EP | Publica el titular, avisado por `ANUNCIO_TITULAR`: sin NOTIFICAR. Doble espera: hasta que aporta `JUSTIFICANTE_PRENSA` (sin plazo) + plazo alegaciones (#964) |
+| `ANUNCIO_BOJA` | F+F | NOTIFICAR → EP → EP | Sin oficio: el anuncio se sube a SIBOJA. Doble espera: hasta `ANUNCIO_PUBLICADO` + plazo alegaciones (#368, #964) |
+| `TABLON_AYUNTAMIENTOS` | C | ELABORAR → NOTIFICAR → EP | Oficio (`OFICIO_TABLON`) por ayuntamiento; el certificado llega en EP.documento_producido |
 | `PORTAL_TRANSPARENCIA` | C | ELABORAR → NOTIFICAR → EP | Patrón C (#371, elimina PUBLICAR) |
 | `ANUNCIO_TITULAR` | B | ELABORAR → NOTIFICAR | Notificación al titular sobre publicación IP (#369) |
 | `RECEPCION_ALEGACION` | A+C | ANALIZAR → ELABORAR → NOTIFICAR → EP | ANALIZAR clasifica al alegante. El traslado de la alegación (NOTIFICAR) se dirige al titular |

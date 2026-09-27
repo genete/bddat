@@ -238,7 +238,9 @@ real.
 
 Los PDF que suben estos scripts viven en `tests/fixtures/documentos_dummy/`, generados por
 `scripts/generar_documentos_dummy.py` (#814 parte 1) junto a `catalogo_uso.csv`, que documenta
-dónde se usa cada tipo.
+dónde se usa cada tipo. Tras cambiar `tramites_tareas_documentos` basta con
+`--solo-csv`: el modo completo reescribe todos los PDF y borra `doc_proyecto_reformado.pdf`,
+que no genera él (#964).
 
 Están bajo `tests/` a propósito: `scripts/semilla_test.py` los usa para construir la base de
 tests, así que ahí sí son fixture. El pool no distingue cómo entró un fichero —solo
