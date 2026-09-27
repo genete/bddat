@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **#967 (N5a-1)** (2026-09-27): toda `NOTIFICAR` nace con su ficha y su fuente, y sin destinatario no admite documentos, salvo escape justificado e irreversible; la solicitud guarda su representante (ADR-051 §B, §K). Solo servidor: hasta #929 no hay pantalla para fijar el destinatario ni el representante, así que en el navegador una `NOTIFICAR` solo avanza forzando el escape. `seed_listado.py` y `verificar_seed.py`, ya obsoletos antes, retirados en **#974**. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#964** (2026-09-27): los anuncios de información pública siguen al JSON: BOE y prensa sin `NOTIFICAR`, BOJA sin ELABORAR. La espera sin notificación previa la decide la secuencia del catálogo (`tramites_tareas`), con aviso al supervisor en tablas maestras. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **#964** y **#966**: retirar las `NOTIFICAR` que el procedimiento no tiene (`ANUNCIO_BOE`, `ANUNCIO_PRENSA`; `PORTAL_TRANSPARENCIA` a un solo ELABORAR). Son requisito de #968 (N5a-2).
+**Próximo:** **#966**: `PORTAL_TRANSPARENCIA` a un solo ELABORAR. Con #964, requisito de #968 (N5a-2).
 
 ---
 
