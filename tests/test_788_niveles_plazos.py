@@ -24,7 +24,8 @@ Bloques:
                        resolver es suspendible.
   D) Trámite → tarea — `Tramite.tarea_espera` baja al ESPERAR_PLAZO (#778: es
                        navegación del árbol, no interfaz del servicio de plazos).
-  E) Con BD          — solo filas ACTO y TAREA, y el CheckConstraint lo impide.
+  E) Con BD          — solo filas ACTO y TAREA, y el CheckConstraint lo impide;
+                       el tipo_documento de cada fila casa con el mapa (#964).
 """
 from datetime import date
 from types import SimpleNamespace
@@ -381,6 +382,55 @@ class TestCatalogoEnBD:
             else:
                 assert claves <= {'rol', 'tipo_documento'}, f'Fila {fila.id}: {cf}'
                 assert cf.get('rol') in ('CONSUMIDO', 'PRODUCIDO'), f'Fila {fila.id}: {cf}'
+
+    # Filas cuyo documento no declara el mapa a propósito: el plazo de admisión
+    # (#776) se cuenta desde el disparo que el hook de `crear_tarea` vincula solo
+    # al ELABORAR (`_hook_776_elaborar_consume_disparo_admision`), no desde algo
+    # que el usuario elija con el mapa. Igualdad exacta: al declararlas en el mapa
+    # (#938), quitarlas de aquí.
+    _TIPO_FUERA_DEL_MAPA = {
+        ('ANY/ANY/ANALISIS_SOLICITUD/COMUNICACION_INICIO_ADMISION/ELABORAR', 'MODELO_SOLICITUD'),
+        ('ANY/ANY/ANALISIS_SOLICITUD/COMUNICACION_INICIO_ADMISION/ELABORAR', 'SUBSANACION'),
+    }
+
+    def test_tipo_documento_esta_en_el_mapa_del_tramite(self, app_ctx):
+        """Guarda de #964: el `tipo_documento` que reconoce la espera tiene que
+        ser uno que esa tarea consuma (o produzca) según
+        `tramites_tareas_documentos`. Si el mapa cambia y la fila no, la fila
+        deja de casar con ninguna tarea y el plazo desaparece sin error — lo que
+        habría pasado con BOE y prensa al pasar de ANUNCIO_PUBLICADO al
+        justificante del titular."""
+        from app.models.catalogo_plazos import CatalogoPlazo
+        from app.models.tipos_documentos import TipoDocumento
+        from app.models.tipos_tareas import TipoTarea
+        from app.models.tipos_tramites import TipoTramite
+        from app.models.tramites_tareas import TramiteTarea
+        from app.models.tramites_tareas_documentos import TramiteTareaDocumento
+
+        rol_mapa = {'CONSUMIDO': 'ENTRADA', 'PRODUCIDO': 'SALIDA'}
+        filas = [f for f in CatalogoPlazo.query.filter_by(tipo_elemento='TAREA', activo=True)
+                 if (f.campo_fecha or {}).get('tipo_documento')]
+        assert filas, 'la semilla debe traer filas de plazo con tipo_documento (anuncios, tablón)'
+
+        huerfanas = []
+        for fila in filas:
+            _, _, _, tramite, tarea = fila.camino.split('/')
+            cf = fila.campo_fecha
+            casa = (
+                TramiteTareaDocumento.query
+                .join(TramiteTarea, (TramiteTarea.tipo_tramite_id == TramiteTareaDocumento.tipo_tramite_id)
+                      & (TramiteTarea.orden == TramiteTareaDocumento.orden_tarea))
+                .join(TipoTramite, TipoTramite.id == TramiteTareaDocumento.tipo_tramite_id)
+                .join(TipoTarea, TipoTarea.id == TramiteTarea.tipo_tarea_id)
+                .join(TipoDocumento, TipoDocumento.id == TramiteTareaDocumento.tipo_documento_id)
+                .filter(TipoTramite.codigo == tramite, TipoTarea.codigo == tarea,
+                        TramiteTareaDocumento.rol == rol_mapa[cf['rol']],
+                        TipoDocumento.codigo == cf['tipo_documento'])
+                .first()
+            )
+            if casa is None:
+                huerfanas.append((fila.camino, cf['tipo_documento']))
+        assert set(huerfanas) == self._TIPO_FUERA_DEL_MAPA
 
     def test_longitud_del_camino_coincide_con_el_nivel(self, app_ctx):
         from app.models.catalogo_plazos import CatalogoPlazo
