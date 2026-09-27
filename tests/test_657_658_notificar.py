@@ -70,7 +70,8 @@ def con_usuario(app_ctx):
 
 
 def _tarea_notificar():
-    """Tarea NOTIFICAR sin vínculos ni fila en `notificaciones`, fabricada (#428)."""
+    """Tarea NOTIFICAR sin vínculos, fabricada (#428). Desde #967 nace con su
+    fila (sin canal) y el builder le pone destinatario."""
     from tests.conftest import ArbolESFTT
     return ArbolESFTT(db).tarea_propia('NOTIFICAR', codigo_tramite='NOTIFICACION')
 
@@ -94,9 +95,10 @@ def _documento_con_fichero(expediente_id, codigo_tipo, fs_tmp, contenido,
 
 
 def _fila_previa(tarea, canal, identificador_envio=None, resultado=None):
-    notif = Notificacion(tarea_id=tarea.id, canal=canal,
-                         identificador_envio=identificador_envio, resultado=resultado)
-    db.session.add(notif)
+    notif = Notificacion.query.filter_by(tarea_id=tarea.id).one()
+    notif.canal = canal
+    notif.identificador_envio = identificador_envio
+    notif.resultado = resultado
     db.session.flush()
     return notif
 
@@ -154,14 +156,16 @@ class TestHookNotificarProducido:
 
     def test_tipo_doc_sin_canal_no_crea_fila(self, con_usuario, fs_tmp):
         """Producido de un tipo ajeno a los justificantes con canal: el hook no
-        crea nada, ni siquiera intenta parsear."""
+        registra nada (la fila sigue sin canal), ni siquiera intenta parsear."""
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
         doc = _documento_con_fichero(exp_id, 'RESOLUCION', fs_tmp,
                                      _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
         assert _producir(tarea, doc).ok is True
-        assert Notificacion.query.filter_by(tarea_id=tarea.id).first() is None
+        notif = Notificacion.query.filter_by(tarea_id=tarea.id).one()
+        assert notif.canal is None
+        assert not notif.registrada
 
     def test_con_fila_previa_no_toca_resultado_ni_remesa(self, con_usuario, fs_tmp):
         """Con fila previa, el hook solo sigue al producido (documento_id)."""

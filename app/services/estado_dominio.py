@@ -162,8 +162,9 @@ def estado_tarea(tarea, plazo: Optional[dict] = None) -> str:
 
 def _estado_notificar(tarea) -> str:
     """NOTIFICAR (§3): usa el modelo Notificacion (resultado + numero_intento), anclado
-    a la tarea (ADR-034) — se lee vía `tarea.notificacion`. La fila nace al vincular
-    el primer justificante con canal (#928), previo o final.
+    a la tarea (ADR-034) — se lee vía `tarea.notificacion`. La fila nace con la
+    tarea (#967); hay justificante cuando está `registrada` (#928: el primero con
+    canal, previo o final, fija el canal).
 
     "Hay algo que notificar" son los `documentos_a_notificar`, no todos los
     consumidos: un justificante previo solo no cuenta (#928 N1 §8). RECHAZADA da
@@ -173,7 +174,7 @@ def _estado_notificar(tarea) -> str:
     if not documentos_a_notificar(tarea):
         return 'PENDIENTE_TRAMITAR'        # falta el documento firmado que notificar
     notif = getattr(tarea, 'notificacion', None)
-    if notif is None:
+    if notif is None or not notif.registrada:
         return 'PENDIENTE_NOTIFICAR'       # 🔵 falta el justificante
     if notif.resultado is None:
         return 'PENDIENTE_RESULTADO_NOTIFICACION'  # 🔵 hay justificante, falta el resultado

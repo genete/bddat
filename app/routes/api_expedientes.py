@@ -584,7 +584,9 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
 
     Body JSON: {tipo_id} o {tipo_ids:[...]} cuando padre_tipo=='expediente'.
     Bajo expediente se exige además {documento_solicitud_id} — el escrito del pool
-    que abre la solicitud y de cuya fecha arranca el plazo para resolver (#428).
+    que abre la solicitud y de cuya fecha arranca el plazo para resolver (#428) —
+    y admite {representante_entidad_id} (#967, ADR-051 §K). Bajo trámite, una
+    NOTIFICAR admite {fuente} (#967), obligatoria si el trámite tiene varias.
     Bypass del motor (#324/#616): {..., bypass:true, justificacion:'...'} salta la
     evaluación y registra la creación en bitácora con detalle {escape:true, justificacion}.
     bypass=true sin justificacion → 400. El bypass NO alcanza al ancla documental:
@@ -627,6 +629,7 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
         res = svc.crear_solicitud(
             expediente, tipos, expediente.titular_id,
             documento_solicitud_id=data.get('documento_solicitud_id'),
+            representante_entidad_id=data.get('representante_entidad_id'),
             justificacion=justificacion)
 
     elif padre_tipo == 'solicitud':
@@ -654,7 +657,10 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
         tipo = TipoTarea.query.get(tipo_id)
         if not tipo:
             return jsonify({'error': f'TipoTarea {tipo_id} no encontrado'}), 404
-        res = svc.crear_tarea(padre, tipo, justificacion=justificacion)
+        # `fuente` (#967, ADR-051 §B): obligatoria para una NOTIFICAR en un
+        # trámite con varias fuentes; con una sola, la toma el servicio.
+        res = svc.crear_tarea(padre, tipo, justificacion=justificacion,
+                              fuente=data.get('fuente'))
 
     else:
         return jsonify({'error': f'Tipo de nodo no admite hijos: {padre_tipo!r}'}), 422
@@ -682,10 +688,12 @@ def editar_nodo(expediente_id, tipo, nodo_id):
     PATCH .../nodo/<tipo>/<nodo_id> — editar campos de un nodo (ADR-016 §S3b).
 
     Body JSON varía por nivel:
-      solicitud:  {observaciones}
+      solicitud:  {observaciones, representante_entidad_id}
       fase:       {resultado_fase_id, documento_resultado_id, observaciones}
       tramite:    {observaciones}
-      tarea:      {documentos_consumidos_ids, documento_producido_id, notas}
+      tarea:      {documentos_consumidos_ids, documento_producido_id, notas,
+                   bypass, justificacion} — el bypass fuerza vincular a una
+                   NOTIFICAR sin destinatario (#967)
       organismo:  {via, resultado, direccion_notificacion_id, documento_id} (ADR-042 §C)
     Respuesta éxito: {ok:true} 200. Bloqueo motor: {error, motivo, url_norma} 422.
 
@@ -716,7 +724,9 @@ def editar_nodo(expediente_id, tipo, nodo_id):
     # servicio. Enviar la clave con null sigue significando vaciar.
     if tipo == 'solicitud':
         res = svc.editar_solicitud(
-            nodo, observaciones=leer_json(data, 'observaciones', nodo.observaciones))
+            nodo, observaciones=leer_json(data, 'observaciones', nodo.observaciones),
+            representante_entidad_id=leer_json(data, 'representante_entidad_id',
+                                               nodo.representante_entidad_id))
     elif tipo == 'fase':
         justificacion, err = leer_bypass(data)
         if err:
@@ -733,9 +743,14 @@ def editar_nodo(expediente_id, tipo, nodo_id):
         res = svc.editar_tramite(
             nodo, observaciones=leer_json(data, 'observaciones', nodo.observaciones))
     elif tipo == 'tarea':
+        # Escape de la NOTIFICAR sin destinatario (#967, ADR-051 §B).
+        justificacion, err = leer_bypass(data)
+        if err:
+            return err
         producido = nodo.documento_producido
         res = svc.editar_tarea(
             nodo,
+            justificacion=justificacion,
             documentos_consumidos_ids=leer_json(
                 data, 'documentos_consumidos_ids',
                 [d.id for d in nodo.documentos_consumidos]) or [],
@@ -816,11 +831,15 @@ def vincular_huerfano(expediente_id, tarea_id):
     else:
         producido_id = documento_id
 
+    justificacion, err = leer_bypass(data)
+    if err:
+        return err
     res = svc.editar_tarea(
         tarea,
         documentos_consumidos_ids=consumidos_ids,
         documento_producido_id=producido_id,
         notas=tarea.notas,
+        justificacion=justificacion,
     )
     if res.bloqueo:
         return _bloqueo_422(res)
@@ -2274,7 +2293,32 @@ def _notificacion_json(notif: Notificacion) -> dict:
         'observaciones': notif.observaciones,
         'documento_id': notif.documento_id,
         'sede_justificacion': notif.sede_justificacion,
-        'destinatario': None,  # hueco para N5 (una fila por destinatario)
+        'fuente': notif.fuente,
+        'destinatario': _destinatario_json(notif),
+    }
+
+
+def _destinatario_json(notif: Notificacion) -> dict | None:
+    """El destinatario copiado en la fila (#967, ADR-051 §B), o None si aún no
+    se ha fijado."""
+    if not notif.tiene_destinatario:
+        return None
+    return {
+        'entidad_id': notif.entidad_id,
+        'en_nombre_de_entidad_id': notif.en_nombre_de_entidad_id,
+        'en_nombre_de': notif.en_nombre_de.nombre_completo if notif.en_nombre_de else None,
+        'direccion_origen_id': notif.direccion_origen_id,
+        'nombre': notif.dest_nombre,
+        'nif': notif.dest_nif,
+        'direccion': notif.dest_direccion,
+        'codigo_postal': notif.dest_codigo_postal,
+        'municipio': notif.dest_municipio,
+        'provincia': notif.dest_provincia,
+        'email': notif.dest_email,
+        'dir3': notif.dest_dir3,
+        'sir': notif.dest_sir,
+        'fijado_en': notif.destinatario_fijado_en.isoformat()
+            if notif.destinatario_fijado_en else None,
     }
 
 
@@ -2284,12 +2328,22 @@ def _fecha_notificacion_json(fn) -> dict | None:
 
 def _notificar_payload(tarea) -> dict:
     """Payload del contenedor NOTIFICAR (#928, «Huecos para el frontend»).
-    `notificaciones` es una lista de 0 ó 1 elementos hasta N5."""
+    `notificaciones` es una lista de 0 ó 1 elementos: una fila por tarea
+    (ADR-051 §A), que desde #967 existe siempre. `destinatario` dice si se
+    puede fijar o cambiar y si la tarea está bloqueada por no tenerlo."""
     notif = tarea.notificacion
     doc = tarea.documento_producido
     sede = notif_svc.estado_sede(tarea)
+    escape = notif_svc.tuvo_escape_sin_destinatario(tarea)
     return {
         'notificaciones': [_notificacion_json(notif)] if notif else [],
+        'destinatario': {
+            'fijado': bool(notif and notif.tiene_destinatario),
+            'escape_sin_destinatario': escape,
+            'editable': bool(notif) and not escape and not notif_svc.tiene_justificante(tarea),
+            'bloquea': notif_svc.falta_destinatario(tarea),
+            'fuentes_del_tramite': list(notif_svc.fuentes_del_tramite(tarea.tramite) or []),
+        },
         'documento_producido': {'id': doc.id, 'nombre': _nombre_documento(doc)} if doc else None,
         'justificantes_previos': [
             {
@@ -2310,7 +2364,8 @@ def _notificar_payload(tarea) -> dict:
         'es_notificacion_del_titular': notif_svc.es_notificar_del_titular(tarea),
         'sede': {'aplica': sede is not None, 'estado': sede},
         'estado': estado_tarea(tarea),
-        'resultados_validos': list(notif_svc.resultados_validos(notif.canal)) if notif else [],
+        'resultados_validos': list(notif_svc.resultados_validos(notif.canal))
+            if notif and notif.canal else [],
     }
 
 
@@ -2353,12 +2408,13 @@ def patch_notificar(expediente_id, tarea_id):
       la Despensa). Solo justificantes FINALES; un previo se vincula como
       consumido desde la Despensa. `null` no desvincula (es un atajo de
       vinculación, no de edición de vínculos).
-    - `notificacion_id`: hueco para N5 (una fila por destinatario). En N1 es
-      opcional y, si viene, debe ser la única fila de la tarea.
+    - `notificacion_id`: opcional; si viene, debe ser la fila de la tarea.
+    - `bypass` + `justificacion`: fuerzan vincular `documento_id` a una
+      NOTIFICAR sin destinatario (#967, ADR-051 §B).
 
-    La fila nace al vincular el primer justificante con canal (hook de
-    `editar_tarea`), así que sin fila y sin `documento_id` → 422. Todo se valida
-    ANTES de vincular: un 422 no deja la vinculación hecha a medias.
+    La fila nace con la tarea (#967), pero hasta el primer justificante con
+    canal no hay nada registrado: sin canal y sin `documento_id` → 422. Todo se
+    valida ANTES de vincular: un 422 no deja la vinculación hecha a medias.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -2392,7 +2448,7 @@ def patch_notificar(expediente_id, tarea_id):
             }), 422
     canal_doc = notif_svc.canal_de_tipo(doc.tipo_doc.codigo) if doc and doc.tipo_doc else None
 
-    if notif is None and canal_doc is None:
+    if (notif is None or notif.canal is None) and canal_doc is None:
         return jsonify({
             'error': 'Sin notificación registrada',
             'motivo': 'Vincula primero un justificante (puesta a disposición o acuse).',
@@ -2439,12 +2495,17 @@ def patch_notificar(expediente_id, tarea_id):
         }), 422
 
     # --- Vinculación (si procede) y escritura ---
+    justificacion, err = leer_bypass(data)
+    if err:
+        return err
+
     advertencia_vinculo = None
     if doc is not None:
         consumidos_ids = [v.documento_id for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO']
         res_vinculo = svc.editar_tarea(
             tarea, documentos_consumidos_ids=consumidos_ids,
             documento_producido_id=doc.id, notas=tarea.notas,
+            justificacion=justificacion,
         )
         if res_vinculo.bloqueo:
             return _bloqueo_422(res_vinculo)
@@ -2476,6 +2537,46 @@ def patch_notificar(expediente_id, tarea_id):
     payload['ok'] = True
     if advertencia_vinculo:
         payload['advertencia'] = advertencia_vinculo
+    return jsonify(payload), 200
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/notificar/destinatario',
+              methods=['PUT'])
+@login_required
+def put_notificar_destinatario(expediente_id, tarea_id):
+    """
+    PUT .../notificar/destinatario — fija o refresca el destinatario de la
+    NOTIFICAR (#967, ADR-051 §B), a mano hasta que N5a-2 traiga el servicio de
+    destinatarios. Sin interfaz hasta #929.
+
+    Body JSON: `{}` en una notificación de fuente SOLICITANTE aplica la regla
+    del §K (representante si lo hay); si no, `{entidad_id,
+    en_nombre_de_entidad_id?, direccion_id?}`. 422 si ya tiene justificante
+    (destinatario fijo) o tuvo escape sin destinatario.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        tarea = _resolver_tarea_notificar(expediente, tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    data = request.get_json(silent=True) or {}
+    res = svc.fijar_destinatario(
+        tarea,
+        entidad_id=data.get('entidad_id'),
+        en_nombre_de_entidad_id=data.get('en_nombre_de_entidad_id'),
+        direccion_id=data.get('direccion_id'),
+    )
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    if not res.ok:
+        return jsonify({'error': res.error}), 422
+
+    payload = _notificar_payload(tarea)
+    payload['ok'] = True
     return jsonify(payload), 200
 
 

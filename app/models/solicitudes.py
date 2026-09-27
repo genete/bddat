@@ -181,9 +181,18 @@ class Solicitud(db.Model):
         comment='Notas o comentarios adicionales del técnico'
     )
 
+    representante_entidad_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.entidades.id'),
+        nullable=True,
+        comment='Quien representa al solicitante en esta solicitud (ADR-051 §K). '
+                'Con él, se notifica al representante'
+    )
+
     # Relaciones
     expediente = db.relationship('Expediente', backref='solicitudes')
-    entidad = db.relationship('Entidad', backref='solicitudes')
+    entidad = db.relationship('Entidad', backref='solicitudes', foreign_keys=[entidad_id])
+    representante = db.relationship('Entidad', foreign_keys=[representante_entidad_id])
     tipo_solicitud = db.relationship('TipoSolicitud')
     solicitud_afectada = db.relationship('Solicitud', remote_side=[id], backref='solicitudes_dependientes')
     # Las tres anclas documentales de la solicitud (ADR-041 §D bis): entrada →

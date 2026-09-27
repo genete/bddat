@@ -70,7 +70,11 @@ def _guardar(tarea, consumidos=(), producido=None):
 
 
 def _fila(tarea):
-    return Notificacion.query.filter_by(tarea_id=tarea.id).first()
+    """La fila, si está registrada (hay justificante con canal o resultado).
+    Desde #967 la fila existe siempre; lo que el hook crea o borra hasta #928
+    es ahora lo que llena o vacía."""
+    notif = Notificacion.query.filter_by(tarea_id=tarea.id).first()
+    return notif if notif is not None and notif.registrada else None
 
 
 # ---------------------------------------------------------------------------

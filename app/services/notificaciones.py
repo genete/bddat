@@ -20,9 +20,14 @@ lo resuelve (`documento_cumplimiento_fase`). Vive aquí y no en el acto
 Desde #947 (N4), con el `CERT_CUMPLIMIENTO_FASE` emitido se lee de él
 (`services/sellos.py`) en vez de calcularse.
 
-Hueco para N5 (`Tarea.notificacion` → lista, un destinatario por fila): la
-firma de cada función admitirá un `destinatario` opcional cuando llegue —
-cambia este servicio, no sus llamadores.
+Destinatario (#967, N5a-1; ADR-051 §B/§K): una `NOTIFICAR` por destinatario
+(ADR-051 §A), así que la tarea sigue teniendo una sola fila y las funciones de
+fechas no cambian de firma. Aquí viven las fuentes provisionales de cada
+trámite (`FUENTES_POR_TRAMITE`, hasta `notificacion_fuentes` en N5a-2), la regla
+«notificar al solicitante» (`destinatario_solicitante`), la copia del
+destinatario (`copiar_destinatario`) y las preguntas de las que cuelga el
+bloqueo sin destinatario (`tiene_justificante`, `tuvo_escape_sin_destinatario`).
+Escribir es de `mutaciones_arbol` (`crear_tarea`, `fijar_destinatario`).
 
 `RESULTADOS`, `RESULTADOS_EFECTUADA` y `TIPOS_JUSTIFICANTE_PREVIO` viven en
 `app.models.notificaciones` (junto al CHECK de `resultado`, 928c); se
@@ -35,7 +40,7 @@ from datetime import date
 from typing import Optional
 
 from app.models.notificaciones import (  # noqa: F401 — reexportadas
-    RESULTADOS, RESULTADOS_EFECTUADA, TIPOS_JUSTIFICANTE_PREVIO,
+    FUENTES, RESULTADOS, RESULTADOS_EFECTUADA, TIPOS_JUSTIFICANTE_PREVIO,
 )
 from app.services import sellos
 
@@ -317,3 +322,212 @@ def resultados_validos(canal: str) -> tuple:
     """Resultados admisibles para `canal` (D6: `RECHAZADA` solo en `NOTIFICA`
     y `POSTAL` — en `BANDEJA`/`SIR` «no consta ningún rechazo», ADR-049 §D)."""
     return _RESULTADOS_POR_CANAL.get(canal, RESULTADOS)
+
+
+# ---------------------------------------------------------------------------
+# Destinatario de la NOTIFICAR (#967, N5a-1 — ADR-051 §B, §C, §K)
+# ---------------------------------------------------------------------------
+
+# Fuentes de cada (tipo de fase, tipo de trámite) con NOTIFICAR — ADR-051 §C,
+# «Contenido sembrado». **Provisional**: lo sustituye la tabla
+# `notificacion_fuentes` en N5a-2. Un par que no esté aquí admite cualquier
+# fuente de `FUENTES`, que entonces hay que indicar al crear la tarea: son los
+# trámites que el catálogo aún tiene y ADR-051 retira (`ANUNCIO_BOE`,
+# `ANUNCIO_PRENSA` en #964; `PORTAL_TRANSPARENCIA` en #966). Los dos trámites
+# de notificación de la DUP que se funden en N5a-3 (§G) llevan las fuentes que
+# heredará su `NOTIFICACION`.
+_RESOLUCION_COMUN = ('SOLICITANTE', 'ORGANISMOS_CONSULTADOS', 'ORGANO_AMBIENTAL',
+                     'INTERESADOS_RECONOCIDOS')
+FUENTES_POR_TRAMITE = {
+    ('ANALISIS_SOLICITUD', 'COMUNICACION_INICIO_ADMISION'): ('SOLICITANTE',),
+    ('ANALISIS_SOLICITUD', 'REQUERIMIENTO_SUBSANACION'): ('SOLICITANTE',),
+    ('DATOS_CATASTRALES', 'REMISION_ACUERDO_DATOS'): ('SOLICITANTE',),
+    ('DATOS_CATASTRALES', 'REQUERIMIENTO_CATASTRALES'): ('SOLICITANTE',),
+    ('DATOS_CATASTRALES', 'TOMA_RAZON_RBDA'): ('SOLICITANTE',),
+    ('CONSULTAS', 'CONSULTA_SEPARATA'): ('ORGANISMO_DEL_TRAMITE',),
+    ('CONSULTAS', 'CONSULTA_TRASLADO_ORGANISMO'): ('ORGANISMO_DEL_TRAMITE',),
+    ('CONSULTAS', 'CONSULTA_TRASLADO_TITULAR'): ('SOLICITANTE',),
+    ('INFORMACION_PUBLICA', 'ANUNCIO_TITULAR'): ('SOLICITANTE',),
+    ('INFORMACION_PUBLICA', 'RECEPCION_ALEGACION'): ('SOLICITANTE',),
+    ('INFORMACION_PUBLICA', 'ANUNCIO_BOJA'): ('BOLETIN',),
+    ('INFORMACION_PUBLICA', 'ANUNCIO_BOP'): ('BOLETIN',),
+    ('INFORMACION_PUBLICA', 'TABLON_AYUNTAMIENTOS'): ('AYUNTAMIENTO',),
+    ('CONSULTA_MINISTERIO', 'SOLICITUD_INFORME'): ('MINISTERIO',),
+    ('COMPATIBILIDAD_AMBIENTAL', 'SOLICITUD_COMPATIBILIDAD'): ('ORGANO_AMBIENTAL',),
+    ('FIGURA_AMBIENTAL_EXTERNA', 'SOLICITUD_FIGURA'): ('ORGANO_AMBIENTAL',),
+    ('AAU_AAUS_INTEGRADA', 'REMISION_RESULTADO_IP_CONSULTAS'): ('ORGANO_AMBIENTAL',),
+    ('AAU_AAUS_INTEGRADA', 'RECEPCION_DICTAMEN'): ('ORGANO_AMBIENTAL',),
+    ('AAU_AAUS_INTEGRADA', 'RECEPCION_PROPUESTA_INF_VINC'): ('ORGANO_AMBIENTAL',),
+    ('AAU_AAUS_INTEGRADA', 'DISCREPANCIA_INF_VINC'): ('ORGANO_SUPERIOR',),
+    ('RESOLUCION', 'NOTIFICACION'): _RESOLUCION_COMUN,
+    ('RESOLUCION_AAP', 'NOTIFICACION'): _RESOLUCION_COMUN,
+    ('RESOLUCION_AAC', 'NOTIFICACION'): _RESOLUCION_COMUN,
+    ('RESOLUCION_DUP', 'NOTIFICACION'): ('SOLICITANTE', 'ORGANISMOS_CONSULTADOS',
+                                         'PROPIETARIOS_DUP', 'INTERESADOS_RECONOCIDOS'),
+    ('RESOLUCION_DUP', 'NOTIFICACION_ORGANISMOS'): ('ORGANISMOS_CONSULTADOS',),
+    ('RESOLUCION_DUP', 'NOTIFICACION_INTERESADOS'): ('PROPIETARIOS_DUP',
+                                                     'INTERESADOS_RECONOCIDOS'),
+    ('RESOLUCION', 'PUBLICACION'): ('BOLETIN',),
+    ('RESOLUCION_AAP', 'PUBLICACION'): ('BOLETIN',),
+    ('RESOLUCION_DUP', 'PUBLICACION_BOE'): ('BOLETIN',),
+    ('RESOLUCION_DUP', 'PUBLICACION_BOJA'): ('BOLETIN',),
+    ('RESOLUCION_DUP', 'PUBLICACION_BOP'): ('BOLETIN',),
+    ('RESOLUCION_DUP', 'REQUERIMIENTO_RBDA_DEFINITIVA'): ('SOLICITANTE',),
+    ('RECONOCIMIENTO_INTERESADO', 'NOTIFICACION'): ('SOLICITANTE',),
+}
+
+# Qué dirección de la entidad se copia según la fuente (ADR-051 §B: «cada
+# fuente lleva un rol»). Los roles de propietarios e interesados llegan con
+# #431/#432; hasta entonces toman la de titular, como el solicitante.
+_ROL_DIRECCION_POR_FUENTE = {
+    'SOLICITANTE': 'titular',
+    'ORGANISMO_DEL_TRAMITE': 'consultado',
+    'ORGANISMOS_CONSULTADOS': 'consultado',
+    'ORGANO_AMBIENTAL': 'consultado',
+    'MINISTERIO': 'consultado',
+    'ORGANO_SUPERIOR': 'consultado',
+    'BOLETIN': 'publicador',
+    'AYUNTAMIENTO': 'publicador',
+    'PROPIETARIOS_DUP': 'titular',
+    'INTERESADOS_RECONOCIDOS': 'titular',
+}
+
+# `bitacora.detalle.accion` del escape «vincular sin destinatario» (ADR-051
+# §B), con `escape: True` sobre la tarea. Tras él la tarea queda sin
+# destinatario para siempre.
+ACCION_SIN_DESTINATARIO = 'NOTIFICAR_SIN_DESTINATARIO'
+
+# `bitacora.detalle.accion` al fijar o refrescar el destinatario.
+ACCION_FIJAR_DESTINATARIO = 'FIJAR_DESTINATARIO'
+
+# Documentos cuya sola presencia en la tarea congela el destinatario: todo
+# justificante, previo o final, incluida la sede (ADR-051 §D: «desde el primer
+# justificante, la fila queda fija»).
+_TIPOS_JUSTIFICANTE = (set(CANAL_POR_TIPO_DOC) | set(JUSTIFICANTES_CUMPLIMIENTO)
+                       | set(TIPOS_JUSTIFICANTE_PREVIO))
+
+
+def fuentes_del_tramite(tramite) -> Optional[tuple]:
+    """Fuentes admitidas en `tramite` (`FUENTES_POR_TRAMITE`), o `None` si el
+    par (fase, trámite) no está declarado: entonces vale cualquiera de
+    `FUENTES`, indicada a mano."""
+    clave = (_codigo(tramite.fase.tipo_fase), _codigo(tramite.tipo_tramite))
+    return FUENTES_POR_TRAMITE.get(clave)
+
+
+def resolver_fuente(tramite, fuente: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """(fuente, error) de una `NOTIFICAR` nueva en `tramite` (ADR-051 §B): con
+    una sola fuente la toma sola; con varias, o sin declarar, hay que indicarla.
+    Una fuente indicada tiene que ser de las del trámite."""
+    admitidas = fuentes_del_tramite(tramite)
+    if fuente is not None:
+        if fuente not in (admitidas or FUENTES):
+            opciones = ', '.join(admitidas or FUENTES)
+            return None, f'Fuente «{fuente}» no válida para este trámite. Opciones: {opciones}.'
+        return fuente, None
+    if admitidas is not None and len(admitidas) == 1:
+        return admitidas[0], None
+    opciones = ', '.join(admitidas or FUENTES)
+    return None, (f'Indica la fuente de la notificación (a quién y por qué se notifica). '
+                  f'Opciones: {opciones}.')
+
+
+@dataclass(frozen=True)
+class Destinatario:
+    """A quién se envía, en nombre de quién y desde qué dirección se copia.
+    `direccion` es una `DireccionNotificacion`, o `None` si la entidad no tiene
+    una del rol y se copia su dirección principal."""
+    entidad: 'Entidad'  # noqa: F821
+    en_nombre_de: Optional['Entidad']  # noqa: F821
+    direccion: Optional['DireccionNotificacion']  # noqa: F821
+
+
+def direccion_de_rol(entidad_id: int, fuente: str):
+    """La dirección de notificación activa de la entidad para el rol de la
+    fuente (la más reciente), o `None` → se usará su dirección principal."""
+    from app.models.direccion_notificacion import DireccionNotificacion
+    rol = _ROL_DIRECCION_POR_FUENTE.get(fuente, 'titular')
+    return DireccionNotificacion.obtener_direccion_notificacion(
+        entidad_id,
+        es_titular=rol == 'titular',
+        es_consultado=rol == 'consultado',
+        es_publicador=rol == 'publicador',
+    )
+
+
+def destinatario_solicitante(solicitud) -> Optional[Destinatario]:
+    """«Notificar al solicitante» (ADR-051 §K), la regla única: con
+    representante en la solicitud, al representante en nombre del solicitante;
+    sin él, al solicitante (`solicitudes.entidad_id`). La dirección, la de rol
+    TITULAR de quien recibe, o su principal si no tiene."""
+    solicitante = solicitud.entidad
+    if solicitante is None:
+        return None
+    representante = solicitud.representante
+    receptor = representante or solicitante
+    return Destinatario(
+        entidad=receptor,
+        en_nombre_de=solicitante if representante is not None else None,
+        direccion=direccion_de_rol(receptor.id, 'SOLICITANTE'),
+    )
+
+
+def copiar_destinatario(notif, destino: Destinatario, *, ahora) -> None:
+    """Copia el destinatario en la fila (ADR-051 §B): entidad, representación,
+    nombre, NIF, dirección postal y canales electrónicos. La copia es lo que
+    vale; `direccion_origen_id` queda solo como referencia. No valida ni
+    comprueba si está congelada: eso es de `mutaciones_arbol.fijar_destinatario`."""
+    entidad, src = destino.entidad, destino.direccion
+    postal = src if src is not None else entidad
+    mun = getattr(postal, 'municipio', None)
+    notif.entidad_id = entidad.id
+    notif.en_nombre_de_entidad_id = destino.en_nombre_de.id if destino.en_nombre_de else None
+    notif.direccion_origen_id = src.id if src is not None else None
+    notif.dest_nombre = entidad.nombre_completo
+    notif.dest_nif = (src.nif if src is not None and src.nif else None) or entidad.nif
+    if postal.direccion_fallback:
+        notif.dest_direccion = postal.direccion_fallback
+        notif.dest_codigo_postal = None
+        notif.dest_municipio = None
+        notif.dest_provincia = None
+    else:
+        notif.dest_direccion = postal.direccion
+        notif.dest_codigo_postal = postal.codigo_postal
+        notif.dest_municipio = mun.nombre if mun else None
+        notif.dest_provincia = mun.provincia if mun else None
+    notif.dest_email = (src.email if src is not None and src.email else None) or entidad.email
+    notif.dest_dir3 = src.codigo_dir3 if src is not None else None
+    notif.dest_sir = src.codigo_sir if src is not None else None
+    notif.destinatario_fijado_en = ahora
+
+
+def tiene_justificante(tarea) -> bool:
+    """Hay algún justificante vinculado a la tarea, previo o final, o un
+    resultado registrado: desde entonces el destinatario queda fijo (ADR-051
+    §D) — ya se envió algo a alguien."""
+    notif = tarea.notificacion
+    if notif is not None and notif.registrada:
+        return True
+    return any(_tipo_codigo(v.documento) in _TIPOS_JUSTIFICANTE for v in tarea.vinculos_documento)
+
+
+def tuvo_escape_sin_destinatario(tarea) -> bool:
+    """La tarea avanzó sin destinatario por escape justificado (ADR-051 §B):
+    queda así para siempre. La constancia es la bitácora, como en los demás
+    escapes (`escape: True` sobre `tareas`)."""
+    if tarea.id is None:
+        return False
+    from app.models.bitacora import Bitacora
+    entradas = Bitacora.query.filter_by(tabla='tareas', registro_id=tarea.id).all()
+    return any((e.detalle or {}).get('accion') == ACCION_SIN_DESTINATARIO for e in entradas)
+
+
+def falta_destinatario(tarea) -> bool:
+    """La `NOTIFICAR` no puede avanzar: no tiene destinatario ni lo salvó un
+    escape (ADR-051 §B). Una tarea que no es `NOTIFICAR` nunca."""
+    if _codigo(tarea.tipo_tarea) != 'NOTIFICAR':
+        return False
+    notif = tarea.notificacion
+    if notif is not None and notif.tiene_destinatario:
+        return False
+    return not tuvo_escape_sin_destinatario(tarea)

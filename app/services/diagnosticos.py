@@ -147,12 +147,11 @@ def _motivo_diagnostico_superado(tarea: Tarea) -> Optional[MotivoIrreversible]:
        diagnóstico, ese es el motivo más informativo aunque este también sea cierto
        (el ELABORAR de esa vuelta posterior normalmente ya existe).
 
-    Nota: la fila de `notificaciones` cuenta aunque `resultado` sea NULL — su sola
-    presencia ya significa que el escrito se puso a disposición: desde #928 solo la
-    crea el hook de `editar_tarea` al vincular un justificante con canal (previo o
-    final), y la borra si se desvincula el último sin haber fijado resultado
-    (invariante explícito en el docstring de `Notificacion`; antes lo garantizaba el
-    NOT NULL de `fecha_puesta_disposicion`, retirada por ADR-049).
+    Nota: la fila de `notificaciones` cuenta aunque `resultado` sea NULL si está
+    `registrada` (tiene canal): el escrito ya se puso a disposición. Desde #967 la
+    fila nace con la tarea, así que su sola presencia ya no dice nada; el canal lo
+    fija el hook de `editar_tarea` con el primer justificante y lo vacía si se
+    desvincula el último sin haber fijado resultado.
     """
     tramite = tarea.tramite
     if tramite is None or tramite.tipo_tramite is None:
@@ -353,6 +352,8 @@ def _hay_notificacion_posterior_en_cadena(tarea: Tarea) -> bool:
             Tramite.fase_id == tarea.tramite.fase_id,
             Tarea.id > tarea.id,
             TipoTarea.codigo == 'NOTIFICAR',
+            # `Notificacion.registrada`: la fila existe desde que nace la tarea (#967)
+            db.or_(Notificacion.canal.isnot(None), Notificacion.resultado.isnot(None)),
             TipoTramite.codigo.in_(TRAMITES_CADENA_SUBSANACION),
         )
         .exists()

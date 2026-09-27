@@ -166,10 +166,9 @@ class Tarea(db.Model):
         """Resultado de la notificación: CORRECTA | RECHAZADA | INCORRECTA | None.
 
         Solo aplica a tareas NOTIFICAR. Lee de notificaciones por tarea_id, no
-        por documento (ADR-034, #657/#658 — corrige ADR-008): la fila existe en
-        cuanto hay un justificante con canal vinculado (previo o final, #928),
-        aunque aún no haya producido ni resultado. None = sin fila, o fila sin
-        resultado fijado por el usuario. Para "¿está efectuada?" no comparar
+        por documento (ADR-034, #657/#658 — corrige ADR-008): la fila nace con
+        la tarea (#967, ADR-051 §B). None = fila sin resultado fijado por el
+        usuario. Para "¿está efectuada?" no comparar
         con 'CORRECTA': usar `services.notificaciones.notificacion_efectuada`.
         """
         notif = self.notificacion
