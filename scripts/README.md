@@ -229,33 +229,6 @@ python scripts/flask_console.py
 
 ---
 
-## seed_listado.py — Escenarios de prueba para el listado inteligente
-
-Crea los 11 escenarios de `ANALISIS_LISTADO_INTELIGENTE.md §6`.
-Re-ejecutable: borra datos operativos previos antes de insertar.
-Prerequisito: `flask db upgrade` (tipos de fase y trámite vienen de migraciones).
-
-### Uso
-
-```bash
-python scripts/seed_listado.py
-```
-
----
-
-## verificar_seed.py — Verificación de escenarios del listado
-
-Comprueba que `seed_listado.py` ha creado correctamente los 11 escenarios
-T01-T11. Sirve como test de regresión.
-
-### Uso
-
-```bash
-python scripts/verificar_seed.py
-```
-
----
-
 ## verificar_bd_tests.sh — Detectar mutaciones silenciosas de los tests en la BD real
 
 `pg_dump` de la BD de desarrollo antes y después de correr tests, con diff.
