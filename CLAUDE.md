@@ -11,6 +11,10 @@ Desarrollado para la Consejería de Industria, Energía y Minas (Junta de Andalu
 ## Documentos de referencia
 
 - Antes de escribir código, templates, modelos, migraciones o commits: leer `docs/guias/REGLAS_DESARROLLO.md`
+- Antes de proponer o escribir tests: aplicar `tests/README.md` §3 «Cuándo escribir un test —
+  y cuándo no». Cada test propuesto nombra el fallo silencioso que evita; si no lo hay, no se
+  propone. Vistas de solo lectura, textos y HTML no llevan más que su smoke. Si un refactor
+  rompe un test que no supera ese criterio, se borra en vez de repararlo.
 - Ante refactorizaciones o cambios de diseño: seguir §"Análisis de impacto previo" de `REGLAS_DESARROLLO.md` — presentar tabla de consumidores al usuario antes de escribir código
 - Comandos Bash: las reglas de `docs/guias/REGLAS_BASH.md` **las aplica un hook**, no la
   buena memoria. `.claude/hooks/reglas_bash_guard.py` (PreToolUse sobre Bash) deniega los

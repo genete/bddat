@@ -142,7 +142,62 @@ mutación aleatoria, tres resultaron ser el único vigilante de algo.
 
 ---
 
-## 3. Reglas al escribir un test
+## 3. Cuándo escribir un test — y cuándo no
+
+La pregunta no es «¿se puede testear?» —casi todo se puede— sino **«si esto se
+rompe, ¿se rompe en silencio y deja datos mal?»**. Un test que no protege nada
+no es neutro: se paga en cada migración y en cada refactor. En septiembre de
+2026 se escribieron 12.687 líneas de test frente a 11.966 de `app/`, y 151
+retoques a ficheros de test que ya existían.
+
+**Sí merece test:**
+
+- **Lo que calcula y decide**: cómputo de plazos y suspensiones, estado de
+  dominio, invariantes, sellado. Si se equivoca, nadie lo ve en pantalla.
+- **Lo que escribe**: altas, ediciones y borrados, mutaciones del árbol,
+  bitácora, emisión de certificados y documentos. Un error deja datos mal que
+  aparecen mucho después.
+- **Permisos**: el fallo no se ve desde el rol que sí tiene acceso.
+- **Restricciones de la BD** de las que depende el código (índices únicos,
+  CHECK).
+- **Regresión de un bug real**: el caso mínimo que lo reproduce. Uno.
+
+**No merece test más allá de su smoke:**
+
+- **Vistas informativas de solo lectura** (seguimiento, inspectores, listados,
+  paneles). El smoke de ADR-019 ya cubre que cargan: si rompen, rompen a la
+  vista. Si muestran algo equivocado, lo ve quien las usa y se pide como
+  mejora. Un test tampoco lo habría evitado: lo escribe quien tiene la misma
+  idea que el código, y da por buena la misma mentira. El filtro de #912
+  («solo la primera finalizadora») es de esos: se caza revisando la lógica, no
+  testeándola. Si lo que calcula la vista lo usa también otra pieza (el estado
+  de la solicitud), se testea ese servicio, no la vista.
+- **Textos, avisos, rótulos**, el esquema de un formulario o editor, la
+  estructura del HTML, el orden de las columnas.
+- **Copias de filas del catálogo** (ver §2, tipo Datos).
+- **Combinaciones**: un test por rama de decisión, no uno por combinación de
+  entradas. Si hacen falta varias, `parametrize`.
+- **Lo que otro fichero ya prueba del mismo servicio** desde otro issue (§5).
+- **Mocks que solo comprueban que se llamó a una función.**
+
+**Tamaño.** Un issue no necesita un fichero de 600 líneas. Si las líneas de
+test de un cambio superan a las de `app/` que cambia, repasar cuáles de la
+lista «No» se han colado. Es una señal, no un tope.
+
+**Cuando un test se rompe sin que haya fallo real** (migración, refactor,
+cambio de firma), antes de repararlo se le pasa este criterio:
+
+- **No lo supera** → se borra en ese mismo commit, diciendo por qué en el
+  mensaje. Basta comprobar que no vigila nada de la lista «Sí». Si vigila algo
+  de ahí, se aplica entero el checklist de §2, que es para retirar por
+  redundancia.
+- **Lo supera, pero se rompió por su forma** (firma de un helper, una fixture)
+  → el arreglo va a un helper de `conftest.py`, para que el próximo cambio se
+  corrija en un solo sitio y no en diez ficheros.
+
+---
+
+## 4. Reglas al escribir un test
 
 1. **Nunca `pytest.skip` por falta de datos.** La base la sembramos nosotros: un
    dato ausente es un defecto de la semilla → `assert x is not None, 'la semilla
@@ -175,7 +230,7 @@ mutación aleatoria, tres resultaron ser el único vigilante de algo.
 
 ---
 
-## 4. Organización
+## 5. Organización
 
 - `tests/smoke/test_smoke_<vista>.py` — un fichero por vista (ADR-019).
 - `tests/test_<issue>_<tema>.py` — el resto, por issue de origen. Es la convención
