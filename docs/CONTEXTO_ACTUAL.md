@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **#956 (N4b)** mergeado (PR #957): las fases finalizadoras se cierran emitiendo su `CERT_CIERRE_FASE`, que ocupa `documento_resultado_id`, exige el certificado de cumplimiento y no admite escape a nivel de fase; guarda una foto fija del informe y se deshace reabriendo la fase. El editor ya no deja elegir documento de resultado en ellas. En desarrollo, AT-25 (`RESOLUCION_DUP` #28316) quedó cerrada con los dos certificados y la solicitud resuelta: ya no se puede reabrir, así que no sirve para volver a probar el cierre. Derivados abiertos: #954 y #955. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **N5 diseñado** y ADR-051 enmendado (2026-09-27): toda `NOTIFICAR` guarda su destinatario —el solicitante o su representante, guardado por solicitud—, que siempre fija el usuario; un trámite no termina mientras falte o sobre alguien. Partido en **#967**, **#968** y **#969**. De paso, **#966** (portal de transparencia a un solo ELABORAR). Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **N5 (notificación multi-destinatario, `Tarea.notificacion` → lista)**, siguiente de la cadena de ADR-049 y previo a N6; sin número todavía: crear y diseñar el issue. Punto de partida: ADR-049 §C/§D y «Lo que este ADR no decide» (cómo se liga cada justificante final a su destinatario).
+**Próximo:** **#967 (N5a-1)**: destinatario en la ficha de notificación, desde que nace la tarea, y sin destinatario no avanza. Antes de #968 tienen que estar cerrados #964 y #966.
 
 ---
 
