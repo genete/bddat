@@ -131,7 +131,7 @@ def test_requerimiento_subsanacion_usa_elaborar(app_ctx):
 
 
 # ---------------------------------------------------------------------------
-# D) #368 — REDACTAR_ANUNCIO (ANUNCIO_BOJA, con los demás anuncios en F)
+# D) #368 — REDACTAR_ANUNCIO (ANUNCIO_BOJA lo vigila la guarda de F)
 # ---------------------------------------------------------------------------
 
 def test_redactar_anuncio_secuencia(app_ctx):
@@ -173,7 +173,7 @@ def test_anuncio_titular_secuencia(app_ctx):
 
 
 # ---------------------------------------------------------------------------
-# F) #964 — anuncios de INFORMACION_PUBLICA y guarda contra ESTRUCTURA_FTT.json
+# F) #964 — guarda contra ESTRUCTURA_FTT.json
 # ---------------------------------------------------------------------------
 
 def _secuencia(codigo_tramite):
@@ -184,22 +184,6 @@ def _secuencia(codigo_tramite):
     filas = (TramiteTarea.query.filter_by(tipo_tramite_id=tramite.id)
              .order_by(TramiteTarea.orden).all())
     return [f.tipo_tarea.codigo for f in filas]
-
-
-# Secuencia exacta, no recuento: los tests anteriores solo contaban las dos
-# ESPERAR_PLAZO de BOE y BOJA, y pasaban con el catálogo mal (#964).
-SECUENCIAS_ANUNCIOS = {
-    'ANUNCIO_BOE': ['ESPERAR_PLAZO', 'ESPERAR_PLAZO'],
-    'ANUNCIO_PRENSA': ['ESPERAR_PLAZO', 'ESPERAR_PLAZO'],
-    'ANUNCIO_BOJA': ['NOTIFICAR', 'ESPERAR_PLAZO', 'ESPERAR_PLAZO'],
-    'ANUNCIO_BOP': ['ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO', 'ESPERAR_PLAZO'],
-    'TABLON_AYUNTAMIENTOS': ['ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO'],
-}
-
-
-@pytest.mark.parametrize('codigo', sorted(SECUENCIAS_ANUNCIOS))
-def test_secuencia_exacta_anuncios_ip(app_ctx, codigo):
-    assert _secuencia(codigo) == SECUENCIAS_ANUNCIOS[codigo]
 
 
 # Trámites del JSON sin poblar en BD a propósito: la consulta al operador del

@@ -133,7 +133,8 @@ Contenido sembrado:
 
 Fuera de la tabla, porque su `NOTIFICAR` desaparece: `ANUNCIO_BOE` y `ANUNCIO_PRENSA` (los publica el titular, #964) y `PORTAL_TRANSPARENCIA` (pasa a un solo ELABORAR que recopila lo expuesto y produce la URL, #966). Un test protege que todo trámite con `NOTIFICAR` en `tramites_tareas` tenga al menos una fuente.
 
-- **Hecho en #964:** `ANUNCIO_BOE` y `ANUNCIO_PRENSA` son solo dos esperas en `tramites_tareas` (migración `964_anuncios_ip_secuencias`), y el test de fuentes ya no los exceptúa. Una `NOTIFICAR` forzada en ellos fuera de la secuencia no tiene fuente declarada y la pide a mano. `PORTAL_TRANSPARENCIA` sigue pendiente de #966.
+- **Hecho en #964:** `ANUNCIO_BOE` y `ANUNCIO_PRENSA` son solo dos esperas en `tramites_tareas` (migración `964_anuncios_ip_secuencias`), y el test de fuentes ya no los exceptúa. Una `NOTIFICAR` forzada en ellos fuera de la secuencia no tiene fuente declarada y la pide a mano.
+- **Hecho en #966:** `PORTAL_TRANSPARENCIA` es un solo ELABORAR (migración `966_portal_un_elaborar`), que produce `JUSTIFICANTE_PORTAL`. Con él, ningún trámite del catálogo tiene `NOTIFICAR` sin fuente, y el test de fuentes no exceptúa ninguno.
 
 ### D — Poblado idempotente, igual con uno o con varios destinatarios
 

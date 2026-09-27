@@ -7,7 +7,7 @@
 > disposición en Notifica, 1.er intento postal, sede) y la fecha que lleva cada uno. Las fechas
 > de cumplimiento y de efectos se calculan desde estos documentos (`app/services/notificaciones.py`).
 > Certificados de la fase finalizadora: `CERT_CUMPLIMIENTO_FASE` (#947) y `CERT_CIERRE_FASE` (#956).
-> Anuncios de información pública alineados con `ESTRUCTURA_FTT.json` en #964: BOE y prensa sin NOTIFICAR, BOJA sin ELABORAR.
+> Anuncios de información pública alineados con `ESTRUCTURA_FTT.json` en #964: BOE y prensa sin NOTIFICAR, BOJA sin ELABORAR. Portal de transparencia a un solo ELABORAR en #966.
 
 ---
 
@@ -26,7 +26,7 @@
 | `JUSTIFICANTE_BOP` | Justificante publicación BOP | EXTERNO | ANUNCIO_BOP.ESPERAR_PLAZO(1) (producido) | | Sin uso en el mapa: según `ESTRUCTURA_FTT.json`, EP(1) de BOP produce `ANUNCIO_PUBLICADO`. Pendiente de #938 |
 | `JUSTIFICANTE_BOJA` | Justificante publicación BOJA | EXTERNO | ANUNCIO_BOJA.ESPERAR_PLAZO(1) (producido) | | Sin uso en el mapa: según `ESTRUCTURA_FTT.json`, EP(1) de BOJA produce `ANUNCIO_PUBLICADO`. Pendiente de #938 |
 | `JUSTIFICANTE_PRENSA` | Justificante publicación prensa | EXTERNO | ANUNCIO_PRENSA.ESPERAR_PLAZO(1) (producido); ESPERAR_PLAZO(2) (consumido) | | Diario de mayor difusión; siempre aportado por el titular, que conoce cuándo y dónde publicó. La segunda espera cuenta el plazo de IP desde él (#964) |
-| `JUSTIFICANTE_PORTAL` | URL de acto de exposición en portal de transparencia | EXTERNO | PORTAL_TRANSPARENCIA.ESPERAR_PLAZO (producido) | | URL única y permanente generada por DRUPAL; expone los documentos de IP publicados e indica si el período de IP está abierto o no |
+| `JUSTIFICANTE_PORTAL` | URL de acto de exposición en portal de transparencia | EXTERNO | PORTAL_TRANSPARENCIA.ELABORAR (producido) | | URL única y permanente generada por DRUPAL; expone los documentos de IP publicados e indica si el período de IP está abierto o no. El ELABORAR consume lo expuesto: ANUNCIO_IP y, según el expediente, ANUNCIO_PUBLICADO, JUSTIFICANTE_BOE/_PRENSA, CERT_PLAZO_TABLON, DOC_PROYECTO y RBDA (#966) |
 | `CERT_PLAZO_CUMPLIDO` | Certificado de plazo cumplido | INTERNO | ESPERAR_PLAZO (producido) | LPACAP art. 22 | Generado por BDDAT cuando vence el plazo. Dos variantes: (A) espera de documento externo — constancia de ausencia de respuesta; (B) espera de transcurso de tiempo puro — el documento consumido es la publicación (ANUNCIO_PUBLICADO en BOP y BOJA; JUSTIFICANTE_BOE / JUSTIFICANTE_PRENSA en BOE y prensa, #964), no se espera ningún documento externo, el certificado acredita el vencimiento del plazo de IP. Incluye en ambos casos: documento que inició la espera, contexto ESFTT, normativa y duración del plazo, cómputo de transcurso. fecha_administrativa = fecha de vencimiento (hecho objetivo). Ver #362 |
 | `DIAGNOSTICO` | Diagnóstico de análisis | INTERNO | ANALIZAR (producido) | | Decisión estructurada persistida en BD. url = bddat://diagnosticos/{id}. fecha_administrativa = NULL por diseño (sin efecto jurídico propio). Consumible por ELABORAR como documento de entrada opcional (rol CONSUMIDO). Ver #365 |
 | `OFICIO_REQUERIMIENTO` | Oficio de requerimiento de subsanación | INTERNO | REQUERIMIENTO_SUBSANACION.ELABORAR (producido) | | fecha_administrativa = fecha de firma. Lleva stamp ESFTT invisible. Norma: pendiente |
@@ -98,7 +98,7 @@
 > Última sesión: 2026-05-11
 > Estado: catálogo COMPLETO — trabajo normativo de #337 terminado. Criterio 1 (tabla candidatos) cerrado.
 > Fases cubiertas: todas — CONSULTAS, INFORMACION_PUBLICA, AAU_AAUS_INTEGRADA, FIGURA_AMBIENTAL_EXTERNA, RESOLUCION
-> PORTAL_TRANSPARENCIA: sin tipos nuevos. Patrón NOTIFICAR+ESPERAR_PLAZO repetido según boletines — pendiente confirmar con jefatura (pares manuales vs certificado automático del sistema)
+> PORTAL_TRANSPARENCIA: sin tipos nuevos. ~~Patrón NOTIFICAR+ESPERAR_PLAZO repetido según boletines — pendiente confirmar con jefatura (pares manuales vs certificado automático del sistema)~~ Resuelto en #966: un solo ELABORAR que produce `JUSTIFICANTE_PORTAL`, sin NOTIFICAR ni ESPERAR_PLAZO (cada plazo de IP lo lleva su boletín)
 > Pendiente para cierre completo de #337: criterio 2 (migración Alembic), criterio 3 (poblar tipos_documentos_resultados_validos), criterio 4 (UI seleccionable)
 > Issues abiertos relacionados: #361 #362 #363 #364 #365 #366 #367 #368 #369 #370 #371 #372 #373 #374
 
