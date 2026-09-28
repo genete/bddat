@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **#968 (N5a-2)** (2026-09-27, PR #981): BDDAT sabe a quién notificar en cada trámite (catálogo `notificacion_fuentes`, `tramites_destinatario`, servicio de destinatarios) y no da un trámite por terminado mientras falte alguien por notificar o sobre una notificación. En el PC: aplicar la migración y recrear los expedientes-tipo. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#971** (2026-09-28, PR #983): expediente-tipo `RESOLUCION_CON_ORGANISMOS` — único que llega a cerrar `RESOLUCION`, con las tres consultas cerradas (favorable, condicionado con traslado aceptado, silencio reconocido), solicitante representado, botón «añadir los que faltan» y los dos certificados de fase. De paso, un test añadido a `test_968_fuentes_destinatarios.py` (organismo sin notificar bloquea de verdad `CERT_CIERRE_FASE`) y el hueco de catálogo #982 (silencio de `CONSULTA_SEPARATA` sin vía limpia de cierre), abierto pero sin bloquear. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **#971**: expediente-tipo que llega a la resolución notificada a solicitante (con representante) y organismos, con sus certificados; ya no espera a nada. Después, **#969 (N5a-3)**, que lo usa.
+**Próximo:** **#969 (N5a-3)**: un solo `NOTIFICACION` en `RESOLUCION_DUP` y el plazo del acto cumplido por la notificación de fuente `SOLICITANTE`, no por la de un organismo (ADR-051 §F, §G). Ya no espera a nada (#968 y #971, cerrados).
 
 ---
 
