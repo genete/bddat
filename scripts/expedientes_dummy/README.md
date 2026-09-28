@@ -19,6 +19,7 @@ Cada uno tiene doble vida (#849):
 | `ANALISIS_DOC_DOS_VUELTAS` | Análisis documental con respuesta del titular dentro de plazo y dos vueltas de subsanación | Termina con `ANALISIS_SOLICITUD` completa y pendiente de cierre |
 | `CONSULTAS_VARIOS_ESTADOS` | Fase de consultas con las tres separatas enviadas y cada organismo en un estado distinto | Termina con `CONSULTAS` abierta — expediente incompleto a propósito |
 | `REFORMADO_ANALISIS_Y_CONSULTAS` | Dos versiones de proyecto (ADR-044): `ANALISIS_SOLICITUD` y `CONSULTAS` cortadas por el mismo reformado | Un organismo enquistado en la `CONSULTAS` de la v1 (hueco vivo, §I) que ninguna fase posterior salda; la v2 (reformado) repite ese organismo y añade uno nuevo, ambas fases limpias (§F) |
+| `RESOLUCION_CON_ORGANISMOS` | Consultas cerradas (favorable, condicionado con traslado aceptado, silencio reconocido), resolución notificada a solicitante representado y a los tres organismos | Único que llega a cerrar `RESOLUCION`: `CERT_FIN_INSTRUCCION`, botón «añadir los que faltan», `CERT_CUMPLIMIENTO_FASE` y `CERT_CIERRE_FASE` |
 
 ### ANALISIS_DOC_DOS_VUELTAS
 
@@ -135,6 +136,58 @@ dependen de qué diga el reloj simulado.
 
 ```bash
 venv/Scripts/python.exe scripts/expedientes_dummy/reformado_analisis_y_consultas.py
+```
+
+### RESOLUCION_CON_ORGANISMOS
+
+`resolucion_con_organismos.py` — #971
+
+Mismo perfil que `CONSULTAS_VARIOS_ESTADOS` y `REFORMADO_ANALISIS_Y_CONSULTAS` (línea
+aérea 66 kV en Jerez de la Frontera, AAP+AAC, exenta de instrumento ambiental), pero es
+el único de los cuatro que **llega a cerrar `RESOLUCION`**: los otros tres se quedan en
+`ANALISIS_SOLICITUD` o con `CONSULTAS` abierta a propósito. Nace de la cadena de ADR-049
+entre #968 (N5a-2) y #969 (N5a-3): antes de #968 no existían el botón ni las fuentes de
+notificación; #969 lo usará para comprobar que solo la notificación al solicitante
+cumple el plazo del acto.
+
+El solicitante actúa **representado** (`solicitudes.representante_entidad_id`, #967):
+la comunicación de inicio y la resolución se notifican a su representante, en su nombre.
+Las tres consultas se cierran, con los tres desenlaces del Caso A-D de ADR-011 §6 que
+`CONSULTAS_VARIOS_ESTADOS` deja pendientes:
+
+| Organismo | Desenlace |
+|---|---|
+| Ayuntamiento de Jerez | Silencio, plazo vencido, sin `ANALIZAR` — conformidad tácita (Caso A) |
+| ADIF | Responde con condicionados; traslado notificado y aceptado por el representante — `cerrado_con_condicionados` |
+| Diputación de Cádiz | Responde favorable; traslado notificado y aceptado por el representante — `cerrado_favorable` |
+
+**El silencio del Ayuntamiento no tiene vía limpia de cierre en el catálogo actual**
+(#982, detectado al escribir este expediente-tipo): no existe `CERT_PLAZO_CUMPLIDO`
+para `CONSULTA_SEPARATA`, así que su `ESPERAR_PLAZO` nunca llega a `ejecutada` y cerrar
+`CONSULTAS` exige forzar el escape de `editar_fase` con `justificacion`. Queda en
+bitácora, documentado en el propio script. #971 sigue adelante con él (decisión de
+Carlos); #982 es la mejora de catálogo pendiente para que deje de hacer falta.
+
+`ANALISIS_SOLICITUD` y `CONSULTAS` se cierran de verdad (`editar_fase`) — a diferencia
+de los otros tres expedientes-tipo, que no lo hacen. Después: `CERT_FIN_INSTRUCCION`
+consolidado, `RESOLUCION` con `ELABORACION` (produce el documento `RESOLUCION`) y
+`NOTIFICACION` poblada con el botón «añadir las notificaciones que faltan» (una para el
+solicitante —a su representante— y una por cada organismo consultado, sin excluir al
+del silencio), y los dos certificados de fase (`CERT_CUMPLIMIENTO_FASE`,
+`CERT_CIERRE_FASE`, con la frase de confirmación `'cerrar finalizadora'`).
+
+| Parámetro | Valor | Por qué |
+|---|---|---|
+| `HABILES_DESDE_NOTIFICACION_SEPARATAS` | 60 | El ancla, como en `CONSULTAS_VARIOS_ESTADOS`, pero con más margen: aquí el escenario sigue después de vencer el plazo del Ayuntamiento hasta cerrar la resolución |
+| `MARGEN_ADIF_HABILES` / `MARGEN_DIPUTACION_HABILES` | 25 | Ambos responden con margen holgado para que, tras el traslado y su aceptación, quede sitio de sobra hasta `hoy` para cerrar fases, consolidar la instrucción y notificar la resolución |
+| `MARGEN_TITULAR_HABILES` | 5 | Respuesta del representante a cada traslado |
+| `HABILES_HASTA_TRASLADO` | 2 | De recibir la respuesta del organismo a notificar el traslado |
+
+Al terminar **borra el reloj de desarrollo**, como `CONSULTAS_VARIOS_ESTADOS`: la
+resolución queda notificada y cerrada «a fecha de hoy».
+
+```bash
+venv/Scripts/python.exe scripts/expedientes_dummy/resolucion_con_organismos.py
 ```
 
 ---
