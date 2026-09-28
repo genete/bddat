@@ -211,6 +211,41 @@ def test_tramite_con_alguien_sin_notificar_no_esta_terminado(con_usuario, arbol_
     assert ed.estado_tramite(tramite, estados) == ('PENDIENTE_TRAMITAR', True)
 
 
+def _resultado_fase(codigo='FAVORABLE'):
+    from app.models.tipos_resultados_fases import TipoResultadoFase
+    tipo = TipoResultadoFase.query.filter_by(codigo=codigo).first()
+    assert tipo is not None, f'la semilla debe traer el resultado de fase {codigo!r}'
+    return tipo
+
+
+def test_organismo_sin_notificar_bloquea_el_cierre_de_fase(con_usuario, arbol_aislado):
+    """La cadena completa hasta el certificado de cierre (#956): un organismo
+    sin notificar no es solo un trámite en rojo (ya probado arriba) — tiene que
+    impedir de verdad `CERT_CIERRE_FASE`, o cerraría la fase con alguien sin
+    notificar (zona de nulidad, art. 47.1.e LPACAP). Nadie lo probaba: el único
+    test de "trámite sin terminar" de `test_956_cert_cierre_fase.py` usa un
+    ELABORAR sin acabar, un camino de código distinto del de
+    `destinatarios_notificacion.motivos()` que añadió #968."""
+    from app.services import cert_cierre_fase, cert_cumplimiento_fase
+
+    solicitud, tramite = _notificacion_resolucion(arbol_aislado)
+    fase = tramite.fase
+    fase.resultado_fase = _resultado_fase()
+    assert svc.anadir_notificaciones_que_faltan(tramite).ok
+    _hecha(arbol_aislado, _notificar(tramite)[0])
+    db.session.flush()
+    assert cert_cumplimiento_fase.emitir(fase).emitido
+
+    _consultar(arbol_aislado, solicitud, _entidad('Organismo tardío', rol_consultado=True))
+    assert not tramite.finalizado
+
+    informe = cert_cierre_fase.revisar(fase)
+    assert not informe.limpio
+
+    emision = cert_cierre_fase.emitir(fase)
+    assert not emision.emitido
+
+
 def test_sobrante_tras_quitar_el_organismo(con_usuario, arbol_aislado):
     solicitud, tramite = _notificacion_resolucion(arbol_aislado)
     oe = _consultar(arbol_aislado, solicitud, _entidad('Organismo retirado', rol_consultado=True))
