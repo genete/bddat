@@ -462,10 +462,13 @@ def _check_emitir_cert_cierre_fase(fase_id: int) -> Optional[EvaluacionResult]:
     abierto = next((t for t in sorted(fase.tramites, key=lambda t: t.id)
                     if not t.finalizado), None)
     if abierto is not None:
+        from app.services.destinatarios_notificacion import motivos
         nombre = abierto.tipo_tramite.nombre if abierto.tipo_tramite else f'#{abierto.id}'
+        detalle = ' '.join(motivos(abierto))
         return _bloquear(
             f'No se puede cerrar la fase: el trámite "{nombre}" no está completo. '
-            'Complételo, o use el escape de la propia tarea si lo admite.'
+            + (f'{detalle} ' if detalle else '')
+            + 'Complételo, o use el escape de la propia tarea si lo admite.'
         )
     return None
 
@@ -1552,7 +1555,14 @@ def _check_completitud_cierre(fase: Fase) -> Optional[EvaluacionResult]:
                 'Si no lo necesita, bórrelo en vez de cerrar la fase.'
             )
         estados_tareas = [ed.estado_tarea(t) for t in tramite.tareas]
-        estado_tr, _ = ed.estado_tramite(tramite, estados_tareas)
+        estado_tr, propio = ed.estado_tramite(tramite, estados_tareas)
+        if propio:
+            # Sus tareas están hechas: lo que falta es a quién notificar (#968).
+            from app.services.destinatarios_notificacion import motivos
+            return _bloquear(
+                f'El trámite "{nombre}" no está completo. ' + ' '.join(motivos(tramite)),
+                puede_escapar=True,
+            )
         return _bloquear(
             f'El trámite "{nombre}" no está completo: {ed.motivo(estado_tr)}.',
             puede_escapar=True,

@@ -220,7 +220,17 @@ def _tiene_borrador_firma(tarea) -> bool:
 def estado_tramite(tramite, estados_tareas: list[str]) -> tuple[str, bool]:
     if not tramite.tareas:                 # planificado: sin tareas aún
         return ('PENDIENTE_TRAMITAR', True)
-    return (mayor_prioridad(estados_tareas), False)
+    agregado = mayor_prioridad(estados_tareas)
+    # Nadie falta ni sobra (#968, ADR-051 §E): con todas sus tareas en FIN, un
+    # trámite al que le falta alguien por notificar —o le sobra una
+    # notificación— se pinta él mismo en rojo. El rojo es la caja que falta:
+    # la NOTIFICAR que no existe no puede pintarse. Con tareas en curso manda
+    # su agregado, que ya dice que hay trabajo; el relato explica el resto.
+    if agregado == 'FIN':
+        from app.services.destinatarios_notificacion import completo
+        if not completo(tramite):
+            return ('PENDIENTE_TRAMITAR', True)
+    return (agregado, False)
 
 
 # ---------------------------------------------------------------------------

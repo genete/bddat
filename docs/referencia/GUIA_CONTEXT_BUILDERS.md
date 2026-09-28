@@ -236,8 +236,16 @@ def downgrade():
 | `responsable_nombre` | Nombre completo del tramitador asignado |
 | `municipios` | Lista de nombres de municipios afectados (`list[str]`) |
 | `fecha_hoy` | Fecha actual formateada (DD/MM/AAAA) |
+| `destinatario_nombre` | A quién va el escrito: el destinatario del trámite, o su representante (#968) |
+| `destinatario_nif` | NIF del destinatario |
+| `destinatario_dir` | Dict `{calle, cp, municipio, provincia, nif, email}`; `email` es el correo de aviso de la notificación |
+| `destinatario_en_nombre_de` | Representado, si el escrito va a su representante; vacío si va directo |
 
-*(Fuente: `app/services/escritos.py` → clase `ContextoBaseExpediente`)*
+*(Fuente: `app/services/escritos.py` → clase `ContextoBaseExpediente`; las `destinatario_*`,
+de `escritos.variables_destinatario`, que las pide al servicio de destinatarios —
+`services/destinatarios_notificacion.py`, ADR-051 §H—. Vacías si el trámite no tiene un
+destinatario único, como la ELABORACION de la resolución. Sin destinatario en un
+trámite que lo necesita, `/api/escritos/generar` no genera el escrito y responde qué elegir.)*
 
 ---
 

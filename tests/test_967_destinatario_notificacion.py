@@ -11,7 +11,13 @@ Tests #967 (N5a-1) — toda NOTIFICAR guarda su destinatario (ADR-051 §B, §K).
   - Cotejo del NIF del justificante de Notifica con la ficha.
   - Representante de la solicitud: aviso si no es autorizado, solo al cambiar.
   - Rutas: PUT del destinatario, bypass al vincular, escritos no en NOTIFICAR.
-  - La lista provisional de fuentes cuadra con el catálogo.
+
+Desde #968 la NOTIFICAR nace ya con su destinatario si se sabe, y solo admite a
+quien corresponde por su fuente: los casos «sin destinatario» se montan en un
+trámite cuyo destinatario se elige a mano y los de entidad arbitraria, en uno
+sin fuentes (`ArbolESFTT.tramite_sin_destinatario` / `tramite_sin_fuentes`). Los dos tests
+de la lista provisional de fuentes los sustituye el de cobertura de
+`test_968_fuentes_destinatarios.py`.
 
 BD de tests con rollback por SAVEPOINT (`arbol_aislado`) + `fs_tmp`.
 """
@@ -23,7 +29,7 @@ from app.models.bitacora import Bitacora
 from app.models.direccion_notificacion import DireccionNotificacion
 from app.models.documentos import Documento
 from app.models.entidad import Entidad
-from app.models.notificaciones import FUENTES, Notificacion
+from app.models.notificaciones import Notificacion
 from app.models.tareas import Tarea
 from app.models.tipos_documentos import TipoDocumento
 from app.models.tipos_tareas import TipoTarea
@@ -114,7 +120,8 @@ def test_la_ficha_nace_con_la_tarea_y_su_unica_fuente(con_usuario, arbol_aislado
 
     notif = Notificacion.query.filter_by(tarea_id=tarea.id).one()
     assert notif.fuente == 'SOLICITANTE'
-    assert not notif.tiene_destinatario
+    # Desde #968 nace ya con su destinatario: el solicitante.
+    assert notif.entidad_id == tarea.tramite.fase.solicitud.entidad_id
     assert notif.canal is None and not notif.registrada
 
 
@@ -166,7 +173,7 @@ def test_la_ficha_se_borra_con_la_tarea(con_usuario, arbol_aislado):
 # ---------------------------------------------------------------------------
 
 def test_vincular_sin_destinatario_se_bloquea_con_escape(con_usuario, arbol_aislado, fs_tmp):
-    tarea = _crear_notificar(_tramite(arbol_aislado))
+    tarea = _crear_notificar(arbol_aislado.tramite_sin_destinatario())
     doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', fs_tmp)
 
     res = _vincular(tarea, producido=doc)
@@ -181,7 +188,7 @@ def test_vincular_sin_destinatario_se_bloquea_con_escape(con_usuario, arbol_aisl
 
 def test_escape_sin_destinatario_queda_en_bitacora_y_es_para_siempre(
         con_usuario, arbol_aislado, fs_tmp):
-    tarea = _crear_notificar(_tramite(arbol_aislado))
+    tarea = _crear_notificar(arbol_aislado.tramite_sin_destinatario())
     doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', fs_tmp)
 
     res = _vincular(tarea, producido=doc, justificacion='Se notificó en papel en ventanilla')
@@ -204,7 +211,7 @@ def test_escape_sin_destinatario_queda_en_bitacora_y_es_para_siempre(
 
 def test_escape_sin_destinatario_se_relata(con_usuario, arbol_aislado, fs_tmp):
     from app.services.informe_instruccion import escapes_de_fase, relato_escapes
-    tarea = _crear_notificar(_tramite(arbol_aislado))
+    tarea = _crear_notificar(arbol_aislado.tramite_sin_destinatario())
     doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', fs_tmp)
     assert _vincular(tarea, producido=doc, justificacion='Motivo del escape').ok
 
@@ -271,18 +278,27 @@ def test_con_representante_se_notifica_al_representante(con_usuario, arbol_aisla
 
 
 def test_entidad_indicada_toma_la_direccion_del_rol_de_su_fuente(con_usuario, arbol_aislado):
-    tarea = _crear_notificar(_tramite(arbol_aislado, 'RESOLUCION', 'NOTIFICACION'),
-                             fuente='ORGANISMOS_CONSULTADOS')
+    from app.models.organismos_expediente import OrganismoExpediente
+    tramite = _tramite(arbol_aislado, 'RESOLUCION', 'NOTIFICACION')
+    solicitud = tramite.fase.solicitud
     organismo = _entidad('Confederación Hidrográfica de Prueba', rol_consultado=True)
     _direccion(organismo, titular=True, direccion='Dirección de titular')
     consultado = _direccion(organismo, consultado=True, direccion='Registro de consultas')
+    consultas = arbol_aislado.fase('CONSULTAS', solicitud=solicitud)
+    db.session.add(OrganismoExpediente(expediente_id=solicitud.expediente_id,
+                                       fase_id=consultas.id, organismo_id=organismo.id,
+                                       via='consulta'))
+    db.session.flush()
 
-    # Fuente no SOLICITANTE: hay que decir a quién.
-    assert not svc.fijar_destinatario(tarea).ok
+    tarea = _crear_notificar(tramite, fuente='ORGANISMOS_CONSULTADOS')
 
-    assert svc.fijar_destinatario(tarea, entidad_id=organismo.id).ok
+    # Nace con el organismo consultado, en su dirección de consultado (#968).
+    assert tarea.notificacion.entidad_id == organismo.id
     assert tarea.notificacion.direccion_origen_id == consultado.id
     assert tarea.notificacion.dest_direccion == 'Registro de consultas'
+    # Una entidad que no es de la fuente no se admite.
+    otra = _entidad('No consultada', rol_consultado=True)
+    assert not svc.fijar_destinatario(tarea, entidad_id=otra.id).ok
 
 
 def test_direccion_de_otra_entidad_se_rechaza(con_usuario, arbol_aislado):
@@ -336,7 +352,7 @@ def test_fijar_destinatario_deja_bitacora(con_usuario, arbol_aislado):
     ('B99999999', 'A-00000000', False),   # el justificante trae al representado
 ])
 def test_cotejo_del_nif(con_usuario, arbol_aislado, fs_tmp, nif_ficha, nif_representado, avisa):
-    tarea = _crear_notificar(_tramite(arbol_aislado))
+    tarea = _crear_notificar(arbol_aislado.tramite_sin_fuentes(), fuente='BOLETIN')
     receptor = _entidad('Receptor', nif=nif_ficha)
     representado = _entidad('Representado', nif=nif_representado) if nif_representado else None
     assert svc.fijar_destinatario(
@@ -395,33 +411,8 @@ def test_editar_solicitud_sin_representante_no_lo_toca(con_usuario, arbol_aislad
 
 
 # ---------------------------------------------------------------------------
-# Catálogo: la lista provisional de fuentes (hasta `notificacion_fuentes`, #968)
+# Relato
 # ---------------------------------------------------------------------------
-
-def _pares_con_notificar():
-    filas = db.session.execute(db.text("""
-        SELECT DISTINCT tf.codigo, tt.codigo
-        FROM tramites_tareas x
-        JOIN tipos_tramites tt ON tt.id = x.tipo_tramite_id
-        JOIN tipos_tareas ta ON ta.id = x.tipo_tarea_id
-        JOIN fases_tramites ft ON ft.tipo_tramite_id = tt.id
-        JOIN tipos_fases tf ON tf.id = ft.tipo_fase_id
-        WHERE ta.codigo = 'NOTIFICAR'
-    """)).fetchall()
-    return {(f, t) for f, t in filas}
-
-
-def test_toda_notificar_del_catalogo_tiene_fuente(app_ctx):
-    """Sin excepciones desde #964 y #966, que retiraron las NOTIFICAR de
-    `ANUNCIO_BOE`, `ANUNCIO_PRENSA` y `PORTAL_TRANSPARENCIA` (ADR-051 §C)."""
-    assert _pares_con_notificar() - set(notif_svc.FUENTES_POR_TRAMITE) == set()
-
-
-def test_las_fuentes_provisionales_existen_en_el_catalogo(app_ctx):
-    assert set(notif_svc.FUENTES_POR_TRAMITE) - _pares_con_notificar() == set()
-    for fuentes in notif_svc.FUENTES_POR_TRAMITE.values():
-        assert set(fuentes) <= set(FUENTES)
-
 
 def test_la_frase_del_escape_usa_la_accion_del_servicio():
     from app.services.informe_instruccion import _FIN_DEL_ESCAPE
@@ -448,11 +439,7 @@ def notificar_http(app, expediente_seed):
                          .order_by(Solicitud.id).first())
             assert solicitud is not None, 'la semilla debe traer una solicitud en el expediente'
             fase = arbol.fase(codigo_fase, solicitud=solicitud)
-            tarea = arbol.tarea(arbol.tramite(fase, codigo_tramite), 'NOTIFICAR')
-            notif = tarea.notificacion
-            notif.fuente = fuente
-            notif.entidad_id = None                 # el builder lo pone; aquí no
-            notif.dest_nombre = None
+            tarea = arbol.notificar_sin_destinatario(arbol.tramite(fase, codigo_tramite), fuente)
             db.session.commit()
             fases.append(fase.id)
             return tarea.id
@@ -500,8 +487,8 @@ def test_put_destinatario_sin_entidad_en_otra_fuente_422(usuario_supervisor, exp
 
     r = usuario_supervisor.put(_url(expediente_seed, tarea_id, '/destinatario'), json={})
 
+    # Sin organismos consultados en la solicitud no hay a quién notificar.
     assert r.status_code == 422
-    assert 'entidad' in r.get_json()['error']
 
 
 def test_crear_notificar_por_api_pide_la_fuente(usuario_supervisor, expediente_seed, app):

@@ -631,6 +631,45 @@ class ArbolESFTT:
         self.db.session.flush()
         return n
 
+    def tramite_sin_destinatario(self, solicitud=None):
+        """Trámite cuya NOTIFICAR no puede saber sola a quién va: el anuncio en
+        BOJA, cuyo boletín elige el usuario y nadie ha elegido (#968, ADR-051
+        §L). Para probar lo que pasa sin destinatario por el camino real
+        (`crear_tarea`), que desde #968 rellena el destinatario si lo sabe."""
+        fase = self.fase('INFORMACION_PUBLICA', solicitud=solicitud or self.solicitud_propia())
+        return self.tramite(fase, 'ANUNCIO_BOJA')
+
+    def tramite_sin_fuentes(self, solicitud=None):
+        """Trámite sin fuentes en `notificacion_fuentes` (el anuncio en el BOE no
+        lleva NOTIFICAR desde #964): una NOTIFICAR forzada en él admite
+        cualquier entidad indicada, la vía de #967."""
+        fase = self.fase('INFORMACION_PUBLICA', solicitud=solicitud or self.solicitud_propia())
+        return self.tramite(fase, 'ANUNCIO_BOE')
+
+    def notificar_sin_destinatario(self, tramite, fuente):
+        """NOTIFICAR del builder con `fuente` y sin destinatario: la ficha como
+        queda cuando nadie ha elegido a quién notificar."""
+        tarea = self.tarea(tramite, 'NOTIFICAR')
+        notif = tarea.notificacion
+        notif.fuente, notif.entidad_id, notif.dest_nombre = fuente, None, None
+        self.db.session.flush()
+        return tarea
+
+    def notificar_hecha(self, tramite, *, sufijo='notificada'):
+        """NOTIFICAR del trámite efectuada: justificante final como producido y
+        resultado CORRECTA. Con destinatario (el del builder, el solicitante).
+
+        Desde #968 un trámite que notifica según `notificacion_fuentes` no está
+        terminado sin su NOTIFICAR; los tests que necesitan un trámite completo
+        para probar otra cosa la añaden con esto."""
+        from app.services.reloj_simulado import hoy
+        tarea = self.tarea(tramite, 'NOTIFICAR')
+        justificante = self.documento(tramite.fase.solicitud.expediente_id,
+                                      'JUSTIFICANTE_NOTIFICA', f'{sufijo}-{tarea.id}', fecha=hoy())
+        self.vincular(tarea, justificante, 'PRODUCIDO')
+        self.notificacion(tarea, resultado='CORRECTA')
+        return tarea
+
     def diagnostico(self, tarea, resultado, defectos=None):
         """Diagnóstico PRODUCIDO por `tarea` (ANALIZAR): Documento + Diagnostico + vínculo.
 

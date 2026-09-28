@@ -148,6 +148,7 @@ def validar_catalogo() -> List[str]:
                 faltantes.append(f"{nombre_modelo}.{attr}='{codigo}' → no encontrado")
 
     faltantes.extend(_validar_finalizadoras_con_regla())
+    faltantes.extend(_validar_notificar_con_fuente())
 
     if faltantes:
         log.error(
@@ -225,6 +226,60 @@ def _validar_finalizadoras_con_regla() -> List[str]:
             f'ningún acto mediría su plazo contra ella (#930)'
         )
     return avisos
+
+
+def pares_con_notificar_sin_fuente() -> set:
+    """(fase, trámite) cuya secuencia en `tramites_tareas` lleva `NOTIFICAR` y
+    que no tienen ninguna fila en `notificacion_fuentes` (#968, ADR-051 §C).
+
+    Una `NOTIFICAR` en esos trámites nacería sin saber a quién se notifica: no
+    se podría crear sin indicar la fuente a mano y «¿a quién falta notificar?»
+    no pediría a nadie. Lo comprueban el arranque (`validar_catalogo`) y el test
+    de cobertura de fuentes. Lanza si la BD no está disponible; quien la llame
+    en el arranque se protege.
+    """
+    from app import db
+
+    filas = db.session.execute(db.text("""
+        SELECT DISTINCT tf.codigo, tt.codigo
+        FROM tramites_tareas x
+        JOIN tipos_tareas ta ON ta.id = x.tipo_tarea_id
+        JOIN tipos_tramites tt ON tt.id = x.tipo_tramite_id
+        JOIN fases_tramites ft ON ft.tipo_tramite_id = tt.id
+        JOIN tipos_fases tf ON tf.id = ft.tipo_fase_id
+        WHERE ta.codigo = 'NOTIFICAR'
+          AND NOT EXISTS (
+              SELECT 1 FROM notificacion_fuentes nf
+              WHERE nf.tipo_fase_id = ft.tipo_fase_id
+                AND nf.tipo_tramite_id = ft.tipo_tramite_id)
+    """)).fetchall()
+    return {(f, t) for f, t in filas}
+
+
+def _validar_notificar_con_fuente() -> List[str]:
+    """Aviso de arranque de `pares_con_notificar_sin_fuente` (#968): el
+    supervisor puede añadir una `NOTIFICAR` a la secuencia de un trámite en
+    tablas maestras, y sus fuentes se siembran por migración."""
+    from flask import has_app_context
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+
+    if not has_app_context():
+        return []
+    try:
+        pares = pares_con_notificar_sin_fuente()
+    except (OperationalError, ProgrammingError) as exc:
+        log.warning('catalogo: no se pudo validar notificacion_fuentes — %s', exc)
+        try:
+            from app import db as _db
+            _db.session.rollback()
+        except Exception:
+            pass
+        return []
+    return [
+        f"({fase}, {tramite}) lleva NOTIFICAR en tramites_tareas y no tiene fuentes en "
+        f'notificacion_fuentes → no se sabría a quién notificar (#968)'
+        for fase, tramite in sorted(pares)
+    ]
 
 
 def _importar(modulo: str, clase: str):

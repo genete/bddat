@@ -19,7 +19,7 @@ from app.models.plantillas import Plantilla
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.services.codigo_seguimiento import componer_codigo
-from app.services.escritos import ContextoBaseExpediente
+from app.services.escritos import ContextoBaseExpediente, variables_destinatario
 from app.services.generador_escritos import (
     generar_escrito,
     componer_nombre_documento,
@@ -140,6 +140,7 @@ def preview():
 
     # Contexto base (campos para preview)
     ctx = ContextoBaseExpediente(expediente).get_contexto()
+    ctx.update(variables_destinatario(tarea))
 
     # Nombre propuesto y ruta destino (ESFTT definitiva, #730 — ya no un
     # intermedio en AT-N raíz que había que mover después)
@@ -158,11 +159,16 @@ def preview():
 
 class _ErrorGenerar(Exception):
     """Error de validación/generación con su respuesta HTTP ya decidida.
-    Común a /generar y /generar/confirmar para no duplicar las 6 comprobaciones."""
-    def __init__(self, mensaje, status):
+    Común a /generar y /generar/confirmar para no duplicar las 6 comprobaciones.
+    `extra` va tal cual al JSON de la respuesta (p. ej. `elegir_destinatario`)."""
+    def __init__(self, mensaje, status, extra=None):
         super().__init__(mensaje)
         self.mensaje = mensaje
         self.status = status
+        self.extra = extra or {}
+
+    def respuesta(self):
+        return jsonify(ok=False, error=self.mensaje, **self.extra), self.status
 
 
 def _preparar_generacion(data):
@@ -198,6 +204,8 @@ def _preparar_generacion(data):
     if not puede_editar_expediente(expediente):
         raise _ErrorGenerar('Sin permisos de edición sobre este expediente', 403)
 
+    _exigir_destinatario(tarea, data.get('destinatario'))
+
     fs_base = current_app.config.get('FILESYSTEM_BASE', '')
     if not fs_base:
         raise _ErrorGenerar('FILESYSTEM_BASE no configurado en el servidor', 503)
@@ -222,6 +230,48 @@ def _preparar_generacion(data):
         raise _ErrorGenerar(str(e), 500)
 
     return tarea, expediente, plantilla, nombre_fichero, doc_bytes, fs_base
+
+
+def _exigir_destinatario(tarea, eleccion):
+    """Sin destinatario no se genera el escrito (#968, ADR-051 §H).
+
+    Solo en el ELABORAR de un trámite con un destinatario único según el
+    catálogo de fuentes (los ELABORAR → NOTIFICAR); la ELABORACION de la
+    resolución no lleva destinatario. Si el servicio lo resuelve, se toma sin
+    preguntar. Si lo elige el usuario (boletín, ayuntamiento, ministerio,
+    órgano ambiental u órgano superior), la elección puede venir en la misma
+    petición —`destinatario: {entidad_id, representante_entidad_id}`— y queda
+    en `tramites_destinatario`; si no viene, 422 con `elegir_destinatario`:
+    la fuente, el motivo y las entidades entre las que elegir.
+    """
+    from app.services import destinatarios_notificacion as dest_svc
+    from app.services import mutaciones_arbol as mut_svc
+
+    if not tarea.tipo_tarea or tarea.tipo_tarea.codigo != 'ELABORAR':
+        return
+    tramite = tarea.tramite
+    resuelto = dest_svc.destinatario_del_tramite(tramite)
+    if not resuelto.aplica or resuelto.destinatario is not None:
+        return
+    if eleccion and resuelto.elegibles:
+        res = mut_svc.registrar_destinatario_tramite(
+            tramite, entidad_id=eleccion.get('entidad_id'),
+            representante_entidad_id=eleccion.get('representante_entidad_id'))
+        if not res.ok:
+            mensaje = res.error or (
+                (res.bloqueo.motivo or res.bloqueo.norma_compilada) if res.bloqueo
+                else 'No se pudo guardar el destinatario')
+            raise _ErrorGenerar(mensaje, 422)
+        if dest_svc.destinatario_del_tramite(tramite).destinatario is not None:
+            return
+    raise _ErrorGenerar(
+        f'No se genera el escrito sin destinatario: {resuelto.motivo}.', 422,
+        extra={'elegir_destinatario': {
+            'fuente': resuelto.fuente,
+            'motivo': resuelto.motivo,
+            'entidades': [{'id': e.id, 'nombre': e.nombre_completo, 'nif': e.nif}
+                          for e in resuelto.elegibles],
+        }})
 
 
 def _asunto_escrito(plantilla):
@@ -317,7 +367,7 @@ def generar():
     try:
         tarea, expediente, plantilla, nombre_fichero, doc_bytes, fs_base = _preparar_generacion(data)
     except _ErrorGenerar as e:
-        return jsonify(ok=False, error=e.mensaje), e.status
+        return e.respuesta()
 
     ruta = ruta_destino_esftt_fichero(tarea, nombre_fichero)
 
@@ -377,7 +427,7 @@ def generar_confirmar():
     try:
         tarea, expediente, plantilla, nombre_fichero, doc_bytes, fs_base = _preparar_generacion(data)
     except _ErrorGenerar as e:
-        return jsonify(ok=False, error=e.mensaje), e.status
+        return e.respuesta()
 
     ruta = ruta_destino_esftt_fichero(tarea, nombre_fichero)
     evaluacion = evaluar_regeneracion(

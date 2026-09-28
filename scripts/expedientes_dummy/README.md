@@ -229,7 +229,7 @@ real.
 | **Nunca borrar**: marcar `[RECICLAR]` y dejar el borrado a `limpiar_reciclables.py` | El vestigio AT-15 permitió reconstruir qué había pasado en una ejecución defectuosa, en vez de tener que recordarlo |
 | **Catálogo por clave natural**, nunca PK hardcodeada | Las PK cambian entre bases; los códigos no |
 | **Doble vida**: `main(app=None, *, efectos_desarrollo=True)` | `efectos_desarrollo=False` deja fuera lo que solo tiene sentido en la máquina de desarrollo (fijar el reloj simulado, que escribe en `instance/`). El escenario construido es el mismo |
-| **Cerrar cada NOTIFICAR con `_comun.notificar()`**, que fija el destinatario antes de vincular (`fijar_destinatario_de`: el solicitante —o su representante— o el organismo del trámite) | Desde #967 una `NOTIFICAR` sin destinatario no admite vínculos (ADR-051 §B). Una fuente nueva sin regla en `fijar_destinatario_de` aborta el script en vez de adivinar el destinatario |
+| **Cerrar cada NOTIFICAR con `_comun.notificar()`**, que asegura el destinatario antes de vincular (`fijar_destinatario_de`) | Desde #967 una `NOTIFICAR` sin destinatario no admite vínculos (ADR-051 §B). Desde #968 nace ya con él cuando el servicio de destinatarios lo sabe (el solicitante —o su representante— o el organismo del trámite) y aquí solo se refresca; si el destinatario se elige a mano y nadie lo eligió, el script aborta en vez de adivinarlo |
 | **Engancharlo a la semilla**: añadir el módulo a `_modulos_expediente_tipo()` en `scripts/semilla_test.py` | Es lo que impide que el escenario se pudra en silencio: si un cambio de la aplicación lo rompe, `preparar_bd_test.py --recrear` falla, en vez de esperar a que alguien lo ejecute a mano. De paso queda disponible para los tests que lo necesiten |
 
 ---

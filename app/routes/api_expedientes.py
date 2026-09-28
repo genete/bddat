@@ -56,6 +56,7 @@ from app.services import bitacora as bitacora_svc
 from app.services import mensajes_internos as servicio_mensajes
 from app.models.notificaciones import Notificacion
 from app.services import notificaciones as notif_svc
+from app.services import destinatarios_notificacion as dest_svc
 from app.services.estado_dominio import estado_tarea
 from app.utils.permisos import verificar_acceso_expediente, tiene_permiso
 
@@ -2306,7 +2307,9 @@ def _destinatario_json(notif: Notificacion) -> dict | None:
     return {
         'entidad_id': notif.entidad_id,
         'en_nombre_de_entidad_id': notif.en_nombre_de_entidad_id,
-        'en_nombre_de': notif.en_nombre_de.nombre_completo if notif.en_nombre_de else None,
+        # Foto fija del representado (#968): la copia, no la entidad de hoy.
+        'en_nombre_de': notif.dest_en_nombre_de_nombre,
+        'en_nombre_de_nif': notif.dest_en_nombre_de_nif,
         'direccion_origen_id': notif.direccion_origen_id,
         'nombre': notif.dest_nombre,
         'nif': notif.dest_nif,
@@ -2342,7 +2345,7 @@ def _notificar_payload(tarea) -> dict:
             'escape_sin_destinatario': escape,
             'editable': bool(notif) and not escape and not notif_svc.tiene_justificante(tarea),
             'bloquea': notif_svc.falta_destinatario(tarea),
-            'fuentes_del_tramite': list(notif_svc.fuentes_del_tramite(tarea.tramite) or []),
+            'fuentes_del_tramite': list(dest_svc.fuentes_del_tramite(tarea.tramite) or []),
         },
         'documento_producido': {'id': doc.id, 'nombre': _nombre_documento(doc)} if doc else None,
         'justificantes_previos': [
@@ -2546,13 +2549,16 @@ def patch_notificar(expediente_id, tarea_id):
 def put_notificar_destinatario(expediente_id, tarea_id):
     """
     PUT .../notificar/destinatario — fija o refresca el destinatario de la
-    NOTIFICAR (#967, ADR-051 §B), a mano hasta que N5a-2 traiga el servicio de
-    destinatarios. Sin interfaz hasta #929.
+    NOTIFICAR (#967, ADR-051 §B; #968, §D y §H). Sin interfaz hasta #929.
 
-    Body JSON: `{}` en una notificación de fuente SOLICITANTE aplica la regla
-    del §K (representante si lo hay); si no, `{entidad_id,
-    en_nombre_de_entidad_id?, direccion_id?}`. 422 si ya tiene justificante
-    (destinatario fijo) o tuvo escape sin destinatario.
+    Body JSON: `{}` refresca el que tiene o toma el primero de su fuente a
+    quien aún falta notificar; `{entidad_id, en_nombre_de_entidad_id?,
+    direccion_id?}` lo elige, solo entre quienes corresponde por su fuente (en
+    boletines, ayuntamientos, ministerio y órganos ambiental y superior, la
+    elección queda en `tramites_destinatario`, salvo que el trámite tenga
+    ELABORAR: ahí se elige al elaborar). 422 si ya tiene justificante
+    (destinatario fijo), tuvo escape sin destinatario o la entidad no
+    corresponde. Ver `mutaciones_arbol.fijar_destinatario`.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -2578,6 +2584,88 @@ def put_notificar_destinatario(expediente_id, tarea_id):
     payload = _notificar_payload(tarea)
     payload['ok'] = True
     return jsonify(payload), 200
+
+
+def _resolver_tramite(expediente, tramite_id):
+    tramite = Tramite.query.get(tramite_id)
+    if tramite is None or tramite.fase.solicitud.expediente_id != expediente.id:
+        raise ValueError(f'Trámite {tramite_id} no encontrado en este expediente')
+    return tramite
+
+
+def _notificaciones_tramite_json(tramite) -> dict:
+    """«¿A quién falta notificar?» de un trámite (#968, ADR-051 §D): solo lee."""
+    estado = dest_svc.estado_del_tramite(tramite)
+    if estado is None:
+        return {'fuentes': [], 'faltan': [], 'sobran': [], 'completo': True, 'textos': []}
+    return {
+        'fuentes': list(estado.fuentes),
+        'faltan': [{'fuente': f.fuente, 'entidad_id': f.titular_id, 'nombre': f.nombre,
+                    'motivo': f.motivo} for f in estado.faltan],
+        'sobran': [ta.id for ta in estado.sobran],
+        'completo': estado.completo,
+        'textos': estado.textos(),
+    }
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tramite/<int:tramite_id>/notificaciones',
+              methods=['GET'])
+@login_required
+def get_notificaciones_tramite(expediente_id, tramite_id):
+    """
+    GET .../nodo/tramite/<id>/notificaciones — a quién falta notificar en el
+    trámite y qué notificación sobra (#968, ADR-051 §D). Solo lee. Sin interfaz
+    hasta #929.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    denegado = verificar_acceso_expediente(expediente)
+    if denegado:
+        return denegado
+    try:
+        tramite = _resolver_tramite(expediente, tramite_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    return jsonify(_notificaciones_tramite_json(tramite)), 200
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tramite/<int:tramite_id>/notificaciones/anadir_faltan',
+              methods=['POST'])
+@login_required
+def post_anadir_notificaciones_que_faltan(expediente_id, tramite_id):
+    """
+    POST .../nodo/tramite/<id>/notificaciones/anadir_faltan — el botón «añadir
+    las notificaciones que faltan» (#968, ADR-051 §D): refresca las que no
+    tienen justificante, rellena las que no tienen destinatario y crea las que
+    faltan. Idempotente. Sin interfaz hasta #929.
+
+    Respuesta: `creadas`, `rellenadas`, `refrescadas` (ids de tareas),
+    `pendientes` (lo que el botón no puede resolver: a quién hay que elegir) y
+    el estado del trámite tras pulsarlo.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+    try:
+        tramite = _resolver_tramite(expediente, tramite_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    res = svc.anadir_notificaciones_que_faltan(tramite)
+    cuerpo = {
+        'ok': res.ok,
+        'creadas': res.creadas,
+        'rellenadas': res.rellenadas,
+        'refrescadas': res.refrescadas,
+        'pendientes': res.pendientes,
+    }
+    if res.bloqueo:
+        cuerpo['error'] = res.bloqueo.motivo or res.bloqueo.norma_compilada
+        return jsonify(cuerpo), 422
+    if not res.ok:
+        cuerpo['error'] = res.error
+        return jsonify(cuerpo), 422
+    cuerpo['estado'] = _notificaciones_tramite_json(tramite)
+    return jsonify(cuerpo), 200
 
 
 @api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/notificar/parsear_documento',

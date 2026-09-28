@@ -156,6 +156,11 @@ def _acc_tramite(tramite) -> dict[str, int]:
     for ta in tramite.tareas:
         estado = _estado_tarea(ta)
         acc[estado] = acc.get(estado, 0) + 1
+    if set(acc) == {'FIN'}:
+        # Todas sus tareas en FIN y aun así sin terminar: le falta alguien por
+        # notificar o le sobra una notificación (#968). Mismo criterio que
+        # `estado_dominio.estado_tramite`.
+        return {'PENDIENTE_TRAMITAR': 1}
     return acc
 
 

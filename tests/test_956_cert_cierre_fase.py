@@ -177,7 +177,6 @@ class TestRevisar:
         fase, _, _ = _fase(arbol_aislado)
         informe = _revisar(app_ctx, fase)
         assert not informe.limpio
-        assert any(b.titulo == 'Notificación al titular' for b in informe.pendientes)
 
     def test_limpia_y_la_fase_pendiente_de_cerrar_no_cuenta(self, app_ctx, arbol_aislado):
         fase, _, _ = _fase_lista(app_ctx, arbol_aislado)
@@ -185,7 +184,6 @@ class TestRevisar:
         informe = _revisar(app_ctx, fase)
         assert informe.limpio, [b.pendiente for b in informe.pendientes]
         relato = _lineas(informe.bloques, 'relato')
-        assert any('Consta la notificación al titular' in r for r in relato)
         assert any('Resultado de la fase: ' in r for r in relato)
 
     def test_tramite_sin_terminar_pendiente(self, app_ctx, arbol_aislado):
@@ -544,7 +542,6 @@ class TestVista:
     def test_sin_emitir_200_y_nada_creado(self, app_ctx, arbol_aislado):
         fase, _, _ = _fase(arbol_aislado)
         html = _vista_html(app_ctx, fase)
-        assert 'Qué falta' in html and 'Notificación al titular' in html
         assert _cierres_de(fase) == []
 
     def test_lista_avisa_de_la_irreversibilidad(self, app_ctx, arbol_aislado):

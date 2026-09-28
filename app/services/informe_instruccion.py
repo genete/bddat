@@ -321,12 +321,34 @@ def bloque_tarea(tarea, escapes: Optional[dict] = None) -> Optional[Bloque]:
 # a leer el texto del hijo para saber cómo está.
 # ---------------------------------------------------------------------------
 
+def _nombre_notificar(tarea) -> str:
+    """Cada `NOTIFICAR` se nombra por su destinatario, su representación y su
+    fuente (#968, ADR-051 §E): «Notificación a X, en representación de Y (como
+    solicitante)». Lo que se relata es la copia congelada de la fila, no la
+    entidad de hoy. Sin destinatario —por escape (§B) o aún por fijar— se dice."""
+    from app.services.destinatarios_notificacion import ETIQUETA_FUENTE
+    notif = tarea.notificacion
+    if notif is None:
+        return _TAREA_EN_PROSA['NOTIFICAR']
+    if notif.entidad_id is not None:
+        base = f'Notificación a {notif.dest_nombre or f"la entidad #{notif.entidad_id}"}'
+        if notif.en_nombre_de_entidad_id is not None:
+            representado = (notif.dest_en_nombre_de_nombre
+                            or f'la entidad #{notif.en_nombre_de_entidad_id}')
+            base += f', en representación de {representado}'
+    else:
+        base = 'Notificación sin destinatario constatado'
+    return f'{base} (como {ETIQUETA_FUENTE.get(notif.fuente, notif.fuente)})'
+
+
 def _tarea(tarea, escapes: dict) -> tuple[str, Optional[Bloque]]:
     codigo = tarea.tipo_tarea.codigo if tarea.tipo_tarea else None
     nombre = _TAREA_EN_PROSA.get(
         codigo,
         (tarea.tipo_tarea.abrev if tarea.tipo_tarea else None) or f'Tarea #{tarea.id}',
     )
+    if codigo == 'NOTIFICAR':
+        nombre = _nombre_notificar(tarea)
 
     # El plazo sí se resuelve aquí, al revés que en `_check_completitud_cierre`
     # (#723), que lo omite a propósito: allí basta con «falta completar una tarea»
@@ -341,9 +363,16 @@ def _tarea(tarea, escapes: dict) -> tuple[str, Optional[Bloque]]:
                + (_relato_sede(escapes, tarea, nombre) if codigo == 'NOTIFICAR' else ()))
 
     if estado == 'FIN':
+        # Cada notificación se relata con su destinatario (#968, ADR-051 §E);
+        # las demás tareas terminadas no tienen nada que decir: su trámite ya
+        # las cuenta.
+        relato = (f'{nombre}: efectuada.',) if codigo == 'NOTIFICAR' else ()
         if not salvado:
-            return estado, None            # nada que decir: su trámite ya la cuenta
-        return estado, Bloque(SALVADO, nombre, salvado=salvado, nodo=('tarea', tarea.id))
+            if not relato:
+                return estado, None
+            return estado, Bloque(PASA, nombre, relato=relato, nodo=('tarea', tarea.id))
+        return estado, Bloque(SALVADO, nombre, relato=relato, salvado=salvado,
+                              nodo=('tarea', tarea.id))
 
     pendiente = (f'{nombre}: {sem.motivo(estado)}.',)
     if plazo and plazo.get('fecha_limite'):
@@ -380,7 +409,14 @@ def _tramite(tramite, escapes: dict) -> tuple[str, Optional[Bloque]]:
         pendiente = (f'{nombre}: no tiene ninguna tarea. Complételo o bórrelo si no '
                      f'era necesario.',)
     else:
-        pendiente = (f'{nombre}: {sem.motivo(estado)}.',) + _de_hijos(hijos, 'pendiente')
+        # A quién falta notificar y qué notificación sobra (#968, ADR-051 §E).
+        from app.services.destinatarios_notificacion import motivos
+        destinatarios = tuple(motivos(tramite))
+        if destinatarios and all(e == 'FIN' for e in estados_tareas):
+            cabecera = f'{nombre}: sus tareas están hechas, pero no está terminado.'
+        else:
+            cabecera = f'{nombre}: {sem.motivo(estado)}.'
+        pendiente = (cabecera,) + destinatarios + _de_hijos(hijos, 'pendiente')
 
     return estado, Bloque(PENDIENTE, nombre, relato=_de_hijos(hijos, 'relato'),
                           pendiente=pendiente, salvado=salvado,

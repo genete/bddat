@@ -104,6 +104,9 @@ from app.models.alegantes import Alegante
 from app.models.organismos_expediente import OrganismoExpediente
 # Vínculo trámites↔organismos (#456 — depende de Tramite, OrganismoExpediente)
 from app.models.tramites_organismos import TramiteOrganismo
+# Fuentes de notificación y destinatario elegido del trámite (#968, ADR-051 §C/§L)
+from app.models.notificacion_fuentes import NotificacionFuente
+from app.models.tramites_destinatario import TramiteDestinatario
 
 # Interesados del expediente (#374 — depende de Expediente, Entidad, Documento)
 from app.models.interesados_expediente import InteresadoExpediente
@@ -215,6 +218,9 @@ __all__ = [
     'OrganismoExpediente',
     # Vínculo trámites↔organismos
     'TramiteOrganismo',
+    # Fuentes de notificación y destinatario elegido del trámite (#968)
+    'NotificacionFuente',
+    'TramiteDestinatario',
     # Alegante en trámites RECEPCION_ALEGACION
     'Alegante',
     # Interesados del expediente

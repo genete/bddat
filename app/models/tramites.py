@@ -109,8 +109,15 @@ class Tramite(db.Model):
         que "hecho", y ese hueco dejaba cerrar fases con trámites fantasma sin
         ningún aviso (ver también estado_dominio.estado_tramite, que ya evitaba
         el mismo vacío por otra vía).
+
+        Nadie falta ni sobra (#968, ADR-051 §E): si el trámite notifica según
+        `notificacion_fuentes`, además no puede faltar nadie a quien notificar
+        ni sobrar ninguna notificación (`destinatarios_notificacion.completo`,
+        calculado una vez por solicitud). Vigila solo las notificaciones: las
+        demás tareas que falten según `tramites_tareas` no las mira (#980).
         """
         # Import diferido: los modelos no importan servicios a nivel de módulo.
+        from app.services.destinatarios_notificacion import completo
         from app.services.notificaciones import estado_sede, notificacion_efectuada
 
         if not self.tareas:
@@ -125,7 +132,7 @@ class Tramite(db.Model):
             if codigo == 'NOTIFICAR' and (not notificacion_efectuada(t)
                                           or estado_sede(t) == 'PENDIENTE'):
                 return False
-        return True
+        return completo(self)
 
     @property
     def planificado(self):

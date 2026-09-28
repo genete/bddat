@@ -304,8 +304,8 @@ def notificar(tarea_notif, doc_consumido_id, doc_justificante_id, fecha, etiquet
     el tipo del justificante: el hook deriva el canal del tipo de documento.
 
     Desde #967 (ADR-051 §B) una NOTIFICAR sin destinatario no admite vínculos:
-    antes de vincular se fija con `fijar_destinatario_de` —lo que hará el
-    usuario a mano hasta que N5a-2 traiga el servicio de destinatarios—.
+    antes de vincular se asegura con `fijar_destinatario_de` (desde #968 la
+    tarea nace ya con él; aquí solo se refresca).
     """
     from app.models.notificaciones import Notificacion
     from app.services import mutaciones_arbol as svc
@@ -324,38 +324,21 @@ def notificar(tarea_notif, doc_consumido_id, doc_justificante_id, fecha, etiquet
 
 
 def fijar_destinatario_de(tarea_notif, etiqueta):
-    """Fija el destinatario de una NOTIFICAR por la vía real
-    (`mutaciones_arbol.fijar_destinatario`, #967) según su fuente:
+    """Asegura el destinatario de una NOTIFICAR antes de vincular, por la vía
+    real (`mutaciones_arbol.fijar_destinatario`).
 
-    - `SOLICITANTE`: la regla de ADR-051 §K (el representante de la solicitud
-      si lo tiene; si no, el solicitante).
-    - `ORGANISMO_DEL_TRAMITE`: el organismo ligado al trámite
-      (`tramites_organismos`), en la dirección elegida en sus consultas si la
-      hay (ADR-051 §C).
-
-    Los expedientes-tipo no tienen notificaciones de otras fuentes; si
-    apareciera una, el script aborta en vez de adivinar.
+    Desde #968 la NOTIFICAR nace ya con su destinatario cuando el servicio de
+    destinatarios lo sabe (el solicitante o su representante, el organismo
+    ligado al trámite…): aquí solo se refresca, igual que el botón «añadir las
+    notificaciones que faltan». Si no hay a quién notificar —un destinatario
+    que se elige a mano y nadie eligió—, el script aborta en vez de adivinar.
     """
-    from app.models.tramites_organismos import TramiteOrganismo
     from app.services import mutaciones_arbol as svc
 
-    fuente = tarea_notif.notificacion.fuente
-    if fuente == 'SOLICITANTE':
-        res = svc.fijar_destinatario(tarea_notif)
-    elif fuente == 'ORGANISMO_DEL_TRAMITE':
-        vinculo = TramiteOrganismo.query.filter_by(tramite_id=tarea_notif.tramite_id).first()
-        if vinculo is None:
-            print(f"ABORTADO al fijar el destinatario de {etiqueta}: el trámite "
-                  f"{tarea_notif.tramite_id} no tiene organismo ligado")
-            sys.exit(1)
-        oe = vinculo.organismo_expediente
-        res = svc.fijar_destinatario(tarea_notif, entidad_id=oe.organismo_id,
-                                     direccion_id=oe.direccion_notificacion_id)
-    else:
-        print(f"ABORTADO al fijar el destinatario de {etiqueta}: fuente {fuente} "
-              "sin regla en los expedientes-tipo")
+    res = svc.fijar_destinatario(tarea_notif)
+    if not res.ok:
+        print(f"ABORTADO al fijar el destinatario de {etiqueta}: {res.error or res.bloqueo}")
         sys.exit(1)
-    check(res, f'fijar destinatario NOTIFICAR {etiqueta}')
 
 
 # ---------------------------------------------------------------------------

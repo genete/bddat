@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **#966** (2026-09-27): el portal de transparencia es un solo ELABORAR que produce la URL (`JUSTIFICANTE_PORTAL`). Ningún trámite del catálogo tiene `NOTIFICAR` sin fuente. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#968 (N5a-2)** (2026-09-27, PR #981): BDDAT sabe a quién notificar en cada trámite (catálogo `notificacion_fuentes`, `tramites_destinatario`, servicio de destinatarios) y no da un trámite por terminado mientras falte alguien por notificar o sobre una notificación. En el PC: aplicar la migración y recrear los expedientes-tipo. Cadena completa en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **#968 (N5a-2)**: fuentes por fase y trámite, `tramites_destinatario` y el invariante «nadie falta ni sobra». Ya no espera a nada: #967, #964 y #966 están cerrados.
+**Próximo:** **#971**: expediente-tipo que llega a la resolución notificada a solicitante (con representante) y organismos, con sus certificados; ya no espera a nada. Después, **#969 (N5a-3)**, que lo usa.
 
 ---
 

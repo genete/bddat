@@ -52,11 +52,15 @@ class Notificacion(db.Model):
     `NOTIFICAR` tiene su fila y su fuente desde que se crea, y sin destinatario
     no avanza.** La fila nace en `mutaciones_arbol.crear_tarea` con `fuente` y
     se borra con la tarea (CASCADE). El destinatario (`entidad_id`,
-    `en_nombre_de_entidad_id` y la copia `dest_*`) lo rellena
-    `services.notificaciones.fijar_destinatario`: se puede cambiar mientras la
-    tarea no tenga ningún justificante, y desde el primero queda fijo. Sin él
-    la tarea no admite vínculos, salvo escape justificado; tras el escape ya no
-    admite rellenarlo.
+    `en_nombre_de_entidad_id` y la copia `dest_*`, con la del representado)
+    sale del servicio de destinatarios (#968,
+    `services/destinatarios_notificacion.py`) y lo copia
+    `services.notificaciones.copiar_destinatario`, llamado desde
+    `mutaciones_arbol`: al crear la tarea, con el botón «añadir las
+    notificaciones que faltan» o con `fijar_destinatario`. Se puede refrescar
+    mientras la tarea no tenga ningún justificante, y desde el primero queda
+    fijo. Sin él la tarea no admite vínculos, salvo escape justificado; tras el
+    escape ya no admite rellenarlo.
 
     El hook de `editar_tarea` (`mutaciones_arbol._hook_notificar`) fija `canal`
     —vacío hasta el primer justificante, #712— y `documento_id`, y coteja;
@@ -156,6 +160,10 @@ class Notificacion(db.Model):
     dest_email = db.Column(db.Text, nullable=True)
     dest_dir3 = db.Column(db.String(20), nullable=True)
     dest_sir = db.Column(db.String(50), nullable=True)
+    # Copia del representado (#968): foto fija, la escribe solo el servicio al
+    # copiar el destinatario; nunca se edita a mano.
+    dest_en_nombre_de_nombre = db.Column(db.Text, nullable=True)
+    dest_en_nombre_de_nif = db.Column(db.String(20), nullable=True)
     destinatario_fijado_en = db.Column(
         db.DateTime(timezone=True),
         nullable=True,
