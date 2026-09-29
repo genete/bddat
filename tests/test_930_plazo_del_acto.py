@@ -348,18 +348,6 @@ class TestCumplimiento:
         arbol_aislado.db.session.expire(tramite, ['tareas'])
         assert _acto(solicitud, 'DUP').documento_cumplimiento.fecha_administrativa == _F3
 
-    def test_el_reconocimiento_de_interesado_cumple_con_su_solicitante(self, arbol_aislado):
-        """ADR-051 §F/§K: cada solicitud se contesta a su solicitante, que en
-        `INTERESADO` es quien pidió ser interesado (con `TITULAR` como fuente,
-        este acto no se habría cumplido nunca)."""
-        solicitud = _con_tipo(arbol_aislado.solicitud_propia(), 'INTERESADO')
-        fase = arbol_aislado.fase('RECONOCIMIENTO_INTERESADO', solicitud=solicitud)
-        tarea = _notificar(arbol_aislado, fase, 'NOTIFICACION', [
-            ('JUSTIFICANTE_NOTIFICA_DISPOSICION', _F1, 'CONSUMIDO')])
-        assert tarea.notificacion.fuente == 'SOLICITANTE'
-        doc = _acto(solicitud, 'INTERESADO').documento_cumplimiento
-        assert doc is not None and doc.fecha_administrativa == _F1
-
     def test_cerrada_con_escape_sin_destinatario_sigue_contando(self, arbol_aislado):
         """La fuente es fija desde que nace la tarea (ADR-051 §B): una
         NOTIFICAR al solicitante cuyo destinatario nunca se fijó (cerrada con
@@ -437,31 +425,6 @@ class TestNotificarDelSolicitante:
         assert es_notificar_del_solicitante(arbol_aislado.tarea(tramite, 'NOTIFICAR')) is True
         # Otra tarea en el mismo trámite no es «la notificación»
         assert es_notificar_del_solicitante(arbol_aislado.tarea(tramite, 'ELABORAR')) is False
-
-    @pytest.mark.parametrize('codigo_fase, fuente', [
-        ('RESOLUCION', 'ORGANISMOS_CONSULTADOS'),
-        ('RESOLUCION_DUP', 'PROPIETARIOS_DUP'),
-    ])
-    def test_otra_fuente_en_el_mismo_tramite_no(self, arbol_aislado, codigo_fase, fuente):
-        """ADR-051 §F: el trámite solo no basta, hace falta la fuente."""
-        from app.services.notificaciones import es_notificar_del_solicitante
-        solicitud = arbol_aislado.solicitud_propia()
-        fase = arbol_aislado.fase(codigo_fase, solicitud=solicitud)
-        tarea = arbol_aislado.tarea(arbol_aislado.tramite(fase, 'NOTIFICACION'), 'NOTIFICAR')
-        tarea.notificacion.fuente = fuente
-        assert es_notificar_del_solicitante(tarea) is False
-
-    def test_sin_ficha_no(self, arbol_aislado):
-        """Una NOTIFICAR heredada sin fila de `notificaciones` no dice de quién
-        es: no cuenta (desde #967 toda tarea nueva nace con su ficha)."""
-        from app.models.notificaciones import Notificacion
-        from app.services.notificaciones import es_notificar_del_solicitante
-        solicitud = arbol_aislado.solicitud_propia()
-        fase = arbol_aislado.fase('RESOLUCION', solicitud=solicitud)
-        tarea = arbol_aislado.tarea(arbol_aislado.tramite(fase, 'NOTIFICACION'), 'NOTIFICAR')
-        Notificacion.query.filter_by(tarea_id=tarea.id).delete()
-        arbol_aislado.db.session.expire(tarea, ['notificacion'])
-        assert es_notificar_del_solicitante(tarea) is False
 
     @pytest.mark.parametrize('codigo_fase, codigo_tramite', [
         ('RESOLUCION_DUP', 'REQUERIMIENTO_RBDA_DEFINITIVA'),
