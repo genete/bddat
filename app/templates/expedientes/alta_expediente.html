@@ -234,32 +234,47 @@
                             </div>
                         </div>
 
-                        <div id="toggle-solicitante-section" class="mb-3" style="display:none;">
+                        {# Sede del titular en la solicitud (#989, ADR-051 §K): la dirección
+                           del oficio y, sin representante, el correo de aviso. #}
+                        <div id="sede-section" class="mb-3" style="display:none;">
+                            <label for="sede-select" class="form-label fw-semibold">
+                                Sede de notificación
+                            </label>
+                            <select id="sede-select" name="direccion_notificacion_id" class="form-select">
+                                <option value="">&mdash; Datos de la ficha del titular &mdash;</option>
+                            </select>
+                            <div class="form-text">
+                                La dirección que figura en la solicitud. Sale en el oficio y, si no hay
+                                representante, su correo recibe el aviso de la notificación.
+                            </div>
+                        </div>
+
+                        <div id="toggle-representante-section" class="mb-3" style="display:none;">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="chk-solicitante-distinto">
-                                <label class="form-check-label" for="chk-solicitante-distinto">
-                                    El solicitante es distinto del titular
+                                <input class="form-check-input" type="checkbox" id="chk-representante">
+                                <label class="form-check-label" for="chk-representante">
+                                    Actúa mediante representante
                                 </label>
                             </div>
                         </div>
 
-                        <div id="solicitante-section" class="mb-3" style="display:none;">
+                        <div id="representante-section" class="mb-3" style="display:none;">
                             <label class="form-label fw-semibold">
-                                Solicitante <span class="text-danger">*</span>
+                                Representante <span class="text-danger">*</span>
                             </label>
-                            <div id="sb-solicitante"></div>
-                            <div class="form-text">Solo entidades con autorización vigente para este titular.</div>
-                            <div id="aviso-sin-autorizados" class="alert alert-warning py-2 mt-2" style="display:none;">
-                                <i class="fas fa-exclamation-triangle me-1"></i>
-                                Este titular no tiene autorizados vigentes. Cree la autorización antes de continuar.
+                            <div id="sb-representante"></div>
+                            <div class="form-text">
+                                Autorizado o apoderado que recibe las notificaciones, con los datos de su
+                                ficha. Salen primero los autorizados del titular; si elige a otro, el
+                                expediente se crea igual y se avisa.
                             </div>
-                            <div id="solicitante-error" class="text-danger small mt-1" style="display:none;">
-                                <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar un solicitante.
+                            <div id="representante-error" class="text-danger small mt-1" style="display:none;">
+                                <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar un representante.
                             </div>
                         </div>
 
-                        <input type="hidden" name="solicitante_id" id="solicitante-id-hidden"
-                               value="{{ form.get('solicitante_id', '') }}">
+                        <input type="hidden" name="representante_entidad_id" id="representante-id-hidden"
+                               value="{{ form.get('representante_entidad_id', '') }}">
 
                         <div class="mb-3">
                             <label for="tipo-solicitud-select" class="form-label fw-semibold">
@@ -445,15 +460,18 @@
     {% endfor %}
 
     // ------------------------------------------------------------------
-    // C) Titular y solicitante
+    // C) Titular, sede y representante (#989, ADR-051 §K). El titular es el
+    //    solicitante; la sede es suya y el representante recibe las
+    //    notificaciones con los datos de su ficha.
     // ------------------------------------------------------------------
-    const entidadError       = document.getElementById('entidad-error');
-    const toggleSection      = document.getElementById('toggle-solicitante-section');
-    const chkDistinto        = document.getElementById('chk-solicitante-distinto');
-    const solicitanteSection = document.getElementById('solicitante-section');
-    const avisoSinAut        = document.getElementById('aviso-sin-autorizados');
-    const solicitanteError   = document.getElementById('solicitante-error');
-    const solicitanteHidden  = document.getElementById('solicitante-id-hidden');
+    const entidadError         = document.getElementById('entidad-error');
+    const sedeSection          = document.getElementById('sede-section');
+    const sedeSelect           = document.getElementById('sede-select');
+    const toggleSection        = document.getElementById('toggle-representante-section');
+    const chkRepresentante     = document.getElementById('chk-representante');
+    const representanteSection = document.getElementById('representante-section');
+    const representanteError   = document.getElementById('representante-error');
+    const representanteHidden  = document.getElementById('representante-id-hidden');
 
     const ENTIDADES_OPTS = {{ entidades_opts | tojson }};
 
@@ -461,96 +479,104 @@
         placeholder: '— Seleccione titular —',
         name: 'entidad_id',
         onChange: (v) => {
-            if (v) {
-                entidadError.style.display = 'none';
-                toggleSection.style.display = '';
-                solicitanteHidden.value = v;
-            } else {
-                toggleSection.style.display = 'none';
-                solicitanteHidden.value = '';
-            }
-            chkDistinto.checked = false;
-            solicitanteSection.style.display = 'none';
-            solicitanteSel.clear();
-            avisoSinAut.style.display = 'none';
+            if (v) entidadError.style.display = 'none';
+            toggleSection.style.display = v ? '' : 'none';
+            chkRepresentante.checked = false;
+            representanteSection.style.display = 'none';
+            representanteSel.clear();
+            representanteHidden.value = '';
+            cargarSedes(v);
         }
     });
 
-    const solicitanteSel = new SelectorBusqueda('#sb-solicitante', [], {
-        placeholder: '— Seleccione solicitante —',
-        name: '_solicitante_display',   // no se envía; el valor va en el hidden
+    const representanteSel = new SelectorBusqueda('#sb-representante', [], {
+        placeholder: '— Seleccione representante —',
+        name: '_representante_display',   // no se envía; el valor va en el hidden
         onChange: (v) => {
-            solicitanteHidden.value = v || '';
-            if (v) solicitanteError.style.display = 'none';
+            representanteHidden.value = v || '';
+            if (v) representanteError.style.display = 'none';
         }
     });
 
-    function cargarAutorizados(titular_id, preseleccion) {
-        fetch(`/api/entidades/${titular_id}/autorizados`)
+    // Sedes del titular. Sin ninguna, no se enseña el selector: se usa la ficha.
+    // El contador descarta respuestas de peticiones ya superadas (cambiar de
+    // titular deprisa, o el repoblado tras un rebote).
+    let peticionSedes = 0;
+    function cargarSedes(titularId, preseleccion) {
+        const n = ++peticionSedes;
+        sedeSelect.length = 1;            // deja «Datos de la ficha del titular»
+        sedeSection.style.display = 'none';
+        if (!titularId) return;
+        fetch(`/api/entidades/${titularId}/sedes`)
             .then(r => r.json())
             .then(json => {
-                const opciones = (json.data || [])
-                    .filter(o => o.id !== parseInt(titular_id, 10))
-                    .map(o => ({ v: String(o.id), t: o.text }));
-                if (!opciones.length) {
-                    avisoSinAut.style.display = '';
-                    chkDistinto.checked = false;
-                    solicitanteSection.style.display = 'none';
-                    solicitanteHidden.value = titular_id;
-                } else {
-                    avisoSinAut.style.display = 'none';
-                    solicitanteSel.setOpciones(opciones);
-                    // Tras un rebote: `setOpciones` limpia el valor, así que la
-                    // preselección solo puede ir después de cargarlas.
-                    if (preseleccion) {
-                        const previo = opciones.find(o => o.v === String(preseleccion));
-                        if (previo) solicitanteSel.setValue(previo.v, previo.t);
-                    }
-                }
+                if (n !== peticionSedes) return;
+                const sedes = json.data || [];
+                sedes.forEach(s => sedeSelect.add(new Option(s.t, s.v)));
+                if (preseleccion) sedeSelect.value = String(preseleccion);
+                sedeSection.style.display = sedes.length ? '' : 'none';
             })
-            .catch(() => {
-                chkDistinto.checked = false;
-                solicitanteSection.style.display = 'none';
-                solicitanteHidden.value = entidadSel.getValue() || '';
-            });
+            .catch(e => console.error('Error cargando sedes:', e));
     }
 
-    chkDistinto.addEventListener('change', function () {
+    // Primero los autorizados del titular y después el resto de entidades
+    // activas: el apoderado puede no estar dado de alta como autorizado.
+    function cargarRepresentantes(titularId, preseleccion) {
+        Promise.all([
+            fetch(`/api/entidades/${titularId}/autorizados`).then(r => r.json()),
+            fetch(`/api/entidades/${titularId}/candidatos-autorizacion`).then(r => r.json()),
+        ])
+            .then(([autorizados, resto]) => {
+                const opciones = (autorizados.data || [])
+                    .filter(o => o.id !== parseInt(titularId, 10))
+                    .map(o => ({ v: String(o.id), t: o.text + ' · autorizado' }))
+                    .concat(resto.data || []);
+                representanteSel.setOpciones(opciones);
+                // Tras un rebote: `setOpciones` limpia el valor, así que la
+                // preselección solo puede ir después de cargarlas.
+                if (preseleccion) {
+                    const previo = opciones.find(o => o.v === String(preseleccion));
+                    if (previo) representanteSel.setValue(previo.v, previo.t);
+                }
+            })
+            .catch(e => console.error('Error cargando representantes:', e));
+    }
+
+    // Sin `clear()` al marcar: enfoca el campo con la lista aún vacía, y al llegar
+    // las opciones un clic en el campo ya enfocado no la abre. `setOpciones` ya
+    // deja el valor vacío. Al desmarcar, se oculta antes de limpiar por lo mismo.
+    chkRepresentante.addEventListener('change', function () {
+        const tid = entidadSel.getValue();
+        if (this.checked && !tid) { this.checked = false; return; }
+        representanteHidden.value = '';
         if (this.checked) {
-            const tid = entidadSel.getValue();
-            if (!tid) { this.checked = false; return; }
-            solicitanteSection.style.display = '';
-            solicitanteSel.clear();
-            solicitanteHidden.value = '';
-            cargarAutorizados(tid);
+            representanteSection.style.display = '';
+            cargarRepresentantes(tid);
         } else {
-            solicitanteSection.style.display = 'none';
-            solicitanteSel.clear();
-            avisoSinAut.style.display = 'none';
-            solicitanteHidden.value = entidadSel.getValue() || '';
+            representanteSection.style.display = 'none';
+            representanteSel.clear();
         }
     });
 
-    // Repoblado del titular tras un rebote de validación. `setValue` necesita
-    // también la etiqueta —con solo el valor pinta «undefined»—, y la etiqueta la
-    // tiene el array de opciones, no el formulario, que solo devuelve el id.
+    // Repoblado tras un rebote de validación. `setValue` necesita también la
+    // etiqueta —con solo el valor pinta «undefined»—, y la etiqueta la tiene el
+    // array de opciones, no el formulario, que solo devuelve el id. Sedes y
+    // representantes se cargan por API: la preselección viaja hasta el fetch.
     {% if form.get('entidad_id') %}
     (function repoblarTitular() {
         const idTitular = {{ form.get('entidad_id') | tojson }};
         const opt = ENTIDADES_OPTS.find(o => o.v === idTitular);
         if (!opt) return;
 
-        entidadSel.setValue(opt.v, opt.t);   // su onChange deja el hidden en el titular
+        entidadSel.setValue(opt.v, opt.t);
+        cargarSedes(idTitular, {{ (form.get('direccion_notificacion_id') or '') | tojson }});
 
-        // Si el solicitante era un autorizado distinto, hay que reabrir la sección
-        // y volver a pedir la lista: sus opciones se cargan por API, no vienen en
-        // el HTML. La preselección viaja hasta después del fetch.
-        const idSolicitante = {{ (form.get('solicitante_id') or '') | tojson }};
-        if (idSolicitante && idSolicitante !== idTitular) {
-            chkDistinto.checked = true;
-            solicitanteSection.style.display = '';
-            solicitanteHidden.value = idSolicitante;
-            cargarAutorizados(idTitular, idSolicitante);
+        const idRepresentante = {{ (form.get('representante_entidad_id') or '') | tojson }};
+        if (idRepresentante) {
+            chkRepresentante.checked = true;
+            representanteSection.style.display = '';
+            representanteHidden.value = idRepresentante;
+            cargarRepresentantes(idTitular, idRepresentante);
         }
     }());
     {% endif %}
@@ -573,8 +599,8 @@
         ok = marcar(tiposSelect.value, tiposError) && ok;
         ok = marcar(fichero.files && fichero.files.length, ficheroError) && ok;
 
-        if (chkDistinto.checked) {
-            ok = marcar(solicitanteSel.getValue(), solicitanteError) && ok;
+        if (chkRepresentante.checked) {
+            ok = marcar(representanteSel.getValue(), representanteError) && ok;
         }
 
         if (!Object.keys(municipiosSeleccionados).length) {

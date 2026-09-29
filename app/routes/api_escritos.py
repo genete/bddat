@@ -19,7 +19,7 @@ from app.models.plantillas import Plantilla
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.services.codigo_seguimiento import componer_codigo
-from app.services.escritos import ContextoBaseExpediente, variables_destinatario
+from app.services.escritos import ContextoBaseExpediente, solicitud_de, variables_destinatario
 from app.services.generador_escritos import (
     generar_escrito,
     componer_nombre_documento,
@@ -139,7 +139,7 @@ def preview():
         return jsonify(ok=False, error='Tarea no encontrada'), 404
 
     # Contexto base (campos para preview)
-    ctx = ContextoBaseExpediente(expediente).get_contexto()
+    ctx = ContextoBaseExpediente(expediente, solicitud_de(tarea)).get_contexto()
     ctx.update(variables_destinatario(tarea))
 
     # Nombre propuesto y ruta destino (ESFTT definitiva, #730 — ya no un

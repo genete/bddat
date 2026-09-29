@@ -24,7 +24,6 @@ from datetime import date
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import login_required
 
-from app.models.autorizados_titular import AutorizadoTitular
 from app.models.entidad import Entidad
 from app.models.municipios import Municipio
 from app.models.tipos_expedientes import TipoExpediente
@@ -122,7 +121,11 @@ def nuevo():
     if not municipios_ids:
         errores.append('Debe añadir al menos un municipio afectado.')
 
-    # --- Titular y solicitante -------------------------------------------
+    # --- Titular (el solicitante), representante y sede --------------------
+    # El titular es siempre el solicitante (#989). Quien actúa por él y recibe
+    # las notificaciones —autorizado o apoderado— va aparte, y la sede es la
+    # del titular que figura en la solicitud. Los dos son opcionales y los
+    # valida el servicio, con las mismas reglas que la edición de la solicitud.
     titular = None
     titular_id = _entero(request.form.get('entidad_id'))
     if titular_id is None:
@@ -133,15 +136,8 @@ def nuevo():
         if titular is None:
             errores.append('La entidad seleccionada no es válida como titular.')
 
-    solicitante_id = _entero(request.form.get('solicitante_id'))
-    if titular is not None:
-        if solicitante_id is None or solicitante_id == titular.id:
-            solicitante_id = titular.id
-        elif not AutorizadoTitular.puede_actuar_como(solicitante_id, titular.id):
-            errores.append('El solicitante no tiene autorización vigente para actuar '
-                           'en nombre de este titular.')
-        elif Entidad.query.get(solicitante_id) is None:
-            errores.append('Solicitante no encontrado.')
+    representante_id = _entero(request.form.get('representante_entidad_id'))
+    direccion_notificacion_id = _entero(request.form.get('direccion_notificacion_id'))
 
     # --- Solicitud --------------------------------------------------------
     tipo_solicitud_id = _entero(request.form.get('tipo_solicitud_id'))
@@ -180,7 +176,8 @@ def nuevo():
             municipios_ids=municipios_ids,
             titular_id=titular.id,
             tipo_solicitud_id=tipo_solicitud_id,
-            solicitante_id=solicitante_id,
+            representante_entidad_id=representante_id,
+            direccion_notificacion_id=direccion_notificacion_id,
             observaciones=observaciones,
             documento=DocumentoSolicitud(
                 contenido=contenido,
@@ -189,13 +186,16 @@ def nuevo():
             ),
         ))
     except ValueError as exc:
-        # Validación de negocio del servicio: falta de ancla, catálogo ausente o
-        # fecha administrativa futura (#824). Se repinta junto al resto.
+        # Validación de negocio del servicio: falta de ancla, catálogo ausente,
+        # fecha administrativa futura (#824), representante o sede que no valen
+        # (#989). Se repinta junto al resto.
         return _repintar([str(exc)], municipios_ids)
     except Exception as exc:
         return _repintar([f'Error al crear el expediente: {exc}'], municipios_ids)
 
     flash(f'Expediente AT-{resultado.numero_at} creado correctamente.', 'success')
+    if resultado.advertencia:
+        flash(resultado.advertencia, 'warning')
     return redirect(url_for('expedientes.listado_v2'))
 
 

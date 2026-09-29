@@ -469,6 +469,7 @@ def _validar_ancla_solicitud(documento_id: Optional[int], expediente_id: int) ->
 def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
                     *, documento_solicitud_id: Optional[int] = None,
                     representante_entidad_id: Optional[int] = None,
+                    direccion_notificacion_id: Optional[int] = None,
                     justificacion: Optional[str] = None) -> ResultadoMutacion:
     """Crea una o varias solicitudes (multi-tipo). Valida motor para todos antes de persistir.
 
@@ -498,9 +499,13 @@ def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
 
     # Representante de la solicitud (#967, ADR-051 §K): error si no vale, aviso
     # si no figura como autorizado. El aviso del motor, si lo hay, manda.
-    error_rep, aviso_rep = _validar_representante(entidad_id, representante_entidad_id)
+    error_rep, aviso_rep = validar_representante(entidad_id, representante_entidad_id)
     if error_rep:
         return ResultadoMutacion(ok=False, error=error_rep)
+    # Sede del solicitante (#989): la dirección del oficio.
+    error_sede = validar_sede(entidad_id, direccion_notificacion_id)
+    if error_sede:
+        return ResultadoMutacion(ok=False, error=error_sede)
 
     # Fase 1: evaluar motor para todos los tipos; si alguno bloquea, rechazar todo.
     # Se conserva la evaluación de cada tipo (evaluaciones) para poder auditar y
@@ -524,7 +529,8 @@ def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
             sol = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
                             tipo_solicitud_id=tipo.id,
                             documento_solicitud_id=documento_solicitud_id,
-                            representante_entidad_id=representante_entidad_id)
+                            representante_entidad_id=representante_entidad_id,
+                            direccion_notificacion_id=direccion_notificacion_id)
             db.session.add(sol)
             db.session.flush()
             res_eval = evaluaciones.get(tipo.id)
@@ -813,12 +819,13 @@ def crear_organismo(fase, entidad, *, via: str, documento_id: Optional[int] = No
 _NO_TOCAR = object()
 
 
-def _validar_representante(solicitante_id: int, representante_id: Optional[int]
-                           ) -> tuple[Optional[str], Optional[dict]]:
+def validar_representante(solicitante_id: int, representante_id: Optional[int]
+                          ) -> tuple[Optional[str], Optional[dict]]:
     """(error, advertencia) del representante de una solicitud (ADR-051 §K).
     Error si la entidad no existe o es el propio solicitante; aviso —sin
     impedirlo— si no figura como autorizada del solicitante en
-    `autorizados_titular`."""
+    `autorizados_titular` (un apoderado puede no estarlo). La usan las tres
+    puertas: el alta de expediente, `crear_solicitud` y `editar_solicitud`."""
     if representante_id is None:
         return None, None
     from app.models.entidad import Entidad
@@ -837,27 +844,206 @@ def _validar_representante(solicitante_id: int, representante_id: Optional[int]
     return None, None
 
 
+def validar_sede(solicitante_id: int, direccion_id: Optional[int]) -> Optional[str]:
+    """Error de la sede de una solicitud (#989, ADR-051 §K), o `None` si vale o
+    no se indica. La regla es `notificaciones.sede_invalida`; la usan las
+    mismas tres puertas que `validar_representante`."""
+    if direccion_id is None:
+        return None
+    from app.models.entidad import Entidad
+    direccion = db.session.get(DireccionNotificacion, direccion_id)
+    if direccion is None:
+        return f'Dirección de notificación {direccion_id} no encontrada.'
+    solicitante = db.session.get(Entidad, solicitante_id) if solicitante_id else None
+    if solicitante is None:
+        return 'La solicitud no tiene solicitante.'
+    return notif_svc.sede_invalida(direccion, solicitante)
+
+
 def editar_solicitud(sol, *, observaciones: Optional[str],
-                     representante_entidad_id=_NO_TOCAR) -> ResultadoMutacion:
-    """Observaciones y representante de la solicitud (#967, ADR-051 §K). El
-    representante es opcional; sin pasarlo no se toca, `None` lo quita. Solo se
-    valida —y se avisa— cuando cambia: la ruta reenvía siempre el valor actual."""
-    advertencia = None
+                     representante_entidad_id=_NO_TOCAR,
+                     direccion_notificacion_id=_NO_TOCAR) -> ResultadoMutacion:
+    """Observaciones, representante y sede de la solicitud (#967, #989, ADR-051
+    §K). Representante y sede son opcionales; sin pasarlos no se tocan, `None`
+    los quita. Solo se validan —y se avisa— cuando cambian: la ruta reenvía
+    siempre el valor actual.
+
+    Cambiarlos se admite siempre, sin bloquear (#989). Las `NOTIFICAR` al
+    solicitante que aún no han salido se actualizan a la regla de §K; de las
+    que ya salieron, y de los oficios que ya se prepararon con la sede
+    anterior, se avisa según en qué punto estén. Nada se deshace solo: si el
+    usuario quiere otra cosa, deshace lo que pueda mientras no haya salido.
+    Los avisos van en `advertencia` (`motivo` es el texto para el usuario)."""
     if representante_entidad_id == sol.representante_entidad_id:
         representante_entidad_id = _NO_TOCAR
-    if representante_entidad_id is not _NO_TOCAR:
-        error, advertencia = _validar_representante(sol.entidad_id, representante_entidad_id)
+    if direccion_notificacion_id == sol.direccion_notificacion_id:
+        direccion_notificacion_id = _NO_TOCAR
+    cambia_representante = representante_entidad_id is not _NO_TOCAR
+    cambia_sede = direccion_notificacion_id is not _NO_TOCAR
+
+    avisos = []
+    if cambia_representante:
+        error, aviso = validar_representante(sol.entidad_id, representante_entidad_id)
+        if error:
+            return ResultadoMutacion(ok=False, error=error)
+        if aviso:
+            avisos.append(aviso['motivo'])
+    if cambia_sede:
+        error = validar_sede(sol.entidad_id, direccion_notificacion_id)
         if error:
             return ResultadoMutacion(ok=False, error=error)
     try:
         sol.observaciones = observaciones or None
-        if representante_entidad_id is not _NO_TOCAR:
+        refresco = None
+        if cambia_representante:
             sol.representante_entidad_id = representante_entidad_id
+        if cambia_sede:
+            sol.direccion_notificacion_id = direccion_notificacion_id
+        if cambia_representante or cambia_sede:
+            db.session.flush()
+            db.session.expire(sol, ['representante', 'sede'])
+            refresco = _refrescar_notificaciones_solicitante(sol)
+            avisos.extend(refresco.avisos)
+            if cambia_sede:
+                avisos.extend(_avisos_oficios_solicitante(sol))
         db.session.commit()
+        advertencia = None
+        if avisos:
+            advertencia = {'motivo': ' '.join(avisos), 'avisos': avisos}
+            if refresco is not None:
+                advertencia['refrescadas'] = refresco.refrescadas
+                advertencia['ya_enviadas'] = refresco.ya_enviadas
         return ResultadoMutacion(ok=True, advertencia=advertencia)
     except Exception as e:
         db.session.rollback()
         return ResultadoMutacion(ok=False, error=str(e))
+
+
+@dataclass
+class _Refresco:
+    refrescadas: list[int] = field(default_factory=list)
+    ya_enviadas: list[int] = field(default_factory=list)
+    avisos: list[str] = field(default_factory=list)
+
+
+def _nombre_tramite(tramite) -> str:
+    tt = tramite.tipo_tramite
+    return (tt.nombre or tt.codigo) if tt else f'trámite {tramite.id}'
+
+
+def _lista(nombres) -> str:
+    """«A», «A y B», «A, B y C», sin repetir y en orden de aparición."""
+    unicos = list(dict.fromkeys(nombres))
+    return unicos[0] if len(unicos) == 1 else ', '.join(unicos[:-1]) + ' y ' + unicos[-1]
+
+
+def _notificar_del_solicitante(sol):
+    """Las `NOTIFICAR` de fuente `SOLICITANTE` de la solicitud, en orden."""
+    for fase in sorted(sol.fases, key=lambda f: f.id):
+        for tramite in sorted(fase.tramites, key=lambda t: t.id):
+            for ta in sorted(tramite.tareas, key=lambda t: t.id):
+                if (ta.tipo_tarea and ta.tipo_tarea.codigo == 'NOTIFICAR'
+                        and ta.notificacion is not None
+                        and ta.notificacion.fuente == 'SOLICITANTE'):
+                    yield ta
+
+
+def _refrescar_notificaciones_solicitante(sol) -> _Refresco:
+    """Tras cambiar el representante o la sede (#989): las `NOTIFICAR` al
+    solicitante con destinatario y sin justificante se actualizan a la regla
+    de §K, y queda en bitácora (`FIJAR_DESTINATARIO`, `origen:
+    'CAMBIO_SOLICITUD'`). Las que ya tienen justificante no se tocan —salieron
+    así— y se cuentan si habrían cambiado. Las que no tienen destinatario
+    (hueco o escape) se quedan como están: las rellena el botón. No hace
+    commit. La clave de idempotencia es el solicitante, que no cambia, así que
+    ninguna notificación pasa a sobrar."""
+    from types import SimpleNamespace
+    res = _Refresco()
+    destino = notif_svc.destinatario_solicitante(sol)
+    if destino is None:
+        return res
+    enviadas_en = []
+    for ta in list(_notificar_del_solicitante(sol)):
+        notif = ta.notificacion
+        if notif.entidad_id is None:
+            continue
+        if notif_svc.tiene_justificante(ta):
+            nueva = SimpleNamespace()
+            notif_svc.copiar_destinatario(nueva, destino, ahora=None)
+            if any(getattr(nueva, c) != getattr(notif, c) for c in _CAMPOS_DESTINATARIO):
+                res.ya_enviadas.append(ta.id)
+                enviadas_en.append(_nombre_tramite(ta.tramite))
+            continue
+        if _copiar_destinatario(ta, notif, destino, origen='CAMBIO_SOLICITUD'):
+            res.refrescadas.append(ta.id)
+        db.session.flush()
+    if res.refrescadas:
+        n = len(res.refrescadas)
+        res.avisos.append(
+            'Se ha actualizado la notificación al solicitante que aún no había salido.'
+            if n == 1 else
+            f'Se han actualizado {n} notificaciones al solicitante que aún no habían salido.')
+    if res.ya_enviadas:
+        res.avisos.append(
+            f'La notificación de {_lista(enviadas_en)} ya salió con los datos anteriores y no '
+            'se toca.' if len(res.ya_enviadas) == 1 else
+            f'Las notificaciones de {_lista(enviadas_en)} ya salieron con los datos anteriores '
+            'y no se tocan.')
+    return res
+
+
+# Estado del oficio al solicitante → aviso cuando cambia la sede (#989), en
+# singular y en plural.
+_AVISO_OFICIO = {
+    'PENDIENTE_REDACTAR': ('El oficio de {} está en redacción: si ya tiene borrador, lleva '
+                           'la dirección anterior.',
+                           'Los oficios de {} están en redacción: los que ya tengan borrador '
+                           'llevan la dirección anterior.'),
+    'PENDIENTE_FIRMA': ('El oficio de {} está a la firma con la dirección anterior.',
+                        'Los oficios de {} están a la firma con la dirección anterior.'),
+    'FIRMADO': ('El oficio de {} está firmado con la dirección anterior.',
+                'Los oficios de {} están firmados con la dirección anterior.'),
+    'NOTIFICADO': ('El oficio de {} ya se notificó con la dirección anterior.',
+                   'Los oficios de {} ya se notificaron con la dirección anterior.'),
+}
+
+
+def _avisos_oficios_solicitante(sol) -> list[str]:
+    """Oficios al solicitante ya preparados cuando cambia la sede (#989): la
+    sede es la dirección del oficio, así que el que ya se redactó la lleva
+    vieja. Se avisa según su estado —en redacción, a la firma, firmado o ya
+    notificado—, sin bloquear ni tocar nada. Un cambio de representante no
+    afecta al oficio, que va siempre al solicitante.
+
+    Son los `ELABORAR` de los trámites que notifican al solicitante (fuente
+    `SOLICITANTE`) y de la `ELABORACION` de la resolución, que va siempre a él."""
+    from app.services.estado_dominio import estado_tarea
+    notificados = {doc.id for ta in _notificar_del_solicitante(sol)
+                   if notif_svc.tiene_justificante(ta)
+                   for doc in notif_svc.documentos_a_notificar(ta)}
+    por_estado = {clave: [] for clave in _AVISO_OFICIO}
+    for fase in sorted(sol.fases, key=lambda f: f.id):
+        for tramite in sorted(fase.tramites, key=lambda t: t.id):
+            codigo = tramite.tipo_tramite.codigo if tramite.tipo_tramite else None
+            if (codigo != 'ELABORACION'
+                    and 'SOLICITANTE' not in (dest_svc.fuentes_del_tramite(tramite) or ())):
+                continue
+            for ta in sorted(tramite.tareas, key=lambda t: t.id):
+                if not (ta.tipo_tarea and ta.tipo_tarea.codigo == 'ELABORAR'):
+                    continue
+                estado = estado_tarea(ta)
+                if estado == 'FIN':
+                    doc = ta.documento_producido
+                    estado = 'NOTIFICADO' if doc is not None and doc.id in notificados else 'FIRMADO'
+                if estado in por_estado:
+                    por_estado[estado].append(_nombre_tramite(tramite))
+    avisos = []
+    for estado, (singular, plural) in _AVISO_OFICIO.items():
+        tramites = por_estado[estado]
+        if tramites:
+            texto = plural if len(tramites) > 1 else singular
+            avisos.append(texto.format(_lista(tramites)))
+    return avisos
 
 
 def fijar_destinatario(ta, *, entidad_id: Optional[int] = None,
@@ -992,6 +1178,14 @@ def _esperados(tramite, fuente) -> list:
     return [e for e in estado.esperados if e.fuente == fuente] if estado else []
 
 
+# Las columnas del destinatario en `notificaciones`: las que escribe
+# `notif_svc.copiar_destinatario` y con las que se decide si algo cambió.
+_CAMPOS_DESTINATARIO = ('entidad_id', 'en_nombre_de_entidad_id', 'direccion_origen_id',
+                        'dest_nombre', 'dest_nif', 'dest_direccion', 'dest_codigo_postal',
+                        'dest_municipio', 'dest_provincia', 'dest_email', 'dest_dir3', 'dest_sir',
+                        'dest_en_nombre_de_nombre', 'dest_en_nombre_de_nif')
+
+
 def _copiar_destinatario(ta, notif, destino, *, origen: str, siempre: bool = False) -> bool:
     """Copia `destino` en la fila y lo deja en bitácora si cambió algo (o
     siempre, cuando lo pide el usuario). No hace commit. Devuelve si cambió.
@@ -999,13 +1193,9 @@ def _copiar_destinatario(ta, notif, destino, *, origen: str, siempre: bool = Fal
     Al crear la tarea (`origen='AL_CREAR'`) no se anota: el acto es crearla, y
     `crear_tarea` tampoco anota las creaciones normales."""
     from datetime import datetime, timezone
-    campos = ('entidad_id', 'en_nombre_de_entidad_id', 'direccion_origen_id', 'dest_nombre',
-              'dest_nif', 'dest_direccion', 'dest_codigo_postal', 'dest_municipio',
-              'dest_provincia', 'dest_email', 'dest_dir3', 'dest_sir',
-              'dest_en_nombre_de_nombre', 'dest_en_nombre_de_nif')
-    antes = tuple(getattr(notif, c) for c in campos)
+    antes = tuple(getattr(notif, c) for c in _CAMPOS_DESTINATARIO)
     notif_svc.copiar_destinatario(notif, destino, ahora=datetime.now(timezone.utc))
-    cambio = antes != tuple(getattr(notif, c) for c in campos)
+    cambio = antes != tuple(getattr(notif, c) for c in _CAMPOS_DESTINATARIO)
     if origen != 'AL_CREAR' and (cambio or siempre):
         bitacora_svc.registrar(
             current_user.id, 'ALTERAR', 'notificaciones', notif.id,

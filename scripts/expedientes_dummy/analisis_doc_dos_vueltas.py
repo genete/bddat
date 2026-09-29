@@ -184,7 +184,6 @@ def _crear_expediente(cat):
         municipios_ids=[cat['municipio'].id],
         titular_id=cat['entidad'].id,
         tipo_solicitud_id=cat['tipo_solicitud'].id,
-        solicitante_id=cat['entidad'].id,
         observaciones=OBSERVACIONES,
         # Campos técnicos del proyecto que el formulario no pide pero este
         # escenario sí fija: sin línea aérea y en suelo urbano es lo que lo deja

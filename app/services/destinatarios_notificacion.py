@@ -393,8 +393,14 @@ def _resolver(fuente: str, tramite, p: _Precarga) -> tuple[list, Optional[str]]:
     if fuente == 'SOLICITANTE':
         if solicitud.entidad_id is None:
             return [], 'la solicitud no tiene solicitante'
-        receptor = solicitud.representante_entidad_id or solicitud.entidad_id
-        return [Esperado(fuente, solicitud.entidad_id, receptor)], None
+        # Regla de §K (#989): el representante, con su ficha; sin él, el
+        # solicitante con su sede en la solicitud o su ficha.
+        if solicitud.representante_entidad_id:
+            return [Esperado(fuente, solicitud.entidad_id,
+                             solicitud.representante_entidad_id)], None
+        sede = notif_svc.sede_de(solicitud)
+        return [Esperado(fuente, solicitud.entidad_id, solicitud.entidad_id,
+                         sede.id if sede else None)], None
 
     if fuente == 'ORGANISMO_DEL_TRAMITE':
         ligado = p.organismo_del_tramite.get(tramite.id)
@@ -632,13 +638,18 @@ class DestinatarioTramite:
     """El destinatario de un trámite de un solo destinatario (§H): el que
     imprime el escrito del ELABORAR y con el que nace su `NOTIFICAR`.
 
-    - `destinatario` resuelto, o `None`.
-    - Sin él, `motivo` dice por qué y, si lo elige el usuario, `elegibles` son
-      las entidades del rol entre las que elegir (`fuente` dice cuál)."""
+    - `destinatario` resuelto, o `None`: a quién va la notificación.
+    - `oficio`: a quién y adónde va el escrito. Es el mismo, salvo en la fuente
+      `SOLICITANTE`: el oficio va siempre al solicitante, a su sede o su ficha,
+      aunque la notificación la reciba su representante (§K, #989).
+    - Sin destinatario, `motivo` dice por qué y, si lo elige el usuario,
+      `elegibles` son las entidades del rol entre las que elegir (`fuente` dice
+      cuál)."""
     fuente: Optional[str]
     destinatario: Optional[notif_svc.Destinatario] = None
     motivo: Optional[str] = None
     elegibles: tuple = ()
+    oficio: Optional[notif_svc.Destinatario] = None
 
     @property
     def aplica(self) -> bool:
@@ -657,7 +668,10 @@ def destinatario_del_tramite(tramite) -> DestinatarioTramite:
     estado = estado_del_tramite(tramite)
     esperados = [e for e in estado.esperados if e.fuente == fuente] if estado else []
     if len(esperados) == 1:
-        return DestinatarioTramite(fuente=fuente, destinatario=como_destinatario(esperados[0]))
+        destinatario = como_destinatario(esperados[0])
+        oficio = (notif_svc.oficio_solicitante(tramite.fase.solicitud)
+                  if fuente == 'SOLICITANTE' else destinatario)
+        return DestinatarioTramite(fuente=fuente, destinatario=destinatario, oficio=oficio)
     if len(esperados) > 1:
         return DestinatarioTramite(
             fuente=fuente, motivo='el trámite tiene más de un destinatario y el escrito es '

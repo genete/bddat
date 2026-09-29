@@ -64,15 +64,16 @@ CAMPOS_BASE = [
     {'campo': 'expediente_id',          'descripcion': 'ID técnico interno del expediente'},
     {'campo': 'titular_nombre',         'descripcion': 'Nombre / Razón Social del titular'},
     {'campo': 'titular_nif',            'descripcion': 'NIF del titular'},
-    {'campo': 'titular_dir.calle',      'descripcion': 'Dirección postal (calle y número)'},
+    {'campo': 'titular_dir.calle',      'descripcion': 'Dirección postal (calle y número): la sede de la solicitud, o la de la ficha'},
     {'campo': 'titular_dir.cp',         'descripcion': 'Código postal'},
     {'campo': 'titular_dir.municipio',  'descripcion': 'Municipio de notificación'},
     {'campo': 'titular_dir.provincia',  'descripcion': 'Provincia de notificación'},
-    {'campo': 'titular_dir.nif',        'descripcion': 'NIF para notificación (puede diferir del NIF principal)'},
-    {'campo': 'titular_dir.email',      'descripcion': 'Email de notificación electrónica'},
+    {'campo': 'titular_dir.nif',        'descripcion': 'NIF del titular (el de la ficha)'},
+    {'campo': 'titular_dir.email',      'descripcion': 'Correo de la sede de la solicitud, o el de la ficha'},
     # Destinatario del escrito (#968, ADR-051 §H): el del trámite, del servicio de
-    # destinatarios. Vacíos si el trámite no tiene un destinatario único.
-    {'campo': 'destinatario_nombre',    'descripcion': 'A quién va el escrito (el representante, si lo hay)'},
+    # destinatarios. Vacíos si el trámite no tiene un destinatario único. Al
+    # solicitante, el oficio va siempre a él, a su sede o su ficha (#989, §K).
+    {'campo': 'destinatario_nombre',    'descripcion': 'A quién va el escrito (al solicitante, siempre él aunque tenga representante)'},
     {'campo': 'destinatario_nif',       'descripcion': 'NIF del destinatario'},
     {'campo': 'destinatario_dir.calle', 'descripcion': 'Dirección postal del destinatario (calle y número)'},
     {'campo': 'destinatario_dir.cp',    'descripcion': 'Código postal del destinatario'},
@@ -81,6 +82,7 @@ CAMPOS_BASE = [
     {'campo': 'destinatario_dir.nif',   'descripcion': 'NIF del destinatario para notificación'},
     {'campo': 'destinatario_dir.email', 'descripcion': 'Correo de aviso de la notificación del destinatario'},
     {'campo': 'destinatario_en_nombre_de', 'descripcion': 'Representado, si el escrito va a su representante; vacío si va directo'},
+    {'campo': 'destinatario_representante', 'descripcion': 'Quien recibe la notificación en nombre del solicitante (autorizado o apoderado); vacío si no hay'},
     {'campo': 'proyecto_titulo',       'descripcion': 'Título del proyecto técnico'},
     {'campo': 'proyecto_finalidad',     'descripcion': 'Finalidad de la instalación'},
     {'campo': 'proyecto_emplazamiento', 'descripcion': 'Emplazamiento descriptivo'},

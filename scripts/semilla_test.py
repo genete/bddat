@@ -235,7 +235,6 @@ def _expediente_sin_asignar(app):
             municipios_ids=[municipio.id],
             titular_id=titular.id,
             tipo_solicitud_id=tipo_sol.id,
-            solicitante_id=titular.id,
             observaciones=marca,
             documento=DocumentoSolicitud(
                 contenido=contenido,

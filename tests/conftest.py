@@ -375,7 +375,6 @@ def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None):
         municipios_ids=[municipio.id],
         titular_id=entidad.id,
         tipo_solicitud_id=tipo_sol.id,
-        solicitante_id=entidad.id,
         observaciones=f'[TEST] expediente de prueba {n}',
         documento=documento,
     ))
