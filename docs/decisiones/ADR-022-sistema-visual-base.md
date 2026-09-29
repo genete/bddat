@@ -6,6 +6,8 @@
 **Origen:** PRE-ADR `docs/diseño/PRE-ADR-workbench-listados.md` (sesión de revisión de altura del workbench).
 **Relación:** prerrequisito de **ADR-023** (list-detail + inspector universal). Cierra parcialmente la decisión §5.5 de `ANALISIS_CRITICO.md` (sistema de diseño).
 
+**Nota (#984, 2026-09-29):** donde este ADR dice «CDN de la Junta» (§1, §Cómo implementar 1 y alternativa B), léase «base local de la Junta». Desde #984 la base v1.2.5 se sirve desde `app/static/vendor/` y la app no carga nada de CDN externos. La decisión no cambia: el `rem` global sigue siendo el mando maestro, y Bootstrap y la base de la Junta siguen dimensionados en `rem`.
+
 ---
 
 ## Contexto
