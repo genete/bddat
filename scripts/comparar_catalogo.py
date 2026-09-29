@@ -40,6 +40,8 @@ load_dotenv(os.path.join(RAIZ, '.env'))
 
 # Datos de negocio y operacionales: no van en migración, y en la base de tests
 # los pone la semilla (#849.B) o no existen todavía.
+# Toda tabla nueva que escriba la tramitación o la semilla (no el catálogo) hay
+# que añadirla aquí: vacía en las dos bases no da divergencia, y con filas, sí.
 TABLAS_OPERACIONALES = {
     'expedientes', 'solicitudes', 'proyectos', 'fases', 'tramites', 'tareas',
     'documentos', 'documentos_tarea', 'documentos_requisito', 'entidades',

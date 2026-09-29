@@ -186,6 +186,8 @@ op.execute("GRANT SELECT ON public.<tabla> TO claude_desktop")
 
 En producción este usuario no existe y el GRANT se omite o revoca, pero en desarrollo es necesario para que el MCP PostgreSQL pueda leerla.
 
+Si la tabla nueva es **operacional** (la escribe la tramitación o la semilla de tests, no el catálogo), añadirla también a `TABLAS_OPERACIONALES` en `scripts/comparar_catalogo.py`. Si no, sus filas, distintas en cada base, salen como divergencia falsa; mientras esté vacía en las dos no se nota (`certificados_fase`, 2026-09-29).
+
 ### Cuatro reglas que solo se notan instalando desde cero (#849)
 
 La BD de desarrollo lleva años acumulando ajustes hechos a mano que nunca se
