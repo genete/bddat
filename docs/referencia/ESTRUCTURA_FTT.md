@@ -1,9 +1,9 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-09-27 (#968 — a quién se notifica en la resolución: remite al catálogo de fuentes `notificacion_fuentes`; antes, #966: PORTAL_TRANSPARENCIA a un solo ELABORAR, y #964: BOE y prensa sin NOTIFICAR, BOP y tablón con su ELABORAR)
+> Última sincronización: 2026-09-29 (#969 — `RESOLUCION_DUP` notifica desde un solo `NOTIFICACION`: se retiran `NOTIFICACION_ORGANISMOS` y `NOTIFICACION_INTERESADOS`, y el plazo de resolver lo cumple la NOTIFICAR de fuente `SOLICITANTE`; antes, #968 — a quién se notifica en la resolución: remite al catálogo de fuentes `notificacion_fuentes`; antes, #966: PORTAL_TRANSPARENCIA a un solo ELABORAR, y #964: BOE y prensa sin NOTIFICAR, BOP y tablón con su ELABORAR)
 
-**Versión:** 6.7 | **Fecha:** 2026-09-27
+**Versión:** 6.8 | **Fecha:** 2026-09-29
 
 Este documento es la versión legible por humanos del JSON estructural. El JSON es la fuente de verdad para código e IA; este MD es la referencia de consulta rápida.
 
@@ -202,7 +202,7 @@ aparte (#778, no fijado todavía).
 | Trámite | Patrón | Tareas indicativas | Nota |
 |---|---|---|---|
 | `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION — #373) | — |
-| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. Es la notificación al titular: de ella depende el cumplimiento del plazo de resolver de los actos que resuelve esta fase (arts. 21.2 y 40.4 LPACAP, #930) |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. La de fuente `SOLICITANTE` es la notificación al solicitante: de ella depende el cumplimiento del plazo de resolver de los actos que resuelve esta fase (arts. 21.2 y 40.4 LPACAP, #930) |
 | `PUBLICACION` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO | — |
 
 ---
@@ -214,16 +214,14 @@ aparte (#778, no fijado todavía).
 |---|---|---|---|
 | `REQUERIMIENTO_RBDA_DEFINITIVA` | C | ELABORAR → NOTIFICAR → EP | Obligatorio y exclusivo de esta fase, previo a `ELABORACION`. Plazo 10 días (genérico LPACAP). Requiere RBDA definitiva (solo parcelas a expropiar, propietarios, DNI, direcciones) o confirmación de la ya publicada |
 | `ELABORACION` | B (sin NOTIFICAR) | ELABORAR | Consume `RBDA_DEFINITIVA`. Mismo código de trámite que `RESOLUCION.ELABORACION` — colisión resuelta vía `nombres_documentos.py:_SUSTITUCIONES` |
-| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Titular (promotor), que es quien solicitó la DUP |
-| `NOTIFICACION_ORGANISMOS` | B (solo NOTIFICAR) | NOTIFICAR | `interesados_expediente.tipo_origen IN ('ORGANISMO_CONSULTADO', 'MEDIO_AMBIENTE')` |
-| `NOTIFICACION_INTERESADOS` | B (solo NOTIFICAR) | NOTIFICAR | `interesados_expediente.tipo_origen IN ('DUP', 'INTERESADO_RECONOCIDO')` |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C): `SOLICITANTE`, `ORGANISMOS_CONSULTADOS`, `PROPIETARIOS_DUP` e `INTERESADOS_RECONOCIDOS` (art. 148.2 RD 1955/2000), una NOTIFICAR por destinatario. La de fuente `SOLICITANTE` es la notificación al solicitante, de la que depende el plazo de resolver el acto DUP (#930, ADR-051 §F) |
 | `PUBLICACION_BOP` | F+F | NOTIFICAR → EP → EP | Una instancia por provincia afectada |
 | `PUBLICACION_BOJA` | F+F | NOTIFICAR → EP → EP | Instrucción 1/2016 DG Industria, DÉCIMO |
 | `PUBLICACION_BOE` | F+F | NOTIFICAR → EP → EP | Art. 148.2 RD 1955/2000 (rango superior a la Instrucción 1/2016, que no lo cita para la resolución) |
 
 **`REQUERIMIENTO_RBDA_DEFINITIVA`, previo a `ELABORACION`:** su `ESPERAR_PLAZO` recibe directamente `RBDA_DEFINITIVA` (aportada por el promotor, o su confirmación de la ya publicada) sin anexos que incorporar — no exige `ANALIZAR` posterior (mismo caso que `TABLON_AYUNTAMIENTOS` en `INFORMACION_PUBLICA`). Produce el documento que consume `ELABORACION.ELABORAR` para redactar la resolución con los datos de expropiación definitivos.
 
-**Notificaciones y publicaciones, un trámite por grupo/boletín** (no genéricos): art. 148.2 RD 1955/2000 distingue tres grupos de destinatarios además del solicitante; `NOTIFICACION_ORGANISMOS`/`NOTIFICACION_INTERESADOS` activan una vista de sub-lista en el inspector vía `_TRAMITES_CON_NOTIFICACION_MULTIPLE` (mismo mecanismo que `_TRAMITES_CON_SECCIONES_ANALISIS`). Las publicaciones siguen el patrón ya usado por `ANUNCIO_BOE`/`ANUNCIO_BOP`/`ANUNCIO_BOJA` de `INFORMACION_PUBLICA` en vez de un `PUBLICACION` único — aquí sin `ELABORAR` propio, porque el documento ya se elaboró en `ELABORACION`.
+**Una sola notificación, una publicación por boletín** (no genéricos): el art. 148.2 RD 1955/2000 distingue tres grupos de destinatarios además del solicitante, y desde #969 los distingue la fuente de cada NOTIFICAR dentro de un único `NOTIFICACION` (ADR-051 §G; antes eran dos trámites propios, `NOTIFICACION_ORGANISMOS` y `NOTIFICACION_INTERESADOS`, ADR-046 §C). Las publicaciones siguen el patrón ya usado por `ANUNCIO_BOE`/`ANUNCIO_BOP`/`ANUNCIO_BOJA` de `INFORMACION_PUBLICA` en vez de un `PUBLICACION` único — aquí sin `ELABORAR` propio, porque el documento ya se elaboró en `ELABORACION`.
 
 **Bloqueos de motor:** duplicado quirúrgico de los 5 de `RESOLUCION` (sujeto `ANY/ANY/RESOLUCION_DUP`) — `organismos_todos_terminados`, `fase_ip_finalizada`, `tramite_requerimiento_sin_respuesta`, `instrumento_ambiental=AAU`, `solicitud_tiene_cert_fin_instruccion`. Más la regla de orden de #891 (no resolver DUP sin AAC previa aprobada en `AAP+DUP`), anclada en `ELABORACION.ELABORAR` (ADR-046 §E). No se hereda de `RESOLUCION` — se duplica deliberadamente (decisión ADR-046 §E, alternativa de herencia descartada).
 
@@ -237,7 +235,7 @@ aparte (#778, no fijado todavía).
 | Trámite | Patrón | Tareas indicativas | Nota |
 |---|---|---|---|
 | `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION de la solicitud) | — |
-| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. Es la notificación al titular: de ella depende el cumplimiento del plazo de resolver del acto AAP (arts. 21.2 y 40.4 LPACAP, #930) |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. La de fuente `SOLICITANTE` es la notificación al solicitante: de ella depende el cumplimiento del plazo de resolver del acto AAP (arts. 21.2 y 40.4 LPACAP, #930) |
 | `PUBLICACION` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO | — |
 
 Mismo código de trámite `ELABORACION` que `RESOLUCION` — colisión de nombre de fichero resuelta vía `nombres_documentos.py:_SUSTITUCIONES` (#918). **Bloqueos de motor:** duplicado quirúrgico de los 5 de `RESOLUCION` (sujeto `ANY/ANY/RESOLUCION_AAP`), más exclusión mutua con `RESOLUCION` al `CREAR` la fase (condición `existe_resolucion_conjunta`, ADR-047 §B). Publica (art. 128.3 RD 1955/2000) igual que `RESOLUCION`, a diferencia de `RESOLUCION_AAC`.
@@ -250,6 +248,6 @@ Mismo código de trámite `ELABORACION` que `RESOLUCION` — colisión de nombre
 | Trámite | Patrón | Tareas indicativas | Nota |
 |---|---|---|---|
 | `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION de la solicitud) | — |
-| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Sin PUBLICACION: el art. 131.8 RD 1955/2000 solo exige notificar (#918). A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. Es la notificación al titular: de ella depende el cumplimiento del plazo de resolver del acto AAC (arts. 21.2 y 40.4 LPACAP, #930) |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Sin PUBLICACION: el art. 131.8 RD 1955/2000 solo exige notificar (#918). A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. La de fuente `SOLICITANTE` es la notificación al solicitante: de ella depende el cumplimiento del plazo de resolver del acto AAC (arts. 21.2 y 40.4 LPACAP, #930) |
 
 Sin `PUBLICACION`: a diferencia de `RESOLUCION_AAP`, el art. 131.8 RD 1955/2000 solo exige notificar, no publicar (#918). Mismo código de trámite `ELABORACION` que `RESOLUCION` — colisión resuelta vía `nombres_documentos.py:_SUSTITUCIONES`. **Bloqueos de motor:** duplicado quirúrgico de los 5 de `RESOLUCION` (sujeto `ANY/ANY/RESOLUCION_AAC`); exclusión mutua con `RESOLUCION` al `CREAR` la fase (condición `existe_resolucion_conjunta`). Más la **regla de orden AAP→AAC** (ADR-047 §F, RD 1955/2000 arts. 128.4/130.1/131.1 párr. 2): `RESOLUCION_AAP` de la misma solicitud debe constar finalizada favorable. Por límite del motor —no compila sujeto a nivel de tarea—, la regla ancla en `CREAR` el trámite `ELABORACION` (sujeto `ANY/RESOLUCION_AAC/ELABORACION`), **no** en la tarea `ELABORAR` como el resto de reglas de orden de este documento.
