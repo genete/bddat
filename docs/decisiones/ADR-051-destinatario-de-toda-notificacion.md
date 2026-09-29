@@ -1,8 +1,9 @@
 # ADR-051 — Toda notificación tiene destinatario: fuentes por fase y trámite, poblado idempotente y dirección congelada
 
-**Estado:** Adoptada — implementada en parte. La implementa **N5** (notificación multi-destinatario), partido en #967, #968 y #969 (`docs/diseño/ESTADO_ADR049.md`). **§B y §K, en #967 (N5a-1):** migración `967_destinatario_notificacion`; la fila con su fuente nace en `mutaciones_arbol.crear_tarea`, con las fuentes de cada trámite en una lista provisional en código (`notificaciones.FUENTES_POR_TRAMITE`) hasta la tabla `notificacion_fuentes` de #968; el destinatario se fija a mano con `mutaciones_arbol.fijar_destinatario` (`PUT …/notificar/destinatario`, sin interfaz hasta #929); el escape queda en bitácora con `accion: NOTIFICAR_SIN_DESTINATARIO`. **§C, §D, §E, §H, §L y §M, en #968 (N5a-2):** migración `968_fuentes_destinatarios` (catálogo `notificacion_fuentes`, que sustituye a `FUENTES_POR_TRAMITE`; `tramites_destinatario`; copia congelada del representado en `notificaciones`, `dest_en_nombre_de_*`); servicio `services/destinatarios_notificacion.py` («¿a quién falta notificar?» y sobrantes, calculado por solicitud y guardado solo hasta la siguiente escritura de la sesión); escribir es de `mutaciones_arbol` (`crear_tarea` rellena al crear, `fijar_destinatario` solo admite a quien corresponde por la fuente, `registrar_destinatario_tramite`, `anadir_notificaciones_que_faltan`; rutas `GET …/tramite/<id>/notificaciones` y `POST …/notificaciones/anadir_faltan`, sin interfaz hasta #929); invariante en `Tramite.finalizado`, rojo propio del trámite en el semáforo cuando sus tareas están en FIN (decisión de Carlos: el rojo es la caja que falta), relato por destinatario en `informe_instruccion`; escritos con `destinatario_*` y bloqueados sin destinatario. La clave de idempotencia usa al **titular** de la notificación (el representado, o la propia entidad), para que una notificación hecha no sobre si después se asigna un representante. La columna `norma` solo lleva los artículos ya leídos; el resto, pendiente. **§F y §G, en #969 (N5a-3):** migración `969_una_notificacion_dup` (se retiran `NOTIFICACION_ORGANISMOS` y `NOTIFICACION_INTERESADOS` con sus filas de catálogo y de `notificacion_fuentes`; aborta si algún trámite, plantilla o fila de `catalogo_plazos` cuelga de ellos); `notificaciones.es_notificar_del_solicitante` (antes `…_del_titular`) exige además la fuente `SOLICITANTE`; desaparece `_TRAMITES_CON_NOTIFICACION_MULTIPLE`. Queda la interfaz (#929) y el poblado de propietarios e interesados (#431, #432)
+**Estado:** Adoptada — implementada en parte. La implementa **N5** (notificación multi-destinatario), partido en #967, #968 y #969 (`docs/diseño/ESTADO_ADR049.md`). **§B y §K, en #967 (N5a-1):** migración `967_destinatario_notificacion`; la fila con su fuente nace en `mutaciones_arbol.crear_tarea`, con las fuentes de cada trámite en una lista provisional en código (`notificaciones.FUENTES_POR_TRAMITE`) hasta la tabla `notificacion_fuentes` de #968; el destinatario se fija a mano con `mutaciones_arbol.fijar_destinatario` (`PUT …/notificar/destinatario`, sin interfaz hasta #929); el escape queda en bitácora con `accion: NOTIFICAR_SIN_DESTINATARIO`. **§C, §D, §E, §H, §L y §M, en #968 (N5a-2):** migración `968_fuentes_destinatarios` (catálogo `notificacion_fuentes`, que sustituye a `FUENTES_POR_TRAMITE`; `tramites_destinatario`; copia congelada del representado en `notificaciones`, `dest_en_nombre_de_*`); servicio `services/destinatarios_notificacion.py` («¿a quién falta notificar?» y sobrantes, calculado por solicitud y guardado solo hasta la siguiente escritura de la sesión); escribir es de `mutaciones_arbol` (`crear_tarea` rellena al crear, `fijar_destinatario` solo admite a quien corresponde por la fuente, `registrar_destinatario_tramite`, `anadir_notificaciones_que_faltan`; rutas `GET …/tramite/<id>/notificaciones` y `POST …/notificaciones/anadir_faltan`, sin interfaz hasta #929); invariante en `Tramite.finalizado`, rojo propio del trámite en el semáforo cuando sus tareas están en FIN (decisión de Carlos: el rojo es la caja que falta), relato por destinatario en `informe_instruccion`; escritos con `destinatario_*` y bloqueados sin destinatario. La clave de idempotencia usa al **titular** de la notificación (el representado, o la propia entidad), para que una notificación hecha no sobre si después se asigna un representante. La columna `norma` solo lleva los artículos ya leídos; el resto, pendiente. **§F y §G, en #969 (N5a-3):** migración `969_una_notificacion_dup` (se retiran `NOTIFICACION_ORGANISMOS` y `NOTIFICACION_INTERESADOS` con sus filas de catálogo y de `notificacion_fuentes`; aborta si algún trámite, plantilla o fila de `catalogo_plazos` cuelga de ellos); `notificaciones.es_notificar_del_solicitante` (antes `…_del_titular`) exige además la fuente `SOLICITANTE`; desaparece `_TRAMITES_CON_NOTIFICACION_MULTIPLE`. **§K enmendado, en #989:** migración `989_sede_solicitud` (`solicitudes.direccion_notificacion_id`, la sede del solicitante); el alta de expediente guarda al titular como solicitante y al autorizado o apoderado como representante; oficio y notificación se separan (`notificaciones.oficio_solicitante` y `destinatario_solicitante`); cambiar representante o sede en `mutaciones_arbol.editar_solicitud` refresca las `NOTIFICAR` al solicitante que no han salido y avisa del resto. Queda la interfaz (#929) y el poblado de propietarios e interesados (#431, #432)
 **Fecha:** 2026-09-26
 **Enmienda del 2026-09-27** (diseño de N5a con Carlos): el solicitante y su representante (§K); la fuente fija desde que nace la tarea y el bloqueo sin destinatario (§B); la lista de fuentes cerrada y el catálogo completo (§C); los sobrantes se borran (§D); el invariante del trámite en lugar de pendientes propios del certificado (§E); `SOLICITANTE` en lugar de `TITULAR` (§F); el destinatario siempre es un acto del usuario, y `tramites_destinatario` (§H, §L); cálculo por solicitud (§M). Las secciones tocadas lo dicen al principio.
+**Enmienda del 2026-09-29** (#989, criterio de Carlos): la sede del solicitante, y el oficio separado de la notificación cuando hay representante (§K).
 **Enmienda:** ADR-034 (la fila de `notificaciones` nace al crear la `NOTIFICAR`, no con el primer justificante, y guarda el destinatario) · ADR-046 §C (`NOTIFICACION_ORGANISMOS` y `NOTIFICACION_INTERESADOS` se funden en `NOTIFICACION`) · ADR-049 §E (la notificación que cumple el plazo se reconoce por su fuente, no solo por el trámite) y su «Lo que este ADR no decide» (primer punto: cómo se liga cada justificante a su destinatario) · #921, puntos 1-9 del mecanismo multi-destinatario (§J)
 **Origen:** diseño de N5, sesiones del 2026-09-25, 2026-09-26 y 2026-09-27
 **Base legal:** RD 1955/2000 arts. 128.3 (AAP), 131.8 (AAC) y 148.2 (DUP); Ley 39/2015 art. 40.1. Leídos en `legalize-es` (`BOE-A-2000-24019`, `BOE-A-2015-10565`)
@@ -186,7 +187,7 @@ Ningún componente adivina un destinatario. Siempre lo fijó antes el usuario, e
 
 | Destinatario | Cuándo lo fija el usuario | Dónde |
 |---|---|---|
-| Solicitante y representante | Al dar de alta la solicitud y en sus cambios | `solicitudes` (§K) |
+| Solicitante, representante y sede | Al dar de alta la solicitud y en sus cambios | `solicitudes` (§K) |
 | Organismos | Al rellenar las consultas | `organismos_expediente`, `tramites_organismos` |
 | Interesados, propietarios DUP | Cuando aparecen | `interesados_expediente` |
 | Destinatario único de un trámite que no está en otra tabla | En el trámite: al elaborar, o en su `NOTIFICAR` si no hay ELABORAR | `tramites_destinatario` (§L) |
@@ -223,13 +224,38 @@ Son hechos del catálogo `tramites_tareas` a 2026-09-26, **no reglas de cómo se
 
 ### K — «Notificar al solicitante»: solicitante o representante
 
-*Nueva el 2026-09-27.*
+*Nueva el 2026-09-27. Enmendada el 2026-09-29 (#989): la sede, y el oficio separado de la notificación.*
 
 El titular es quien solicita las autorizaciones, pero no es constante: hay cambios de titularidad. Cada solicitud se contesta a **su** solicitante (`solicitudes.entidad_id`). Y el solicitante suele actuar por un representante o empresa autorizada para los trámites, que es a quien hay que notificar.
 
-- **La solicitud guarda su representante** (`solicitudes.representante_entidad_id`, opcional): lo que consta en el escrito de solicitud. Por solicitud, no por expediente ni por titular: sobrevive a los cambios de titularidad. Al asignarlo se avisa, sin impedirlo, si la entidad no figura como autorizada del solicitante en `autorizados_titular`.
-- **La regla:** con representante, se notifica **al representante**, en su dirección con rol TITULAR (o la principal si no tiene); sin él, **al solicitante**, en su dirección con rol TITULAR (o la principal). La fila guarda a quién se envió y en nombre de quién (§B).
+**Quién es quién** (criterio de Carlos, 29/09/2026):
+
+- **Titular:** a quien se dirige siempre la resolución, y en la solicitud su solicitante. Casi siempre una sociedad. Se define por su NIF: con otro NIF es otra sociedad.
+- **Apoderado:** quien figura como tal en las escrituras de la sociedad, con un poder normalmente genérico. Muchas veces presenta, firma y lee las notificaciones.
+- **Autorizado:** un tercero al que la sociedad autoriza a actuar en su nombre, con un alcance muy variable (un expediente; solo entregar documentos; solicitar y desistir, pero no todo). El alcance no se modela: es texto libre en `autorizados_titular`.
+- **Sede:** una misma sociedad, con el mismo NIF, puede tener varias sedes con distinta dirección y distinto correo (caso de Edistribución). Son sus filas de `direcciones_notificacion` de rol titular. Una sede no tiene NIF propio.
+
+**Lo que guarda la solicitud:**
+
+- **Su representante** (`solicitudes.representante_entidad_id`, opcional): el autorizado o el apoderado que actúa por el solicitante **en esta solicitud** y recibe sus notificaciones. Por solicitud, no por expediente ni por titular: sobrevive a los cambios de titularidad. Al asignarlo se avisa, sin impedirlo, si la entidad no figura como autorizada del solicitante en `autorizados_titular` (un apoderado puede no estarlo). El representante no tiene sede: se usan siempre los datos de su ficha.
+- **Su sede** (`solicitudes.direccion_notificacion_id`, opcional, #989): la del solicitante que figura en la solicitud. Tiene que ser suya, activa, de rol titular y sin otro NIF. Sin ella, los datos de la ficha. Ya no se toma la dirección de rol titular más reciente, que con varias sedes elegía por la fecha y no por la solicitud.
+
+**La regla**, con el ejemplo de Carlos (titular Edistribución, NIF B12345678, ficha en Madrid con `registrogeneral@…`; sede en Sevilla con `registro_and_occidental@…`; autorizado Ingeniería SMART, NIF B98765432, `notificaciones@…`):
+
+| Caso | Oficio (la dirección del papel) | Notificación (NIF y correo de aviso) |
+|---|---|---|
+| Sin representante, sin sede | Titular, dirección de su ficha (Madrid) | NIF del titular, correo de su ficha |
+| Sin representante, con sede | Titular, dirección de la sede (Sevilla) | NIF del titular (el de la ficha: otro sería otra sociedad), correo de la sede |
+| Con representante, sin sede | Titular, dirección de su ficha (Madrid) | NIF y correo del representante (su ficha) |
+| Con representante, con sede | Titular, dirección de la sede (Sevilla) | NIF y correo del representante (su ficha) |
+
+- **El oficio va siempre al solicitante**, a su sede o a su ficha, aunque la notificación la reciba el representante: la dirección del papel es la del titular (reminiscencia del envío en papel). `notificaciones.oficio_solicitante`; en el escrito, `destinatario_*` y `titular_dir`, y el representante en `destinatario_representante`.
+- **La notificación va al representante** si lo hay, en nombre del solicitante; si no, al solicitante. `notificaciones.destinatario_solicitante`; la fila guarda a quién se envió y en nombre de quién (§B).
 - La usan la fuente `SOLICITANTE`, el constructor de contexto y el certificado de cierre.
+
+**Cambiar representante o sede** se admite siempre, sin bloquear (`mutaciones_arbol.editar_solicitud`). Las `NOTIFICAR` al solicitante que aún no tienen justificante se refrescan a la regla (bitácora `FIJAR_DESTINATARIO`, `origen: 'CAMBIO_SOLICITUD'`); las que ya lo tienen salieron así y no se tocan. Se avisa de lo que el cambio deja atrás, según el punto en que esté: notificaciones ya salidas y, si cambia la sede, oficios en redacción, a la firma, firmados o ya notificados con la dirección anterior (cambiar el representante no afecta al oficio). Si el usuario quiere otra cosa, deshace lo que pueda mientras no haya salido. La clave de idempotencia es el solicitante (§D), que no cambia: ninguna notificación pasa a sobrar.
+
+Las tres puertas por las que nace o cambia una solicitud validan igual (`validar_representante`, `validar_sede`): el alta de expediente (que hasta #989 guardaba al autorizado como solicitante), `crear_solicitud` y `editar_solicitud`.
 
 ### L — `tramites_destinatario`: el destinatario elegido de un trámite
 
@@ -250,7 +276,7 @@ No duplica `notificaciones`: `tramites_destinatario` es lo **pretendido** (el da
 ## Consecuencias
 
 - **BD:**
-  - `solicitudes` gana `representante_entidad_id` (§K).
+  - `solicitudes` gana `representante_entidad_id` (§K) y, con #989, `direccion_notificacion_id` (la sede).
   - `notificaciones` gana entidad, en nombre de, fuente, dirección de origen, la dirección copiada con nombre y NIF, y el momento de la copia; `canal` pasa a admitir vacío.
   - Tabla de catálogo nueva `notificacion_fuentes` (§C) y tabla operacional nueva `tramites_destinatario` (§L).
   - Se retiran `NOTIFICACION_ORGANISMOS` y `NOTIFICACION_INTERESADOS` y sus filas de catálogo.
@@ -304,3 +330,6 @@ No duplica `notificaciones`: `tramites_destinatario` es lo **pretendido** (el da
 - *(2026-09-27)* **Vincular justificantes sin destinatario, con solo un aviso:** saltaría la parte que el sistema garantiza (§B).
 - *(2026-09-27)* **Escape en el trámite para no notificar a alguien:** cerraría el trámite en falso si quedaran `NOTIFICAR` válidas; se corrige el origen y se borra la tarea (§D).
 - *(2026-09-27)* **Obligatoriedad de la fuente en una columna del catálogo:** la da la existencia de la fase ambiental, que deciden las reglas del motor (§C).
+- *(2026-09-29)* **Corregir la dirección en cada `NOTIFICAR`, una a una** (`direccion_id` de `fijar_destinatario`), en lugar de la sede en la solicitud: el dato es de la solicitud y se repetiría en cada notificación (§K, #989).
+- *(2026-09-29)* **Sede también para el representante:** el representante recibe con los datos de su ficha; la sede es del titular y es la dirección del oficio (§K, #989).
+- *(2026-09-29)* **Sin sede, la dirección de rol titular más reciente:** con varias sedes elige por la fecha, no por la solicitud; sin sede, la ficha (§K, #989).

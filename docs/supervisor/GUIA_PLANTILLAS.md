@@ -27,7 +27,7 @@ Estos campos están **siempre disponibles** en cualquier plantilla, sin configur
 | `{{expediente_id}}` | ID técnico interno del expediente |
 | `{{titular_nombre}}` | Nombre o razón social del titular |
 | `{{titular_nif}}` | NIF/CIF del titular |
-| `{{titular_direccion}}` | Dirección de notificación preferente |
+| `{{titular_dir.calle}}`, `.cp`, `.municipio`, `.provincia`, `.nif`, `.email` | Dirección del titular: la sede que figura en la solicitud o, si no hay, la de su ficha. El NIF, siempre el de la ficha |
 | `{{proyecto_titulo}}` | Título del proyecto técnico |
 | `{{proyecto_finalidad}}` | Finalidad de la instalación |
 | `{{proyecto_emplazamiento}}` | Emplazamiento descriptivo |
@@ -35,10 +35,11 @@ Estos campos están **siempre disponibles** en cualquier plantilla, sin configur
 | `{{responsable_nombre}}` | Nombre completo del tramitador asignado |
 | `{{municipios}}` | Lista de municipios afectados |
 | `{{fecha_hoy}}` | Fecha actual en formato DD/MM/AAAA |
-| `{{destinatario_nombre}}` | A quién va el escrito (su representante, si lo tiene) |
+| `{{destinatario_nombre}}` | A quién va el escrito. Si va al solicitante, siempre él, aunque tenga representante |
 | `{{destinatario_nif}}` | NIF del destinatario |
-| `{{destinatario_dir.calle}}`, `.cp`, `.municipio`, `.provincia`, `.email` | Dirección y correo de aviso del destinatario |
+| `{{destinatario_dir.calle}}`, `.cp`, `.municipio`, `.provincia`, `.email` | Dirección y correo del destinatario del escrito (del solicitante: su sede en la solicitud, o su ficha) |
 | `{{destinatario_en_nombre_de}}` | A quién representa el destinatario; vacío si va directo |
+| `{{destinatario_representante}}` | Quien recibe la notificación en nombre del solicitante (autorizado o apoderado); vacío si no hay |
 
 Los campos `destinatario_*` solo se rellenan en escritos de trámites con un único
 destinatario (oficios, requerimientos, separatas, anuncios…); el de la resolución no

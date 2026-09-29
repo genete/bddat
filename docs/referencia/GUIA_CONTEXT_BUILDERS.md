@@ -228,7 +228,7 @@ def downgrade():
 | `numero_at` | Número administrativo (AT-XXXXX) |
 | `titular_nombre` | Nombre o razón social del titular |
 | `titular_nif` | NIF/CIF del titular |
-| `titular_direccion` | Dirección de notificación preferente |
+| `titular_dir` | Dict `{calle, cp, municipio, provincia, nif, email}`: la sede de la solicitud del escrito si el titular es su solicitante y la tiene; si no, la ficha. El NIF, siempre el de la ficha (#989) |
 | `proyecto_titulo` | Título del proyecto técnico |
 | `proyecto_finalidad` | Finalidad de la instalación |
 | `proyecto_emplazamiento` | Emplazamiento descriptivo |
@@ -236,10 +236,11 @@ def downgrade():
 | `responsable_nombre` | Nombre completo del tramitador asignado |
 | `municipios` | Lista de nombres de municipios afectados (`list[str]`) |
 | `fecha_hoy` | Fecha actual formateada (DD/MM/AAAA) |
-| `destinatario_nombre` | A quién va el escrito: el destinatario del trámite, o su representante (#968) |
+| `destinatario_nombre` | A quién va el escrito: el destinatario del trámite, o su representante (#968). Al solicitante, siempre él aunque tenga representante (#989) |
 | `destinatario_nif` | NIF del destinatario |
-| `destinatario_dir` | Dict `{calle, cp, municipio, provincia, nif, email}`; `email` es el correo de aviso de la notificación |
+| `destinatario_dir` | Dict `{calle, cp, municipio, provincia, nif, email}`: la dirección del escrito (del solicitante, su sede en la solicitud o su ficha) |
 | `destinatario_en_nombre_de` | Representado, si el escrito va a su representante; vacío si va directo |
+| `destinatario_representante` | Quien recibe la notificación en nombre del solicitante (autorizado o apoderado); vacío si no hay (#989) |
 
 *(Fuente: `app/services/escritos.py` → clase `ContextoBaseExpediente`; las `destinatario_*`,
 de `escritos.variables_destinatario`, que las pide al servicio de destinatarios —
