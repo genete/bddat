@@ -325,3 +325,23 @@ venv/Scripts/python.exe scripts/medir_evolucion_tests.py --salida docs_prueba/te
 Imprime la tabla semana a semana y, al final, el bloque `var weekStart = [...]`
 listo para pegar tal cual en el `<script>` del HTML del artefacto antes de
 republicarlo con la herramienta Artifact.
+
+---
+
+## vendorizar_jda.py — Copia local de la base de la Junta y Bootstrap Icons
+
+Regenera `app/static/vendor/` (CSS, JS y tipografías de la base de la Junta de
+Andalucía, más Bootstrap Icons y los textos de licencia) desde el CDN de la Junta y
+desde npm. La app no carga nada de CDN externos (#984). Es la vía para actualizar
+de versión: cambiar las constantes del principio del script y ejecutarlo. Única
+modificación respecto a los originales: `src:` solo con woff2 en `fonts.css` y
+`bootstrap-icons.css`. Origen, licencias y detalle: `app/static/vendor/LEEME.md`.
+
+### Uso
+
+```bash
+venv/Scripts/python.exe scripts/vendorizar_jda.py
+```
+
+Después, comparar capturas de las páginas clave (login, listados, árbol, un modal,
+a 1920 y 1280 px) antes y después del cambio.
