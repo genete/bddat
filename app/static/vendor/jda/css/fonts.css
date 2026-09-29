@@ -1,0 +1,139 @@
+/* Copia de https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/fonts.css (#984). Modificación: solo formatos woff2 en cada src. Ver ../LEEME.md. */
+
+/* latin */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 400;
+  src: url("../fonts/montserrat/montserrat-regular-webfont.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2212, U+2215, U+E0FF, U+EFFD, U+F000;
+}
+/* latin */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 700;
+  src: url("../fonts/montserrat/montserrat-bold-webfont.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2212, U+2215, U+E0FF, U+EFFD, U+F000;
+}
+
+font-face{
+  font-family: 'Source Sans Pro';
+  font-weight: 200;
+  font-style: normal;
+  font-stretch: normal;
+  src: url('../fonts/sourceSansPro/WOFF2/TTF/SourceSansPro-ExtraLight.ttf.woff2') format('woff2');
+}
+
+@font-face{
+  font-family: 'Source Sans Pro';
+  font-weight: 200;
+  font-style: italic;
+  font-stretch: normal;
+  src: url('../fonts/sourceSansPro/WOFF2/TTF/SourceSansPro-ExtraLightIt.ttf.woff2') format('woff2');
+}
+
+@font-face{
+  font-family: 'Source Sans Pro';
+  font-weight: 300;
+  font-style: normal;
+  font-stretch: normal;
+  src: url('../fonts/sourceSansPro/WOFF2/TTF/SourceSansPro-Light.ttf.woff2') format('woff2');
+}
+
+@font-face{
+  font-family: 'Source Sans Pro';
+  font-weight: 300;
+  font-style: italic;
+  font-stretch: normal;
+  src: url('../fonts/sourceSansPro/WOFF2/TTF/SourceSansPro-LightIt.ttf.woff2') format('woff2');
+}
+
+@font-face{
+  font-family: 'Source Sans Pro';
+  font-weight: 400;
+  font-style: normal;
+  font-stretch: normal;
+  src: url('../fonts/sourceSansPro/WOFF2/TTF/SourceSansPro-Regular.ttf.woff2') format('woff2');
+}
+
+@font-face{
+  font-family: 'Source Sans Pro';
+  font-weight: 400;
+  font-style: italic;
+  font-stretch: normal;
+  src: url('../fonts/sourceSansPro/WOFF2/TTF/SourceSansPro-It.ttf.woff2') format('woff2');
+}
+
+@font-face{
+  font-family: 'Source Sans Pro';
+  font-weight: 600;
+  font-style: normal;
+  font-stretch: normal;
+  src: url('../fonts/sourceSansPro/WOFF2/TTF/SourceSansPro-Semibold.ttf.woff2') format('woff2');
+}
+
+@font-face{
+  font-family: 'Source Sans Pro';
+  font-weight: 600;
+  font-style: italic;
+  font-stretch: normal;
+  src: url('../fonts/sourceSansPro/WOFF2/TTF/SourceSansPro-SemiboldIt.ttf.woff2') format('woff2');
+}
+
+@font-face{
+  font-family: 'Source Sans Pro';
+  font-weight: 700;
+  font-style: normal;
+  font-stretch: normal;
+  src: url('../fonts/sourceSansPro/WOFF2/TTF/SourceSansPro-Bold.ttf.woff2') format('woff2');
+}
+
+@font-face{
+  font-family: 'Source Sans Pro';
+  font-weight: 700;
+  font-style: italic;
+  font-stretch: normal;
+  src: url('../fonts/sourceSansPro/WOFF2/TTF/SourceSansPro-BoldIt.ttf.woff2') format('woff2');
+}
+
+@font-face{
+  font-family: 'Source Sans Pro';
+  font-weight: 900;
+  font-style: normal;
+  font-stretch: normal;
+  src: url('../fonts/sourceSansPro/WOFF2/TTF/SourceSansPro-Black.ttf.woff2') format('woff2');
+}
+
+@font-face{
+  font-family: 'Source Sans Pro';
+  font-weight: 900;
+  font-style: italic;
+  font-stretch: normal;
+  src: url('../fonts/sourceSansPro/WOFF2/TTF/SourceSansPro-BlackIt.ttf.woff2') format('woff2');
+}
+
+
+
+ 
+@font-face {
+  font-family: 'Font Awesome 6 Brands';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../fonts/fa-webfonts/fa-brands-400.woff2") format("woff2"); }
+
+
+  @font-face {
+    font-family: 'Font Awesome 6 Free';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url("../fonts/fa-webfonts/fa-regular-400.woff2") format("woff2"); }
+
+  @font-face {
+    font-family: 'Font Awesome 6 Free';
+    font-style: normal;
+    font-weight: 900;
+    font-display: block;
+    src: url("../fonts/fa-webfonts/fa-solid-900.woff2") format("woff2"); }

@@ -27,7 +27,14 @@ export default defineConfig(({ command }) => {
     // para iteración visual rápida. El flujo de desarrollo real sobre Flask es
     // "editar → Build React → recargar" (rebuild). HMR integrado en Flask se
     // pospone a #500 (árbol del expediente), donde la iteración lo justifica.
-    return { plugins: [react()] }
+    //
+    // publicDir: sirve en la raíz la base de la Junta que usa Flask
+    // (app/static/vendor, #984), para que index.html cargue exactamente el mismo
+    // CSS que el shell, sin CDN. Solo en dev: el build no usa index.html.
+    return {
+      plugins: [react()],
+      publicDir: resolve(__dirname, '../app/static/vendor'),
+    }
   }
 
   // Modo build: un bundle ES por isla, servido estático por Flask.

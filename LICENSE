@@ -17,3 +17,27 @@ Copyright © 2025-2026 Junta de Andalucía
 
 Este software se distribuye bajo la Licencia Pública de la Unión Europea (EUPL) v1.2
 Texto completo: https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+
+---
+
+Componentes de terceros redistribuidos en app/static/vendor/
+
+Esos ficheros no forman parte de la obra original de BDDAT. Cada componente conserva
+su propia licencia y su aviso de origen; la EUPL v1.2 de arriba no los sustituye.
+Versiones, URL de origen y fecha de descarga: app/static/vendor/LEEME.md. Textos de
+licencia: app/static/vendor/licencias/.
+
+- Tema Bootstrap de la Junta de Andalucía v1.2.5 (custom-jda-bootstrap.css, fonts.css),
+  obtenido de https://cdn.juntadeandalucia.es/components/sass/1.2.5/ el 2026-09-29.
+  Titularidad de la Junta de Andalucía. Los ficheros no declaran licencia propia: se
+  redistribuyen con BDDAT, de la misma titularidad, bajo los términos con que la Junta
+  publica su CDN y, a falta de otros expresos, bajo la EUPL v1.2. Su núcleo es
+  Bootstrap 5.3.3 (MIT).
+- Bootstrap 5.3.3, JavaScript (bootstrap.bundle.min.js): MIT.
+- Font Awesome Free 6.5.1 (all.css y webfonts): iconos CC BY 4.0, tipografías
+  SIL OFL 1.1, código MIT.
+- Montserrat y Source Sans Pro: SIL Open Font License 1.1.
+- Bootstrap Icons 1.11.1: MIT.
+
+Única modificación respecto a los originales: en fonts.css y bootstrap-icons.css se han
+dejado solo los formatos de fuente woff2 en cada declaración src.

@@ -26,11 +26,11 @@
 // En los dos casos se entra en /seguimiento_y_huerfanos/.
 //
 // Además de la captura, informa de lo que suele explicar una pantalla rota:
-// errores de consola, peticiones fallidas (agrupadas por host: los CDN
-// bloqueados salen aquí) y respuestas 4xx/5xx de la propia app.
+// errores de consola, peticiones fallidas (agrupadas por host: la app ya no
+// carga nada de fuera, #984, así que cualquiera que salga aquí es nueva) y
+// respuestas 4xx/5xx de la propia app.
 import { createRequire } from 'node:module';
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const require = createRequire(import.meta.url);
@@ -88,59 +88,9 @@ async function login(page, opts) {
     .catch(() => { throw new Error(`login fallido para ${opts.usuario}: sigue en ${page.url()}`); });
 }
 
-// Sustitución de los CDN bloqueados (ver scripts/nube/README.md §CDN). Con una
-// copia local en ~/.cache/bddat-cdn (la descarga arrancar_app.sh desde npm,
-// que sí es accesible), las peticiones al CDN se sirven desde ella:
-//   - bootstrap-icons: el mismo paquete y versión que el CDN → idéntico;
-//   - bootstrap.bundle.min.js de la Junta → el de Bootstrap 5.3.3;
-//   - custom-jda-bootstrap.css → bootstrap.min.css estándar: SIN la identidad
-//     visual de la Junta (ni sus colores ni sus fuentes), que no está en npm;
-//   - fonts.css y all.css de la Junta → vacíos.
-// La captura queda legible pero APROXIMADA; con los CDN permitidos no se usa.
-const CACHE_CDN = process.env.BDDAT_CDN_LOCAL || `${process.env.HOME}/.cache/bddat-cdn`;
-const aproximadas = new Set();
-
-async function sustituirCdn(page) {
-  if (!existsSync(`${CACHE_CDN}/bootstrap/dist/css/bootstrap.min.css`)) return false;
-  const servir = (route, fichero, tipo) => {
-    aproximadas.add(new URL(route.request().url()).pathname.split('/').pop());
-    return route.fulfill({ path: fichero, contentType: tipo });
-  };
-  await page.route('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/**', route => {
-    const resto = new URL(route.request().url()).pathname.split('bootstrap-icons@1.11.1/')[1];
-    const tipo = resto.endsWith('.css') ? 'text/css' : resto.endsWith('.woff2') ? 'font/woff2' : 'font/woff';
-    return route.fulfill({ path: `${CACHE_CDN}/bootstrap-icons/${resto}`, contentType: tipo });
-  });
-  await page.route('https://cdn.juntadeandalucia.es/**', route => {
-    const url = route.request().url();
-    if (url.endsWith('bootstrap.bundle.min.js')) {
-      return servir(route, `${CACHE_CDN}/bootstrap/dist/js/bootstrap.bundle.min.js`, 'application/javascript');
-    }
-    if (url.endsWith('custom-jda-bootstrap.css')) {
-      return servir(route, `${CACHE_CDN}/bootstrap/dist/css/bootstrap.min.css`, 'text/css');
-    }
-    aproximadas.add(new URL(url).pathname.split('/').pop());
-    return route.fulfill({ body: '', contentType: url.endsWith('.css') ? 'text/css' : 'text/plain' });
-  });
-  return true;
-}
-
-// Con curl y no con fetch: curl sale por el proxy del entorno igual que
-// Chromium; el fetch de Node no lo usa y daría el CDN por bloqueado siempre.
-function cdnAccesible() {
-  try {
-    const codigo = execFileSync('curl', ['-s', '-o', '/dev/null', '--max-time', '5', '-w', '%{http_code}',
-      'https://cdn.juntadeandalucia.es/'], { encoding: 'utf8' });
-    return codigo !== '000';
-  } catch {
-    return false;
-  }
-}
-
 const opts = argumentos(process.argv.slice(2));
 const navegador = await chromium.launch();
 const page = await navegador.newPage({ viewport: { width: opts.ancho, height: opts.alto } });
-const sustituido = !cdnAccesible() && await sustituirCdn(page);
 
 const consola = [];
 const fallidas = new Map();
@@ -173,15 +123,8 @@ try {
   console.error(`ERROR: ${e.message}`);
   codigo = 1;
 } finally {
-  if (sustituido) {
-    console.log('AVISO: CDN bloqueado; estilos APROXIMADOS con Bootstrap estándar desde copia local '
-      + `(sin la identidad visual de la Junta). Sustituidos: ${[...aproximadas].join(', ') || '—'}`);
-  }
   if (fallidas.size) {
     console.log('peticiones fallidas por host:', [...fallidas].map(([h, n]) => `${h} (${n})`).join(', '));
-    if ([...fallidas.keys()].some(h => h.startsWith('cdn.'))) {
-      console.log('  → CDN bloqueado: la captura sale sin estilos. Permitirlo en claude.ai → entorno → Network access.');
-    }
   }
   if (erroresApp.length) console.log('respuestas de error de la app:', erroresApp.join(' · '));
   if (consola.length) console.log(`errores de consola (${consola.length}):`, consola.slice(0, 5).join(' | '));

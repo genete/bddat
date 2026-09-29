@@ -703,7 +703,7 @@ reintroduce el recorte ~95% que se retiró.
 ## 🔡 Escala tipográfica (ADR-022 / #533)
 
 **Mando maestro único:** `html { font-size: 15px }` en `v2-theme.css`. Es el
-único parámetro de densidad: como Bootstrap, el CDN de la Junta, las tablas y el
+único parámetro de densidad: como Bootstrap, la base de la Junta, las tablas y el
 shell van en `rem`, cambiar ese valor los reescala de forma coherente.
 
 - `body` va a `1rem` (= 15px).
@@ -877,18 +877,24 @@ Formato de opciones: `{v: String(id), t: texto}`.
 
 ---
 
-## 🌐 CDN Junta de Andalucía
+## 🌐 Base Junta de Andalucía (copia local, #984)
 
-| Recurso | URL |
+La app **no carga nada de CDN**: la base de la Junta v1.2.5 y Bootstrap Icons 1.11.1
+se sirven desde `app/static/vendor/` (origen, licencias y cómo actualizar en
+`app/static/vendor/LEEME.md`; se regenera con `scripts/vendorizar_jda.py`).
+
+| Recurso | Ruta (`url_for('static', filename=…)`) |
 |---------|-----|
-| `fonts.css` | `https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/fonts.css` |
-| `all.css` | `https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/all.css` |
-| `custom-jda-bootstrap.css` | `https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/custom-jda-bootstrap.css` |
-| Bootstrap bundle JS | `https://cdn.juntadeandalucia.es/components/sass/1.2.5/js/bootstrap.bundle.min.js` |
+| `fonts.css` | `vendor/jda/css/fonts.css` |
+| `all.css` (Font Awesome 6.5.1) | `vendor/jda/css/all.css` |
+| `custom-jda-bootstrap.css` (Bootstrap 5.3.3 + tema Junta) | `vendor/jda/css/custom-jda-bootstrap.css` |
+| Bootstrap bundle JS | `vendor/jda/js/bootstrap.bundle.min.js` |
+| Bootstrap Icons | `vendor/bootstrap-icons/bootstrap-icons.css` |
 
-Bootstrap Icons: vía jsdelivr (no incluido en CDN JA).
+Al ser ficheros propios, las hojas **sí son inspeccionables** con `cssRules` desde JS
+y DevTools (con el CDN daban CORS).
 
-**⚠️ CORS-blocked:** no inspeccionable vía `cssRules` en DevTools — las hojas se cargan pero las reglas no son accesibles desde JS.
+**Punto de corte:** el tema de la Junta pone `xl` en **1300 px** y no tiene `xxl`.
 
 **Override acordeones en `custom.css`:** chevron-right cerrado, chevron-down abierto.
 
