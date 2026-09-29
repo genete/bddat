@@ -301,7 +301,6 @@ def _crear_expediente(cat, fecha_base):
         municipios_ids=[cat['municipio'].id],
         titular_id=cat['entidad'].id,
         tipo_solicitud_id=cat['tipo_solicitud'].id,
-        solicitante_id=cat['entidad'].id,
         observaciones=OBSERVACIONES,
         # Campos técnicos que el formulario no pide y este escenario sí fija: es
         # una línea aérea y no está en suelo urbano, al revés que el

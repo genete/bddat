@@ -5,8 +5,9 @@ Tests #967 (N5a-1) — toda NOTIFICAR guarda su destinatario (ADR-051 §B, §K).
     declarar: se pide), y se borra con ella.
   - Sin destinatario no admite vínculos; el escape queda en bitácora, se relata
     y deja la tarea sin destinatario para siempre.
-  - «Notificar al solicitante» (§K): el representante de la solicitud si lo
-    hay, en su dirección TITULAR o la principal.
+  - «Notificar al solicitante» (§K, enmienda de #989): el representante de la
+    solicitud si lo hay, con su ficha; si no, el solicitante, en la sede de la
+    solicitud o su ficha. Cambiar el representante refresca lo que no ha salido.
   - El destinatario se refresca hasta el primer justificante y desde ahí es fijo.
   - Cotejo del NIF del justificante de Notifica con la ficha.
   - Representante de la solicitud: aviso si no es autorizado, solo al cambiar.
@@ -241,19 +242,35 @@ def test_desvincular_no_se_bloquea(con_usuario, arbol_aislado, fs_tmp):
 # «Notificar al solicitante» (§K) y copia del destinatario
 # ---------------------------------------------------------------------------
 
-def test_sin_representante_se_notifica_al_solicitante(con_usuario, arbol_aislado):
+def test_sin_representante_va_a_la_sede_de_la_solicitud(con_usuario, arbol_aislado):
+    """#989: con varias sedes, la de la solicitud y no la más reciente; sin
+    sede, la ficha. Evita enviar la notificación a otra sede."""
     tarea = _crear_notificar(_tramite(arbol_aislado))
     solicitud = tarea.tramite.fase.solicitud
-    direccion = _direccion(solicitud.entidad, titular=True, direccion='Avda. del Titular 7')
+    solicitud.entidad.direccion = 'Ribera del Loira 60'
+    sede = _direccion(solicitud.entidad, titular=True, direccion='Avda. de la Borbolla 5')
+    sede.email = 'registro_sede@empresa.es'
+    _direccion(solicitud.entidad, titular=True, direccion='Sede más reciente')
+    db.session.flush()
 
+    # Sin sede en la solicitud: la ficha, no la sede más reciente.
+    assert svc.fijar_destinatario(tarea).ok
+    notif = tarea.notificacion
+    assert notif.direccion_origen_id is None
+    assert notif.dest_direccion == 'Ribera del Loira 60'
+
+    solicitud.direccion_notificacion_id = sede.id
+    db.session.flush()
+    db.session.expire(solicitud, ['sede'])
     res = svc.fijar_destinatario(tarea)
 
     assert res.ok, res.error
-    notif = tarea.notificacion
     assert notif.entidad_id == solicitud.entidad_id
     assert notif.en_nombre_de_entidad_id is None
-    assert notif.direccion_origen_id == direccion.id
-    assert notif.dest_direccion == 'Avda. del Titular 7'
+    assert notif.direccion_origen_id == sede.id
+    assert notif.dest_direccion == 'Avda. de la Borbolla 5'
+    assert notif.dest_email == 'registro_sede@empresa.es'
+    assert notif.dest_nif == solicitud.entidad.nif
     assert notif.dest_nombre == solicitud.entidad.nombre_completo
     assert notif.destinatario_fijado_en is not None
 
@@ -271,7 +288,7 @@ def test_con_representante_se_notifica_al_representante(con_usuario, arbol_aisla
     notif = tarea.notificacion
     assert notif.entidad_id == representante.id
     assert notif.en_nombre_de_entidad_id == solicitud.entidad_id
-    # Sin dirección TITULAR, la principal de la entidad.
+    # El representante no tiene sede: siempre su ficha (#989).
     assert notif.direccion_origen_id is None
     assert notif.dest_direccion == 'Plaza de la Gestoría 3'
     assert notif.dest_nif == 'B11111111'
@@ -315,8 +332,11 @@ def test_destinatario_se_refresca_hasta_el_primer_justificante(con_usuario, arbo
     solicitud = tarea.tramite.fase.solicitud
     assert svc.fijar_destinatario(tarea).ok
 
-    # Cambia la dirección antes de enviar nada: refrescar copia la nueva.
-    _direccion(solicitud.entidad, titular=True, direccion='Dirección nueva')
+    # Cambia la sede antes de enviar nada: refrescar copia la nueva.
+    solicitud.direccion_notificacion_id = _direccion(
+        solicitud.entidad, titular=True, direccion='Dirección nueva').id
+    db.session.flush()
+    db.session.expire(solicitud, ['sede'])
     assert svc.fijar_destinatario(tarea).ok
     assert tarea.notificacion.dest_direccion == 'Dirección nueva'
 
@@ -399,6 +419,62 @@ def test_representante_no_autorizado_avisa_solo_al_cambiar(con_usuario, arbol_ai
     assert svc.editar_solicitud(solicitud, observaciones=None,
                                 representante_entidad_id=None).ok
     assert solicitud.representante_entidad_id is None
+
+
+def test_cambiar_representante_refresca_lo_que_no_ha_salido(con_usuario, arbol_aislado,
+                                                            fs_tmp):
+    """#989: la NOTIFICAR al solicitante sin justificante pasa al nuevo
+    representante; la que ya lo tiene no se toca, y la respuesta lo cuenta.
+    Evita que la notificación salga a quien ya no representa."""
+    solicitud = arbol_aislado.solicitud_propia()
+    fase = arbol_aislado.fase('ANALISIS_SOLICITUD', solicitud=solicitud)
+    enviada = _crear_notificar(arbol_aislado.tramite(fase, 'REQUERIMIENTO_SUBSANACION'))
+    pendiente = _crear_notificar(arbol_aislado.tramite(fase, 'COMUNICACION_INICIO_ADMISION'))
+    assert _vincular(enviada, consumidos=[
+        _doc(enviada, 'JUSTIFICANTE_NOTIFICA_DISPOSICION', fs_tmp)]).ok
+    gestora = _entidad('Ingeniería de Prueba S.L.', nif='B98765432')
+
+    res = svc.editar_solicitud(solicitud, observaciones=None,
+                               representante_entidad_id=gestora.id)
+
+    assert res.ok, res.error
+    assert pendiente.notificacion.entidad_id == gestora.id
+    assert pendiente.notificacion.en_nombre_de_entidad_id == solicitud.entidad_id
+    assert pendiente.notificacion.dest_nif == 'B98765432'
+    assert enviada.notificacion.entidad_id == solicitud.entidad_id
+    assert res.advertencia['refrescadas'] == [pendiente.id]
+    assert res.advertencia['ya_enviadas'] == [enviada.id]
+    entrada = (Bitacora.query
+               .filter_by(tabla='notificaciones', registro_id=pendiente.notificacion.id)
+               .order_by(Bitacora.id.desc()).first())
+    assert entrada.detalle['origen'] == 'CAMBIO_SOLICITUD'
+
+
+@pytest.mark.parametrize('caso,vale', [
+    ('propia', True),
+    ('mismo_nif', True),
+    ('de_otra_entidad', False),
+    ('dada_de_baja', False),
+    ('no_es_de_titular', False),
+    ('otro_nif', False),
+])
+def test_la_sede_es_del_solicitante(con_usuario, arbol_aislado, caso, vale):
+    """#989: solo una dirección del solicitante, activa, de titular y sin otro
+    NIF. Evita enviar a otra sociedad —otro NIF lo es— como si fuera una sede."""
+    solicitud = arbol_aislado.solicitud_propia()
+    titular = solicitud.entidad
+    titular.nif = 'B12345678'
+    duena = _entidad('Otra sociedad') if caso == 'de_otra_entidad' else titular
+    d = _direccion(duena, titular=caso != 'no_es_de_titular',
+                   consultado=caso == 'no_es_de_titular',
+                   nif={'mismo_nif': 'b-12345678', 'otro_nif': 'B87654321'}.get(caso))
+    d.activo = caso != 'dada_de_baja'
+    db.session.flush()
+
+    res = svc.editar_solicitud(solicitud, observaciones=None, direccion_notificacion_id=d.id)
+
+    assert res.ok is vale, res.error
+    assert (solicitud.direccion_notificacion_id == d.id) is vale
 
 
 def test_editar_solicitud_sin_representante_no_lo_toca(con_usuario, arbol_aislado):

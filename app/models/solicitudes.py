@@ -30,6 +30,21 @@ class Solicitud(db.Model):
         - Puede diferir del titular del expediente (cambios de titularidad)
         - Permite rastrear quién solicitó cada acto administrativo
     
+    CAMPO REPRESENTANTE_ENTIDAD_ID (#967, #989, ADR-051 §K):
+        - NULLABLE: quien actúa por el solicitante en esta solicitud y recibe
+          sus notificaciones: un autorizado o un apoderado. Se notifica a él,
+          con los datos de su ficha (NIF y correo); no tiene sede
+        - El oficio sigue yendo al solicitante (ver DIRECCION_NOTIFICACION_ID)
+
+    CAMPO DIRECCION_NOTIFICACION_ID (#989, ADR-051 §K):
+        - NULLABLE: la sede del solicitante que figura en la solicitud, una fila
+          de DIRECCIONES_NOTIFICACION del solicitante, activa, de rol titular y
+          sin otro NIF (otro NIF sería otra sociedad, no una sede)
+        - Es la dirección del oficio, haya representante o no; sin representante,
+          su correo es también el de aviso de la notificación
+        - NULL = los datos de la ficha de la entidad
+        - Lo valida `notificaciones.sede_invalida`, no un CHECK
+
     CAMPO SOLICITUD_AFECTADA_ID:
         - NULLABLE: Solo para DESISTIMIENTO o RENUNCIA
         - Referencia a otra SOLICITUD previa que se desiste/renuncia
@@ -110,6 +125,7 @@ class Solicitud(db.Model):
         db.Index('idx_solicitudes_doc_solicitud', 'documento_solicitud_id'),
         db.Index('idx_solicitudes_doc_cierre', 'documento_cierre_id'),
         db.Index('idx_solicitudes_doc_fin_instruccion', 'documento_fin_instruccion_id'),
+        db.Index('idx_solicitudes_direccion_notif', 'direccion_notificacion_id'),
         {'schema': 'public'}
     )
     
@@ -189,10 +205,22 @@ class Solicitud(db.Model):
                 'Con él, se notifica al representante'
     )
 
+    direccion_notificacion_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.direcciones_notificacion.id',
+                      name='fk_solicitudes_direccion_notif', ondelete='SET NULL'),
+        nullable=True,
+        # Mismo texto que el COMMENT ON COLUMN de 989_sede_solicitud
+        comment='Sede del solicitante en esta solicitud (ADR-051 §K): la dirección del '
+                'oficio y, sin representante, el correo de aviso. NULL = datos de la '
+                'ficha de la entidad'
+    )
+
     # Relaciones
     expediente = db.relationship('Expediente', backref='solicitudes')
     entidad = db.relationship('Entidad', backref='solicitudes', foreign_keys=[entidad_id])
     representante = db.relationship('Entidad', foreign_keys=[representante_entidad_id])
+    sede = db.relationship('DireccionNotificacion', foreign_keys=[direccion_notificacion_id])
     tipo_solicitud = db.relationship('TipoSolicitud')
     solicitud_afectada = db.relationship('Solicitud', remote_side=[id], backref='solicitudes_dependientes')
     # Las tres anclas documentales de la solicitud (ADR-041 §D bis): entrada →

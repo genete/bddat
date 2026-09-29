@@ -109,12 +109,17 @@ class DatosAlta:
     municipios_ids: list[int]
 
     # --- Solicitud ---
+    # El titular es el solicitante: la solicitud se contesta a él (#989).
     titular_id: int
     tipo_solicitud_id: int
-    # Puede diferir del titular cuando actúa un autorizado. Quien llama ya ha
-    # comprobado la autorización (AutorizadoTitular.puede_actuar_como).
-    solicitante_id: int
     observaciones: Optional[str] = None
+    # Quien actúa por el titular y recibe las notificaciones: un autorizado o
+    # un apoderado (ADR-051 §K). Opcional; si no figura como autorizado, se
+    # avisa sin impedirlo (`ResultadoAlta.advertencia`).
+    representante_entidad_id: Optional[int] = None
+    # La sede del titular que figura en la solicitud: la dirección del oficio
+    # y, sin representante, el correo de aviso. Opcional: sin ella, la ficha.
+    direccion_notificacion_id: Optional[int] = None
 
     # --- Ancla documental (obligatoria, ver EL INVARIANTE) ---
     documento: Optional[DocumentoSolicitud] = None
@@ -130,16 +135,20 @@ class ResultadoAlta:
     solicitud: Solicitud
     documento: Documento
     numero_at: int
+    # Aviso sin bloqueo: el representante no figura como autorizado del titular.
+    advertencia: Optional[str] = None
 
 
 def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
     """Da de alta el expediente completo, o no deja rastro de haberlo intentado.
 
     Raises:
-        ValueError: si falta el documento de solicitud (`MENSAJE_SIN_ANCLA`), o si
-            el catálogo no tiene el tipo documental o el tipo de solicitud pedidos.
-            El llamador decide cómo contarlo: la ruta repinta el formulario, el
-            script aborta.
+        ValueError: si falta el documento de solicitud (`MENSAJE_SIN_ANCLA`), si
+            el catálogo no tiene el tipo documental o el tipo de solicitud pedidos,
+            o si el representante o la sede no valen (`mutaciones_arbol.
+            validar_representante` y `validar_sede`, las mismas reglas que al
+            crear o editar una solicitud). El llamador decide cómo contarlo: la
+            ruta repinta el formulario, el script aborta.
         Cualquier otra: se propaga tras deshacer la transacción y borrar los
             ficheros escritos.
 
@@ -161,6 +170,14 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
     tipo_solicitud = TipoSolicitud.query.get(datos.tipo_solicitud_id)
     if tipo_solicitud is None:
         raise ValueError('El tipo de solicitud seleccionado no existe.')
+
+    # Representante y sede (#989, ADR-051 §K): error si no valen; aviso, sin
+    # impedir el alta, si el representante no figura como autorizado.
+    from app.services.mutaciones_arbol import validar_representante, validar_sede
+    error, aviso = validar_representante(datos.titular_id, datos.representante_entidad_id)
+    error = error or validar_sede(datos.titular_id, datos.direccion_notificacion_id)
+    if error:
+        raise ValueError(error)
 
     ingestado = None
     numero_at = None
@@ -216,7 +233,9 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
         # 5) Solicitud, ya anclada
         solicitud = Solicitud(
             expediente_id=expediente.id,
-            entidad_id=datos.solicitante_id,
+            entidad_id=datos.titular_id,
+            representante_entidad_id=datos.representante_entidad_id,
+            direccion_notificacion_id=datos.direccion_notificacion_id,
             tipo_solicitud_id=datos.tipo_solicitud_id,
             documento_solicitud_id=ingestado.documento.id,
             observaciones=datos.observaciones,
@@ -245,6 +264,7 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
         solicitud=solicitud,
         documento=ingestado.documento,
         numero_at=numero_at,
+        advertencia=aviso['motivo'] if aviso else None,
     )
 
 

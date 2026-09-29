@@ -25,7 +25,8 @@ Desde #947 (N4), con el `CERT_CUMPLIMIENTO_FASE` emitido se lee de él
 Destinatario (#967, N5a-1; ADR-051 §B/§K): una `NOTIFICAR` por destinatario
 (ADR-051 §A), así que la tarea sigue teniendo una sola fila y las funciones de
 fechas no cambian de firma. Aquí viven la regla «notificar al solicitante»
-(`destinatario_solicitante`), la copia del destinatario (`copiar_destinatario`)
+(`destinatario_solicitante`) y la de su oficio (`oficio_solicitante`), con la
+sede de la solicitud (#989, `sede_de`), la copia del destinatario (`copiar_destinatario`)
 y las preguntas de las que cuelga el bloqueo sin destinatario
 (`tiene_justificante`, `tuvo_escape_sin_destinatario`). Qué fuentes tiene cada
 trámite y a quién hay que notificar por cada una es de
@@ -343,9 +344,10 @@ def resultados_validos(canal: str) -> tuple:
 
 # Qué dirección de la entidad se copia según la fuente (ADR-051 §B: «cada
 # fuente lleva un rol»). Los roles de propietarios e interesados llegan con
-# #431/#432; hasta entonces toman la de titular, como el solicitante.
+# #431/#432; hasta entonces toman la de titular. `SOLICITANTE` no busca por
+# rol (#989, §K): su dirección es la sede de la solicitud o la ficha.
 _ROL_DIRECCION_POR_FUENTE = {
-    'SOLICITANTE': 'titular',
+    'SOLICITANTE': None,
     'ORGANISMO_DEL_TRAMITE': 'consultado',
     'ORGANISMOS_CONSULTADOS': 'consultado',
     'ORGANO_AMBIENTAL': 'consultado',
@@ -384,9 +386,12 @@ class Destinatario:
 
 def direccion_de_rol(entidad_id: int, fuente: str):
     """La dirección de notificación activa de la entidad para el rol de la
-    fuente (la más reciente), o `None` → se usará su dirección principal."""
+    fuente (la más reciente), o `None` → se usará su dirección principal. Para
+    `SOLICITANTE`, siempre `None`: no se busca por rol (#989)."""
     from app.models.direccion_notificacion import DireccionNotificacion
     rol = _ROL_DIRECCION_POR_FUENTE.get(fuente, 'titular')
+    if rol is None:
+        return None
     return DireccionNotificacion.obtener_direccion_notificacion(
         entidad_id,
         es_titular=rol == 'titular',
@@ -395,21 +400,66 @@ def direccion_de_rol(entidad_id: int, fuente: str):
     )
 
 
+def _nif(valor) -> str:
+    return (valor or '').replace(' ', '').replace('-', '').upper()
+
+
+def sede_invalida(direccion, solicitante) -> Optional[str]:
+    """Por qué `direccion` no vale como sede del solicitante en su solicitud
+    (ADR-051 §K, #989), o `None` si vale. Tiene que ser suya, estar activa y
+    tener el rol titular. Y no puede llevar otro NIF: con otro NIF no es una
+    sede, es otra sociedad."""
+    if direccion.entidad_id != solicitante.id:
+        return 'La sede indicada no es del solicitante.'
+    if not direccion.activo:
+        return 'La sede indicada está dada de baja.'
+    if not direccion.es_titular:
+        return 'La dirección indicada no es una sede de titular.'
+    if direccion.nif and _nif(direccion.nif) != _nif(solicitante.nif):
+        return ('La dirección indicada tiene otro NIF: sería otra sociedad, '
+                'no una sede del solicitante.')
+    return None
+
+
+def sede_de(solicitud):
+    """La sede del solicitante en la solicitud (#989), si sigue valiendo; `None`
+    si no tiene o dejó de valer (dada de baja después) → los datos de la ficha."""
+    sede, solicitante = solicitud.sede, solicitud.entidad
+    if sede is None or solicitante is None:
+        return None
+    return sede if sede_invalida(sede, solicitante) is None else None
+
+
 def destinatario_solicitante(solicitud) -> Optional[Destinatario]:
-    """«Notificar al solicitante» (ADR-051 §K), la regla única: con
-    representante en la solicitud, al representante en nombre del solicitante;
-    sin él, al solicitante (`solicitudes.entidad_id`). La dirección, la de rol
-    TITULAR de quien recibe, o su principal si no tiene."""
+    """«Notificar al solicitante» (ADR-051 §K, enmienda de #989), la regla
+    única de a quién va la notificación:
+
+    - Con representante en la solicitud (autorizado o apoderado), al
+      representante en nombre del solicitante, con los datos de su ficha: NIF y
+      correo. El representante no tiene sede.
+    - Sin él, al solicitante (`solicitudes.entidad_id`): el NIF de su ficha, y
+      la dirección y el correo de su sede en la solicitud o, si no la hay, de
+      su ficha.
+
+    El oficio va siempre al solicitante: `oficio_solicitante`."""
     solicitante = solicitud.entidad
     if solicitante is None:
         return None
     representante = solicitud.representante
-    receptor = representante or solicitante
-    return Destinatario(
-        entidad=receptor,
-        en_nombre_de=solicitante if representante is not None else None,
-        direccion=direccion_de_rol(receptor.id, 'SOLICITANTE'),
-    )
+    if representante is not None:
+        return Destinatario(entidad=representante, en_nombre_de=solicitante, direccion=None)
+    return Destinatario(entidad=solicitante, en_nombre_de=None, direccion=sede_de(solicitud))
+
+
+def oficio_solicitante(solicitud) -> Optional[Destinatario]:
+    """A quién y adónde va el oficio dirigido al solicitante (ADR-051 §K,
+    #989): siempre al solicitante, tenga o no representante, a su sede en la
+    solicitud o a la dirección de su ficha. Es la dirección del papel, aunque
+    la notificación la reciba el representante."""
+    solicitante = solicitud.entidad
+    if solicitante is None:
+        return None
+    return Destinatario(entidad=solicitante, en_nombre_de=None, direccion=sede_de(solicitud))
 
 
 def copiar_destinatario(notif, destino: Destinatario, *, ahora) -> None:
@@ -430,7 +480,10 @@ def copiar_destinatario(notif, destino: Destinatario, *, ahora) -> None:
     notif.dest_en_nombre_de_nif = representado.nif if representado else None
     notif.direccion_origen_id = src.id if src is not None else None
     notif.dest_nombre = entidad.nombre_completo
-    notif.dest_nif = (src.nif if src is not None and src.nif else None) or entidad.nif
+    # El NIF de la dirección solo cuando es otro (delegaciones de organismos con
+    # NIF propio); la sede de un solicitante nunca lo es (`sede_invalida`).
+    notif.dest_nif = (src.nif if src is not None and src.nif
+                      and _nif(src.nif) != _nif(entidad.nif) else None) or entidad.nif
     if postal.direccion_fallback:
         notif.dest_direccion = postal.direccion_fallback
         notif.dest_codigo_postal = None

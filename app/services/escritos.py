@@ -29,7 +29,7 @@ import logging
 import re
 from datetime import date
 
-from app.models.direccion_notificacion import DireccionNotificacion
+from app.services import notificaciones as notif_svc
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,9 @@ class ContextoBaseExpediente:
             titular_nif         — NIF del titular
             titular_dir         — Dict {calle, cp, municipio, provincia, nif, email} o None
                                   Acceso en plantilla: {{titular_dir.calle}}, {{titular_dir.email}} etc.
-                                  Prioridad: DireccionNotificacion(rol=TITULAR) > dirección principal de Entidad
+                                  La sede de la solicitud del escrito, si el titular es su solicitante
+                                  y la tiene (#989, ADR-051 §K); si no, la ficha de la entidad. El NIF,
+                                  siempre el de la ficha
 
         Proyecto:
             proyecto_titulo     — Título del proyecto técnico
@@ -77,18 +79,25 @@ class ContextoBaseExpediente:
             fecha_hoy           — Fecha actual en formato DD/MM/YYYY
 
     Destinatario (#968, ADR-051 §H) — solo con tarea, en `construir_contexto`:
-        destinatario_nombre       — A quién va el escrito (el representante, si lo hay)
+        destinatario_nombre       — A quién va el escrito. Al solicitante, siempre
+                                    él, aunque tenga representante (#989, §K)
         destinatario_nif          — Su NIF
-        destinatario_dir          — Dict {calle, cp, municipio, provincia, nif, email}
-                                    — el email es el de aviso de la notificación
+        destinatario_dir          — Dict {calle, cp, municipio, provincia, nif, email}:
+                                    la dirección del escrito (la sede del solicitante
+                                    en la solicitud, o su ficha)
         destinatario_en_nombre_de — Nombre del representado, o None si va directo
+        destinatario_representante — Quien recibe la notificación en nombre del
+                                    solicitante (autorizado o apoderado), o None
         Las pide al servicio de destinatarios; este módulo no decide ni escribe.
         None en todas si el trámite no tiene un destinatario único (la
         ELABORACION de la resolución no imprime destinatario).
     """
 
-    def __init__(self, expediente):
+    def __init__(self, expediente, solicitud=None):
+        """`solicitud`, la del escrito, si se conoce: su sede es la dirección del
+        titular cuando él es su solicitante (#989)."""
         self._exp = expediente
+        self._solicitud = solicitud
 
     def get_contexto(self) -> dict:
         exp = self._exp
@@ -138,16 +147,26 @@ class ContextoBaseExpediente:
     # ------------------------------------------------------------------
 
     def _direccion_titular(self) -> dict | None:
-        """Devuelve {calle, cp, municipio, provincia} de la dirección de notificación del titular.
+        """{calle, cp, municipio, provincia, nif, email} del titular para el oficio.
 
-        Prioridad: DireccionNotificacion con rol TITULAR > dirección principal de Entidad.
+        La sede de la solicitud del escrito si el titular es su solicitante y la
+        tiene; si no, la ficha de la entidad (#989, ADR-051 §K). Ya no se toma la
+        dirección de rol titular más reciente: con varias sedes, esa elegía por
+        fecha y no la que figura en la solicitud. El NIF es siempre el de la
+        ficha: una sede no tiene NIF propio.
         """
-        if not self._exp.titular:
+        titular = self._exp.titular
+        if not titular:
             return None
-        src = DireccionNotificacion.obtener_direccion_notificacion(
-            self._exp.titular.id, es_titular=True
-        ) or self._exp.titular
-        return self._dir_a_dict(src)
+        src = titular
+        sol = self._solicitud
+        if sol is not None and sol.entidad_id == titular.id:
+            src = notif_svc.sede_de(sol) or titular
+        direccion = self._dir_a_dict(src)
+        direccion['nif'] = titular.nif or ''
+        if not direccion['email']:
+            direccion['email'] = titular.email or ''
+        return direccion
 
     @staticmethod
     def _dir_a_dict(src) -> dict:
@@ -219,7 +238,7 @@ def construir_contexto(plantilla, expediente, db_session, tarea=None) -> dict:
     Raises:
         RuntimeError — Si el Context Builder especificado no se puede cargar.
     """
-    ctx = ContextoBaseExpediente(expediente).get_contexto()
+    ctx = ContextoBaseExpediente(expediente, solicitud_de(tarea)).get_contexto()
     ctx.update(variables_destinatario(tarea))
 
     # Documento de entrada: el primer documento consumido por la tarea (ADR-010)
@@ -239,24 +258,38 @@ def construir_contexto(plantilla, expediente, db_session, tarea=None) -> dict:
     return ctx
 
 
+def solicitud_de(tarea):
+    """La solicitud de la tarea del escrito, o None si no hay tarea."""
+    if tarea is None or tarea.tramite is None:
+        return None
+    return tarea.tramite.fase.solicitud
+
+
 VARIABLES_DESTINATARIO = ('destinatario_nombre', 'destinatario_nif', 'destinatario_dir',
-                          'destinatario_en_nombre_de')
+                          'destinatario_en_nombre_de', 'destinatario_representante')
 
 
 def variables_destinatario(tarea) -> dict:
     """Las variables `destinatario_*` del escrito (#968, ADR-051 §H), pedidas al
     servicio de destinatarios: el destinatario del trámite de la tarea, si tiene
     uno solo y resuelto. Todas None si no — quien exige que exista antes de
-    generar es la ruta (`api_escritos`), no el contexto."""
+    generar es la ruta (`api_escritos`), no el contexto.
+
+    Imprimen a quién va el oficio (`oficio`), que para el solicitante es siempre
+    él, a su sede o su ficha, aunque la notificación la reciba su representante;
+    el representante queda en `destinatario_representante` (#989, §K)."""
     vacias = dict.fromkeys(VARIABLES_DESTINATARIO)
     if tarea is None or tarea.tramite is None:
         return vacias
     from app.services.destinatarios_notificacion import destinatario_del_tramite
-    destino = destinatario_del_tramite(tarea.tramite).destinatario
-    if destino is None:
+    resuelto = destinatario_del_tramite(tarea.tramite)
+    destino, oficio = resuelto.destinatario, resuelto.oficio
+    if destino is None or oficio is None:
         return vacias
-    entidad = destino.entidad
-    src = destino.direccion or entidad
+    representante = (destino.entidad if resuelto.fuente == 'SOLICITANTE'
+                     and destino.en_nombre_de is not None else None)
+    entidad = oficio.entidad
+    src = oficio.direccion or entidad
     direccion = ContextoBaseExpediente._dir_a_dict(src)
     if not direccion['nif']:
         direccion['nif'] = entidad.nif or ''
@@ -266,8 +299,9 @@ def variables_destinatario(tarea) -> dict:
         'destinatario_nombre': entidad.nombre_completo,
         'destinatario_nif': direccion['nif'] or None,
         'destinatario_dir': direccion,
-        'destinatario_en_nombre_de': (destino.en_nombre_de.nombre_completo
-                                      if destino.en_nombre_de else None),
+        'destinatario_en_nombre_de': (oficio.en_nombre_de.nombre_completo
+                                      if oficio.en_nombre_de else None),
+        'destinatario_representante': representante.nombre_completo if representante else None,
     }
 
 

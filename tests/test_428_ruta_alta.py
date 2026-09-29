@@ -43,11 +43,17 @@ def _catalogo(app):
                    .order_by(Entidad.id).first())
         assert titular is not None, 'la semilla debe traer alguna entidad titular'
 
+        representante = (Entidad.query
+                         .filter(Entidad.activo.is_(True), Entidad.id != titular.id)
+                         .order_by(Entidad.id).first())
+        assert representante is not None, 'la semilla debe traer más de una entidad activa'
+
         return {
             'tipo_expediente_id': tipo_exp.id,
             'tipo_solicitud_id': tipo_sol.id,
             'municipio_id': municipio.id,
             'entidad_id': titular.id,
+            'representante_id': representante.id,
         }
 
 
@@ -72,7 +78,6 @@ def _formulario(app, cat, *, con_fichero=True, **cambios):
         'ia_id': '',
         'municipios_ids[]': str(cat['municipio_id']),
         'entidad_id': str(cat['entidad_id']),
-        'solicitante_id': str(cat['entidad_id']),
         'tipo_solicitud_id': str(cat['tipo_solicitud_id']),
         'observaciones': '[TEST #428 ruta]',
         'fecha_registro': hoy.isoformat(),
@@ -262,7 +267,8 @@ def test_alta_completa_crea_el_expediente_anclado(usuario_supervisor, app, fs_tm
 
     No se parte en varios tests a propósito: el cliente HTTP commitea de verdad, así
     que cada alta consume un número de expediente y hay que devolverlo a mano. Uno
-    basta para ver la fila, el ancla, el acreditativo, el plazo y el fichero.
+    basta para ver la fila, el ancla, el acreditativo, el plazo, el fichero y el
+    representante.
     """
     import os
 
@@ -275,7 +281,9 @@ def test_alta_completa_crea_el_expediente_anclado(usuario_supervisor, app, fs_tm
 
     try:
         r = usuario_supervisor.post(
-            RUTA, data=_formulario(app, cat), content_type='multipart/form-data')
+            RUTA, data=_formulario(app, cat,
+                                   representante_entidad_id=str(cat['representante_id'])),
+            content_type='multipart/form-data')
 
         assert r.status_code == 302
         assert '/expedientes/' in r.headers['Location']
@@ -293,6 +301,11 @@ def test_alta_completa_crea_el_expediente_anclado(usuario_supervisor, app, fs_tm
 
             exp = Expediente.query.filter_by(numero_at=siguiente).one()
             solicitud = exp.solicitudes[0]
+
+            # El solicitante es el titular y quien actúa por él va aparte (#989):
+            # si no, se notificaría al representante como si fuera el solicitante.
+            assert solicitud.entidad_id == cat['entidad_id']
+            assert solicitud.representante_entidad_id == cat['representante_id']
 
             # Anclada, con su documento del tipo correcto…
             assert solicitud.documento_solicitud_id is not None

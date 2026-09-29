@@ -338,7 +338,6 @@ def _crear_expediente(cat, fecha_base):
         municipios_ids=[cat['municipio'].id],
         titular_id=cat['entidad'].id,
         tipo_solicitud_id=cat['tipo_solicitud'].id,
-        solicitante_id=cat['entidad'].id,
         observaciones=OBSERVACIONES,
         proyecto_extra={
             'es_modificacion': False,

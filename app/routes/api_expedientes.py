@@ -577,7 +577,8 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
     Body JSON: {tipo_id} o {tipo_ids:[...]} cuando padre_tipo=='expediente'.
     Bajo expediente se exige además {documento_solicitud_id} — el escrito del pool
     que abre la solicitud y de cuya fecha arranca el plazo para resolver (#428) —
-    y admite {representante_entidad_id} (#967, ADR-051 §K). Bajo trámite, una
+    y admite {representante_entidad_id} (#967) y {direccion_notificacion_id}, la
+    sede del solicitante (#989, ADR-051 §K). Bajo trámite, una
     NOTIFICAR admite {fuente} (#967), obligatoria si el trámite tiene varias.
     Bypass del motor (#324/#616): {..., bypass:true, justificacion:'...'} salta la
     evaluación y registra la creación en bitácora con detalle {escape:true, justificacion}.
@@ -622,6 +623,7 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
             expediente, tipos, expediente.titular_id,
             documento_solicitud_id=data.get('documento_solicitud_id'),
             representante_entidad_id=data.get('representante_entidad_id'),
+            direccion_notificacion_id=data.get('direccion_notificacion_id'),
             justificacion=justificacion)
 
     elif padre_tipo == 'solicitud':
@@ -680,7 +682,9 @@ def editar_nodo(expediente_id, tipo, nodo_id):
     PATCH .../nodo/<tipo>/<nodo_id> — editar campos de un nodo (ADR-016 §S3b).
 
     Body JSON varía por nivel:
-      solicitud:  {observaciones, representante_entidad_id}
+      solicitud:  {observaciones, representante_entidad_id, direccion_notificacion_id}
+                  — cambiar representante o sede actualiza las notificaciones al
+                  solicitante que no han salido; la advertencia lo cuenta (#989)
       fase:       {resultado_fase_id, documento_resultado_id, observaciones}
       tramite:    {observaciones}
       tarea:      {documentos_consumidos_ids, documento_producido_id, notas,
@@ -718,7 +722,9 @@ def editar_nodo(expediente_id, tipo, nodo_id):
         res = svc.editar_solicitud(
             nodo, observaciones=leer_json(data, 'observaciones', nodo.observaciones),
             representante_entidad_id=leer_json(data, 'representante_entidad_id',
-                                               nodo.representante_entidad_id))
+                                               nodo.representante_entidad_id),
+            direccion_notificacion_id=leer_json(data, 'direccion_notificacion_id',
+                                                nodo.direccion_notificacion_id))
     elif tipo == 'fase':
         justificacion, err = leer_bypass(data)
         if err:

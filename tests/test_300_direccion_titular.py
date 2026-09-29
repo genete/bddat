@@ -2,8 +2,9 @@
 Tests para #300 — _direccion_titular() en ContextoBaseExpediente.
 
 Verifica:
-- Uso de DireccionNotificacion con rol TITULAR cuando existe
-- Fallback a dirección principal de Entidad cuando no hay DN específica
+- Uso de la sede de la solicitud del escrito cuando la tiene (#989)
+- Sin ella, la ficha de la entidad (ya no la DireccionNotificacion de rol
+  TITULAR más reciente, #989)
 - Formato dict granular {calle, cp, municipio, provincia}
 - None cuando el expediente no tiene titular
 """
@@ -127,10 +128,16 @@ class TestDirADict:
 
 
 # ---------------------------------------------------------------------------
-# _direccion_titular — integración con obtener_direccion_notificacion
+# _direccion_titular — la sede de la solicitud o la ficha (#989, ADR-051 §K)
 # ---------------------------------------------------------------------------
 
-TARGET = 'app.services.escritos.DireccionNotificacion.obtener_direccion_notificacion'
+TARGET = 'app.services.escritos.notif_svc.sede_de'
+
+
+def _solicitud_de(titular):
+    sol = MagicMock()
+    sol.entidad_id = titular.id
+    return sol
 
 
 class TestDireccionTitular:
@@ -150,36 +157,38 @@ class TestDireccionTitular:
         ctx = ContextoBaseExpediente(exp)
         assert ctx._direccion_titular() is None
 
-    def test_usa_dn_cuando_existe(self):
+    def test_usa_la_sede_de_la_solicitud(self):
         dn = MagicMock()
         dn.direccion_fallback = None
         dn.direccion = 'C/ Notificacion, 7'
         dn.codigo_postal = '41002'
         dn.municipio = _mock_municipio('Sevilla', 'SEVILLA')
-        dn.nif = 'A41999999'
+        dn.nif = None
         dn.email = 'notif@empresa.es'
 
         titular = self._titular()
         exp = _make_exp(titular=titular)
 
         with patch(TARGET, return_value=dn):
-            result = ContextoBaseExpediente(exp)._direccion_titular()
+            result = ContextoBaseExpediente(exp, _solicitud_de(titular))._direccion_titular()
 
         assert result['calle'] == 'C/ Notificacion, 7'
         assert result['municipio'] == 'Sevilla'
-        assert result['nif'] == 'A41999999'
+        assert result['nif'] == 'B29000001'          # el de la ficha: una sede no tiene NIF
         assert result['email'] == 'notif@empresa.es'
 
-    def test_fallback_a_entidad_cuando_no_hay_dn(self):
+    def test_sin_sede_la_ficha(self):
+        """Sin sede, la ficha: ya no la dirección de rol titular más reciente."""
         titular = self._titular(direccion='Calle Entidad, 5', cp='29001',
                                 municipio=_mock_municipio('Málaga', 'MÁLAGA'))
         exp = _make_exp(titular=titular)
 
         with patch(TARGET, return_value=None):
-            result = ContextoBaseExpediente(exp)._direccion_titular()
+            result = ContextoBaseExpediente(exp, _solicitud_de(titular))._direccion_titular()
 
         assert result['calle'] == 'Calle Entidad, 5'
         assert result['provincia'] == 'MÁLAGA'
+        assert ContextoBaseExpediente(exp)._direccion_titular()['calle'] == 'Calle Entidad, 5'
 
     def test_get_contexto_incluye_titular_dir_como_dict(self):
         dn = MagicMock()
@@ -202,7 +211,7 @@ class TestDireccionTitular:
         exp.responsable = None
 
         with patch(TARGET, return_value=dn):
-            ctx = ContextoBaseExpediente(exp).get_contexto()
+            ctx = ContextoBaseExpediente(exp, _solicitud_de(titular)).get_contexto()
 
         assert isinstance(ctx['titular_dir'], dict)
         assert set(ctx['titular_dir']) == {'calle', 'cp', 'municipio', 'provincia', 'nif', 'email'}

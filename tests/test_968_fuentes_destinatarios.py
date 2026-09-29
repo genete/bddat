@@ -141,13 +141,20 @@ def test_boton_refresca_antes_del_justificante_y_no_despues(con_usuario, arbol_a
     assert svc.anadir_notificaciones_que_faltan(tramite).ok
     tarea = _notificar(tramite)[0]
 
-    _direccion(solicitud.entidad, 'Dirección nueva', titular=True)
+    # La sede de la solicitud es la dirección del solicitante (#989).
+    solicitud.direccion_notificacion_id = _direccion(
+        solicitud.entidad, 'Dirección nueva', titular=True).id
+    db.session.flush()
+    db.session.expire(solicitud, ['sede'])
     res = svc.anadir_notificaciones_que_faltan(tramite)
     assert res.refrescadas == [tarea.id]
     assert tarea.notificacion.dest_direccion == 'Dirección nueva'
 
     _hecha(arbol_aislado, tarea)
-    _direccion(solicitud.entidad, 'Dirección posterior al envío', titular=True)
+    solicitud.direccion_notificacion_id = _direccion(
+        solicitud.entidad, 'Dirección posterior al envío', titular=True).id
+    db.session.flush()
+    db.session.expire(solicitud, ['sede'])
     res = svc.anadir_notificaciones_que_faltan(tramite)
     assert res.refrescadas == []
     assert tarea.notificacion.dest_direccion == 'Dirección nueva'
@@ -315,22 +322,28 @@ def test_con_elaborar_se_elige_al_elaborar_no_en_la_notificar(con_usuario, arbol
 # Escritos (§H)
 # ---------------------------------------------------------------------------
 
-def test_escrito_con_representante(con_usuario, arbol_aislado):
+def test_escrito_con_representante_va_al_solicitante_en_su_sede(con_usuario, arbol_aislado):
+    """#989 (§K): el oficio va al solicitante, a su sede en la solicitud, aunque
+    la notificación la reciba su representante. Evita imprimir en el oficio la
+    dirección de la gestora o de otra sede."""
     from app.services.escritos import variables_destinatario
     solicitud = arbol_aislado.solicitud_propia()
     representante = _entidad('Gestoría Escritos S.L.', nif='B45645645')
     _direccion(representante, 'Calle de la Gestoría 5', titular=True)
+    sede = _direccion(solicitud.entidad, 'Avda. de la Borbolla 5', titular=True)
     solicitud.representante_entidad_id = representante.id
+    solicitud.direccion_notificacion_id = sede.id
     db.session.flush()
     tramite = arbol_aislado.tramite(arbol_aislado.fase('ANALISIS_SOLICITUD', solicitud=solicitud),
                                     'COMUNICACION_INICIO_ADMISION')
 
     ctx = variables_destinatario(arbol_aislado.tarea(tramite, 'ELABORAR'))
 
-    assert ctx['destinatario_nombre'] == 'Gestoría Escritos S.L.'
-    assert ctx['destinatario_nif'] == 'B45645645'
-    assert ctx['destinatario_dir']['calle'] == 'Calle de la Gestoría 5'
-    assert ctx['destinatario_en_nombre_de'] == solicitud.entidad.nombre_completo
+    assert ctx['destinatario_nombre'] == solicitud.entidad.nombre_completo
+    assert ctx['destinatario_nif'] == solicitud.entidad.nif
+    assert ctx['destinatario_dir']['calle'] == 'Avda. de la Borbolla 5'
+    assert ctx['destinatario_en_nombre_de'] is None
+    assert ctx['destinatario_representante'] == 'Gestoría Escritos S.L.'
 
 
 def test_separata_a_su_organismo(con_usuario, arbol_aislado):
