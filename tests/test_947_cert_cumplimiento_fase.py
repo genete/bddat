@@ -158,7 +158,7 @@ class TestEmitir:
         res = _emitir(app_ctx, fase)
 
         assert not res.emitido and res.error is None and res.bloqueo is None
-        assert 'No consta la notificación al titular' in res.a_dict()['falta']
+        assert 'No consta la notificación al solicitante' in res.a_dict()['falta']
         assert Documento.query.filter_by(expediente_id=exp_id).count() == antes
         assert _certificados_de(fase) == []
 
@@ -502,7 +502,7 @@ class TestVista:
     def test_sin_notificacion_dice_que_falta(self, app_ctx, arbol_aislado):
         fase, _, _ = _fase_notificada(arbol_aislado, [])
         html = _vista_html(app_ctx, fase)
-        assert 'No consta la notificación al titular' in html
+        assert 'No consta la notificación al solicitante' in html
         assert 'No se ha creado ningún documento' in html
 
     def test_emitido_con_huella(self, app_ctx, arbol_aislado):

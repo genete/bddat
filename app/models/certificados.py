@@ -21,7 +21,7 @@ class Certificado(db.Model):
         CERT_FIN_IP_CONSULTAS — fases_habilitantes, fecha_fin_ultima_fase
             (producido en issue futuro)
         CERT_CUMPLIMIENTO_FASE — documento_id y nada más (#947, ADR-049 §F): el
-            documento que acredita la notificación al titular de lo que resuelve
+            documento que acredita la notificación al solicitante de lo que resuelve
             la fase. Sin su fecha (una sola fuente) y sin tipo, tarea ni actos,
             que se derivan del documento y de la fase y no pueden cambiar
             mientras el sello exista. Un id dentro de JSONB no es FK: lo protege

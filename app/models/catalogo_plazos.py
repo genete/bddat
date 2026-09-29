@@ -63,7 +63,7 @@ class CatalogoPlazo(db.Model):
         sitio, así que para una tarea es casi siempre `{'rol': 'PRODUCIDO'}`.
         Para las filas ACTO —ADR-049 §E, #930— es
         `{'calculado': 'documento_cumplimiento'}`: la propiedad del acto que
-        devuelve el documento que acredita la notificación al titular en la fase
+        devuelve el documento que acredita la notificación al solicitante en la fase
         que lo resuelve (arts. 21.2 y 40.4 LPACAP); solo nombres de
         `plazos.CALCULADOS`. (Hasta #931 las filas de combinación cerraban con
         `{'fk': 'documento_cierre_id'}`, y las de FASE con NULL.)
@@ -133,7 +133,7 @@ class CatalogoPlazo(db.Model):
         # Mismo texto que el COMMENT ON COLUMN de 931_nivel_acto (antes, 930 D8)
         comment='Referencia al Documento.fecha_administrativa que acredita el cumplimiento: '
                 '{"calculado":"documento_cumplimiento"} (ACTO: documento que acredita la '
-                'notificación al titular en la fase que resuelve el acto, ADR-049) o '
+                'notificación al solicitante en la fase que resuelve el acto, ADR-049) o '
                 '{"rol":"CONSUMIDO|PRODUCIDO"[,"tipo_documento":"..."]} (TAREA). '
                 'NULL = el plazo nunca alcanza CUMPLIDO (#778)',
     )

@@ -18,7 +18,7 @@
       </span>
     {% elif vista.falta %}
       <span class="badge text-bg-warning">
-        <i class="bi bi-exclamation-triangle me-1"></i>No consta la notificación al titular
+        <i class="bi bi-exclamation-triangle me-1"></i>No consta la notificación al solicitante
       </span>
     {% else %}
       <span class="badge text-bg-light border">
@@ -29,7 +29,7 @@
 
   <p class="small mb-3">
     {% if vista.emitido %}
-      Consta la notificación al titular de lo que resuelve esta fase, acreditada por el
+      Consta la notificación al solicitante de lo que resuelve esta fase, acreditada por el
       documento que se cita abajo (art. 40.4 LPACAP). Desde la emisión, el plazo de
       resolver de sus actos se lee de este certificado y ese documento no puede
       modificarse, desvincularse ni borrarse.
@@ -37,7 +37,7 @@
       {{ vista.falta }} No se ha creado ningún documento.
     {% else %}
       Si se emitiera ahora, el certificado citaría el documento de abajo como
-      acreditación de la notificación al titular. Este borrador se calcula al abrirlo
+      acreditación de la notificación al solicitante. Este borrador se calcula al abrirlo
       y no se guarda.
     {% endif %}
   </p>

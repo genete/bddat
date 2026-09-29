@@ -107,28 +107,29 @@ def test_get_payload_nuevo(usuario_supervisor, expediente_seed, montar):
     assert d['sede'] == {'aplica': True, 'estado': 'PENDIENTE'}
     assert d['estado'] == 'PENDIENTE_SEDE'
     assert d['resultados_validos'] == ['CORRECTA', 'RECHAZADA', 'INCORRECTA']
-    assert d['es_notificacion_del_titular'] is False        # fase no finalizadora
+    assert d['es_notificacion_del_solicitante'] is False    # fase no finalizadora
 
 
 @pytest.mark.parametrize('codigo_fase, codigo_tramite, esperado', [
     ('RESOLUCION', 'NOTIFICACION', True),
     ('RESOLUCION_DUP', 'NOTIFICACION', True),
-    ('RESOLUCION_DUP', 'NOTIFICACION_ORGANISMOS', False),
-    ('RESOLUCION_DUP', 'NOTIFICACION_INTERESADOS', False),
+    ('RESOLUCION_DUP', 'REQUERIMIENTO_RBDA_DEFINITIVA', False),
     ('ANALISIS_SOLICITUD', 'REQUERIMIENTO_SUBSANACION', False),
     ('CONSULTAS', 'CONSULTA_TRASLADO_TITULAR', False),
 ])
-def test_get_es_notificacion_del_titular(usuario_supervisor, expediente_seed, montar,
-                                         codigo_fase, codigo_tramite, esperado):
-    """#930 (D10): la NOTIFICAR del trámite NOTIFICACION de una fase
-    finalizadora — el mismo predicado que cierra el plazo del acto. Describe
-    qué notificación es, no qué plazo cierra: las demás tienen el suyo (40.2)."""
+def test_get_es_notificacion_del_solicitante(usuario_supervisor, expediente_seed, montar,
+                                             codigo_fase, codigo_tramite, esperado):
+    """#930 (D10), #969: la NOTIFICAR de fuente SOLICITANTE del trámite
+    NOTIFICACION de una fase finalizadora — el mismo predicado que cierra el
+    plazo del acto. Describe qué notificación es, no qué plazo cierra: las
+    demás tienen el suyo (40.2). El builder pone fuente SOLICITANTE a toda
+    NOTIFICAR, así que aquí solo decide el trámite; la fuente, en test_930."""
     tarea_id, _ = montar([('RESOLUCION', 'CONSUMIDO')],
                          codigo_fase=codigo_fase, codigo_tramite=codigo_tramite)
 
     d = usuario_supervisor.get(_url(expediente_seed, tarea_id)).get_json()
 
-    assert d['es_notificacion_del_titular'] is esperado
+    assert d['es_notificacion_del_solicitante'] is esperado
 
 
 def test_get_sin_fila(usuario_supervisor, expediente_seed, montar):

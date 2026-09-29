@@ -137,7 +137,7 @@ _FK_LABEL = {
 # las dos listas. El supervisor no teclea el nombre; ve qué es cada valor.
 _CALCULADO_LABEL = {
     'documento_cumplimiento': (
-        'Calculado: documento que acredita la notificación al titular en la fase '
+        'Calculado: documento que acredita la notificación al solicitante en la fase '
         'que resuelve este acto'
     ),
 }
@@ -462,7 +462,7 @@ def _construir_campo_cumplimiento(tipo_elemento: str):
     localizar un documento desde el elemento— con estas diferencias:
 
     - En ACTO, la propiedad calculada del acto (#930, ADR-049 §E, D9): el
-      documento que acredita la notificación al titular en la fase que
+      documento que acredita la notificación al solicitante en la fase que
       resuelve el acto (arts. 21.2 y 40.4 LPACAP). Fijo por nivel, sin
       selección posible, igual que su gemelo; y se reescribe en cada alta y
       edición, así que guardar una fila nunca revierte la migración `930`.

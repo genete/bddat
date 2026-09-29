@@ -317,7 +317,7 @@ def test_crear_tarea_sin_cumplimiento_lo_deja_vacio(usuario_supervisor, app):
 
 def test_crear_acto_se_cumple_con_la_notificacion_al_titular(usuario_supervisor, app):
     """En el nivel ACTO los dos extremos son fijos: el documento de
-    solicitud abre el plazo y lo cierra la notificación al titular en la fase
+    solicitud abre el plazo y lo cierra la notificación al solicitante en la fase
     que resuelve el acto, calculada (#930, D9). Y la casilla de suspensión se
     ignora aunque llegue: el art. 22 suspende el plazo de resolver, así que
     marcarlo a él sería suspenderse a sí mismo."""
@@ -623,7 +623,7 @@ def test_detalle_rotula_el_cumplimiento_calculado(usuario_supervisor, app):
     r = usuario_supervisor.get(f'/catalogo_plazos/{item_id}/fragmento')
     assert r.status_code == 200
     texto = r.get_data(as_text=True)
-    assert 'notificación al titular en la fase que resuelve este acto' in texto
+    assert 'notificación al solicitante en la fase que resuelve este acto' in texto
 
 
 def test_detalle_nombra_el_acto_por_su_tipo(usuario_supervisor, app):
