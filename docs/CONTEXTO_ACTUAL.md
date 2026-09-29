@@ -7,6 +7,6 @@
 
 ---
 
-**Hecho:** **#969 (N5a-3)** (2026-09-29, PR #988): un solo `NOTIFICACION` en `RESOLUCION_DUP` (migración `969_una_notificacion_dup`) y plazo del acto cumplido solo por la `NOTIFICAR` de fuente `SOLICITANTE`. Aplicado y verificado en el PC. Cierra N5a. Cadena en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#969 (N5a-3)** (2026-09-29, PR #988): un solo `NOTIFICACION` en `RESOLUCION_DUP` (migración `969_una_notificacion_dup`) y plazo del acto cumplido solo por la `NOTIFICAR` de fuente `SOLICITANTE`. Aplicado y verificado en el PC. Cierra N5a. Después, revisión de #929 (29/09/2026, sin código): reescrito como acumulador que se ejecuta tras #568, N6 y ADR-050 fases 0-3; sus huecos de dominio salen a #989. Cadena en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **#929** (interfaz de notificaciones: selector de destinatario en ELABORAR y NOTIFICAR, botón «añadir los que faltan», `NOTIFICAR` pintadas por fuente, representante de la solicitud), y después **#568** (edicto tras notificación infructuosa, art. 44). Sin #929 la tramitación de una `NOTIFICAR` en el navegador sigue coja (ADR-051, #967 D1).
+**Próximo:** **#989** (solicitante, representante y sede de notificación en la solicitud; el alta deja de guardar al autorizado como solicitante; refresco de las `NOTIFICAR` al cambiarlos), después **#568** (edicto tras notificación infructuosa, art. 44) y después **N6** (`CERT_CIERRE_SOLICITUD`, sin crear). El frontend de notificaciones (#929) espera a ADR-050; hasta entonces la tramitación de una `NOTIFICAR` en el navegador sigue coja (#928 D12, #967 D1).
