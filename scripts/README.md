@@ -158,6 +158,10 @@ python scripts/legalize_xref.py "1955/2000" --add
 
 `LEGALIZE_DIR` permite sobreescribir la ruta por defecto `D:\legalize-es`.
 
+**Solo PC:** necesita el clon **completo** de legalize-es. El clon reducido de la
+nube (`scripts/nube/preparar_legalize.sh`) no trae `es/` entero y daría resultados
+incompletos sin avisar.
+
 ---
 
 ## legalize_compile.py — Compilación de normas para NotebookLM
@@ -191,6 +195,18 @@ En modo `--individual` la salida debe ser una carpeta (genera `{id_tecnico}.txt`
 ### Variable de entorno
 
 `LEGALIZE_DIR` permite sobreescribir la ruta por defecto `D:\legalize-es`.
+
+**Solo PC:** igual que `legalize_xref.py`, necesita el clon **completo**. Con el
+reducido de la nube listaría como omitidas normas del catálogo que sí existen.
+
+---
+
+## nube/ — Sesiones de Claude Code en la nube
+
+Scripts para trabajar desde una sesión en la nube (`CLAUDE_CODE_REMOTE=true`); no
+actúan en el PC. Índice y detalle en [`nube/README.md`](nube/README.md):
+`preparar_entorno.sh`, `arrancar_app.sh`, `captura.mjs` y `preparar_legalize.sh`
+(clon reducido de legalize-es para el skill `/legalize`).
 
 ---
 
