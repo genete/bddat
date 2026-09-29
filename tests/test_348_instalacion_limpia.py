@@ -48,7 +48,9 @@ class TestCatalogoBaseTrasUpgrade:
     def test_tipos_tramites(self, app_ctx):
         from app.models.tipos_tramites import TipoTramite
         # +11 en #914: 6 de RESOLUCION_DUP + 5 de DATOS_CATASTRALES (ADR-046)
-        assert TipoTramite.query.count() == 42
+        # -2 en #969: NOTIFICACION_ORGANISMOS y NOTIFICACION_INTERESADOS se funden
+        #             en NOTIFICACION (ADR-051 §G)
+        assert TipoTramite.query.count() == 40
 
     def test_tipos_tareas(self, app_ctx):
         from app.models.tipos_tareas import TipoTarea
