@@ -12,6 +12,7 @@ desarrollo. Origen: #949. **Nada de esto actúa en el PC**: cada script comprueb
 | **Arrancar la app** | `bash scripts/nube/arrancar_app.sh` | antes de verificar la interfaz |
 | Parar la app | `bash scripts/nube/arrancar_app.sh --parar` | |
 | **Verificar en el navegador** | `node scripts/nube/captura.mjs <ruta> [--usuario X --rol Y]` | con la app arrancada |
+| **Consultar legislación con `/legalize`** | `bash scripts/nube/preparar_legalize.sh` | una vez por contenedor; a demanda, no en el hook |
 
 ## Ficheros
 
@@ -20,6 +21,7 @@ desarrollo. Origen: #949. **Nada de esto actúa en el PC**: cada script comprueb
 | `preparar_entorno.sh` | Parte A de #949: Python 3.14 en `~/.venvs/bddat`, PostgreSQL 16, roles, `.env`, BD de tests y LibreOffice Writer. Lo llama el hook (`.claude/hooks/session-start.sh`). Idempotente, ~2 s si ya está todo. Detalle en `tests/README.md` §Fuera del PC. |
 | `preparar_bd_desarrollo.py` | BD `bddat` desde las migraciones más la semilla de tests: 4 expedientes y 7 usuarios. **Se niega a correr fuera de la nube**, sin opción de forzarlo: en el PC sembraría usuarios con contraseña `test` en la BD de desarrollo real. |
 | `arrancar_app.sh` | Entorno → BD de desarrollo → build de React si faltan bundles → `python run.py` en segundo plano (`127.0.0.1:5000`, log en `~/.cache/bddat-app.log`). |
+| `preparar_legalize.sh` / `legalize_patrones.py` | Clon reducido de legalize-es para `/legalize` (ver más abajo). A demanda. |
 | `captura.mjs` | Login, navegación y captura con el Playwright para Node del contenedor. Informa de peticiones fallidas por host, respuestas 4xx/5xx de la app y errores de consola. |
 
 ## La BD de desarrollo de la nube
@@ -32,7 +34,7 @@ misma de la suite.
 - **Expedientes:** los tres de `scripts/expedientes_dummy/` y uno sin responsable.
 - **Plantillas desactivadas:** las que siembran las migraciones apuntan a `.docx`
   que aquí no existen. Para generar un escrito hay que registrar antes una
-  plantilla.
+  plantilla (ver «Generar escritos» más abajo).
 - **Sin reloj simulado:** los expedientes se construyen con `efectos_desarrollo=False`.
 
 ## Login de dos pasos
@@ -48,6 +50,59 @@ La app ya no carga nada de fuera: la base de la Junta (CSS, JS y tipografías) y
 Bootstrap Icons se sirven desde `app/static/vendor/`. Las capturas de la nube
 salen con la identidad visual real de la Junta, sin apaños de red ni permisos en
 claude.ai. Origen, licencias y cómo actualizar: `app/static/vendor/LEEME.md`.
+
+## legalize-es reducido (`preparar_legalize.sh`)
+
+El skill `/legalize` lee de un clon de legalize-es. En la nube no existe
+`/d/legalize-es`, así que el script deja uno **reducido** en
+`${LEGALIZE_DIR:-$HOME/legalize-es}` (fuera del repo): `git clone --depth 1
+--filter=blob:none --sparse` y sparse checkout sin conos con `es-an/` completo más
+los ficheros `es/<id>.md` de cada `id_tecnico` `BOE-A-*` de
+`docs/referencia/normas_catalog.csv` (los patrones los calcula
+`legalize_patrones.py`). Es idempotente: si el clon existe, hace `fetch --depth 1`
+y recalcula los patrones; si `LEGALIZE_DIR` apunta a un clon no sparse, se niega a
+tocarlo. Al final imprime nº de normas, tamaño, commit y fecha.
+
+Medido en la nube (2026-09-29, commit `3afca50` de legalize-es): **~56 MB (14 MB de
+`.git`), 5 s, 339 ficheros** (`es/` 97, `es-an/` 242). El catálogo tiene 101 ids
+`BOE-A-*`/`BOJA-b-*`: 100 están en el clon; falta `BOE-A-2025-20694` (RD 917/2025),
+que legalize-es aún no publica.
+
+### `/boe` y `/boja` en la nube
+
+Necesitan que el entorno permita `www.boe.es` y `ws040.juntadeandalucia.es` (*Network
+access*, en la configuración del entorno). Con eso funcionan sin más: `/boe` por
+`scripts/boe_extract.py` y `/boja` por `scripts/sedeboja_extract.py` (probado el
+2026-09-29: índice, artículos y `--todo`). Lo que no existe en la nube es Playwright
+MCP ni windows-mcp: los flujos de navegador de esos skills son solo del PC.
+
+Límites:
+
+- **`NOT_FOUND` no prueba nada** en el clon reducido: `es/` solo trae las normas del
+  catálogo. Para una fuera de él, `/boe` o `/boja`.
+- **`legalize_xref.py` y `legalize_compile.py` necesitan el clon COMPLETO** (solo PC):
+  buscan en todo el corpus y con este darían resultados incompletos sin avisar.
+
+## Generar escritos: no con plantillas reales
+
+Las plantillas reales del supervisor no están en git: viven en el PC
+(`PLANTILLAS_BASE`) y, con ADR-050 §J, vivirán en el almacén y la BD, subidas desde
+el navegador. En la nube **no hay ninguna**, y no las habrá. Lo único versionado son
+las bases canónicas de `app/data/plantillas_base/` (`carta_base.odt`,
+`resolucion_base.odt`, `fragmento_base.odt`), que son esqueletos sin tokens.
+
+Comprobado el 2026-09-29: con LibreOffice Writer, `generar_escrito` produce un `.odt`
+desde esas bases y `soffice --headless --convert-to pdf` lo convierte (código 0). Es
+decir, el motor y la conversión funcionan en la nube; lo que no se puede verificar
+es que **una plantilla real, con sus tokens y fragmentos, saque el escrito correcto
+con los datos de un expediente**. Eso se verifica en el PC. Los tests
+(`test_182`, `test_732`) usan fixtures propios de `tests/fixtures/`.
+
+No se repuntan a las bases las plantillas que crean las migraciones (`RESOLUCION`,
+`NOTIF_ORGANISMO`…): representan las plantillas reales y quedarían haciéndose pasar
+por ellas. Cuando llegue la fase 4 de ADR-050 (plantillas y fragmentos al almacén),
+la semilla podrá registrar plantillas de demostración con su propio código, como
+prevé §M para `scripts/semilla_test.py`.
 
 ## Lo que sigue necesitando el PC (#949 §D)
 

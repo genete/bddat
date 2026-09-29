@@ -136,6 +136,28 @@ iframe_url: "https://ws040.juntadeandalucia.es/sedeboja/lconsolidada/..."
 
 ---
 
+## boe_extract.py — Legislación estatal consolidada por la API del BOE
+
+Análogo a `sedeboja_extract.py` para normas **estatales**: índice o bloques
+(artículos, disposiciones) por la API de datos abiertos del BOE, sin navegador. Es el
+flujo A del skill `/boe`. De cada bloque imprime solo la versión más reciente. Funciona
+en el PC y en la nube.
+
+El BOE-ID es el `id_tecnico` (`BOE-A-*`) de `docs/referencia/normas_catalog.csv`.
+
+### Uso
+
+```bash
+python scripts/boe_extract.py BOE-A-2000-24019 --indice
+python scripts/boe_extract.py BOE-A-2000-24019 a115
+python scripts/boe_extract.py BOE-A-2000-24019 a115 a116 dfprimera
+```
+
+Los `id_bloque` son los del índice (`a52`, `a59bis`, `daprimera`, `ti`...). Sale con
+código 1 y un mensaje si el BOE-ID o el bloque no existen.
+
+---
+
 ## legalize_xref.py — Búsqueda de referencias cruzadas en legalize-es
 
 Busca una cadena de texto en todos los ficheros MD de legalize-es
@@ -157,6 +179,10 @@ python scripts/legalize_xref.py "1955/2000" --add
 ### Variable de entorno
 
 `LEGALIZE_DIR` permite sobreescribir la ruta por defecto `D:\legalize-es`.
+
+**Solo PC:** necesita el clon **completo** de legalize-es. El clon reducido de la
+nube (`scripts/nube/preparar_legalize.sh`) no trae `es/` entero y daría resultados
+incompletos sin avisar.
 
 ---
 
@@ -191,6 +217,18 @@ En modo `--individual` la salida debe ser una carpeta (genera `{id_tecnico}.txt`
 ### Variable de entorno
 
 `LEGALIZE_DIR` permite sobreescribir la ruta por defecto `D:\legalize-es`.
+
+**Solo PC:** igual que `legalize_xref.py`, necesita el clon **completo**. Con el
+reducido de la nube listaría como omitidas normas del catálogo que sí existen.
+
+---
+
+## nube/ — Sesiones de Claude Code en la nube
+
+Scripts para trabajar desde una sesión en la nube (`CLAUDE_CODE_REMOTE=true`); no
+actúan en el PC. Índice y detalle en [`nube/README.md`](nube/README.md):
+`preparar_entorno.sh`, `arrancar_app.sh`, `captura.mjs` y `preparar_legalize.sh`
+(clon reducido de legalize-es para el skill `/legalize`).
 
 ---
 
