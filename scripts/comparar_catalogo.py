@@ -48,6 +48,9 @@ TABLAS_OPERACIONALES = {
     'diagnosticos', 'bitacora', 'mensajes_internos', 'alegantes',
     'organismos_expediente', 'certificados', 'requerimientos_solicitud',
     'informacion_publica', 'resoluciones',
+    # Registro inmutable de cada certificado emitido (CERT_FIN_INSTRUCCION...):
+    # lo escribe el circuito de tramitación y la semilla de tests, no el catálogo.
+    'certificados_fase',
     # Usuarios: los de desarrollo son personas reales; los de la base de tests
     # son los siete de `scripts/semilla_test.py`, diseñados para escribir tests.
     'usuarios', 'usuarios_roles',
