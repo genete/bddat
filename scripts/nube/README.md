@@ -34,7 +34,7 @@ misma de la suite.
 - **Expedientes:** los tres de `scripts/expedientes_dummy/` y uno sin responsable.
 - **Plantillas desactivadas:** las que siembran las migraciones apuntan a `.docx`
   que aquí no existen. Para generar un escrito hay que registrar antes una
-  plantilla.
+  plantilla (ver «Generar escritos» más abajo).
 - **Sin reloj simulado:** los expedientes se construyen con `efectos_desarrollo=False`.
 
 ## Login de dos pasos
@@ -82,6 +82,27 @@ Límites:
   catálogo. Para una fuera de él, `/boe` o `/boja`.
 - **`legalize_xref.py` y `legalize_compile.py` necesitan el clon COMPLETO** (solo PC):
   buscan en todo el corpus y con este darían resultados incompletos sin avisar.
+
+## Generar escritos: no con plantillas reales
+
+Las plantillas reales del supervisor no están en git: viven en el PC
+(`PLANTILLAS_BASE`) y, con ADR-050 §J, vivirán en el almacén y la BD, subidas desde
+el navegador. En la nube **no hay ninguna**, y no las habrá. Lo único versionado son
+las bases canónicas de `app/data/plantillas_base/` (`carta_base.odt`,
+`resolucion_base.odt`, `fragmento_base.odt`), que son esqueletos sin tokens.
+
+Comprobado el 2026-09-29: con LibreOffice Writer, `generar_escrito` produce un `.odt`
+desde esas bases y `soffice --headless --convert-to pdf` lo convierte (código 0). Es
+decir, el motor y la conversión funcionan en la nube; lo que no se puede verificar
+es que **una plantilla real, con sus tokens y fragmentos, saque el escrito correcto
+con los datos de un expediente**. Eso se verifica en el PC. Los tests
+(`test_182`, `test_732`) usan fixtures propios de `tests/fixtures/`.
+
+No se repuntan a las bases las plantillas que crean las migraciones (`RESOLUCION`,
+`NOTIF_ORGANISMO`…): representan las plantillas reales y quedarían haciéndose pasar
+por ellas. Cuando llegue la fase 4 de ADR-050 (plantillas y fragmentos al almacén),
+la semilla podrá registrar plantillas de demostración con su propio código, como
+prevé §M para `scripts/semilla_test.py`.
 
 ## Lo que sigue necesitando el PC (#949 §D)
 
