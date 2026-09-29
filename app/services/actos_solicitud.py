@@ -74,7 +74,7 @@ class ActoSolicitud:
 
     @property
     def documento_cumplimiento(self) -> Optional['Documento']:  # noqa: F821
-        """Documento que acredita la notificación al titular en la fase que
+        """Documento que acredita la notificación al solicitante en la fase que
         resuelve este acto, o `None` (la fase aún no existe, o no consta).
 
         Delega (D1): la regla de cumplimiento existe una sola vez, en

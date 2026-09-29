@@ -417,12 +417,12 @@ def _check_emitir(sujeto: str, entidad_id: int,
 
 def _check_emitir_cert_cierre_fase(fase_id: int) -> Optional[EvaluacionResult]:
     """No se cierra con certificado lo que no es una finalizadora abierta, ni sin
-    la notificación al titular certificada, ni con la fase a medio hacer (#956,
+    la notificación al solicitante certificada, ni con la fase a medio hacer (#956,
     ADR-049 §F).
 
     **Invariante, no regla del motor**, y puerta cerrada sin escape (D2): un
     certificado que dijera «está hecho todo lo obligatorio» con un trámite a medias
-    o sin notificación al titular sería un documento que miente. Sigue aplicando con
+    o sin notificación al solicitante sería un documento que miente. Sigue aplicando con
     el motor en modo global `INACTIVO`.
 
     El informe (`cert_cierre_fase.revisar`) ya cubre todos estos supuestos y dice
@@ -475,7 +475,7 @@ def _check_emitir_cert_cierre_fase(fase_id: int) -> Optional[EvaluacionResult]:
 
 def _check_emitir_cert_cumplimiento_fase(fase_id: int) -> Optional[EvaluacionResult]:
     """No se certifica el cumplimiento de una fase que no resuelve nada, ni una
-    notificación al titular que no consta (#947, ADR-049 §F).
+    notificación al solicitante que no consta (#947, ADR-049 §F).
 
     **Invariante, no regla del motor**: un certificado que dijera «consta la
     notificación» sin documento que la acredite sería un documento que miente, no

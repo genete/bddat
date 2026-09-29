@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "version": "6.7",
+    "version": "6.8",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-09-27",
+    "fecha_actualizacion": "2026-09-29",
     "ref_diseño": [
       "docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md",
       "docs/referencia/DISEÑO_CONSULTAS_ORGANISMOS.md",
@@ -478,7 +478,7 @@
           "descripcion": "Notificación a interesados de la resolución adoptada",
           "tareas_indicativas": ["NOTIFICAR"],
           "patron": "B (solo NOTIFICAR)",
-          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. El NOTIFICAR de este trámite es la notificación al titular: de ella depende el cumplimiento del plazo de resolver de los actos que resuelve esta fase (arts. 21.2 y 40.4 LPACAP; ADR-049 §E, #930)."
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. La NOTIFICAR de fuente SOLICITANTE de este trámite es la notificación al solicitante: de ella depende el cumplimiento del plazo de resolver de los actos que resuelve esta fase (arts. 21.2 y 40.4 LPACAP; ADR-049 §E, #930)."
         },
         {
           "codigo": "PUBLICACION",
@@ -515,27 +515,11 @@
         },
         {
           "codigo": "NOTIFICACION",
-          "nombre": "Notificación de Resolución de DUP al solicitante",
-          "descripcion": "Notificación al solicitante de la resolución de DUP adoptada.",
+          "nombre": "Notificación de Resolución de DUP",
+          "descripcion": "Notificación de la resolución de DUP adoptada al solicitante, a los organismos que informaron o debieron informar, a los titulares de bienes y derechos afectados y a los restantes interesados (art. 148.2 RD 1955/2000).",
           "tareas_indicativas": ["NOTIFICAR"],
           "patron": "B (solo NOTIFICAR)",
-          "nota": "Se notifica al titular (promotor), que es quien solicitó la DUP."
-        },
-        {
-          "codigo": "NOTIFICACION_ORGANISMOS",
-          "nombre": "Notificación de Resolución de DUP a organismos",
-          "descripcion": "Notificación a las Administraciones/organismos que informaron durante la instrucción.",
-          "tareas_indicativas": ["NOTIFICAR"],
-          "patron": "B (solo NOTIFICAR)",
-          "nota": "Destinatarios: interesados_expediente.tipo_origen IN ('ORGANISMO_CONSULTADO', 'MEDIO_AMBIENTE') (art. 148.2 RD 1955/2000). Vista de sub-lista de destinatarios en el inspector vía _TRAMITES_CON_NOTIFICACION_MULTIPLE, análogo a _TRAMITES_CON_SECCIONES_ANALISIS (ADR-046 §C)."
-        },
-        {
-          "codigo": "NOTIFICACION_INTERESADOS",
-          "nombre": "Notificación de Resolución de DUP a interesados",
-          "descripcion": "Notificación a titulares de bienes y derechos afectados y demás interesados.",
-          "tareas_indicativas": ["NOTIFICAR"],
-          "patron": "B (solo NOTIFICAR)",
-          "nota": "Destinatarios: interesados_expediente.tipo_origen IN ('DUP', 'INTERESADO_RECONOCIDO') (art. 148.2 RD 1955/2000). Cardinalidad alta (parcelas/titulares) — vista de sub-lista vía _TRAMITES_CON_NOTIFICACION_MULTIPLE, no trámites por destinatario (ADR-046 §C)."
+          "nota": "Un solo trámite para todos los grupos, como en RESOLUCION, RESOLUCION_AAP y RESOLUCION_AAC (ADR-051 §G, #969; enmienda ADR-046 §C). A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C): SOLICITANTE, ORGANISMOS_CONSULTADOS, PROPIETARIOS_DUP e INTERESADOS_RECONOCIDOS, una NOTIFICAR por destinatario; los grupos los distingue la fuente de cada tarea. La NOTIFICAR de fuente SOLICITANTE es la notificación al solicitante: de ella depende el cumplimiento del plazo de resolver el acto DUP (arts. 21.2 y 40.4 LPACAP; ADR-049 §E, #930)."
         },
         {
           "codigo": "PUBLICACION_BOP",
@@ -583,7 +567,7 @@
           "descripcion": "Notificación a interesados de la resolución de AAP adoptada.",
           "tareas_indicativas": ["NOTIFICAR"],
           "patron": "B (solo NOTIFICAR)",
-          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. El NOTIFICAR de este trámite es la notificación al titular: de ella depende el cumplimiento del plazo de resolver del acto AAP (arts. 21.2 y 40.4 LPACAP; ADR-049 §E, #930)."
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. La NOTIFICAR de fuente SOLICITANTE de este trámite es la notificación al solicitante: de ella depende el cumplimiento del plazo de resolver del acto AAP (arts. 21.2 y 40.4 LPACAP; ADR-049 §E, #930)."
         },
         {
           "codigo": "PUBLICACION",
@@ -615,7 +599,7 @@
           "descripcion": "Notificación a interesados de la resolución de AAC adoptada.",
           "tareas_indicativas": ["NOTIFICAR"],
           "patron": "B (solo NOTIFICAR)",
-          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Sin PUBLICACION: a diferencia de RESOLUCION_AAP, el art. 131.8 RD 1955/2000 solo exige notificar, no publicar (#918). A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. El NOTIFICAR de este trámite es la notificación al titular: de ella depende el cumplimiento del plazo de resolver del acto AAC (arts. 21.2 y 40.4 LPACAP; ADR-049 §E, #930)."
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Sin PUBLICACION: a diferencia de RESOLUCION_AAP, el art. 131.8 RD 1955/2000 solo exige notificar, no publicar (#918). A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. La NOTIFICAR de fuente SOLICITANTE de este trámite es la notificación al solicitante: de ella depende el cumplimiento del plazo de resolver del acto AAC (arts. 21.2 y 40.4 LPACAP; ADR-049 §E, #930)."
         }
       ]
     }

@@ -28,7 +28,7 @@ un plazo del contenedor no puede ser correcto para las tres. El acto es cada
 tipo atómico de la solicitud (`actos_solicitud.ActoSolicitud`, valor derivado
 sin tabla); se mide con la fila atómica del catálogo desde el escrito de la
 solicitud —existe desde el día 1, antes de que nazca la fase que lo
-resolverá— y se cumple con la notificación al titular en esa fase
+resolverá— y se cumple con la notificación al solicitante en esa fase
 (`{"calculado": "documento_cumplimiento"}`). Lo suspende el requerimiento de
 subsanación (art. 22.1.a; #796).
 
@@ -300,7 +300,7 @@ def obtener_estado_plazo_acto(acto, ctx=None, variables=None) -> EstadoPlazoActo
 
     Se mide con la fila atómica del catálogo (`<expediente>/<siglas del acto>`)
     desde el escrito de la solicitud, y se cumple con el documento que acredita
-    la notificación al titular en la fase que resuelve el acto
+    la notificación al solicitante en la fase que resuelve el acto
     (`{"calculado": "documento_cumplimiento"}`). Existe desde el día 1: antes
     de que nazca esa fase no hay cumplimiento y el plazo corre.
 

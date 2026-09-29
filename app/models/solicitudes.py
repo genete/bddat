@@ -70,7 +70,7 @@ class Solicitud(db.Model):
         - Nació (#778) como pareja de DOCUMENTO_SOLICITUD_ID: uno anclaba la fecha
           de inicio del plazo para resolver y notificar, este la de fin. Ya no
           cierra ningún plazo: el de resolver es de cada acto y se cumple con la
-          notificación al titular en la fase que lo resuelve (#930, ADR-049 §E);
+          notificación al solicitante en la fase que lo resuelve (#930, ADR-049 §E);
           desde #931 ninguna fila de catalogo_plazos lo nombra
         - Se mantiene como constancia (ADR-049): CERT_CIERRE_SOLICITUD enumera,
           por acto, la resolución y su notificación, y sirve después como

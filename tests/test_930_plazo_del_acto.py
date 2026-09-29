@@ -1,5 +1,5 @@
 """#930 (N2 de ADR-049): el plazo de resolver es del acto; su cumplimiento se
-calcula de la notificación al titular.
+calcula de la notificación al solicitante (por su fuente desde #969, ADR-051 §F).
 
 Bloques:
   A) El acto y la fase que lo resuelve (`actos_solicitud`, fuente única, D4).
@@ -200,19 +200,19 @@ class TestCatalogoDeFases:
         assert _validar_finalizadoras_con_regla() == []
 
     def test_toda_finalizadora_tiene_notificacion_con_notificar(self, app_ctx):
-        """Convención de D2: la NOTIFICAR del titular es la del trámite
+        """Convención de D2: la NOTIFICAR del solicitante es la del trámite
         NOTIFICACION. Si una finalizadora nueva no lo tuviera, el plazo de su
         acto quedaría VENCIDO para siempre sin que nada lo explicara."""
         from app.models.fases_tramites import FaseTramite
         from app.models.tipos_fases import TipoFase
         from app.models.tramites_tareas import TramiteTarea
-        from app.services.notificaciones import TRAMITE_NOTIFICACION_TITULAR
+        from app.services.notificaciones import TRAMITE_NOTIFICACION_SOLICITANTE
 
         sin_convencion = []
         for tf in TipoFase.query.filter_by(es_finalizadora=True).all():
             tramites = {ft.tipo_tramite.codigo: ft.tipo_tramite
                         for ft in FaseTramite.query.filter_by(tipo_fase_id=tf.id).all()}
-            tramite = tramites.get(TRAMITE_NOTIFICACION_TITULAR)
+            tramite = tramites.get(TRAMITE_NOTIFICACION_SOLICITANTE)
             tareas = ({tt.tipo_tarea.codigo for tt in
                        TramiteTarea.query.filter_by(tipo_tramite_id=tramite.id).all()}
                       if tramite else set())
@@ -311,13 +311,12 @@ class TestCumplimiento:
 
     def test_en_resolucion_dup_solo_cuenta_el_tramite_notificacion(self, arbol_aislado):
         """Las otras NOTIFICAR de RESOLUCION_DUP tienen su propio plazo de
-        cursar (40.2), pero no cierran el de resolver, aunque sean anteriores."""
+        cursar (40.2), pero no cierran el de resolver, aunque sean anteriores y
+        aunque vayan al solicitante (el requerimiento de la RBDA definitiva)."""
         solicitud = _con_tipo(arbol_aislado.solicitud_propia(), 'DUP')
         fase = arbol_aislado.fase('RESOLUCION_DUP', solicitud=solicitud)
-        for codigo in ('NOTIFICACION_INTERESADOS', 'NOTIFICACION_ORGANISMOS',
-                       'REQUERIMIENTO_RBDA_DEFINITIVA'):
-            _notificar(arbol_aislado, fase, codigo, [
-                ('JUSTIFICANTE_NOTIFICA_DISPOSICION', _F1, 'CONSUMIDO')])
+        _notificar(arbol_aislado, fase, 'REQUERIMIENTO_RBDA_DEFINITIVA', [
+            ('JUSTIFICANTE_NOTIFICA_DISPOSICION', _F1, 'CONSUMIDO')])
         acto = _acto(solicitud, 'DUP')
         assert acto.documento_cumplimiento is None
 
@@ -327,7 +326,43 @@ class TestCumplimiento:
         arbol_aislado.db.session.expire(fase, ['tramites'])
         assert acto.documento_cumplimiento.fecha_administrativa == _F3
 
-    def test_varias_notificar_del_titular_gana_la_mas_antigua(self, arbol_aislado):
+    def test_en_el_mismo_tramite_solo_cuenta_la_fuente_solicitante(self, arbol_aislado):
+        """ADR-051 §F: en el `NOTIFICACION` de la DUP hay una NOTIFICAR por
+        organismo, propietario e interesado. La puesta a disposición a un
+        organismo, aunque sea anterior, no da por cumplido el plazo de resolver
+        del solicitante."""
+        solicitud = _con_tipo(arbol_aislado.solicitud_propia(), 'DUP')
+        fase = arbol_aislado.fase('RESOLUCION_DUP', solicitud=solicitud)
+        tramite = arbol_aislado.tramite(fase, 'NOTIFICACION')
+        for fuente in ('ORGANISMOS_CONSULTADOS', 'PROPIETARIOS_DUP',
+                       'INTERESADOS_RECONOCIDOS'):
+            tarea = _notificar(arbol_aislado, fase, 'NOTIFICACION', [
+                ('JUSTIFICANTE_NOTIFICA_DISPOSICION', _F1, 'CONSUMIDO')], tramite=tramite)
+            tarea.notificacion.fuente = fuente
+        arbol_aislado.db.session.flush()
+        assert _acto(solicitud, 'DUP').documento_cumplimiento is None
+
+        _notificar(arbol_aislado, fase, 'NOTIFICACION', [
+            ('JUSTIFICANTE_POSTAL_1ER', _F3, 'CONSUMIDO')], tramite=tramite)
+        # El builder crea la tarea por FK: la colección ya leída no la ve
+        arbol_aislado.db.session.expire(tramite, ['tareas'])
+        assert _acto(solicitud, 'DUP').documento_cumplimiento.fecha_administrativa == _F3
+
+    def test_cerrada_con_escape_sin_destinatario_sigue_contando(self, arbol_aislado):
+        """La fuente es fija desde que nace la tarea (ADR-051 §B): una
+        NOTIFICAR al solicitante cuyo destinatario nunca se fijó (cerrada con
+        escape) sigue siendo la notificación al solicitante."""
+        solicitud = arbol_aislado.solicitud_propia()
+        fase = arbol_aislado.fase('RESOLUCION', solicitud=solicitud)
+        tramite = arbol_aislado.tramite(fase, 'NOTIFICACION')
+        tarea = arbol_aislado.notificar_sin_destinatario(tramite, 'SOLICITANTE')
+        assert tarea.notificacion.tiene_destinatario is False
+        arbol_aislado.vincular(tarea, arbol_aislado.documento(
+            solicitud.expediente_id, 'JUSTIFICANTE_NOTIFICA_DISPOSICION', 'escape-disp',
+            fecha=_F1), 'CONSUMIDO')
+        assert _acto(solicitud, 'AAP').documento_cumplimiento.fecha_administrativa == _F1
+
+    def test_varias_notificar_del_solicitante_gana_la_mas_antigua(self, arbol_aislado):
         solicitud = arbol_aislado.solicitud_propia()
         fase = arbol_aislado.fase('RESOLUCION', solicitud=solicitud)
         primera = _notificar(arbol_aislado, fase, 'NOTIFICACION', [
@@ -370,39 +405,41 @@ class TestCumplimiento:
                      tipo_doc=N(codigo='JUSTIFICANTE_POSTAL_1ER'))
 
         con_fecha = _doc(2, _F2)
-        tarea = N(tipo_tarea=N(codigo='NOTIFICAR'), vinculos_documento=[
-            N(rol='CONSUMIDO', documento=_doc(1, None)),
-            N(rol='CONSUMIDO', documento=con_fecha),
-        ])
+        tarea = N(tipo_tarea=N(codigo='NOTIFICAR'), notificacion=N(fuente='SOLICITANTE'),
+                  vinculos_documento=[
+                      N(rol='CONSUMIDO', documento=_doc(1, None)),
+                      N(rol='CONSUMIDO', documento=con_fecha),
+                  ])
         tramite = N(tipo_tramite=N(codigo='NOTIFICACION'), tareas=[tarea])
         fase = N(tipo_fase=N(es_finalizadora=True), tramites=[tramite])
         assert documento_cumplimiento_fase(fase) is con_fecha
 
 
-class TestNotificarDelTitular:
+class TestNotificarDelSolicitante:
 
     def test_la_notificar_del_tramite_notificacion_de_una_finalizadora(self, arbol_aislado):
-        from app.services.notificaciones import es_notificar_del_titular
+        from app.services.notificaciones import es_notificar_del_solicitante
         solicitud = arbol_aislado.solicitud_propia()
         fase = arbol_aislado.fase('RESOLUCION', solicitud=solicitud)
         tramite = arbol_aislado.tramite(fase, 'NOTIFICACION')
-        assert es_notificar_del_titular(arbol_aislado.tarea(tramite, 'NOTIFICAR')) is True
+        assert es_notificar_del_solicitante(arbol_aislado.tarea(tramite, 'NOTIFICAR')) is True
         # Otra tarea en el mismo trámite no es «la notificación»
-        assert es_notificar_del_titular(arbol_aislado.tarea(tramite, 'ELABORAR')) is False
+        assert es_notificar_del_solicitante(arbol_aislado.tarea(tramite, 'ELABORAR')) is False
 
     @pytest.mark.parametrize('codigo_fase, codigo_tramite', [
-        ('RESOLUCION_DUP', 'NOTIFICACION_INTERESADOS'),
-        ('RESOLUCION_DUP', 'NOTIFICACION_ORGANISMOS'),
         ('RESOLUCION_DUP', 'REQUERIMIENTO_RBDA_DEFINITIVA'),
         ('ANALISIS_SOLICITUD', 'REQUERIMIENTO_SUBSANACION'),
         ('ANALISIS_SOLICITUD', 'NOTIFICACION'),
     ])
     def test_las_demas_no(self, arbol_aislado, codigo_fase, codigo_tramite):
-        from app.services.notificaciones import es_notificar_del_titular
+        """Ni siendo de fuente SOLICITANTE (el builder la pone a toda
+        NOTIFICAR): faltan el trámite o la fase finalizadora."""
+        from app.services.notificaciones import es_notificar_del_solicitante
         solicitud = arbol_aislado.solicitud_propia()
         fase = arbol_aislado.fase(codigo_fase, solicitud=solicitud)
         tarea = arbol_aislado.tarea(arbol_aislado.tramite(fase, codigo_tramite), 'NOTIFICAR')
-        assert es_notificar_del_titular(tarea) is False
+        assert tarea.notificacion.fuente == 'SOLICITANTE'
+        assert es_notificar_del_solicitante(tarea) is False
 
 
 # ---------------------------------------------------------------------------
@@ -875,16 +912,21 @@ class TestCumplimientoDeExtremoAExtremo:
         assert plazos['AE_DEFINITIVA'].cumplido_fuera_de_plazo is True
         assert plazos['AAT'].cumplido_fuera_de_plazo is False
 
-    def test_sin_notificacion_al_titular_vencido_aunque_haya_otras(
+    def test_sin_notificacion_al_solicitante_vencido_aunque_haya_otras(
             self, arbol_aislado, hoy_fijo):
-        """La RESOLUCION_DUP con organismos e interesados notificados pero sin
-        la notificación al titular: el plazo de la DUP no se cumple."""
+        """La RESOLUCION_DUP con organismos e interesados notificados, en su
+        mismo trámite `NOTIFICACION`, pero sin la notificación al solicitante:
+        el plazo de la DUP no se cumple (ADR-051 §F)."""
         from app.services.plazos import plazos_de_la_solicitud
         solicitud = _solicitud_desde(arbol_aislado, 'DUP')
         fase = arbol_aislado.fase('RESOLUCION_DUP', solicitud=solicitud)
-        for codigo in ('NOTIFICACION_ORGANISMOS', 'NOTIFICACION_INTERESADOS'):
-            _notificar(arbol_aislado, fase, codigo, [
-                ('JUSTIFICANTE_NOTIFICA_DISPOSICION', date(2025, 5, 5), 'CONSUMIDO')])
+        tramite = arbol_aislado.tramite(fase, 'NOTIFICACION')
+        for fuente in ('ORGANISMOS_CONSULTADOS', 'INTERESADOS_RECONOCIDOS'):
+            tarea = _notificar(arbol_aislado, fase, 'NOTIFICACION', [
+                ('JUSTIFICANTE_NOTIFICA_DISPOSICION', date(2025, 5, 5), 'CONSUMIDO')],
+                tramite=tramite)
+            tarea.notificacion.fuente = fuente
+        arbol_aislado.db.session.flush()
 
         hoy_fijo(date(2025, 10, 1))
         (dup,) = plazos_de_la_solicitud(solicitud)

@@ -3,13 +3,13 @@ CERT_CUMPLIMIENTO_FASE — el sello del cumplimiento del plazo de resolver (#947
 
 ADR-049 §E/§F. Desde #930 (N2) el plazo de resolver de cada acto se da por
 cumplido **calculándolo en cada lectura**: se busca en la fase que resuelve el
-acto la notificación al titular y se toma el documento más antiguo que la
+acto la notificación al solicitante y se toma el documento más antiguo que la
 acredita. Funciona, pero nada lo fija: meses después, cambiar la fecha de ese
 justificante, su tipo, desvincularlo o subir otro con fecha anterior cambia el
 cumplimiento en silencio.
 
 Este certificado es el momento en que la Administración dice «esto consta y no se
-mueve». Deja escrito **qué documento** acredita la notificación al titular
+mueve». Deja escrito **qué documento** acredita la notificación al solicitante
 (`datos = {"documento_id": N}`, y nada más). Desde entonces:
 
 - el plazo lee el certificado en vez de recalcular (`sellos`,
@@ -88,7 +88,7 @@ class Revision:
     fase: object
     finalizadora: bool
     documento: Optional[Documento] = None          # el que se citaría (cálculo)
-    tareas_notificar: list = field(default_factory=list)  # NOTIFICAR del titular
+    tareas_notificar: list = field(default_factory=list)  # NOTIFICAR del solicitante
 
     @property
     def falta(self) -> Optional[str]:
@@ -98,9 +98,9 @@ class Revision:
         if self.documento is not None:
             return None
         if not self.tareas_notificar:
-            return ('No consta la notificación al titular: la fase todavía no tiene la '
+            return ('No consta la notificación al solicitante: la fase todavía no tiene la '
                     'tarea «Notificar» del trámite «Notificación».')
-        return ('No consta la notificación al titular: la tarea «Notificar» del '
+        return ('No consta la notificación al solicitante: la tarea «Notificar» del '
                 'trámite «Notificación» no tiene vinculado ningún justificante que la '
                 'acredite (puesta a disposición en Notifica, acuse postal —del primer '
                 'intento o definitivo— o anuncio publicado).')
@@ -121,7 +121,7 @@ def revisar(fase) -> Revision:
             tarea
             for tramite in fase.tramites
             for tarea in tramite.tareas
-            if notif_svc.es_notificar_del_titular(tarea)
+            if notif_svc.es_notificar_del_solicitante(tarea)
         ],
     )
 

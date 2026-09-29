@@ -20,7 +20,7 @@ def test_vista_cert_cumplimiento_fase_render(app_ctx, arbol_aislado, usuario_sup
 
     assert r.status_code == 200
     assert b'data-modal-large-close' in r.data
-    assert 'No consta la notificación al titular'.encode() in r.data
+    assert 'No consta la notificación al solicitante'.encode() in r.data
 
 
 def test_vista_cert_cumplimiento_fase_no_finalizadora_404(

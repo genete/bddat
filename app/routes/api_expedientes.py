@@ -66,15 +66,6 @@ from app.utils.permisos import verificar_acceso_expediente, tiene_permiso
 # AUDIENCIA...) solo necesita el núcleo común (resultado + producir documento).
 _TRAMITES_CON_SECCIONES_ANALISIS = {'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_SUBSANACION'}
 
-# Trámites cuya tarea NOTIFICAR va a más de un destinatario (art. 148.2 RD
-# 1955/2000: organismos consultados e interesados/titulares de la DUP, además
-# del solicitante) — RESOLUCION_DUP, ADR-046 §C. Whitelist declarada ahora
-# (#914); la vista de sub-lista de destinatarios en el inspector que la
-# consume (mismo mecanismo que _TRAMITES_CON_SECCIONES_ANALISIS aplicado a
-# NOTIFICAR) es trabajo de implementación posterior, cuando el foco de
-# tramitación llegue a esta fase.
-_TRAMITES_CON_NOTIFICACION_MULTIPLE = {'NOTIFICACION_ORGANISMOS', 'NOTIFICACION_INTERESADOS'}
-
 # Blueprint para API
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -1070,7 +1061,7 @@ def emitir_cert_cumplimiento_fase_nodo(expediente_id, nodo_id):
 
     Tres desenlaces y ningún error, todos 200 con `enlace_vista` para abrir la
     vista en el modal grande:
-    - falta la notificación al titular → `emitido: false` y `falta`; nada creado;
+    - falta la notificación al solicitante → `emitido: false` y `falta`; nada creado;
     - está todo → `emitido: true`: certificado emitido;
     - ya estaba emitido → `emitido: true, ya_emitido: true`.
 
@@ -2362,9 +2353,10 @@ def _notificar_payload(tarea) -> dict:
             'cumplimiento': _fecha_notificacion_json(notif_svc.fecha_cumplimiento(tarea)),
             'efectos': _fecha_notificacion_json(notif_svc.fecha_efectos(tarea)),
         },
-        # La notificación de la resolución al titular (#930, D10): el mismo
-        # predicado que decide el cumplimiento del plazo del acto, una sola regla.
-        'es_notificacion_del_titular': notif_svc.es_notificar_del_titular(tarea),
+        # La notificación de la resolución al solicitante (#930, D10; #969): el
+        # mismo predicado que decide el cumplimiento del plazo del acto, una
+        # sola regla.
+        'es_notificacion_del_solicitante': notif_svc.es_notificar_del_solicitante(tarea),
         'sede': {'aplica': sede is not None, 'estado': sede},
         'estado': estado_tarea(tarea),
         'resultados_validos': list(notif_svc.resultados_validos(notif.canal))

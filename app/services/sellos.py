@@ -111,7 +111,7 @@ def documento_citado(certificado) -> Optional[Documento]:
 
 def documento_cumplimiento_sellado(fase) -> Optional[Documento]:
     """El documento que el `CERT_CUMPLIMIENTO_FASE` de `fase` fija como
-    acreditación de la notificación al titular, o `None` si no hay sello."""
+    acreditación de la notificación al solicitante, o `None` si no hay sello."""
     certificado = certificado_cumplimiento(fase)
     return documento_citado(certificado) if certificado is not None else None
 
@@ -156,7 +156,7 @@ def motivo_sellado(documento) -> Optional[str]:
     certificado = certificado_que_cita(documento)
     if certificado is not None:
         return (
-            f'Este documento acredita la notificación al titular de la fase '
+            f'Este documento acredita la notificación al solicitante de la fase '
             f'«{_nombre_fase(certificado.fase)}», y así lo hace constar su certificado '
             f'de cumplimiento, emitido el {_fecha_emision(certificado)}: no puede '
             f'cambiarse su fecha, su tipo ni su fichero, ni desvincularse de la tarea, '

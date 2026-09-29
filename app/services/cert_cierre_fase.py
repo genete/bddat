@@ -4,13 +4,13 @@ CERT_CIERRE_FASE — el cierre de la fase finalizadora (#956, N4b).
 ADR-049 §F. Hasta aquí una fase finalizadora (la de Resolución) se cerraba desde el
 editor del inspector: un resultado y **cualquier documento del pool** como
 «documento de resultado», con un escape a nivel de fase si quedaba algún trámite
-sin terminar, y sin comprobar que constara la notificación al titular. Desde #956
+sin terminar, y sin comprobar que constara la notificación al solicitante. Desde #956
 cerrarla es emitir este certificado, que:
 
 - responde siempre con un informe «¿cómo voy?» —qué está hecho, qué falta y qué se
   salvó por un escape—, sin crear nada mientras falte algo;
 - **solo se emite si no falta nada**, y entre lo que no puede faltar está el
-  `CERT_CUMPLIMIENTO_FASE` de #947 (la notificación al titular);
+  `CERT_CUMPLIMIENTO_FASE` de #947 (la notificación al solicitante);
 - ocupa `Fase.documento_resultado_id`: emitirlo **es** cerrar la fase, con el
   sellado de ADR-036 que ya existe;
 - guarda en `certificados.datos` una **foto fija** del informe (D4);

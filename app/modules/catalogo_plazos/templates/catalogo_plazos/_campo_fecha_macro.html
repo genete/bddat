@@ -24,7 +24,7 @@
                       compartida), con matices: el rol admite «ninguno» —sin
                       señalador el plazo nunca alcanza CUMPLIDO, que es lo
                       correcto en TABLON_AYUNTAMIENTOS—, y en ACTO es
-                      calculado (la notificación al titular en la fase que
+                      calculado (la notificación al solicitante en la fase que
                       resuelve el acto, #930) y lo fija el servidor sin que
                       viaje en el formulario.
 
@@ -240,7 +240,7 @@
 {% macro campo_cumplimiento(id_prefix, nivel_actual, cc_rol, cc_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map) %}
 {{ senalador(id_prefix, 'campo_cumplimiento', 'Documento que acredita el cumplimiento', nivel_actual,
              none,
-             'Calculado: documento que acredita la notificación al titular en la fase que resuelve este acto — arts. 21.2 y 40.4 LPACAP.',
+             'Calculado: documento que acredita la notificación al solicitante en la fase que resuelve este acto — arts. 21.2 y 40.4 LPACAP.',
              cc_rol, cc_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map,
              obligatorio=false) }}
 {% endmacro %}
