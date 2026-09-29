@@ -136,6 +136,28 @@ iframe_url: "https://ws040.juntadeandalucia.es/sedeboja/lconsolidada/..."
 
 ---
 
+## boe_extract.py — Legislación estatal consolidada por la API del BOE
+
+Análogo a `sedeboja_extract.py` para normas **estatales**: índice o bloques
+(artículos, disposiciones) por la API de datos abiertos del BOE, sin navegador. Es el
+flujo A del skill `/boe`. De cada bloque imprime solo la versión más reciente. Funciona
+en el PC y en la nube.
+
+El BOE-ID es el `id_tecnico` (`BOE-A-*`) de `docs/referencia/normas_catalog.csv`.
+
+### Uso
+
+```bash
+python scripts/boe_extract.py BOE-A-2000-24019 --indice
+python scripts/boe_extract.py BOE-A-2000-24019 a115
+python scripts/boe_extract.py BOE-A-2000-24019 a115 a116 dfprimera
+```
+
+Los `id_bloque` son los del índice (`a52`, `a59bis`, `daprimera`, `ti`...). Sale con
+código 1 y un mensaje si el BOE-ID o el bloque no existen.
+
+---
+
 ## legalize_xref.py — Búsqueda de referencias cruzadas en legalize-es
 
 Busca una cadena de texto en todos los ficheros MD de legalize-es

@@ -2,7 +2,7 @@
 name: boe
 description: Lee artículos concretos de legislación consolidada del BOE estatal usando la API REST o Playwright. Para legislación andaluza (BOJA) usar /boja.
 argument-hint: "<ELI_URL_o_referencia> [artículo N | disposición adicional X | índice | buscar: texto]"
-allowed-tools: Bash, WebFetch, mcp__playwright__browser_navigate, mcp__playwright__browser_evaluate, mcp__windows-mcp__PowerShell
+allowed-tools: Bash, Grep, Read, WebFetch, mcp__playwright__browser_navigate, mcp__playwright__browser_evaluate, mcp__windows-mcp__PowerShell
 ---
 
 Eres un asistente especializado en navegar la legislación consolidada del BOE **estatal** de forma eficiente.
@@ -22,7 +22,7 @@ https://www.boe.es/eli/{país}/{tipo}/{año}/{mes}/{día}/{número}/con
 ### API REST de datos abiertos
 
 **Base:** `https://www.boe.es/datosabiertos/api/legislacion-consolidada`
-**Cabecera obligatoria:** `Accept: application/xml` (WebFetch no sirve — no soporta cabeceras custom; usar `curl`)
+**Cabecera obligatoria:** `Accept: application/xml` (WebFetch no sirve — no soporta cabeceras custom; usar `scripts/boe_extract.py` o `curl`)
 
 | Endpoint | Resultado | Formato |
 |---|---|---|
@@ -65,69 +65,60 @@ https://www.boe.es/eli/{país}/{tipo}/{año}/{mes}/{día}/{número}/con
 
 | Caso | Herramienta | Coste en contexto |
 |---|---|---|
-| Artículo(s) conocido(s), 1-2 artículos | **curl \| python** (API) | ~7 KB por artículo |
-| Artículo(s) conocidos, 3+ artículos de la misma ley | **Playwright** (navegar una vez, evaluar N veces) | ~7 KB × N (navigate amortizado) |
-| Índice de la ley | **curl** (API `/texto/indice`) | pequeño |
+| Artículo(s) conocido(s), 1-2 artículos | **`boe_extract.py`** (API) | ~7 KB por artículo |
+| Artículo(s) conocidos, 3+ artículos de la misma ley | **Playwright** en el PC (navegar una vez, evaluar N veces); en la nube, `boe_extract.py` con varios bloques | ~7 KB × N (navigate amortizado) |
+| Índice de la ley | **`boe_extract.py --indice`** (API `/texto/indice`) | pequeño |
 | Búsqueda inversa (no sé qué artículo) | **Playwright** (buscar en DOM) | navigate + pequeño |
 | Búsqueda dentro de bloque grande (ITC) | **Playwright** (evaluate + indexOf) | pequeño |
 
 ---
 
-## FLUJO A — API REST con curl (artículos concretos)
+## FLUJO A — API REST con `scripts/boe_extract.py` (artículos concretos)
 
-### Paso 1 — Obtener el BOE-ID desde la URL ELI
+Funciona en el PC y en la nube. El script hace la petición con la cabecera
+`Accept: application/xml`, se queda con la versión más reciente de cada bloque y
+saca texto plano (el XML nunca toca el contexto). Se ejecuta con el Python del
+entorno (en la nube, `~/.venvs/bddat/bin/python`).
 
-La URL ELI no contiene el BOE-ID. Obtenerlo con WebFetch:
+### Paso 1 — Obtener el BOE-ID
+
+**Primero el catálogo.** El BOE-ID es el `id_tecnico` de la norma en
+`docs/referencia/normas_catalog.csv`; se busca por `nombre_corto` o `id_ref`:
+
+```
+Grep pattern="1955/2000" path=docs/referencia/normas_catalog.csv -i output_mode=content
+```
+
+Solo si la norma **no está en el catálogo**, sacarlo de la URL ELI con WebFetch (la
+URL ELI no contiene el BOE-ID):
 ```
 WebFetch(url="https://www.boe.es/eli/es/rd/2000/12/01/1955/con",
          prompt="Extrae el identificador con formato BOE-A-XXXX-XXXXX del enlace canonical")
 ```
 La página HTML contiene `<link rel="canonical" href="...act.php?id=BOE-A-2000-24019">`.
 
-### Paso 2 — Obtener artículo con curl | python (piped — XML nunca toca el contexto)
+### Paso 2 — Obtener artículo(s)
 
 ```bash
-curl -s -H "Accept: application/xml" \
-  "https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/BOE-A-2000-24019/texto/bloque/a115" \
-| python - << 'EOF'
-import xml.etree.ElementTree as ET, sys
-tree = ET.parse(sys.stdin)
-root = tree.getroot()
-bloque = root.find('.//bloque')
-versiones = bloque.findall('version')
-ultima = versiones[-1]  # versión más reciente
-lines = [f"# {bloque.get('titulo','')}", f"*Vigente desde: {ultima.get('fecha_vigencia') or ultima.get('fecha_publicacion')}*", ""]
-for elem in ultima:
-    if elem.tag == 'blockquote': continue  # omitir notas al pie
-    texto = ''.join(elem.itertext()).strip()
-    cls = elem.get('class','')
-    if not texto: continue
-    if cls == 'articulo': lines.append(f"## {texto}")
-    elif cls == 'parrafo_2': lines.append(f"  {texto}")
-    else: lines.append(texto)
-    lines.append("")
-print('\n'.join(lines))
-EOF
+python scripts/boe_extract.py BOE-A-2000-24019 a115
+python scripts/boe_extract.py BOE-A-2000-24019 a115 a116 dfprimera
 ```
 
-**IMPORTANTE:** En Windows el heredoc `<< 'EOF'` puede fallar con bash. Si falla, escribir el script a `docs_prueba/temp/parse.py` con la tool `Write` y usar `curl ... | python docs_prueba/temp/parse.py`. Eliminar temp tras uso.
+Si el `id_bloque` no es seguro, consultar antes el índice.
 
 ### Paso 3 — Índice de la ley (cuando no se conoce el id del bloque)
 
 ```bash
-curl -s -H "Accept: application/xml" \
-  "https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/BOE-A-2000-24019/texto/indice" \
-| python - << 'EOF'
-import xml.etree.ElementTree as ET, sys
-root = ET.parse(sys.stdin).getroot()
-for b in root.findall('.//bloque'):
-    print(f"{b.findtext('id'):20} {b.findtext('titulo')}")
-EOF
+python scripts/boe_extract.py BOE-A-2000-24019 --indice
 ```
 
 ---
 
-## FLUJO B — Playwright (búsqueda inversa / múltiples artículos / bloques grandes)
+## FLUJO B — Playwright (solo PC: búsqueda inversa / múltiples artículos / bloques grandes)
+
+Playwright MCP y windows-mcp **no existen en la nube**: allí, para 3+ artículos se
+repite el flujo A (una llamada admite varios bloques) y la búsqueda inversa se hace
+sobre el texto de `/legalize` si la norma está en el catálogo.
 
 ### Navegar y minimizar
 

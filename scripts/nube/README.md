@@ -68,6 +68,14 @@ Medido en la nube (2026-09-29, commit `3afca50` de legalize-es): **~56 MB (14 MB
 `BOE-A-*`/`BOJA-b-*`: 100 están en el clon; falta `BOE-A-2025-20694` (RD 917/2025),
 que legalize-es aún no publica.
 
+### `/boe` y `/boja` en la nube
+
+Necesitan que el entorno permita `www.boe.es` y `ws040.juntadeandalucia.es` (*Network
+access*, en la configuración del entorno). Con eso funcionan sin más: `/boe` por
+`scripts/boe_extract.py` y `/boja` por `scripts/sedeboja_extract.py` (probado el
+2026-09-29: índice, artículos y `--todo`). Lo que no existe en la nube es Playwright
+MCP ni windows-mcp: los flujos de navegador de esos skills son solo del PC.
+
 Límites:
 
 - **`NOT_FOUND` no prueba nada** en el clon reducido: `es/` solo trae las normas del

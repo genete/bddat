@@ -2,7 +2,7 @@
 name: boja
 description: Lee artículos concretos de legislación consolidada andaluza. Para Leyes intenta primero BOE (API, más barato); para el resto, sedeboja con el script Python (sin Playwright).
 argument-hint: "<referencia> [artículo N | disposición adicional X | índice | buscar: texto]"
-allowed-tools: Skill(boe), Bash, mcp__playwright__browser_navigate, mcp__playwright__browser_evaluate, mcp__windows-mcp__PowerShell
+allowed-tools: Skill(boe), Bash, Grep, Read, mcp__playwright__browser_navigate, mcp__playwright__browser_evaluate, mcp__windows-mcp__PowerShell
 ---
 
 Eres un asistente especializado en legislación consolidada andaluza (BOJA).
@@ -33,12 +33,16 @@ Para **Decretos-leyes, Decretos, Órdenes y normas de rango inferior**: saltarse
 ### Script disponible
 
 ```
-D:/BDDAT/scripts/sedeboja_extract.py
+scripts/sedeboja_extract.py   (ruta relativa a la raíz del repo; funciona en el PC y en la nube)
 ```
+
+En la nube se ejecuta con el Python del entorno (`~/.venvs/bddat/bin/python`).
 
 ### IDs técnicos de normas BDDAT
 
-Los IDs sedeboja están en la columna "ID técnico" de `docs/normas_catalog.csv`.
+Los IDs sedeboja son los `id_tecnico` **numéricos** de `docs/referencia/normas_catalog.csv`
+(búsqueda por `nombre_corto` con `Grep`). Los `BOE-A-*`/`BOJA-b-*` no son de sedeboja:
+se leen con `/legalize` o `/boe`.
 
 | Norma | ID |
 |---|---|
@@ -52,23 +56,24 @@ Los IDs sedeboja están en la columna "ID técnico" de `docs/normas_catalog.csv`
 
 ```bash
 # Listar índice de secciones disponibles
-python D:/BDDAT/scripts/sedeboja_extract.py {ID} --indice
+python scripts/sedeboja_extract.py {ID} --indice
 
 # Extraer artículos concretos
-python D:/BDDAT/scripts/sedeboja_extract.py {ID} "artículo 1" "artículo 2"
+python scripts/sedeboja_extract.py {ID} "artículo 1" "artículo 2"
 
 # Extraer disposiciones
-python D:/BDDAT/scripts/sedeboja_extract.py {ID} "disposición adicional única"
-python D:/BDDAT/scripts/sedeboja_extract.py {ID} "disposición final primera"
+python scripts/sedeboja_extract.py {ID} "disposición adicional única"
+python scripts/sedeboja_extract.py {ID} "disposición final primera"
 
 # Texto completo (usar con precaución — puede ser largo)
-python D:/BDDAT/scripts/sedeboja_extract.py {ID} --todo
+python scripts/sedeboja_extract.py {ID} --todo
 ```
 
 ### Notas del script
 
 - La salida lleva chars correctos en UTF-8 aunque el terminal Windows los muestre garbled.
-  Si necesitas el texto limpio, redirige a fichero: `python ... > docs_prueba/temp/out.txt`
+  Si necesitas el texto limpio, redirige a fichero (PC): `python ... > docs_prueba/temp/out.txt`.
+  En la nube (Linux) no hace falta.
 - El script hace 2 peticiones HTTP (portlet + iframe): ~14 KB + texto consolidado
 - No necesita sesión, cookies ni JavaScript
 - Si el portlet devuelve "NO_IFRAME", la norma puede no tener versión consolidada en sedeboja
@@ -76,7 +81,10 @@ python D:/BDDAT/scripts/sedeboja_extract.py {ID} --todo
 
 ---
 
-## FLUJO 3 — Playwright (fallback: búsqueda inversa o normas sin div IDs conocidos)
+## FLUJO 3 — Playwright (solo PC; fallback: búsqueda inversa o normas sin div IDs conocidos)
+
+Playwright MCP y windows-mcp **no existen en la nube**: allí, sin este flujo, la búsqueda
+inversa se hace con `--todo` sobre un fichero (`> ~/out.txt`) y `Grep`.
 
 Usar solo cuando el script Python no es suficiente:
 - Búsqueda inversa ("¿qué artículo regula X?") dentro de un texto largo
@@ -161,7 +169,7 @@ Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool 
 
 ## NOTAS
 
-- Los IDs sedeboja (`recursoLegalAbstractoId`) de las normas BDDAT están en la columna "ID técnico" de `docs/normas_catalog.csv`.
+- Los IDs sedeboja (`recursoLegalAbstractoId`) de las normas BDDAT están en la columna `id_tecnico` de `docs/referencia/normas_catalog.csv`.
 - Las normas que tienen versión consolidada en sedeboja: Decretos, Decreto-leyes, Órdenes y algunas Resoluciones que modifican anexos normativos.
 - Si el bloque aparece `(Derogado)`, indicarlo claramente con la norma derogatoria.
 - El navigate de Playwright consume mucho contexto si se lee: **no leer su output nunca**.
