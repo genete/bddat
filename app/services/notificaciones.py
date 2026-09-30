@@ -45,16 +45,19 @@ from datetime import date
 from typing import Optional
 
 from app.models.notificaciones import (  # noqa: F401 — reexportadas
-    FUENTES, RESULTADOS, RESULTADOS_EFECTUADA, TIPOS_JUSTIFICANTE_PREVIO,
+    FUENTES, JUSTIFICANTE_POSTAL_1ER, JUSTIFICANTE_POSTAL_2DO, RESULTADOS,
+    RESULTADOS_EFECTUADA, TIPOS_JUSTIFICANTE_PREVIO,
 )
 from app.services import sellos
 
 # Dan CUMPLIMIENTO del deber de notificar (arts. 43.3, 40.4/42.2, 44): la
 # fecha más antigua entre los vinculados a la tarea, cualquier rol.
 # JUSTIFICANTE_BANDEJA/SIR no están — su "no aplica" sale solo, sin `if canal`.
+# JUSTIFICANTE_SEDE tampoco: la sede no es una notificación (ADR-052 §E).
 JUSTIFICANTES_CUMPLIMIENTO = (
     'JUSTIFICANTE_NOTIFICA_DISPOSICION',
-    'JUSTIFICANTE_POSTAL_1ER',
+    JUSTIFICANTE_POSTAL_1ER,
+    JUSTIFICANTE_POSTAL_2DO,
     'JUSTIFICANTE_NOTIFICA',
     'JUSTIFICANTE_POSTAL',
     'ANUNCIO_PUBLICADO',
@@ -62,13 +65,21 @@ JUSTIFICANTES_CUMPLIMIENTO = (
 
 # Justificantes finales: pueden ser el PRODUCIDO de la tarea y dan EFECTOS
 # frente al interesado si el resultado lo permite (art. 41.7).
+# JUSTIFICANTE_EDICTO es el de la NOTIFICAR que remite el anuncio al BOE
+# (#568, ADR-052 §E).
 JUSTIFICANTES_FINALES = (
     'JUSTIFICANTE_NOTIFICA',
     'JUSTIFICANTE_POSTAL',
     'JUSTIFICANTE_BANDEJA',
     'JUSTIFICANTE_SIR',
     'ANUNCIO_PUBLICADO',
+    'JUSTIFICANTE_EDICTO',
 )
+
+# El edicto (#568, ADR-052 §E): canal de la remisión al BOE y de la
+# notificación cerrada por anuncio sin ningún intento previo (edicto directo).
+CANAL_EDICTO = 'EDICTO'
+ANUNCIO_PUBLICADO = 'ANUNCIO_PUBLICADO'
 
 # `bitacora.detalle.accion` con que `…/notificar` registra la justificación de no
 # poner en sede una notificación postal (ADR-049 §C). No lleva `escape: True`: no
@@ -83,13 +94,20 @@ ACCION_JUSTIFICAR_SEDE = 'JUSTIFICAR_SEDE'
 # Canal implícito de cada tipo de documento de notificación — D6 (ADR-049
 # §D): RECHAZADA solo tiene sentido en NOTIFICA y POSTAL, «en BANDEJA/SIR no
 # consta ningún rechazo» (la recepción misma es la notificación).
+#
+# Lo fija el primer justificante de la notificación misma (ADR-052 §E):
+# `JUSTIFICANTE_SEDE` no está porque no es una notificación, y
+# `ANUNCIO_PUBLICADO` tampoco, porque solo da canal cuando no hay otro
+# justificante (`canal_de_vinculos`): tras intentos postales se queda POSTAL.
 CANAL_POR_TIPO_DOC = {
     'JUSTIFICANTE_NOTIFICA_DISPOSICION': 'NOTIFICA',
     'JUSTIFICANTE_NOTIFICA': 'NOTIFICA',
-    'JUSTIFICANTE_POSTAL_1ER': 'POSTAL',
+    JUSTIFICANTE_POSTAL_1ER: 'POSTAL',
+    JUSTIFICANTE_POSTAL_2DO: 'POSTAL',
     'JUSTIFICANTE_POSTAL': 'POSTAL',
     'JUSTIFICANTE_BANDEJA': 'BANDEJA',
     'JUSTIFICANTE_SIR': 'SIR',
+    'JUSTIFICANTE_EDICTO': CANAL_EDICTO,
 }
 
 _RESULTADOS_POR_CANAL = {
@@ -97,6 +115,7 @@ _RESULTADOS_POR_CANAL = {
     'POSTAL': RESULTADOS,
     'BANDEJA': ('CORRECTA',),
     'SIR': ('CORRECTA',),
+    CANAL_EDICTO: ('CORRECTA',),
 }
 
 
@@ -302,9 +321,42 @@ def notificacion_efectuada(tarea) -> bool:
 
 def canal_de_tipo(codigo: str) -> Optional[str]:
     """Canal implícito de un tipo de documento de notificación, o `None` si
-    el tipo no tiene canal propio (`JUSTIFICANTE_SEDE` no es una notificación;
-    `ANUNCIO_PUBLICADO` es el edicto de #568, su canal es cosa suya — D15)."""
+    el tipo no fija canal por sí solo (`JUSTIFICANTE_SEDE` no es una
+    notificación; `ANUNCIO_PUBLICADO` solo lo fija sin otro justificante,
+    `canal_de_vinculos`)."""
     return CANAL_POR_TIPO_DOC.get(codigo)
+
+
+def canal_de_vinculos(tipos: list, tipo_producido: Optional[str]) -> tuple:
+    """(canal, canales_distintos) de una `NOTIFICAR` según los tipos de sus
+    documentos vinculados (ADR-052 §E).
+
+    Manda el canal del producido si lo tiene; si no, el de los demás
+    justificantes (orden alfabético si hay varios, con `canales_distintos` para
+    avisar). Solo si ninguno da canal y hay `ANUNCIO_PUBLICADO` vinculado, el
+    canal es `EDICTO`: es el edicto directo, sin intento previo. `None` si no
+    hay ningún justificante de la notificación (la sede sola no cuenta)."""
+    canales = sorted({CANAL_POR_TIPO_DOC[t] for t in tipos if t in CANAL_POR_TIPO_DOC})
+    canal_producido = CANAL_POR_TIPO_DOC.get(tipo_producido)
+    if canal_producido:
+        return canal_producido, canales
+    if canales:
+        return canales[0], canales
+    if ANUNCIO_PUBLICADO in tipos:
+        return CANAL_EDICTO, [CANAL_EDICTO]
+    return None, []
+
+
+def intentos_fallidos(tarea) -> int:
+    """Intentos postales fallidos vinculados a la tarea (ADR-052 §C): 2 con
+    `JUSTIFICANTE_POSTAL_2DO` (agotada, procede edicto), 1 con solo
+    `JUSTIFICANTE_POSTAL_1ER`, 0 sin ninguno. Sustituye a
+    `notificaciones.numero_intento`, que el usuario escribía a mano y podía
+    contradecir a los documentos."""
+    tipos = {_tipo_codigo(v.documento) for v in tarea.vinculos_documento}
+    if JUSTIFICANTE_POSTAL_2DO in tipos:
+        return 2
+    return 1 if JUSTIFICANTE_POSTAL_1ER in tipos else 0
 
 
 def fecha_sugerida(tipo_doc_codigo: Optional[str], parseo) -> Optional[date]:

@@ -1,6 +1,6 @@
 # ADR-052 — Notificación edictal: trámite transversal, intentos como documentos y canal EDICTO
 
-**Estado:** Adoptada — sin implementar. La implementa #568. Hecho en diseño (2026-09-30): `ESTRUCTURA_FTT` v6.9 (sección `TRAMITES_TRANSVERSALES`) y `TIPOS_DOCUMENTOS_CATALOGO` (tipos de §B)
+**Estado:** Adoptada — implementada en #568 (2026-09-30): migración `568_notificacion_edictal`; `ESTRUCTURA_FTT` v6.9 (sección `TRAMITES_TRANSVERSALES`); `TIPOS_DOCUMENTOS_CATALOGO`; la acción de §G es `mutaciones_arbol.aplicar_anuncio_edicto` con la ruta `…/nodo/tramite/<id>/edicto` (GET y POST), sin interfaz hasta #929
 **Fecha:** 2026-09-30
 **Enmienda:** ADR-049 (§B tipos nuevos, §C caso POSTAL y `numero_intento`, §D resultado INCORRECTA; D15 de #928, canal del edicto) · ADR-051 («Lo que este ADR no decide», primer punto: el anuncio común del edicto; §C, la clave de `notificacion_fuentes` admite cualquier fase) · ADR-037 (un trámite puede declararse transversal, §A)
 **Origen:** #568, sesión de diseño del 2026-09-30 con Carlos, partiendo del procedimiento legal y no del issue (redactado en junio y superado por ADR-049 y ADR-051)

@@ -50,7 +50,8 @@ class TestCatalogoBaseTrasUpgrade:
         # +11 en #914: 6 de RESOLUCION_DUP + 5 de DATOS_CATASTRALES (ADR-046)
         # -2 en #969: NOTIFICACION_ORGANISMOS y NOTIFICACION_INTERESADOS se funden
         #             en NOTIFICACION (ADR-051 §G)
-        assert TipoTramite.query.count() == 40
+        # +1 en #568: NOTIFICACION_EDICTAL (ADR-052 §A)
+        assert TipoTramite.query.count() == 41
 
     def test_tipos_tareas(self, app_ctx):
         from app.models.tipos_tareas import TipoTarea
@@ -71,7 +72,8 @@ class TestCatalogoBaseTrasUpgrade:
         # +3 en #928 (N1): JUSTIFICANTE_NOTIFICA_DISPOSICION, JUSTIFICANTE_POSTAL_1ER, JUSTIFICANTE_SEDE
         # +1 en #947 (N4): CERT_CUMPLIMIENTO_FASE
         # +1 en #956 (N4b): CERT_CIERRE_FASE
-        assert TipoDocumento.query.count() == 79
+        # +3 en #568: JUSTIFICANTE_POSTAL_2DO, ANUNCIO_EDICTO, JUSTIFICANTE_EDICTO (ADR-052 §B)
+        assert TipoDocumento.query.count() == 82
 
 
 class TestCodigosQueElCodigoEspera:

@@ -1,7 +1,7 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-09-30 (#568 — sección nueva de trámites transversales con `NOTIFICACION_EDICTAL`, diseñado y aún sin migrar; antes, #969 — `RESOLUCION_DUP` notifica desde un solo `NOTIFICACION`: se retiran `NOTIFICACION_ORGANISMOS` y `NOTIFICACION_INTERESADOS`, y el plazo de resolver lo cumple la NOTIFICAR de fuente `SOLICITANTE`; antes, #968 — a quién se notifica en la resolución: remite al catálogo de fuentes `notificacion_fuentes`; antes, #966: PORTAL_TRANSPARENCIA a un solo ELABORAR, y #964: BOE y prensa sin NOTIFICAR, BOP y tablón con su ELABORAR)
+> Última sincronización: 2026-09-30 (#568 — sección nueva de trámites transversales con `NOTIFICACION_EDICTAL`, migración `568_notificacion_edictal`; antes, #969 — `RESOLUCION_DUP` notifica desde un solo `NOTIFICACION`: se retiran `NOTIFICACION_ORGANISMOS` y `NOTIFICACION_INTERESADOS`, y el plazo de resolver lo cumple la NOTIFICAR de fuente `SOLICITANTE`; antes, #968 — a quién se notifica en la resolución: remite al catálogo de fuentes `notificacion_fuentes`; antes, #966: PORTAL_TRANSPARENCIA a un solo ELABORAR, y #964: BOE y prensa sin NOTIFICAR, BOP y tablón con su ELABORAR)
 
 **Versión:** 6.9 | **Fecha:** 2026-09-30
 

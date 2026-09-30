@@ -127,9 +127,9 @@ class TestCrearEsperarPlazo:
         assert 'falta el justificante definitivo' in res.norma_compilada
 
     def test_notificar_incorrecta_bloquea(self, arbol_esftt):
-        """INCORRECTA = caducada / no practicada: queda repetirla o procede
-        edicto, no hay acto consumado del que contar plazo (desde #928 el
-        rechazo es RECHAZADA y sí cuenta como efectuada)."""
+        """INCORRECTA = no practicada: no hay acto consumado del que contar
+        plazo (desde #928 el rechazo es RECHAZADA y sí cuenta como efectuada).
+        Desde #568 (ADR-052 §D) el semáforo la trata como pendiente."""
         from app.services.invariantes_esftt import check_invariante
 
         fase = arbol_esftt.fase('ANALISIS_SOLICITUD')
@@ -139,7 +139,7 @@ class TestCrearEsperarPlazo:
         res = check_invariante('CREAR', 'TAREA', tramite.id, tipo_codigo='ESPERAR_PLAZO')
 
         assert res is not None
-        assert 'la notificación no llegó a practicarse' in res.norma_compilada
+        assert 'falta el justificante de la notificación' in res.norma_compilada
 
     def test_notificar_completa_no_bloquea(self, arbol_esftt):
         from app.services.invariantes_esftt import check_invariante

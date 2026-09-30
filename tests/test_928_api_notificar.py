@@ -74,7 +74,7 @@ def _notif(app, tarea_id):
         # Desde #967 la fila nace con la tarea: lo que cuenta es si está
         # `registrada` (hay justificante con canal o resultado).
         n = Notificacion.query.filter_by(tarea_id=tarea_id).one()
-        return {c: getattr(n, c) for c in ('id', 'canal', 'resultado', 'numero_intento',
+        return {c: getattr(n, c) for c in ('id', 'canal', 'resultado',
                                            'observaciones', 'sede_justificacion',
                                            'documento_id', 'registrada')}
 
@@ -87,7 +87,7 @@ def test_get_payload_nuevo(usuario_supervisor, expediente_seed, montar):
     tarea_id, docs = montar(
         [('RESOLUCION', 'CONSUMIDO'), ('JUSTIFICANTE_POSTAL_1ER', 'CONSUMIDO'),
          ('JUSTIFICANTE_POSTAL', 'PRODUCIDO')],
-        notificacion={'canal': 'POSTAL', 'resultado': 'CORRECTA', 'numero_intento': 2})
+        notificacion={'canal': 'POSTAL', 'resultado': 'CORRECTA'})
 
     r = usuario_supervisor.get(_url(expediente_seed, tarea_id))
 
@@ -200,16 +200,6 @@ def test_patch_correcta_sin_producido_422_e_incorrecta_si(usuario_supervisor, ex
     assert _notif(app, tarea_id)['resultado'] == 'INCORRECTA'
 
 
-def test_patch_intento_2_solo_en_postal(usuario_supervisor, expediente_seed, montar):
-    notifica_id, _ = montar([('JUSTIFICANTE_NOTIFICA', 'PRODUCIDO')], notificacion={'canal': 'NOTIFICA'})
-    postal_id, _ = montar([('JUSTIFICANTE_POSTAL', 'PRODUCIDO')], notificacion={'canal': 'POSTAL'})
-
-    assert usuario_supervisor.patch(_url(expediente_seed, notifica_id),
-                                    json={'numero_intento': 2}).status_code == 422
-    assert usuario_supervisor.patch(_url(expediente_seed, postal_id),
-                                    json={'numero_intento': 2}).status_code == 200
-
-
 def test_patch_sede_justificacion_solo_postal(usuario_supervisor, expediente_seed, montar):
     tarea_id, _ = montar([('JUSTIFICANTE_NOTIFICA', 'PRODUCIDO')], notificacion={'canal': 'NOTIFICA'})
 
@@ -261,13 +251,13 @@ def test_patch_clave_ausente_conserva(usuario_supervisor, expediente_seed, monta
     assert usuario_supervisor.patch(_url(expediente_seed, tarea_id),
                                     json={'observaciones': 'Rechazo expreso'}).status_code == 200
 
-    r = usuario_supervisor.patch(_url(expediente_seed, tarea_id), json={'numero_intento': 2})
+    r = usuario_supervisor.patch(_url(expediente_seed, tarea_id),
+                                 json={'identificador_envio': 'R-1'})
 
     assert r.status_code == 200, r.get_data(as_text=True)
     notif = _notif(app, tarea_id)
     assert notif['resultado'] == 'RECHAZADA'
     assert notif['observaciones'] == 'Rechazo expreso'
-    assert notif['numero_intento'] == 2
 
 
 def test_patch_null_vacia(usuario_supervisor, expediente_seed, montar, app):

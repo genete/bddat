@@ -15,12 +15,20 @@ class NotificacionFuente(db.Model):
     `ck_notificacion_fuentes_fuente`): el catálogo elige y el código
     (`services/destinatarios_notificacion.py`) sabe calcular cada una.
 
-    Sembrada por la migración `968_fuentes_destinatarios`.
+    **Fase vacía = cualquier fase** (#568, ADR-052 §F): para un trámite
+    transversal, cuya fuente no depende de la fase (`NOTIFICACION_EDICTAL` →
+    `BOLETIN`). La pareja exacta (fase, trámite) gana siempre sobre la fila con
+    fase vacía (`destinatarios_notificacion._catalogo`). La unicidad son dos
+    índices parciales: con NULL, una restricción única normal no chocaría.
+
+    Sembrada por las migraciones `968_fuentes_destinatarios` y `568_notificacion_edictal`.
     """
     __tablename__ = 'notificacion_fuentes'
     __table_args__ = (
-        db.UniqueConstraint('tipo_fase_id', 'tipo_tramite_id', 'fuente',
-                            name='uq_notificacion_fuentes'),
+        db.Index('uq_notificacion_fuentes', 'tipo_fase_id', 'tipo_tramite_id', 'fuente',
+                 unique=True, postgresql_where=db.text('tipo_fase_id IS NOT NULL')),
+        db.Index('uq_notificacion_fuentes_cualquier_fase', 'tipo_tramite_id', 'fuente',
+                 unique=True, postgresql_where=db.text('tipo_fase_id IS NULL')),
         db.CheckConstraint(
             'fuente IN (' + ', '.join(f"'{f}'" for f in FUENTES) + ')',
             name='ck_notificacion_fuentes_fuente',
@@ -31,7 +39,8 @@ class NotificacionFuente(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     # Sin prefijo de esquema, como `fases_tramites`: los modelos de tipos se
     # declaran sin `schema` y el ORM no casaría la FK con prefijo.
-    tipo_fase_id = db.Column(db.Integer, db.ForeignKey('tipos_fases.id'), nullable=False)
+    tipo_fase_id = db.Column(db.Integer, db.ForeignKey('tipos_fases.id'), nullable=True,
+                             comment='NULL = cualquier fase (trámite transversal, #568)')
     tipo_tramite_id = db.Column(db.Integer, db.ForeignKey('tipos_tramites.id'), nullable=False)
     fuente = db.Column(db.String(30), nullable=False,
                        comment='Rol a notificar: lista cerrada en código')

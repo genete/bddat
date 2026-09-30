@@ -187,10 +187,8 @@ def _secuencia(codigo_tramite):
 
 
 # Trámites del JSON sin poblar en BD a propósito: la consulta al operador del
-# sistema (#450) y la notificación edictal (#568, diseñada antes de su
-# migración). Al poblarlos, quitarlos de aquí.
-_SOLO_EN_JSON = {'SOLICITUD_INFORME_OPERADOR', 'RECEPCION_INFORME_OPERADOR',
-                 'NOTIFICACION_EDICTAL'}
+# sistema (#450). Al poblarlos, quitarlos de aquí.
+_SOLO_EN_JSON = {'SOLICITUD_INFORME_OPERADOR', 'RECEPCION_INFORME_OPERADOR'}
 
 
 def _secuencias_json():

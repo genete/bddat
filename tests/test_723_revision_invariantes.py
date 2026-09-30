@@ -97,7 +97,6 @@ def _montar_cadena_subsanacion(specs):
             db.session.flush()
             db.session.add(Notificacion(
                 fuente='SOLICITANTE', tarea_id=notificar.id, canal='NOTIFICA',
-                numero_intento=1,
             ))
             db.session.flush()
 

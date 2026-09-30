@@ -1,7 +1,7 @@
 # Modelo de estados-semáforo y decoradores del nodo ESFTT
 
 **Estado:** Vigente
-**Fecha:** 2026-05-30 (actualizado 2026-07-23 — nuevo estado `PENDIENTE_RESULTADO_NOTIFICACION`, ADR-034/#657/#658; 2026-09-23 — `RECHAZADA`, justificantes previos y nuevo estado `PENDIENTE_SEDE`, ADR-049/#928; 2026-09-27 — la fila de `Notificacion` nace con la tarea, ADR-051/#967)
+**Fecha:** 2026-05-30 (actualizado 2026-07-23 — nuevo estado `PENDIENTE_RESULTADO_NOTIFICACION`, ADR-034/#657/#658; 2026-09-23 — `RECHAZADA`, justificantes previos y nuevo estado `PENDIENTE_SEDE`, ADR-049/#928; 2026-09-27 — la fila de `Notificacion` nace con la tarea, ADR-051/#967; 2026-09-30 — la escalada de NOTIFICAR sale de los acuses postales fallidos e INCORRECTA se trata como pendiente, ADR-052/#568)
 **Relacionado:** #500 (vista de árbol), #558 (núcleo unificado), ADR-016, ADR-034, ADR-049,
 `app/services/estado_dominio.py` (núcleo), `app/services/seguimiento.py`,
 mockup `docs/mockups/Mockup_Nodo_Arbol.html`.
@@ -39,8 +39,8 @@ Ordenados por urgencia; la prioridad de §5 es coherente con esta escala (#558).
 
 | Color | Significado |
 |---|---|
-| 🔴 Rojo | Acción del tramitador (incl. notificación agotada → procede boletín) |
-| 🟠 Naranja | Gestión nuestra: cerrar fase / repetir la notificación / puesta a disposición en sede |
+| 🔴 Rojo | Acción del tramitador (incl. notificación agotada → procede edicto en el BOE) |
+| 🟠 Naranja | Gestión nuestra: cerrar fase / segundo intento postal / puesta a disposición en sede |
 | 🟡 Amarillo | Espera interna que no depende del tramitador (firma); paraliza si falta |
 | 🔵 Azul | Espera de un externo ajeno a la administración (destinatario, boletín) |
 | ⚪ Gris | Espera pasiva (plazo legal, respuesta de administrado u organismo) |
@@ -74,24 +74,34 @@ el **único producido**. Requiere el tipo de documento `BORRADOR_FIRMA` (§11). 
 firma lo hace el usuario; se automatizará con scheduler + Playwright (futuro).
 
 ### NOTIFICAR  *(absorbe el azul de la antigua PUBLICAR)*
-Usa el modelo `Notificacion` (`resultado` CORRECTA|RECHAZADA|INCORRECTA|NULL, `numero_intento`
-1|2, este último solo en POSTAL), anclado a `tarea_id` (ADR-034, #657/#658 — corrige ADR-008).
+Usa el modelo `Notificacion` (`resultado` CORRECTA|RECHAZADA|INCORRECTA|NULL), anclado a
+`tarea_id` (ADR-034, #657/#658 — corrige ADR-008), y los documentos de la tarea.
 Desde ADR-051 (#967) la fila nace con la tarea, con su fuente y, antes de vincular nada, su
-destinatario; el primer justificante con canal —previo o final— fija el canal (ADR-049, #928) y
-el resultado lo fija el usuario. Sin destinatario la tarea no admite documentos, así que se
-queda en PENDIENTE_TRAMITAR. "Documento que notificar" son los consumidos que **no** son
-un justificante previo (`documentos_a_notificar`: la puesta a disposición en Notifica, el 1.er
-intento postal y la sede también se vinculan como consumidos, pero no cuentan).
-`RECHAZADA` da la notificación por efectuada igual que `CORRECTA` (art. 41.5).
+destinatario; el primer justificante de la notificación —previo o final— fija el canal
+(ADR-049, #928); la sede no lo fija, y el anuncio publicado solo da `EDICTO` sin otro
+justificante (ADR-052, #568). El resultado lo fija el usuario. Sin destinatario la tarea no
+admite documentos, así que se queda en PENDIENTE_TRAMITAR. "Documento que notificar" son los
+consumidos que **no** son un justificante previo (`documentos_a_notificar`: la puesta a
+disposición en Notifica, los intentos postales fallidos y la sede también se vinculan como
+consumidos, pero no cuentan). `RECHAZADA` da la notificación por efectuada igual que
+`CORRECTA` (art. 41.5).
+
+La escalada en papel sale de los acuses fallidos vinculados (ADR-052 §C; `numero_intento`
+se retiró en #568). **INCORRECTA** sigue siendo admisible, pero la regla lo trata como
+pendiente: no se conoce ningún caso que lo necesite (ADR-052 §D; el porqué, en el docstring
+de `estado_dominio._estado_notificar`).
 | Situación | Estado | Color |
 |---|---|---|
 | sin documento que notificar | PENDIENTE_TRAMITAR | 🔴 |
-| documento presente, fila sin canal (falta el justificante) | PENDIENTE_NOTIFICAR | 🔵 |
+| documento presente, fila sin canal (falta el justificante), o resultado INCORRECTA | PENDIENTE_NOTIFICAR | 🔵 |
+| sin producido, con `JUSTIFICANTE_POSTAL_1ER` (toca el 2.º intento, art. 42.2) | NOTIFICACION_FALLIDA | 🟠 |
+| sin producido, con `JUSTIFICANTE_POSTAL_2DO` (agotada → procede edicto, art. 44) | NOTIFICACION_AGOTADA | 🔴 |
 | fila con canal y `resultado IS NULL`, o CORRECTA/RECHAZADA sin el justificante final producido | PENDIENTE_RESULTADO_NOTIFICACION | 🔵 |
 | CORRECTA/RECHAZADA con producido, POSTAL sin `JUSTIFICANTE_SEDE` ni `sede_justificacion` (art. 42.1) | PENDIENTE_SEDE | 🟠 |
 | CORRECTA/RECHAZADA con producido y sede puesta, justificada o no aplicable | FIN | 🟢 |
-| INCORRECTA, `numero_intento = 1` (no practicada: repetirla) | NOTIFICACION_FALLIDA | 🟠 |
-| INCORRECTA, `numero_intento = 2` (agotada → procede edicto) | NOTIFICACION_AGOTADA | 🔴 |
+
+La notificación agotada se cierra con la copia del anuncio publicado en el BOE que produce el
+trámite `NOTIFICACION_EDICTAL` (ADR-052 §G).
 
 La sede pendiente impide dar el trámite por finalizado (`Tramite.finalizado`), y por tanto
 cerrar la fase sin justificación (el bloqueo es forzable, #723); no impide abrir el
@@ -263,7 +273,7 @@ inicio/fin), en el **footer** (raya superior), simple y sin adornos.
 - **Estado (círculo):** sale del estado-semáforo, que **no** viaja hoy (el árbol manda el
   `estado` de dominio). `services/arbol_expediente.py` deberá computarlo por nodo —mirando
   **tipos** de documento consumidos (ELABORAR → `BORRADOR_FIRMA`) y filas **`Notificacion`**
-  (resultado + `numero_intento`)— y propagar la mayor prioridad a los no-hoja, **reutilizando
+  (resultado) con los acuses postales fallidos (#568)— y propagar la mayor prioridad a los no-hoja, **reutilizando
   `seguimiento.py`** (hecho en #558 vía el núcleo `estado_dominio.py`).
 - **Plazo (barra):** la v1 semántica usa el `estado` de plazo ya disponible. La proporcional
   (diferida) exigirá el progreso en días hábiles + plazo de cada **acto** y de **cursar la
