@@ -37,6 +37,8 @@ REGISTROS_REQUERIDOS: dict = {
         # Traslados de consulta y análisis documental — auditoría 2026-07-04
         'CONSULTA_TRASLADO_ORGANISMO', 'CONSULTA_TRASLADO_TITULAR',
         'ANALISIS_DOCUMENTAL', 'RECEPCION_ALEGACION',
+        # #568 (ADR-052 §G) — la acción de aplicar el anuncio publicado lo busca por código
+        'NOTIFICACION_EDICTAL',
     ],
     'TipoTarea': [
         'ANALIZAR', 'ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO',
@@ -73,6 +75,9 @@ REGISTROS_REQUERIDOS: dict = {
                       # NOTIFICAR los resuelven por código (cumplimiento/efectos/sede)
                       'JUSTIFICANTE_NOTIFICA_DISPOSICION', 'JUSTIFICANTE_POSTAL_1ER',
                       'JUSTIFICANTE_SEDE',
+                      # #568 (ADR-052 §B/§E) — el semáforo, el canal y los certificados
+                      # los resuelven por código
+                      'JUSTIFICANTE_POSTAL_2DO', 'JUSTIFICANTE_EDICTO', 'ANUNCIO_PUBLICADO',
                       # #947 (N4, ADR-049 §F) — cert_cumplimiento_fase lo emite y
                       # sellos lo lee por código
                       'CERT_CUMPLIMIENTO_FASE',
@@ -250,7 +255,7 @@ def pares_con_notificar_sin_fuente() -> set:
         WHERE ta.codigo = 'NOTIFICAR'
           AND NOT EXISTS (
               SELECT 1 FROM notificacion_fuentes nf
-              WHERE nf.tipo_fase_id = ft.tipo_fase_id
+              WHERE (nf.tipo_fase_id = ft.tipo_fase_id OR nf.tipo_fase_id IS NULL)
                 AND nf.tipo_tramite_id = ft.tipo_tramite_id)
     """)).fetchall()
     return {(f, t) for f, t in filas}

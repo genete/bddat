@@ -44,8 +44,11 @@ class TestCreablesTramite:
         fase = arbol_esftt.fase('ANALISIS_SOLICITUD')
         data = _creables_tramite(fase.solicitud.expediente, fase.id)
 
+        # + NOTIFICACION_EDICTAL (#568): transversal, está en fases_tramites de
+        # toda fase que notifica
         assert _codigos(data['canonicos']) == {
             'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_SUBSANACION', 'COMUNICACION_INICIO_ADMISION',
+            'NOTIFICACION_EDICTAL',
         }
 
     def test_traslados_y_separata_no_aparecen_ni_en_canonicos_ni_en_resto(self, arbol_esftt, app_ctx):

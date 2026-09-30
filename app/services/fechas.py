@@ -58,10 +58,12 @@ TIPOS_FECHA_OBLIGATORIA = frozenset({
     'JUSTIFICANTE_NOTIFICA_DISPOSICION',
     'JUSTIFICANTE_NOTIFICA',
     'JUSTIFICANTE_POSTAL_1ER',
+    'JUSTIFICANTE_POSTAL_2DO',
     'JUSTIFICANTE_POSTAL',
     'JUSTIFICANTE_BANDEJA',
     'JUSTIFICANTE_SIR',
     'JUSTIFICANTE_SEDE',
+    'JUSTIFICANTE_EDICTO',
 })
 
 _MENSAJES_FECHA_OBLIGATORIA = {
@@ -99,6 +101,14 @@ _MENSAJES_FECHA_OBLIGATORIA = {
         'Un justificante de puesta a disposición en sede electrónica '
         'necesita fecha administrativa: es la fecha de esa puesta a '
         'disposición.'
+    ),
+    'JUSTIFICANTE_POSTAL_2DO': (
+        'Un acuse del segundo intento de notificación postal necesita fecha '
+        'administrativa: es la fecha de ese intento.'
+    ),
+    'JUSTIFICANTE_EDICTO': (
+        'Un justificante de remisión del anuncio al BOE necesita fecha '
+        'administrativa: es la fecha de remisión.'
     ),
 }
 

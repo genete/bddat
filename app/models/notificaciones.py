@@ -14,8 +14,14 @@ RESULTADOS_EFECTUADA = ('CORRECTA', 'RECHAZADA')
 TIPOS_JUSTIFICANTE_PREVIO = (
     'JUSTIFICANTE_NOTIFICA_DISPOSICION',
     'JUSTIFICANTE_POSTAL_1ER',
+    'JUSTIFICANTE_POSTAL_2DO',
     'JUSTIFICANTE_SEDE',
 )
+
+# Intentos postales fallidos (#568, ADR-052 §B/§C): cuántos hay vinculados es
+# el número de intento, que ya no se guarda. Con los dos, procede el edicto.
+JUSTIFICANTE_POSTAL_1ER = 'JUSTIFICANTE_POSTAL_1ER'
+JUSTIFICANTE_POSTAL_2DO = 'JUSTIFICANTE_POSTAL_2DO'
 
 
 # Fuentes de una notificación (ADR-051 §C): por qué se le notifica al
@@ -40,9 +46,11 @@ class Notificacion(db.Model):
     """Ficha de la tarea NOTIFICAR: a quién se notifica y cómo acabó (ADR-034,
     enmendado por ADR-049 y ADR-051; #657/#658/#928/#967).
 
-    Corrige ADR-008: no es un documento vitaminado 1:1 (ADR-005) — `resultado`,
-    `numero_intento` y `sede_justificacion` son mutables a lo largo de la vida
-    del acto de notificar. `tarea_id` es el ancla real de la fila.
+    Corrige ADR-008: no es un documento vitaminado 1:1 (ADR-005) — `resultado`
+    y `sede_justificacion` son mutables a lo largo de la vida del acto de
+    notificar. `tarea_id` es el ancla real de la fila. El número de intento no
+    se guarda (#568, ADR-052 §C): sale de los justificantes fallidos
+    vinculados (`JUSTIFICANTE_POSTAL_1ER`, `_2DO`).
 
     **Sin fechas** (ADR-049 §G, #928): la del cumplimiento y la de efectos salen
     de `Documento.fecha_administrativa` de los justificantes vinculados a la
@@ -107,15 +115,9 @@ class Notificacion(db.Model):
     canal = db.Column(
         db.String(10),
         nullable=True,
-        comment='NOTIFICA | BANDEJA | SIR | POSTAL. NULL hasta el primer justificante (#712, #967)',
+        comment='NOTIFICA | BANDEJA | SIR | POSTAL | EDICTO. NULL hasta el primer '
+                'justificante de la notificación (#712, #967, #568)',
     )
-
-    numero_intento = db.Column(
-        db.SmallInteger,
-        nullable=False,
-        default=1,
-        comment='1 o 2 — habilita regla LPACAP de dos intentos',
-    )  # solo POSTAL admite 2: ck_notificaciones_intento_postal (928c, D14)
 
     sede_justificacion = db.Column(
         db.Text,

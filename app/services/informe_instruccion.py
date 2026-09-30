@@ -341,6 +341,48 @@ def _nombre_notificar(tarea) -> str:
     return f'{base} (como {ETIQUETA_FUENTE.get(notif.fuente, notif.fuente)})'
 
 
+_CANAL_EN_PROSA = {
+    'NOTIFICA': 'por Notifica',
+    'POSTAL': 'por correo postal',
+    'BANDEJA': 'por BandeJA',
+    'SIR': 'por SIR',
+    'EDICTO': 'por edicto',
+}
+
+
+def _como_se_notifico(tarea) -> str:
+    """Cómo y cuándo se notificó una `NOTIFICAR` terminada (#568, ADR-052 §H):
+    canal y fecha de efectos, de la ficha y de los justificantes. Cerrada con el
+    anuncio publicado, además la fecha del BOE y los intentos fallidos o «sin
+    intento previo». Sin datos (escape sin justificante), solo «efectuada»."""
+    from app.services import notificaciones as notif_svc
+    notif = tarea.notificacion
+    efectos = notif_svc.fecha_efectos(tarea)
+    if notif is None or efectos is None:
+        return 'efectuada'
+    verbo = 'rechazada' if notif.resultado == 'RECHAZADA' else 'efectuada'
+    fecha = efectos.fecha.strftime('%d/%m/%Y')
+    producido = efectos.documento.tipo_doc.codigo if efectos.documento.tipo_doc else None
+    if producido == 'JUSTIFICANTE_EDICTO':
+        return f'anuncio remitido al BOE el {fecha}'
+    if producido != notif_svc.ANUNCIO_PUBLICADO:
+        canal = _CANAL_EN_PROSA.get(notif.canal, f'por {notif.canal}' if notif.canal else '')
+        return f'{verbo} {canal}, con efectos el {fecha}'.replace('  ', ' ')
+    intentos = sorted(
+        v.documento.fecha_administrativa for v in tarea.vinculos_documento
+        if v.documento.tipo_doc is not None
+        and v.documento.tipo_doc.codigo in (notif_svc.JUSTIFICANTE_POSTAL_1ER,
+                                            notif_svc.JUSTIFICANTE_POSTAL_2DO)
+        and v.documento.fecha_administrativa is not None)
+    if intentos:
+        fechas = ' y '.join(f.strftime('%d/%m/%Y') for f in intentos)
+        previo = (f'tras {"dos intentos postales fallidos" if len(intentos) > 1 else "un intento postal fallido"}'
+                  f' ({fechas})')
+    else:
+        previo = 'sin intento previo (interesado desconocido o lugar ignorado)'
+    return f'efectuada por edicto, anuncio en el BOE de {fecha}, {previo}'
+
+
 def _tarea(tarea, escapes: dict) -> tuple[str, Optional[Bloque]]:
     codigo = tarea.tipo_tarea.codigo if tarea.tipo_tarea else None
     nombre = _TAREA_EN_PROSA.get(
@@ -366,7 +408,7 @@ def _tarea(tarea, escapes: dict) -> tuple[str, Optional[Bloque]]:
         # Cada notificación se relata con su destinatario (#968, ADR-051 §E);
         # las demás tareas terminadas no tienen nada que decir: su trámite ya
         # las cuenta.
-        relato = (f'{nombre}: efectuada.',) if codigo == 'NOTIFICAR' else ()
+        relato = (f'{nombre}: {_como_se_notifico(tarea)}.',) if codigo == 'NOTIFICAR' else ()
         if not salvado:
             if not relato:
                 return estado, None

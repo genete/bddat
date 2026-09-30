@@ -547,7 +547,7 @@ class ArbolESFTT:
             from app.models.notificaciones import Notificacion
             solicitante_id = tramite.fase.solicitud.entidad_id
             self.db.session.add(Notificacion(
-                tarea_id=ta.id, fuente='SOLICITANTE', numero_intento=1,
+                tarea_id=ta.id, fuente='SOLICITANTE',
                 entidad_id=solicitante_id, dest_nombre='Destinatario de prueba'))
             self.db.session.flush()
         return ta
@@ -610,23 +610,22 @@ class ArbolESFTT:
         self.db.session.flush()
         return v
 
-    def notificacion(self, tarea, resultado=None, canal='NOTIFICA', numero_intento=None,
+    def notificacion(self, tarea, resultado=None, canal='NOTIFICA',
                      sede_justificacion=None):
         """Rellena la fila de `notificaciones` de la tarea directamente, sin
         pasar por el hook de `editar_tarea`. La fila ya existe desde que nace
         la tarea (#967); si no, se crea con fuente SOLICITANTE. Sin fechas
         (#928): las da la `fecha_administrativa` de los justificantes que
-        vincule el test."""
+        vincule el test; tampoco número de intento (#568): lo dan los
+        `JUSTIFICANTE_POSTAL_1ER`/`_2DO` vinculados."""
         from app.models.notificaciones import Notificacion
         n = Notificacion.query.filter_by(tarea_id=tarea.id).first()
         if n is None:
-            n = Notificacion(tarea_id=tarea.id, fuente='SOLICITANTE', numero_intento=1)
+            n = Notificacion(tarea_id=tarea.id, fuente='SOLICITANTE')
             self.db.session.add(n)
         n.resultado = resultado
         n.canal = canal
         n.sede_justificacion = sede_justificacion
-        if numero_intento is not None:
-            n.numero_intento = numero_intento
         self.db.session.flush()
         return n
 

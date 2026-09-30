@@ -2287,7 +2287,8 @@ def _notificacion_json(notif: Notificacion) -> dict:
         'canal': notif.canal,
         'identificador_envio': notif.identificador_envio,
         'resultado': notif.resultado,
-        'numero_intento': notif.numero_intento,
+        # Sale de los justificantes fallidos vinculados, no se guarda (#568, ADR-052 §C)
+        'intentos_fallidos': notif_svc.intentos_fallidos(notif.tarea),
         'observaciones': notif.observaciones,
         'documento_id': notif.documento_id,
         'sede_justificacion': notif.sede_justificacion,
@@ -2401,7 +2402,7 @@ def patch_notificar(expediente_id, tarea_id):
 
     Body JSON, todas las claves opcionales con la semántica de `leer_json`
     (ausente conserva; `null` vacía — #832/#834): `resultado`,
-    `numero_intento`, `observaciones`, `identificador_envio`,
+    `observaciones`, `identificador_envio`,
     `sede_justificacion`, `documento_id`, `notificacion_id`.
 
     - `documento_id` (#712, acto 3): atajo para vincular ese documento del pool
@@ -2447,7 +2448,12 @@ def patch_notificar(expediente_id, tarea_id):
                          '(Notifica, postal, bandeja, SIR o anuncio publicado). Un '
                          'justificante previo se vincula como consumido.',
             }), 422
-    canal_doc = notif_svc.canal_de_tipo(doc.tipo_doc.codigo) if doc and doc.tipo_doc else None
+    tipo_doc = doc.tipo_doc.codigo if doc and doc.tipo_doc else None
+    canal_doc = notif_svc.canal_de_tipo(tipo_doc) if tipo_doc else None
+    if (canal_doc is None and tipo_doc == notif_svc.ANUNCIO_PUBLICADO
+            and (notif is None or notif.canal is None)):
+        # Edicto directo: el anuncio es el único justificante (#568, ADR-052 §E)
+        canal_doc = notif_svc.CANAL_EDICTO
 
     if (notif is None or notif.canal is None) and canal_doc is None:
         return jsonify({
@@ -2459,7 +2465,7 @@ def patch_notificar(expediente_id, tarea_id):
     ejecutada = doc is not None or tarea.ejecutada
 
     # --- Campos: leer_json (ausente conserva, null vacía) y validar ---
-    actual = notif or Notificacion(numero_intento=1)
+    actual = notif or Notificacion()
     resultado = leer_json(data, 'resultado', actual.resultado)
     if resultado is not None:
         validos = notif_svc.resultados_validos(canal)
@@ -2472,14 +2478,6 @@ def patch_notificar(expediente_id, tarea_id):
                 'error': f'Un resultado {resultado} exige el justificante final vinculado '
                          'como producido de la tarea',
             }), 422
-
-    numero_intento = leer_json(data, 'numero_intento', actual.numero_intento)
-    intentos_validos = (1, 2) if canal == 'POSTAL' else (1,)
-    if numero_intento not in intentos_validos:
-        return jsonify({
-            'error': 'numero_intento debe ser 1 o 2' if canal == 'POSTAL'
-                     else f'numero_intento solo puede ser 1 en el canal {canal}',
-        }), 422
 
     observaciones = (leer_json(data, 'observaciones', actual.observaciones) or '').strip() or None
 
@@ -2517,7 +2515,6 @@ def patch_notificar(expediente_id, tarea_id):
 
     sede_cambia = sede_justificacion != notif.sede_justificacion
     notif.resultado = resultado
-    notif.numero_intento = numero_intento
     notif.observaciones = observaciones
     notif.identificador_envio = identificador_envio
     notif.sede_justificacion = sede_justificacion
@@ -2664,6 +2661,59 @@ def post_anadir_notificaciones_que_faltan(expediente_id, tramite_id):
         return jsonify(cuerpo), 422
     cuerpo['estado'] = _notificaciones_tramite_json(tramite)
     return jsonify(cuerpo), 200
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tramite/<int:tramite_id>/edicto',
+              methods=['GET', 'POST'])
+@login_required
+def edicto_aplicar_anuncio(expediente_id, tramite_id):
+    """
+    .../nodo/tramite/<id>/edicto — aplicar el anuncio publicado de un
+    `NOTIFICACION_EDICTAL` a las notificaciones que cierra (#568, ADR-052 §G).
+    Sin interfaz hasta #929.
+
+    GET: el anuncio (si ya está) y las `NOTIFICAR` de la fase que lo admiten
+    (postales agotadas o sin ningún justificante). POST `{"tareas_ids": [..]}`:
+    cierra esas notificaciones con una copia del anuncio; `ids` = las cerradas.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    accion = 'gestionar_tarea' if request.method == 'POST' else 'acceder'
+    if verificar_acceso_expediente(expediente, accion):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+    try:
+        tramite = _resolver_tramite(expediente, tramite_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    if tramite.tipo_tramite.codigo != svc.TRAMITE_EDICTAL:
+        return jsonify({'error': f'El trámite no es {svc.TRAMITE_EDICTAL}'}), 422
+
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        ids = data.get('tareas_ids')
+        if not isinstance(ids, list) or not all(isinstance(i, int) for i in ids):
+            return jsonify({'error': 'tareas_ids debe ser una lista de ids de tarea'}), 422
+        res = svc.aplicar_anuncio_edicto(tramite, ids)
+        if res.bloqueo:
+            return jsonify({'error': res.bloqueo.motivo or res.bloqueo.norma_compilada,
+                            'ids': res.ids}), 422
+        if not res.ok:
+            return jsonify({'error': res.error, 'ids': res.ids}), 422
+        return jsonify({'ok': True, 'ids': res.ids}), 200
+
+    anuncio = svc.anuncio_publicado_edicto(tramite)
+    return jsonify({
+        'anuncio': {
+            'id': anuncio.id, 'nombre': _nombre_documento(anuncio),
+            'fecha_administrativa': anuncio.fecha_administrativa.isoformat()
+                if anuncio.fecha_administrativa else None,
+        } if anuncio else None,
+        'notificaciones': [
+            {'tarea_id': ta.id, 'tramite_id': ta.tramite_id,
+             'intentos_fallidos': notif_svc.intentos_fallidos(ta),
+             'destinatario': _destinatario_json(ta.notificacion) if ta.notificacion else None}
+            for ta in svc.notificaciones_edictables(tramite)
+        ],
+    }), 200
 
 
 @api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/notificar/parsear_documento',

@@ -25,7 +25,7 @@ from app.services.notificaciones import (
 )
 
 
-def _montar_notificar(arbol_esftt, *, vinculos, resultado=None, canal='NOTIFICA', numero_intento=None,
+def _montar_notificar(arbol_esftt, *, vinculos, resultado=None, canal='NOTIFICA',
                       sede_justificacion=None):
     """Tarea NOTIFICAR real con los documentos de `vinculos` —lista de
     (codigo_tipo, rol, fecha)— vinculados con ese rol. `resultado=None` deja
@@ -41,10 +41,8 @@ def _montar_notificar(arbol_esftt, *, vinculos, resultado=None, canal='NOTIFICA'
         arbol_esftt.vincular(tarea, doc, rol)
 
     if resultado is not None:
-        kwargs = {'canal': canal, 'sede_justificacion': sede_justificacion}
-        if numero_intento is not None:
-            kwargs['numero_intento'] = numero_intento
-        arbol_esftt.notificacion(tarea, resultado=resultado, **kwargs)
+        arbol_esftt.notificacion(tarea, resultado=resultado, canal=canal,
+                                 sede_justificacion=sede_justificacion)
 
     return tarea
 
@@ -123,7 +121,7 @@ def test_postal_primer_intento_fallido_segundo_correcto(app_ctx, arbol_esftt):
     tarea = _montar_notificar(arbol_esftt, vinculos=[
         ('JUSTIFICANTE_POSTAL_1ER', 'CONSUMIDO', f_1er),
         ('JUSTIFICANTE_POSTAL', 'PRODUCIDO', f_postal),
-    ], resultado='CORRECTA', canal='POSTAL', numero_intento=2)
+    ], resultado='CORRECTA', canal='POSTAL')
 
     cumplimiento = fecha_cumplimiento(tarea)
     efectos = fecha_efectos(tarea)
@@ -133,12 +131,14 @@ def test_postal_primer_intento_fallido_segundo_correcto(app_ctx, arbol_esftt):
 
 
 def test_postal_dos_fallidos_antes_del_edicto(app_ctx, arbol_esftt):
-    """Dos intentos postales fallidos: hasta que se publica el anuncio,
-    `resultado` sigue INCORRECTA y no hay efectos (D1)."""
+    """Dos intentos postales fallidos: hasta que se publica el anuncio no hay
+    producido ni efectos; los intentos los dicen los acuses (#568, ADR-052 §C)."""
     f_1er = _fecha(30)
     tarea = _montar_notificar(arbol_esftt, vinculos=[
         ('JUSTIFICANTE_POSTAL_1ER', 'CONSUMIDO', f_1er),
-    ], resultado='INCORRECTA', canal='POSTAL', numero_intento=2)
+        ('JUSTIFICANTE_POSTAL_2DO', 'CONSUMIDO', _fecha(28)),
+    ], resultado=None)
+    arbol_esftt.notificacion(tarea, resultado=None, canal='POSTAL')
 
     cumplimiento = fecha_cumplimiento(tarea)
     assert cumplimiento.fecha == f_1er
@@ -152,8 +152,9 @@ def test_postal_dos_fallidos_mas_edicto(app_ctx, arbol_esftt):
     f_1er, f_anuncio = _fecha(30), _fecha(2)
     tarea = _montar_notificar(arbol_esftt, vinculos=[
         ('JUSTIFICANTE_POSTAL_1ER', 'CONSUMIDO', f_1er),
+        ('JUSTIFICANTE_POSTAL_2DO', 'CONSUMIDO', _fecha(28)),
         ('ANUNCIO_PUBLICADO', 'PRODUCIDO', f_anuncio),
-    ], resultado='CORRECTA', canal='POSTAL', numero_intento=2)
+    ], resultado='CORRECTA', canal='POSTAL')
 
     cumplimiento = fecha_cumplimiento(tarea)
     efectos = fecha_efectos(tarea)
@@ -164,13 +165,12 @@ def test_postal_dos_fallidos_mas_edicto(app_ctx, arbol_esftt):
 
 
 def test_edicto_directo(app_ctx, arbol_esftt):
-    """Sin fila de `notificaciones` sin canal (CHECK actual: NOTIFICA,
-    BANDEJA, SIR, POSTAL): el test la fabrica con POSTAL — qué canal lleva
-    de verdad esta fila es de #568 (D15); el servicio no lee `canal`."""
+    """Sin intento previo: el anuncio es el único justificante y da canal
+    EDICTO (#568, ADR-052 §E)."""
     f_anuncio = _fecha(1)
     tarea = _montar_notificar(arbol_esftt, vinculos=[
         ('ANUNCIO_PUBLICADO', 'PRODUCIDO', f_anuncio),
-    ], resultado='CORRECTA', canal='POSTAL')
+    ], resultado='CORRECTA', canal='EDICTO')
 
     cumplimiento = fecha_cumplimiento(tarea)
     efectos = fecha_efectos(tarea)
@@ -186,7 +186,7 @@ def test_falta_el_acuse_del_primero(app_ctx, arbol_esftt):
     f_postal = _fecha(4)
     tarea = _montar_notificar(arbol_esftt, vinculos=[
         ('JUSTIFICANTE_POSTAL', 'PRODUCIDO', f_postal),
-    ], resultado='CORRECTA', canal='POSTAL', numero_intento=2)
+    ], resultado='CORRECTA', canal='POSTAL')
 
     cumplimiento = fecha_cumplimiento(tarea)
     efectos = fecha_efectos(tarea)

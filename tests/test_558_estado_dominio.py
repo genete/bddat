@@ -21,8 +21,8 @@ def _doc(tipo_codigo=None):
     return SimpleNamespace(tipo_doc=tipo_doc)
 
 
-def _notif(resultado, numero_intento=1, canal='NOTIFICA', sede_justificacion=None):
-    return SimpleNamespace(resultado=resultado, numero_intento=numero_intento, canal=canal,
+def _notif(resultado, canal='NOTIFICA', sede_justificacion=None):
+    return SimpleNamespace(resultado=resultado, canal=canal,
                            sede_justificacion=sede_justificacion,
                            registrada=canal is not None or resultado is not None)
 
@@ -139,13 +139,20 @@ def test_notificar_postal_sede_puesta_o_justificada_fin():
     assert ed.estado_tarea(puesta) == 'FIN'
     assert ed.estado_tarea(justificada) == 'FIN'
 
-def test_notificar_incorrecta_1_fallida():
-    t = _tarea('NOTIFICAR', consumidos=[_doc()], producido=_doc(), notificacion=_notif('INCORRECTA', 1))
-    assert ed.estado_tarea(t) == 'NOTIFICACION_FALLIDA'
+def test_notificar_intentos_postales_escalan_por_documentos():
+    """La escalada en papel sale de los acuses fallidos vinculados, no de un
+    número tecleado (#568, ADR-052 §C).
 
-def test_notificar_incorrecta_2_agotada():
-    t = _tarea('NOTIFICAR', consumidos=[_doc()], producido=_doc(), notificacion=_notif('INCORRECTA', 2))
-    assert ed.estado_tarea(t) == 'NOTIFICACION_AGOTADA'
+    Fallo silencioso que evita: con el 2.º acuse fallido vinculado, la
+    notificación seguiría en naranja («toca repetir») en vez de rojo («procede
+    edicto»), y nadie se enteraría de que hay que ir al BOE."""
+    uno = _tarea('NOTIFICAR', consumidos=[_doc(), _doc('JUSTIFICANTE_POSTAL_1ER')],
+                 notificacion=_notif(None, canal='POSTAL'))
+    dos = _tarea('NOTIFICAR', consumidos=[_doc(), _doc('JUSTIFICANTE_POSTAL_1ER'),
+                                          _doc('JUSTIFICANTE_POSTAL_2DO')],
+                 notificacion=_notif(None, canal='POSTAL'))
+    assert ed.estado_tarea(uno) == 'NOTIFICACION_FALLIDA'
+    assert ed.estado_tarea(dos) == 'NOTIFICACION_AGOTADA'
 
 
 # ---------------------------------------------------------------------------

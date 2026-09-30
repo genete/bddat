@@ -192,14 +192,16 @@ _SOLO_EN_JSON = {'SOLICITUD_INFORME_OPERADOR', 'RECEPCION_INFORME_OPERADOR'}
 
 
 def _secuencias_json():
-    """{codigo de trámite: {secuencia, …}} de `tareas_indicativas`, fase a fase."""
+    """{codigo de trámite: {secuencia, …}} de `tareas_indicativas`, fase a fase
+    y de los trámites transversales (#568), que se declaran una sola vez."""
     ruta = Path(__file__).resolve().parents[1] / 'docs' / 'referencia' / 'ESTRUCTURA_FTT.json'
     datos = json.loads(ruta.read_text(encoding='utf-8'))
+    tramites = [t for fase in datos['FASES'] for t in fase.get('tramites', [])]
+    tramites += datos.get('TRAMITES_TRANSVERSALES', [])
     por_tramite = {}
-    for fase in datos['FASES']:
-        for tramite in fase.get('tramites', []):
-            secuencia = tuple(tramite.get('tareas_indicativas') or ())
-            por_tramite.setdefault(tramite['codigo'], set()).add(secuencia)
+    for tramite in tramites:
+        secuencia = tuple(tramite.get('tareas_indicativas') or ())
+        por_tramite.setdefault(tramite['codigo'], set()).add(secuencia)
     return por_tramite
 
 

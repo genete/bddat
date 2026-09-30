@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "version": "6.8",
+    "version": "6.9",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-09-29",
+    "fecha_actualizacion": "2026-09-30",
     "ref_diseño": [
       "docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md",
       "docs/referencia/DISEÑO_CONSULTAS_ORGANISMOS.md",
@@ -602,6 +602,18 @@
           "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Sin PUBLICACION: a diferencia de RESOLUCION_AAP, el art. 131.8 RD 1955/2000 solo exige notificar, no publicar (#918). A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. La NOTIFICAR de fuente SOLICITANTE de este trámite es la notificación al solicitante: de ella depende el cumplimiento del plazo de resolver del acto AAC (arts. 21.2 y 40.4 LPACAP; ADR-049 §E, #930)."
         }
       ]
+    }
+  ],
+  "TRAMITES_TRANSVERSALES": [
+    {
+      "codigo": "NOTIFICACION_EDICTAL",
+      "nombre": "Notificación edictal",
+      "descripcion": "Notificación por anuncio en el BOE a interesados desconocidos, de lugar ignorado o cuya notificación, intentada, no se pudo practicar (art. 44 y DA 3.ª LPACAP; art. 42.2 para los dos intentos en papel)",
+      "fases": ["ANALISIS_SOLICITUD", "DATOS_CATASTRALES", "CONSULTAS", "CONSULTA_MINISTERIO", "INFORMACION_PUBLICA", "COMPATIBILIDAD_AMBIENTAL", "FIGURA_AMBIENTAL_EXTERNA", "AAU_AAUS_INTEGRADA", "RECONOCIMIENTO_INTERESADO", "RESOLUCION", "RESOLUCION_AAP", "RESOLUCION_AAC", "RESOLUCION_DUP"],
+      "cardinalidad_maxima": null,
+      "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+      "patron": "C",
+      "nota": "Transversal: vive en cualquier fase cuyas notificaciones fallen. Se crea a mano, sin regla de motor. Un solo anuncio acumula a todos los interesados que no se pudieron notificar. ELABORAR consume lo que se notifica a cada interesado y produce ANUNCIO_EDICTO; NOTIFICAR lo remite al BOE por su plataforma (fuente BOLETIN) y produce JUSTIFICANTE_EDICTO; ESPERAR_PLAZO produce ANUNCIO_PUBLICADO (publicación en el BOE), sin plazo posterior: el art. 44 no lo fija. Cada NOTIFICAR original se cierra con su copia de ANUNCIO_PUBLICADO como producido (una fila Documento por NOTIFICAR sobre el mismo fichero); sus justificantes fallidos (JUSTIFICANTE_POSTAL_1ER, JUSTIFICANTE_POSTAL_2DO) se quedan en ella como consumidos. BOJA potestativo (art. 44 p. 2): NOTIFICAR + ESPERAR_PLAZO adicionales en el mismo trámite, fuera de las tareas indicativas (#568)."
     }
   ]
 }

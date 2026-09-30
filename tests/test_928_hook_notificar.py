@@ -83,6 +83,7 @@ def _fila(tarea):
 @pytest.mark.parametrize('codigo,rol,canal', [
     ('JUSTIFICANTE_NOTIFICA_DISPOSICION', 'CONSUMIDO', 'NOTIFICA'),
     ('JUSTIFICANTE_POSTAL_1ER', 'CONSUMIDO', 'POSTAL'),
+    ('JUSTIFICANTE_POSTAL_2DO', 'CONSUMIDO', 'POSTAL'),     # #568
     ('JUSTIFICANTE_NOTIFICA', 'PRODUCIDO', 'NOTIFICA'),
     ('JUSTIFICANTE_POSTAL', 'PRODUCIDO', 'POSTAL'),
     ('JUSTIFICANTE_BANDEJA', 'PRODUCIDO', 'BANDEJA'),
@@ -103,27 +104,40 @@ def test_hook_registra_sin_resultado_con_cada_tipo_con_canal(
     assert notif.registrada
     assert notif.canal == canal
     assert notif.resultado is None
-    assert notif.numero_intento == 1
     # documento_id sigue al PRODUCIDO; un previo consumido no lo fija.
     assert notif.documento_id == (doc.id if rol == 'PRODUCIDO' else None)
 
 
-@pytest.mark.parametrize('codigo,rol', [
-    ('JUSTIFICANTE_SEDE', 'CONSUMIDO'),
-    ('ANUNCIO_PUBLICADO', 'PRODUCIDO'),
-])
-def test_hook_sede_y_anuncio_no_registran(con_usuario, arbol_aislado, fs_tmp, codigo, rol):
-    """La sede no es una notificación; el edicto es de #568 (D15): ninguno fija
-    el canal de la fila."""
+def test_hook_sede_no_registra(con_usuario, arbol_aislado, fs_tmp):
+    """La sede no es una notificación (ADR-052 §E): no fija el canal; lo fija
+    el primer acuse postal."""
     tarea = _tarea_notificar(arbol_aislado)
-    doc = _doc(tarea, codigo, fs_tmp)
+    doc = _doc(tarea, 'JUSTIFICANTE_SEDE', fs_tmp)
 
-    res = _guardar(tarea, consumidos=[doc] if rol == 'CONSUMIDO' else [],
-                   producido=doc if rol == 'PRODUCIDO' else None)
+    res = _guardar(tarea, consumidos=[doc])
 
     assert res.ok is True, res.error
     assert _fila(tarea).canal is None
     assert not _fila(tarea).registrada
+
+
+def test_hook_anuncio_solo_es_edicto_directo(con_usuario, arbol_aislado, fs_tmp):
+    """Sin ningún intento previo, el anuncio publicado da canal EDICTO (#568,
+    ADR-052 §E); tras intentos postales el canal se queda POSTAL.
+
+    Fallo silencioso que evita: el edicto directo sin canal queda «no
+    registrado» para siempre, en azul, sin poder poner resultado."""
+    directo = _tarea_notificar(arbol_aislado)
+    anuncio = _doc(directo, 'ANUNCIO_PUBLICADO', fs_tmp)
+    assert _guardar(directo, producido=anuncio).ok
+    assert _fila(directo).canal == 'EDICTO'
+
+    tras_intentos = _tarea_notificar(arbol_aislado)
+    primero = _doc(tras_intentos, 'JUSTIFICANTE_POSTAL_1ER', fs_tmp)
+    segundo = _doc(tras_intentos, 'JUSTIFICANTE_POSTAL_2DO', fs_tmp)
+    copia = _doc(tras_intentos, 'ANUNCIO_PUBLICADO', fs_tmp)
+    assert _guardar(tras_intentos, consumidos=[primero, segundo], producido=copia).ok
+    assert _fila(tras_intentos).canal == 'POSTAL'
 
 
 def test_hook_previo_y_final_mismo_canal_una_sola_fila(con_usuario, arbol_aislado, fs_tmp):
@@ -160,8 +174,7 @@ def test_desvincular_ultimo_justificante_sin_resultado_vacia_la_fila(
     assert res.ok is True, res.error
     notif = _fila(tarea)
     assert not notif.registrada
-    assert (notif.canal, notif.documento_id, notif.identificador_envio,
-            notif.numero_intento) == (None, None, None, 1)
+    assert (notif.canal, notif.documento_id, notif.identificador_envio) == (None, None, None)
     assert notif.fuente == 'SOLICITANTE'           # la fuente no cambia nunca
 
 
@@ -235,7 +248,7 @@ def test_final_vinculado_como_consumido_avisa(con_usuario, arbol_aislado, fs_tmp
 
 
 def test_anuncio_consumido_no_avisa(con_usuario, arbol_aislado, fs_tmp):
-    """La copia intermedia del anuncio se consume (#568): no es rol incoherente."""
+    """El anuncio publicado lo consumen las esperas de IP: no es rol incoherente."""
     tarea = _tarea_notificar(arbol_aislado)
     doc = _doc(tarea, 'ANUNCIO_PUBLICADO', fs_tmp)
 
@@ -257,36 +270,9 @@ def test_canales_distintos_entre_previos_avisa(con_usuario, arbol_aislado, fs_tm
     assert _ultima_advertencia_bitacora(tarea.id) is not None
 
 
-def test_cambio_de_postal_a_otro_canal_normaliza_el_intento(con_usuario, arbol_aislado, fs_tmp):
-    """ck_notificaciones_intento_postal (D14): fuera de POSTAL, intento 1."""
-    tarea = _tarea_notificar(arbol_aislado)
-    primer_intento = _doc(tarea, 'JUSTIFICANTE_POSTAL_1ER', fs_tmp)
-    assert _guardar(tarea, consumidos=[primer_intento]).ok
-    notif = _fila(tarea)
-    notif.numero_intento = 2
-    db.session.flush()
-    final = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', fs_tmp)
-
-    res = _guardar(tarea, consumidos=[primer_intento], producido=final)
-
-    assert res.ok is True, res.error
-    db.session.refresh(notif)
-    assert notif.canal == 'NOTIFICA'
-    assert notif.numero_intento == 1
-
-
 # ---------------------------------------------------------------------------
 # CHECKs de 928c
 # ---------------------------------------------------------------------------
-
-def test_check_intento_2_solo_en_postal(app_ctx, arbol_esftt):
-    from sqlalchemy.exc import IntegrityError
-    fase = arbol_esftt.fase('ANALISIS_SOLICITUD')
-    tarea = arbol_esftt.tarea(arbol_esftt.tramite(fase, 'NOTIFICACION'), 'NOTIFICAR')
-    with pytest.raises(IntegrityError):
-        with db.session.begin_nested():
-            arbol_esftt.notificacion(tarea, canal='NOTIFICA', numero_intento=2)
-
 
 def test_check_resultado_admite_rechazada(app_ctx, arbol_esftt):
     fase = arbol_esftt.fase('ANALISIS_SOLICITUD')
@@ -447,7 +433,7 @@ def _anadir_notificar_completa(arbol, fase):
                                           fecha=_hoy()), 'CONSUMIDO')
     arbol.vincular(tarea, arbol.documento(exp_id, 'JUSTIFICANTE_POSTAL', f'{tarea.id}-fin',
                                           fecha=_hoy()), 'PRODUCIDO')
-    arbol.notificacion(tarea, resultado='CORRECTA', canal='POSTAL', numero_intento=2)
+    arbol.notificacion(tarea, resultado='CORRECTA', canal='POSTAL')
 
 
 @pytest.mark.parametrize('ruta', ['construir_arbol', 'construir_arbol_solicitud'])

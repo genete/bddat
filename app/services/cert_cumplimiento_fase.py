@@ -71,10 +71,11 @@ ACCION_DESHACER = 'DESHACER_CERT_CUMPLIMIENTO_FASE'
 
 # Lo que el técnico lee del canal de cada justificante de cumplimiento. El canal
 # es implícito en el tipo (`notificaciones.CANAL_POR_TIPO_DOC`); el anuncio del
-# edicto no tiene canal propio (#568).
+# edicto directo da EDICTO (#568, ADR-052 §E).
 _CANAL_LEGIBLE = {
     'NOTIFICA': 'Notifica (electrónica)',
     'POSTAL': 'Correo postal',
+    'EDICTO': 'Edicto en el BOE',
 }
 
 

@@ -17,7 +17,7 @@ cada vista (contador/nota/relabel de seguimiento; serialización del árbol).
 
 Unifica la deuda histórica `seguimiento.py`↔`estado_semaforo.py` (MODELO §10, #558):
 vocabulario fino (REDACTAR/FIRMA), escalada de notificar (🔵→🟠→🔴, derivada de
-`Notificacion`) y un único orden de prioridad canónico, coherente con el color
+los intentos postales fallidos vinculados desde #568) y un único orden de prioridad canónico, coherente con el color
 (🔴 > 🟠 > 🟡 > 🔵 > ⚪ > 🟢).
 
 CONTRATO de las funciones contenedor: devuelven `(estado, propio)`.
@@ -32,7 +32,7 @@ from __future__ import annotations
 from typing import Optional
 
 from app.services.notificaciones import (
-    RESULTADOS_EFECTUADA, documentos_a_notificar, estado_sede,
+    RESULTADOS_EFECTUADA, documentos_a_notificar, estado_sede, intentos_fallidos,
 )
 
 # --- Color por estado (MODELO §2; el front mapea nombre → paleta JdA) ---
@@ -59,9 +59,9 @@ PRIORIDAD: dict[str, int] = {
     'PENDIENTE_TRAMITAR':               1,   # 🔴 trabajo del tramitador
     'PENDIENTE_ESTUDIO':                2,   # 🔴 (analizar · decidir resultado de fase finalizadora)
     'PENDIENTE_REDACTAR':               3,   # 🔴
-    'NOTIFICACION_AGOTADA':             4,   # 🔴 procede publicación en boletín
+    'NOTIFICACION_AGOTADA':             4,   # 🔴 procede edicto en el BOE (#568)
     'PENDIENTE_CERRAR':                 5,   # 🟠 nuestra gestión (formalizar cierre de fase)
-    'NOTIFICACION_FALLIDA':             6,   # 🟠 notificación no practicada: repetirla
+    'NOTIFICACION_FALLIDA':             6,   # 🟠 1.er intento en papel fallido: toca el 2.º
     'PENDIENTE_SEDE':                   7,   # 🟠 falta la puesta a disposición en sede (art. 42.1, #928)
     'PENDIENTE_FIRMA':                  8,   # 🟡 no depende del tramitador, pero paraliza si falta
     'PENDIENTE_NOTIFICAR':              9,   # 🔵 falta el justificante de la notificación
@@ -90,10 +90,12 @@ MOTIVO: dict[str, str] = {
     'PENDIENTE_FIRMA':                  'el documento está pendiente de firma',
     'PENDIENTE_NOTIFICAR':              'falta el justificante de la notificación',
     'PENDIENTE_RESULTADO_NOTIFICACION': 'falta el justificante definitivo de la notificación',
-    'NOTIFICACION_FALLIDA':             'la notificación no llegó a practicarse; queda repetirla',
+    'NOTIFICACION_FALLIDA':             'el primer intento de notificación en papel falló; '
+                                        'queda el segundo (art. 42.2 LPACAP)',
     'PENDIENTE_SEDE':                   'falta poner a disposición del destinatario la '
                                         'notificación en la sede electrónica (art. 42.1 LPACAP)',
-    'NOTIFICACION_AGOTADA':             'la notificación se agotó sin éxito',
+    'NOTIFICACION_AGOTADA':             'los dos intentos en papel fallaron; procede la '
+                                        'notificación edictal (art. 44 LPACAP)',
     'PENDIENTE_PLAZOS':                 'está a la espera de que venza un plazo',
 }
 
@@ -161,29 +163,53 @@ def estado_tarea(tarea, plazo: Optional[dict] = None) -> str:
 
 
 def _estado_notificar(tarea) -> str:
-    """NOTIFICAR (§3): usa el modelo Notificacion (resultado + numero_intento), anclado
-    a la tarea (ADR-034) — se lee vía `tarea.notificacion`. La fila nace con la
-    tarea (#967); hay justificante cuando está `registrada` (#928: el primero con
-    canal, previo o final, fija el canal).
+    """NOTIFICAR (§3): lee la ficha Notificacion (resultado), anclada a la tarea
+    (ADR-034) vía `tarea.notificacion`, y sus documentos. La fila nace con la
+    tarea (#967); hay justificante cuando está `registrada` (#928: el primero de
+    la notificación, previo o final, fija el canal; la sede no, #568).
 
     "Hay algo que notificar" son los `documentos_a_notificar`, no todos los
     consumidos: un justificante previo solo no cuenta (#928 N1 §8). RECHAZADA da
     la notificación por efectuada igual que CORRECTA (art. 41.5); una vez
     efectuada, la sede pendiente (POSTAL, art. 42.1) la deja en PENDIENTE_SEDE.
+
+    La escalada en papel sale de los intentos fallidos vinculados, sin producido
+    (#568, ADR-052 §C): `JUSTIFICANTE_POSTAL_1ER` → 🟠 toca el 2.º intento;
+    `JUSTIFICANTE_POSTAL_2DO` → 🔴 agotada, procede edicto (art. 42.2 → 44).
+
+    INCORRECTA sigue siendo un resultado admisible (CHECK, resultados_validos,
+    propuesta del parser para «Caducada»), pero esta regla no lo distingue: se
+    trata como pendiente (PENDIENTE_NOTIFICAR), sin efectos. Con lo decidido en
+    #568 no se conoce ningún caso que lo necesite:
+      - POSTAL: los intentos fallidos los dicen JUSTIFICANTE_POSTAL_1ER (🟠) y
+        _2DO (🔴 agotada, procede edicto), no el resultado.
+      - NOTIFICA a obligado o a quien lo eligió: diez días sin acceso es
+        RECHAZADA (art. 43.2), notificación efectuada.
+      - NOTIFICA a no obligado: no existe; se notifica en papel y la puesta en
+        sede (JUSTIFICANTE_SEDE) es la obligación del art. 42.1, no una
+        notificación.
+      - Anulada / No entregada: no entran en BDDAT (ADR-049 §D).
+    Se conserva por si falta un caso o la lectura es errónea: si aparece, se
+    decide aquí qué color le toca, sin migrar datos.
     """
     if not documentos_a_notificar(tarea):
         return 'PENDIENTE_TRAMITAR'        # falta el documento firmado que notificar
     notif = getattr(tarea, 'notificacion', None)
     if notif is None or not notif.registrada:
         return 'PENDIENTE_NOTIFICAR'       # 🔵 falta el justificante
-    if notif.resultado is None:
-        return 'PENDIENTE_RESULTADO_NOTIFICACION'  # 🔵 hay justificante, falta el resultado
+    if not tarea.ejecutada:
+        fallidos = intentos_fallidos(tarea)
+        if fallidos == 2:
+            return 'NOTIFICACION_AGOTADA'  # 🔴 procede edicto
+        if fallidos == 1:
+            return 'NOTIFICACION_FALLIDA'  # 🟠 toca el 2.º intento
     if notif.resultado in RESULTADOS_EFECTUADA:
         if not tarea.ejecutada:
             return 'PENDIENTE_RESULTADO_NOTIFICACION'  # falta el justificante final
         return 'PENDIENTE_SEDE' if estado_sede(tarea) == 'PENDIENTE' else 'FIN'
-    # INCORRECTA: 1 → repetir (🟠); 2 (solo POSTAL) → agotada, procede edicto (🔴)
-    return 'NOTIFICACION_AGOTADA' if notif.numero_intento == 2 else 'NOTIFICACION_FALLIDA'
+    if notif.resultado is None:
+        return 'PENDIENTE_RESULTADO_NOTIFICACION'  # 🔵 hay justificante, falta el resultado
+    return 'PENDIENTE_NOTIFICAR'           # INCORRECTA: tratada como pendiente (ver arriba)
 
 
 def _estado_esperar_plazo(plazo: Optional[dict]) -> str:

@@ -1,9 +1,9 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-09-29 (#969 — `RESOLUCION_DUP` notifica desde un solo `NOTIFICACION`: se retiran `NOTIFICACION_ORGANISMOS` y `NOTIFICACION_INTERESADOS`, y el plazo de resolver lo cumple la NOTIFICAR de fuente `SOLICITANTE`; antes, #968 — a quién se notifica en la resolución: remite al catálogo de fuentes `notificacion_fuentes`; antes, #966: PORTAL_TRANSPARENCIA a un solo ELABORAR, y #964: BOE y prensa sin NOTIFICAR, BOP y tablón con su ELABORAR)
+> Última sincronización: 2026-09-30 (#568 — sección nueva de trámites transversales con `NOTIFICACION_EDICTAL`, migración `568_notificacion_edictal`; antes, #969 — `RESOLUCION_DUP` notifica desde un solo `NOTIFICACION`: se retiran `NOTIFICACION_ORGANISMOS` y `NOTIFICACION_INTERESADOS`, y el plazo de resolver lo cumple la NOTIFICAR de fuente `SOLICITANTE`; antes, #968 — a quién se notifica en la resolución: remite al catálogo de fuentes `notificacion_fuentes`; antes, #966: PORTAL_TRANSPARENCIA a un solo ELABORAR, y #964: BOE y prensa sin NOTIFICAR, BOP y tablón con su ELABORAR)
 
-**Versión:** 6.8 | **Fecha:** 2026-09-29
+**Versión:** 6.9 | **Fecha:** 2026-09-30
 
 Este documento es la versión legible por humanos del JSON estructural. El JSON es la fuente de verdad para código e IA; este MD es la referencia de consulta rápida.
 
@@ -251,3 +251,22 @@ Mismo código de trámite `ELABORACION` que `RESOLUCION` — colisión de nombre
 | `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Sin PUBLICACION: el art. 131.8 RD 1955/2000 solo exige notificar (#918). A quién se notifica lo dice el catálogo de fuentes (`notificacion_fuentes`, ADR-051 §C, #968): una NOTIFICAR por destinatario. La de fuente `SOLICITANTE` es la notificación al solicitante: de ella depende el cumplimiento del plazo de resolver del acto AAC (arts. 21.2 y 40.4 LPACAP, #930) |
 
 Sin `PUBLICACION`: a diferencia de `RESOLUCION_AAP`, el art. 131.8 RD 1955/2000 solo exige notificar, no publicar (#918). Mismo código de trámite `ELABORACION` que `RESOLUCION` — colisión resuelta vía `nombres_documentos.py:_SUSTITUCIONES`. **Bloqueos de motor:** duplicado quirúrgico de los 5 de `RESOLUCION` (sujeto `ANY/ANY/RESOLUCION_AAC`); exclusión mutua con `RESOLUCION` al `CREAR` la fase (condición `existe_resolucion_conjunta`). Más la **regla de orden AAP→AAC** (ADR-047 §F, RD 1955/2000 arts. 128.4/130.1/131.1 párr. 2): `RESOLUCION_AAP` de la misma solicitud debe constar finalizada favorable. Por límite del motor —no compila sujeto a nivel de tarea—, la regla ancla en `CREAR` el trámite `ELABORACION` (sujeto `ANY/RESOLUCION_AAC/ELABORACION`), **no** en la tarea `ELABORAR` como el resto de reglas de orden de este documento.
+
+---
+
+## Trámites transversales
+
+*Trámites que no pertenecen a una fase concreta: se declaran una sola vez (`TRAMITES_TRANSVERSALES` del JSON, v6.9) con la lista de fases donde pueden crearse.*
+
+| Trámite | Fases | Patrón | Tareas indicativas | Nota |
+|---|---|---|---|---|
+| `NOTIFICACION_EDICTAL` | Las 13 que notifican: `ANALISIS_SOLICITUD`, `DATOS_CATASTRALES`, `CONSULTAS`, `CONSULTA_MINISTERIO`, `INFORMACION_PUBLICA`, `COMPATIBILIDAD_AMBIENTAL`, `FIGURA_AMBIENTAL_EXTERNA`, `AAU_AAUS_INTEGRADA`, `RECONOCIMIENTO_INTERESADO`, `RESOLUCION`, `RESOLUCION_AAP`, `RESOLUCION_AAC`, `RESOLUCION_DUP` | C | ELABORAR → NOTIFICAR → EP | Art. 44 y DA 3.ª LPACAP. Sin límite por fase. Ver abajo |
+
+**`NOTIFICACION_EDICTAL` (#568).** Procede cuando el interesado es desconocido, se ignora el lugar de la notificación o, intentada, no se pudo practicar: en papel, dos intentos fallidos (art. 42.2). En electrónico no hay edicto: a quien está obligado o lo eligió, diez días sin acceder es rechazo y la notificación vale (art. 43.2); a quien no lo está, la puesta a disposición en Notifica solo acredita el cumplimiento (art. 43.3) y la notificación sigue su curso en papel.
+
+- **Manual y sin regla de motor.** La señal es la NOTIFICAR original en rojo (agotada).
+- **Un anuncio para todos** los interesados que no se pudieron notificar (práctica habitual; art. 45.2 p. 2 por analogía). El art. 46 no aplica: lo que se notifica siempre se publica.
+- **ELABORAR** consume lo que se notifica a cada interesado y produce `ANUNCIO_EDICTO`. **NOTIFICAR** lo remite al BOE por su plataforma (fuente `BOLETIN`) y produce `JUSTIFICANTE_EDICTO`. **ESPERAR_PLAZO** produce `ANUNCIO_PUBLICADO` (BOE); no hay segunda espera, porque el art. 44 no abre plazo tras publicar.
+- **BOJA potestativo** (art. 44 p. 2): NOTIFICAR + ESPERAR_PLAZO adicionales en el mismo trámite, fuera de las tareas indicativas.
+- **Cierre del bucle:** cada NOTIFICAR original se cierra con su copia de `ANUNCIO_PUBLICADO` como producido (una fila `Documento` por NOTIFICAR sobre el mismo fichero: un documento tiene un solo productor) y resultado `CORRECTA`. Sus justificantes fallidos (`JUSTIFICANTE_POSTAL_1ER`, `JUSTIFICANTE_POSTAL_2DO`) y, si los hay, `JUSTIFICANTE_NOTIFICA_DISPOSICION` y `JUSTIFICANTE_SEDE` se quedan en ella como consumidos. El cumplimiento del deber de notificar sale del más antiguo de ellos; los efectos, de la publicación en el BOE.
+- **Edicto directo** (desconocido o lugar ignorado): la NOTIFICAR original no tiene intentos y se cierra igual.

@@ -112,9 +112,10 @@ def _registrar_advertencia(operacion, tabla, registro_id, sujeto, res_eval: Eval
 # Hook de NOTIFICAR (#657/#658/#712, rehecho en #928 — ADR-049 §B)
 # ---------------------------------------------------------------------------
 
-# Tipo de documento → canal: los seis justificantes con canal (previos y
-# finales). JUSTIFICANTE_SEDE y ANUNCIO_PUBLICADO no están — ninguno crea fila
-# por sí solo (la sede no es una notificación; el edicto es de #568, D15).
+# Tipo de documento → canal de los justificantes de la notificación (previos y
+# finales). JUSTIFICANTE_SEDE y ANUNCIO_PUBLICADO no están: la sede no es una
+# notificación, y el anuncio solo da canal EDICTO sin otro justificante
+# (`notificaciones.canal_de_vinculos`, #568).
 # Público: lo reutiliza api_expedientes.py (validación del preview, #712).
 MAPA_CANAL_POR_TIPO_DOC = notif_svc.CANAL_POR_TIPO_DOC
 
@@ -151,8 +152,9 @@ def _tipo_codigo(doc) -> Optional[str]:
 def _avisos_rol_incoherente(tarea) -> list[str]:
     """D17: un justificante previo vinculado como PRODUCIDO, o un justificante
     final como CONSUMIDO. No bloquea — BDDAT no verifica el carácter del
-    documento (P5) — solo avisa. ANUNCIO_PUBLICADO se admite en los dos roles
-    (el intermedio se consume, el definitivo se produce; #568)."""
+    documento (P5) — solo avisa. ANUNCIO_PUBLICADO se admite en los dos roles:
+    es el producido de la NOTIFICAR notificada por edicto y el consumido de las
+    esperas de IP (#568)."""
     avisos = []
     for v in tarea.vinculos_documento:
         tipo = _tipo_codigo(v.documento)
@@ -177,8 +179,10 @@ def _hook_notificar(tarea) -> Optional[dict]:
     resueltos: los consumidos (justificantes previos) importan tanto como el
     producido. La fila existe siempre: nace con la tarea (`crear_tarea`).
 
-    - Docs con canal = vínculos cuyo tipo está en `MAPA_CANAL_POR_TIPO_DOC`.
-      Canal: el del PRODUCIDO si lo tiene; si no, el de los previos.
+    - Canal: `notificaciones.canal_de_vinculos` (#568, ADR-052 §E) — el del
+      PRODUCIDO si lo tiene; si no, el de los demás justificantes de la
+      notificación; `EDICTO` si solo hay anuncio publicado (edicto directo).
+      La sede no fija canal, y avisa si el canal no es POSTAL.
     - Fila sin canal y algún doc con canal → fija el canal, para cualquier
       canal (no solo el parseable), `documento_id` = el PRODUCIDO si es un
       justificante final, e `identificador_envio` del parseo si lo hay.
@@ -205,25 +209,20 @@ def _hook_notificar(tarea) -> Optional[dict]:
         # tarea anterior sin recrear no se repara aquí — el hook ya no crea filas.
         return _cerrar_avisos_notificar(tarea, avisos)
 
-    con_canal = [
-        (v.documento, MAPA_CANAL_POR_TIPO_DOC[_tipo_codigo(v.documento)])
-        for v in tarea.vinculos_documento
-        if _tipo_codigo(v.documento) in MAPA_CANAL_POR_TIPO_DOC
-    ]
+    tipos = [_tipo_codigo(v.documento) for v in tarea.vinculos_documento]
+    producido = tarea.documento_producido
+    canal, canales = notif_svc.canal_de_vinculos(
+        tipos, _tipo_codigo(producido) if producido else None)
+    avisos += _avisos_sede(tipos, canal)
 
-    if not con_canal:
+    if canal is None:
         if notif.resultado is None:
             notif.canal = None
             notif.documento_id = None
             notif.identificador_envio = None
-            notif.numero_intento = 1
             notif.sede_justificacion = None
         return _cerrar_avisos_notificar(tarea, avisos)
 
-    producido = tarea.documento_producido
-    canal_producido = MAPA_CANAL_POR_TIPO_DOC.get(_tipo_codigo(producido)) if producido else None
-    canales = sorted({c for _, c in con_canal})
-    canal = canal_producido or canales[0]
     if len(canales) > 1:
         avisos.append(
             'Los justificantes vinculados corresponden a canales distintos '
@@ -232,10 +231,9 @@ def _hook_notificar(tarea) -> Optional[dict]:
 
     # El parseo solo sirve para `identificador_envio` (remesa): el del
     # justificante NOTIFICA producido si lo hay; si no, el de un previo NOTIFICA.
-    doc_notifica = next(
-        (d for d, c in sorted(con_canal, key=lambda dc: dc[0] is not producido) if c == 'NOTIFICA'),
-        None,
-    )
+    con_notifica = [v.documento for v in tarea.vinculos_documento
+                    if MAPA_CANAL_POR_TIPO_DOC.get(_tipo_codigo(v.documento)) == 'NOTIFICA']
+    doc_notifica = next(iter(sorted(con_notifica, key=lambda d: d is not producido)), None)
     parseo = parsear_documento_notifica(doc_notifica) if doc_notifica else None
     remesa = parseo.id_remesa if parseo else None
 
@@ -259,7 +257,6 @@ def _hook_notificar(tarea) -> Optional[dict]:
         notif.canal = canal
         notif.documento_id = documento_id
         notif.identificador_envio = remesa
-        notif.numero_intento = 1
         return _cerrar_avisos_notificar(tarea, avisos)
 
     # #712: el documento vinculado manda sobre el canal anotado — el canal se
@@ -270,8 +267,6 @@ def _hook_notificar(tarea) -> Optional[dict]:
             f'del registrado («{notif.canal}»). Se ha actualizado el canal.'
         )
         notif.canal = canal
-        if canal != 'POSTAL':
-            notif.numero_intento = 1  # ck_notificaciones_intento_postal (D14)
 
     if notif.identificador_envio and remesa and notif.identificador_envio != remesa:
         avisos.append(
@@ -283,6 +278,17 @@ def _hook_notificar(tarea) -> Optional[dict]:
     notif.documento_id = documento_id
     notif.identificador_envio = notif.identificador_envio or remesa
     return _cerrar_avisos_notificar(tarea, avisos)
+
+
+def _avisos_sede(tipos: list, canal: Optional[str]) -> list[str]:
+    """ADR-052 §E: la sede (art. 42.1) solo existe por una notificación en papel.
+    Con `JUSTIFICANTE_SEDE` vinculado y un canal que ya no es POSTAL, avisa sin
+    bloquear: probablemente se vinculó en la tarea equivocada. Sin canal todavía
+    no avisa: la sede puede llegar antes que el primer acuse postal."""
+    if 'JUSTIFICANTE_SEDE' not in tipos or canal in (None, 'POSTAL'):
+        return []
+    return [f'Hay un justificante de sede vinculado, pero la notificación es por '
+            f'«{canal}»: la puesta en sede solo acompaña a la notificación en papel.']
 
 
 def _bloqueo_sin_destinatario() -> EvaluacionResult:
@@ -711,7 +717,7 @@ def crear_tarea(tramite, tipo_tarea, *, justificacion: Optional[str] = None,
     db.session.add(tarea)
     db.session.flush()
     if tipo_tarea.codigo == 'NOTIFICAR':
-        notif = Notificacion(tarea_id=tarea.id, fuente=fuente, numero_intento=1)
+        notif = Notificacion(tarea_id=tarea.id, fuente=fuente)
         db.session.add(notif)
         db.session.flush()
         esperado = dest_svc.siguiente_esperado(tramite, fuente)
@@ -1921,3 +1927,105 @@ def borrar_tarea(ta, *, justificacion: Optional[str] = None) -> ResultadoMutacio
     db.session.delete(ta)
     db.session.commit()
     return ResultadoMutacion(ok=True)
+
+
+# ---------------------------------------------------------------------------
+# Notificación edictal: aplicar el anuncio publicado (#568, ADR-052 §G)
+# ---------------------------------------------------------------------------
+
+TRAMITE_EDICTAL = 'NOTIFICACION_EDICTAL'
+
+# Los tipos que dicen que una NOTIFICAR ya tiene algún justificante: con alguno,
+# no es un edicto directo.
+_JUSTIFICANTES_DE_NOTIFICACION = (set(notif_svc.TIPOS_JUSTIFICANTE_PREVIO)
+                                  | set(notif_svc.JUSTIFICANTES_FINALES))
+
+
+def anuncio_publicado_edicto(tramite) -> Optional[Documento]:
+    """El `ANUNCIO_PUBLICADO` que produce la espera de un `NOTIFICACION_EDICTAL`
+    (la publicación en el BOE), o `None` si aún no está."""
+    for ta in tramite.tareas:
+        doc = ta.documento_producido
+        if (ta.tipo_tarea.codigo == 'ESPERAR_PLAZO' and doc is not None
+                and _tipo_codigo(doc) == notif_svc.ANUNCIO_PUBLICADO):
+            return doc
+    return None
+
+
+def notificaciones_edictables(tramite) -> list:
+    """Las `NOTIFICAR` de la misma fase a las que se puede aplicar el anuncio
+    (ADR-052 §G), sin las del propio trámite edictal y sin producido:
+
+    - postales agotadas: `JUSTIFICANTE_POSTAL_2DO` vinculado;
+    - sin ningún justificante: el edicto directo (desconocido o lugar ignorado).
+
+    Una con sede o con un solo intento fallido no se ofrece."""
+    elegibles = []
+    for tr in tramite.fase.tramites:
+        if tr.id == tramite.id:
+            continue
+        for ta in tr.tareas:
+            if ta.tipo_tarea.codigo != 'NOTIFICAR' or ta.ejecutada:
+                continue
+            tipos = {_tipo_codigo(v.documento) for v in ta.vinculos_documento}
+            if (notif_svc.intentos_fallidos(ta) == 2
+                    or not (tipos & _JUSTIFICANTES_DE_NOTIFICACION)):
+                elegibles.append(ta)
+    return sorted(elegibles, key=lambda t: t.id)
+
+
+def aplicar_anuncio_edicto(tramite, tareas_ids: list[int]) -> ResultadoMutacion:
+    """Cierra por edicto las `NOTIFICAR` elegidas (ADR-052 §G): por cada una,
+    otra fila `Documento` sobre el mismo fichero del anuncio publicado, con la
+    misma fecha (la de efectos frente al interesado), vinculada como producido
+    —por `editar_tarea`, con sus guardas y su hook, que fija el canal: POSTAL
+    tras intentos, EDICTO si no los hubo— y resultado `CORRECTA`.
+
+    Un documento tiene un solo productor (`uq_documento_un_productor`, #928 H1),
+    de ahí la copia. Todo se valida antes de escribir; si una tarea falla al
+    vincular (bloqueo o sin destinatario) se para ahí y se devuelve el error con
+    las ya cerradas en `ids`. Sin pantalla hasta #929."""
+    if tramite.tipo_tramite.codigo != TRAMITE_EDICTAL:
+        return ResultadoMutacion(ok=False, error=f'Solo desde un trámite {TRAMITE_EDICTAL}.')
+    anuncio = anuncio_publicado_edicto(tramite)
+    if anuncio is None:
+        return ResultadoMutacion(ok=False, error=(
+            'El trámite todavía no tiene el anuncio publicado en el BOE: vincúlalo '
+            'como producido de su espera antes de aplicarlo.'))
+    if anuncio.fecha_administrativa is None:
+        return ResultadoMutacion(ok=False, error=(
+            'El anuncio publicado no tiene fecha: es la fecha de efectos de cada '
+            'notificación, ponla antes de aplicarlo.'))
+    if not tareas_ids:
+        return ResultadoMutacion(ok=False, error='Indica a qué notificaciones se aplica.')
+    elegibles = {ta.id: ta for ta in notificaciones_edictables(tramite)}
+    ajenas = [i for i in tareas_ids if i not in elegibles]
+    if ajenas:
+        return ResultadoMutacion(ok=False, error=(
+            'Solo se aplica a notificaciones de la misma fase, sin producido, con los '
+            'dos intentos postales fallidos o sin ningún justificante. No lo son: '
+            + ', '.join(str(i) for i in ajenas) + '.'))
+
+    cerradas = []
+    for tarea_id in dict.fromkeys(tareas_ids):
+        ta = elegibles[tarea_id]
+        copia = Documento(
+            expediente_id=anuncio.expediente_id, tipo_doc_id=anuncio.tipo_doc_id,
+            url=anuncio.url, tipo_contenido=anuncio.tipo_contenido,
+            fecha_administrativa=anuncio.fecha_administrativa, asunto=anuncio.asunto,
+            hash_md5=anuncio.hash_md5,
+            observaciones=f'Copia del anuncio publicado #{anuncio.id} (notificación edictal, #568)',
+        )
+        db.session.add(copia)
+        db.session.flush()
+        consumidos = [v.documento_id for v in ta.vinculos_documento if v.rol == 'CONSUMIDO']
+        res = editar_tarea(ta, documentos_consumidos_ids=consumidos,
+                           documento_producido_id=copia.id, notas=ta.notas)
+        if not res.ok:
+            db.session.rollback()
+            res.ids = cerradas
+            return res
+        ta.notificacion.resultado = 'CORRECTA'
+        db.session.commit()
+        cerradas.append(ta.id)
+    return ResultadoMutacion(ok=True, ids=cerradas)

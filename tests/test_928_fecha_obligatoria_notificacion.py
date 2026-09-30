@@ -21,6 +21,9 @@ _JUSTIFICANTES = (
     'JUSTIFICANTE_BANDEJA',
     'JUSTIFICANTE_SIR',
     'JUSTIFICANTE_SEDE',
+    # #568 (ADR-052 §B): el 2.º intento fallido y la remisión del edicto al BOE
+    'JUSTIFICANTE_POSTAL_2DO',
+    'JUSTIFICANTE_EDICTO',
 )
 
 

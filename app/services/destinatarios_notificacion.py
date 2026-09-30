@@ -175,8 +175,16 @@ def _cache() -> dict:
 # Catálogo de fuentes
 # ---------------------------------------------------------------------------
 
+def _fuentes_de(catalogo: dict, tipo_fase_id, tipo_tramite_id) -> Optional[tuple]:
+    """Las fuentes de (fase, trámite): la pareja exacta y, si no la hay, la fila
+    del trámite con fase vacía, que vale para cualquier fase (trámite
+    transversal, #568, ADR-052 §F). La exacta gana siempre."""
+    return catalogo.get((tipo_fase_id, tipo_tramite_id)) or catalogo.get((None, tipo_tramite_id))
+
+
 def _catalogo() -> dict:
-    """{(tipo_fase_id, tipo_tramite_id): (fuente, …)} en su orden. Una sola
+    """{(tipo_fase_id, tipo_tramite_id): (fuente, …)} en su orden;
+    `tipo_fase_id` None = cualquier fase (leer con `_fuentes_de`). Una sola
     consulta por sesión y escritura. Sin la tabla, vacío y aviso (#347)."""
     cache = _cache()
     if 'catalogo' in cache:
@@ -207,7 +215,7 @@ def fuentes_del_tramite(tramite) -> Optional[tuple]:
     """Fuentes de `tramite` según `notificacion_fuentes`, o `None` si su (fase,
     trámite) no tiene ninguna: una `NOTIFICAR` ahí está fuera de la secuencia
     del catálogo y su fuente se indica a mano."""
-    return _catalogo().get((tramite.fase.tipo_fase_id, tramite.tipo_tramite_id))
+    return _fuentes_de(_catalogo(), tramite.fase.tipo_fase_id, tramite.tipo_tramite_id)
 
 
 def resolver_fuente(tramite, fuente: Optional[str]) -> tuple[Optional[str], Optional[str]]:
@@ -363,7 +371,7 @@ class _Precarga:
         if self._escapes is None:
             from app.models.bitacora import Bitacora
             ids = [ta.id for tr in self.tramites
-                   if (tr.fase.tipo_fase_id, tr.tipo_tramite_id) in self.catalogo
+                   if _fuentes_de(self.catalogo, tr.fase.tipo_fase_id, tr.tipo_tramite_id)
                    for ta in tr.tareas
                    if _es_notificar(ta) and not (ta.notificacion and ta.notificacion.entidad_id)]
             self._escapes = set()
@@ -447,8 +455,8 @@ def _organo_ambiental_de_la_solicitud(p: _Precarga) -> tuple[list, Optional[str]
     vistos, esperados = set(), []
     for fase in fases:
         for tramite in sorted(fase.tramites, key=lambda t: t.id):
-            if 'ORGANO_AMBIENTAL' not in catalogo.get((fase.tipo_fase_id,
-                                                       tramite.tipo_tramite_id), ()):
+            if 'ORGANO_AMBIENTAL' not in (_fuentes_de(catalogo, fase.tipo_fase_id,
+                                                      tramite.tipo_tramite_id) or ()):
                 continue
             candidatos = []
             elegido = p.elegidos.get(tramite.id)
@@ -553,7 +561,7 @@ def estado_de_la_solicitud(solicitud) -> dict:
     p = _Precarga(solicitud, catalogo)
     estados = {}
     for tramite in p.tramites:
-        fuentes = catalogo.get((tramite.fase.tipo_fase_id, tramite.tipo_tramite_id))
+        fuentes = _fuentes_de(catalogo, tramite.fase.tipo_fase_id, tramite.tipo_tramite_id)
         estados[tramite.id] = _estado(tramite, fuentes, p) if fuentes else None
     _poner_nombres(estados)
     # El cálculo puede haber lanzado consultas con autoflush: se guarda al final.
