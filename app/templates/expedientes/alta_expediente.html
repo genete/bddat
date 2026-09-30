@@ -264,9 +264,9 @@
                             </label>
                             <div id="sb-representante"></div>
                             <div class="form-text">
-                                Autorizado o apoderado que recibe las notificaciones, con los datos de su
-                                ficha. Salen primero los autorizados del titular; si elige a otro, el
-                                expediente se crea igual y se avisa.
+                                Autorizado del titular que recibe las notificaciones, con los datos de su
+                                ficha. Si no está en la lista, cancele el alta y autorícelo antes desde la
+                                ficha del titular.
                             </div>
                             <div id="representante-error" class="text-danger small mt-1" style="display:none;">
                                 <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar un representante.
@@ -519,18 +519,14 @@
             .catch(e => console.error('Error cargando sedes:', e));
     }
 
-    // Primero los autorizados del titular y después el resto de entidades
-    // activas: el apoderado puede no estar dado de alta como autorizado.
+    // Solo los autorizados vigentes del titular; el servidor devuelve la lista
+    // vacía si no tiene ninguno y entonces no hay nada que elegir.
     function cargarRepresentantes(titularId, preseleccion) {
-        Promise.all([
-            fetch(`/api/entidades/${titularId}/autorizados`).then(r => r.json()),
-            fetch(`/api/entidades/${titularId}/candidatos-autorizacion`).then(r => r.json()),
-        ])
-            .then(([autorizados, resto]) => {
-                const opciones = (autorizados.data || [])
-                    .filter(o => o.id !== parseInt(titularId, 10))
-                    .map(o => ({ v: String(o.id), t: o.text + ' · autorizado' }))
-                    .concat(resto.data || []);
+        fetch(`/api/entidades/${titularId}/autorizados`)
+            .then(r => r.json())
+            .then(json => {
+                const opciones = (json.data || [])
+                    .map(o => ({ v: String(o.id), t: o.text }));
                 representanteSel.setOpciones(opciones);
                 // Tras un rebote: `setOpciones` limpia el valor, así que la
                 // preselección solo puede ir después de cargarlas.

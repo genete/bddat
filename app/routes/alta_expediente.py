@@ -123,7 +123,7 @@ def nuevo():
 
     # --- Titular (el solicitante), representante y sede --------------------
     # El titular es siempre el solicitante (#989). Quien actúa por él y recibe
-    # las notificaciones —autorizado o apoderado— va aparte, y la sede es la
+    # las notificaciones —un autorizado suyo— va aparte, y la sede es la
     # del titular que figura en la solicitud. Los dos son opcionales y los
     # valida el servicio, con las mismas reglas que la edición de la solicitud.
     titular = None
@@ -194,8 +194,6 @@ def nuevo():
         return _repintar([f'Error al crear el expediente: {exc}'], municipios_ids)
 
     flash(f'Expediente AT-{resultado.numero_at} creado correctamente.', 'success')
-    if resultado.advertencia:
-        flash(resultado.advertencia, 'warning')
     return redirect(url_for('expedientes.listado_v2'))
 
 

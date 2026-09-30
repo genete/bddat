@@ -497,9 +497,8 @@ def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
     if error_ancla:
         return ResultadoMutacion(ok=False, error=error_ancla)
 
-    # Representante de la solicitud (#967, ADR-051 §K): error si no vale, aviso
-    # si no figura como autorizado. El aviso del motor, si lo hay, manda.
-    error_rep, aviso_rep = validar_representante(entidad_id, representante_entidad_id)
+    # Representante de la solicitud (#967, ADR-051 §K): un autorizado del solicitante.
+    error_rep = validar_representante(entidad_id, representante_entidad_id)
     if error_rep:
         return ResultadoMutacion(ok=False, error=error_rep)
     # Sede del solicitante (#989): la dirección del oficio.
@@ -551,7 +550,7 @@ def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
         return ResultadoMutacion(ok=False, error=str(e))
 
     return ResultadoMutacion(ok=True, ids=[s.id for s in creadas],
-                             advertencia=advertencia or aviso_rep)
+                             advertencia=advertencia)
 
 
 def crear_fase(solicitud, tipo_fase, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
@@ -820,28 +819,29 @@ _NO_TOCAR = object()
 
 
 def validar_representante(solicitante_id: int, representante_id: Optional[int]
-                          ) -> tuple[Optional[str], Optional[dict]]:
-    """(error, advertencia) del representante de una solicitud (ADR-051 §K).
-    Error si la entidad no existe o es el propio solicitante; aviso —sin
-    impedirlo— si no figura como autorizada del solicitante en
-    `autorizados_titular` (un apoderado puede no estarlo). La usan las tres
-    puertas: el alta de expediente, `crear_solicitud` y `editar_solicitud`."""
+                          ) -> Optional[str]:
+    """Error del representante de una solicitud (ADR-051 §K), o `None` si vale
+    o no se indica. Tiene que ser un autorizado activo del solicitante en
+    `autorizados_titular`, y no el propio solicitante. No admite escape: si la
+    entidad no está autorizada, se da de alta como autorizada desde la ficha
+    del titular y después se elige. La usan las tres puertas: el alta de
+    expediente, `crear_solicitud` y `editar_solicitud`."""
     if representante_id is None:
-        return None, None
+        return None
     from app.models.entidad import Entidad
     from app.models.autorizados_titular import AutorizadoTitular
     if db.session.get(Entidad, representante_id) is None:
-        return f'Entidad representante {representante_id} no encontrada.', None
+        return f'Entidad representante {representante_id} no encontrada.'
     if representante_id == solicitante_id:
-        return 'El representante no puede ser el propio solicitante.', None
+        return 'El representante no puede ser el propio solicitante.'
     autorizado = AutorizadoTitular.query.filter_by(
         titular_entidad_id=solicitante_id, autorizado_entidad_id=representante_id,
         activo=True,
     ).first()
     if autorizado is None:
-        return None, {'motivo': 'El representante no figura como autorizado del solicitante. '
-                                'Se guarda igualmente: compruebe la representación.'}
-    return None, None
+        return ('El representante no figura como autorizado del solicitante. Dé de alta la '
+                'autorización desde la ficha del titular y vuelva a elegirlo.')
+    return None
 
 
 def validar_sede(solicitante_id: int, direccion_id: Optional[int]) -> Optional[str]:
@@ -883,11 +883,9 @@ def editar_solicitud(sol, *, observaciones: Optional[str],
 
     avisos = []
     if cambia_representante:
-        error, aviso = validar_representante(sol.entidad_id, representante_entidad_id)
+        error = validar_representante(sol.entidad_id, representante_entidad_id)
         if error:
             return ResultadoMutacion(ok=False, error=error)
-        if aviso:
-            avisos.append(aviso['motivo'])
     if cambia_sede:
         error = validar_sede(sol.entidad_id, direccion_notificacion_id)
         if error:
