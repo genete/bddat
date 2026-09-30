@@ -184,6 +184,15 @@ retoques a ficheros de test que ya existían.
 test de un cambio superan a las de `app/` que cambia, repasar cuáles de la
 lista «No» se han colado. Es una señal, no un tope.
 
+**Cómo se exige.** Todo test nuevo lleva una línea `Fallo silencioso que evita: …`
+(mín. 40 caracteres, qué se rompería sin que nadie lo vea): en el docstring del
+módulo si es un fichero nuevo; en el docstring de la función, o en un comentario
+justo encima, si se añade a uno existente (un bloque de tests hermanos comparte
+una). Lo aplica un hook, no la memoria: `.claude/hooks/reglas_tests_guard.py`
+(PreToolUse sobre Write y Edit) deniega la escritura si falta. Retocar o renombrar
+un test no lo dispara; `tests/smoke/` queda fuera. El hook obliga a formularlo, no
+a que sea cierto: eso se ve en el diff. Si no sabes nombrar el fallo, no hay test.
+
 **Cuando un test se rompe sin que haya fallo real** (migración, refactor,
 cambio de firma), antes de repararlo se le pasa este criterio:
 

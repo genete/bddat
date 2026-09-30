@@ -76,6 +76,18 @@
             "statusMessage": "Verificando REGLAS_BASH"
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-/d/BDDAT}/.claude/hooks/reglas_tests_guard.py\"",
+            "timeout": 10,
+            "statusMessage": "Verificando tests/README.md §3"
+          }
+        ]
       }
     ]
   }
