@@ -7,6 +7,6 @@
 
 ---
 
-**Hecho:** **#989** (2026-09-30, PR #991 y corrección PR #993): solicitante, representante y sede de notificación en la solicitud (migración `989_sede_solicitud`). El alta guarda siempre al titular como solicitante; el oficio va siempre al titular, a la sede o a su ficha; la notificación, al representante con su ficha y, sin él, al titular. El representante es siempre un autorizado activo del solicitante. Aplicado y verificado en el PC. Cadena en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#568** (2026-09-30): notificación edictal (art. 44 LPACAP), diseñada desde el procedimiento legal en ADR-052 (migración `568_notificacion_edictal`). Trámite transversal `NOTIFICACION_EDICTAL` en las 13 fases que notifican; los intentos postales fallidos son documentos (`JUSTIFICANTE_POSTAL_1ER`/`_2DO`) y de ellos sale la escalada del semáforo; canal `EDICTO`; una acción aplica el anuncio publicado a las notificaciones agotadas o sin justificante de la fase. Pendiente en el PC: aplicar la migración, `comparar_catalogo.py` y el BOE como entidad publicadora. Fuera, #994 (justificante de remisión a boletín). Cadena en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **#568** (edicto tras notificación infructuosa, art. 44) y después **N6** (`CERT_CIERRE_SOLICITUD`, sin crear). El frontend de notificaciones (#929) espera a ADR-050; hasta entonces la tramitación de una `NOTIFICAR` en el navegador sigue coja (#928 D12, #967 D1).
+**Próximo:** **N6** (`CERT_CIERRE_SOLICITUD`, sin crear): el certificado de cierre de la solicitud, que enumera por acto y cierra #921 y #801. El frontend de notificaciones (#929) espera a N6 y a ADR-050; hasta entonces la tramitación de una `NOTIFICAR` en el navegador sigue coja (#928 D12, #967 D1).
