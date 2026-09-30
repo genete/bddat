@@ -7,6 +7,6 @@
 
 ---
 
-**Hecho:** **#969 (N5a-3)** (2026-09-29, PR #988): un solo `NOTIFICACION` en `RESOLUCION_DUP` (migración `969_una_notificacion_dup`) y plazo del acto cumplido solo por la `NOTIFICAR` de fuente `SOLICITANTE`. Aplicado y verificado en el PC. Cierra N5a. Después, revisión de #929 (29/09/2026, sin código): reescrito como acumulador que se ejecuta tras #568, N6 y ADR-050 fases 0-3; sus huecos de dominio salen a #989. Cadena en `docs/diseño/ESTADO_ADR049.md`.
+**Hecho:** **#989** (2026-09-30, PR #991 y corrección PR #993): solicitante, representante y sede de notificación en la solicitud (migración `989_sede_solicitud`). El alta guarda siempre al titular como solicitante; el oficio va siempre al titular, a la sede o a su ficha; la notificación, al representante con su ficha y, sin él, al titular. El representante es siempre un autorizado activo del solicitante. Aplicado y verificado en el PC. Cadena en `docs/diseño/ESTADO_ADR049.md`.
 
-**Próximo:** **#989** (solicitante, representante y sede de notificación en la solicitud; el alta deja de guardar al autorizado como solicitante; refresco de las `NOTIFICAR` al cambiarlos), después **#568** (edicto tras notificación infructuosa, art. 44) y después **N6** (`CERT_CIERRE_SOLICITUD`, sin crear). El frontend de notificaciones (#929) espera a ADR-050; hasta entonces la tramitación de una `NOTIFICAR` en el navegador sigue coja (#928 D12, #967 D1).
+**Próximo:** **#568** (edicto tras notificación infructuosa, art. 44) y después **N6** (`CERT_CIERRE_SOLICITUD`, sin crear). El frontend de notificaciones (#929) espera a ADR-050; hasta entonces la tramitación de una `NOTIFICAR` en el navegador sigue coja (#928 D12, #967 D1).
