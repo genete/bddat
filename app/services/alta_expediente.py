@@ -113,9 +113,8 @@ class DatosAlta:
     titular_id: int
     tipo_solicitud_id: int
     observaciones: Optional[str] = None
-    # Quien actúa por el titular y recibe las notificaciones: un autorizado o
-    # un apoderado (ADR-051 §K). Opcional; si no figura como autorizado, se
-    # avisa sin impedirlo (`ResultadoAlta.advertencia`).
+    # Quien actúa por el titular y recibe las notificaciones (ADR-051 §K):
+    # un autorizado suyo, opcional.
     representante_entidad_id: Optional[int] = None
     # La sede del titular que figura en la solicitud: la dirección del oficio
     # y, sin representante, el correo de aviso. Opcional: sin ella, la ficha.
@@ -135,8 +134,6 @@ class ResultadoAlta:
     solicitud: Solicitud
     documento: Documento
     numero_at: int
-    # Aviso sin bloqueo: el representante no figura como autorizado del titular.
-    advertencia: Optional[str] = None
 
 
 def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
@@ -171,11 +168,10 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
     if tipo_solicitud is None:
         raise ValueError('El tipo de solicitud seleccionado no existe.')
 
-    # Representante y sede (#989, ADR-051 §K): error si no valen; aviso, sin
-    # impedir el alta, si el representante no figura como autorizado.
+    # Representante y sede (#989, ADR-051 §K): error si no valen.
     from app.services.mutaciones_arbol import validar_representante, validar_sede
-    error, aviso = validar_representante(datos.titular_id, datos.representante_entidad_id)
-    error = error or validar_sede(datos.titular_id, datos.direccion_notificacion_id)
+    error = (validar_representante(datos.titular_id, datos.representante_entidad_id)
+             or validar_sede(datos.titular_id, datos.direccion_notificacion_id))
     if error:
         raise ValueError(error)
 
@@ -264,7 +260,6 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
         solicitud=solicitud,
         documento=ingestado.documento,
         numero_at=numero_at,
-        advertencia=aviso['motivo'] if aviso else None,
     )
 
 

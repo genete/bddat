@@ -308,6 +308,26 @@ def _asegurar_representante(client):
     return entidad
 
 
+def _autorizar_representante(client, titular_id, representante):
+    """Da de alta al representante como autorizado del titular (ADR-051 §K):
+    la solicitud solo admite como representante a un autorizado suyo. Por la
+    misma ruta que la pantalla de entidades; idempotente, porque la entidad
+    sobrevive al reciclado del expediente."""
+    from app.models.autorizados_titular import AutorizadoTitular
+
+    if AutorizadoTitular.puede_actuar_como(representante.id, titular_id):
+        return
+
+    r = client.post(f'/entidades/{titular_id}/autorizados/nueva',
+                    data={'autorizado_id': str(representante.id)},
+                    headers={'X-Requested-With': 'XMLHttpRequest'})
+    if not (r.get_json() or {}).get('ok'):
+        print(f"ABORTADO: no se pudo autorizar a {representante.nombre_completo} "
+              f"como representante (HTTP {r.status_code}): {r.get_json()}")
+        sys.exit(1)
+    print(f"  representante autorizado por el titular (id={titular_id}).")
+
+
 # ---------------------------------------------------------------------------
 # Alta expediente/proyecto/solicitud — por el servicio real (#428)
 # ---------------------------------------------------------------------------
@@ -423,7 +443,9 @@ def main(app=None, *, efectos_desarrollo=True):
         exp_id = expediente.id
 
         # Representante (#967, ADR-051 §K): antes de crear cualquier NOTIFICAR
-        # de fuente SOLICITANTE, para que nazca ya dirigida a él.
+        # de fuente SOLICITANTE, para que nazca ya dirigida a él. Ha de ser
+        # autorizado del solicitante, así que se autoriza primero.
+        _autorizar_representante(client, solicitud.entidad_id, representante)
         _comun.check(
             svc.editar_solicitud(solicitud, observaciones=solicitud.observaciones,
                                  representante_entidad_id=representante.id),

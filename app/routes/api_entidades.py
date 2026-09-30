@@ -15,7 +15,9 @@ ENDPOINTS:
         Pensado para el selector de organismos en formulario de expedientes (#396).
 
     GET /api/entidades/<titular_id>/autorizados
-        Autorizados vigentes de un titular (incluye al propio titular).
+        Autorizados vigentes de un titular, sin el propio titular. Es la única
+        lista de la que se elige el representante de una solicitud (#989,
+        ADR-051 §K): vacía si no tiene ninguno.
         Devuelve {data: [{id, text}, ...]}
 
     GET /api/entidades/<titular_id>/candidatos-autorizacion
@@ -28,8 +30,8 @@ ENDPOINTS:
         sus direcciones activas de rol titular y sin otro NIF.
         Devuelve {data: [{v, t}, ...]}
 
-VERSIÓN: 1.4
-FECHA: 2026-09-29
+VERSIÓN: 1.5
+FECHA: 2026-09-30
 ISSUE: #137, #461, #989
 """
 
@@ -350,31 +352,28 @@ def listar_autorizados(titular_id):
     """
     GET /api/entidades/<titular_id>/autorizados
 
-    Devuelve los autorizados vigentes de un titular, incluyendo al propio titular
-    como primera opción (autoautorización implícita).
+    Devuelve los autorizados vigentes de un titular, sin el propio titular: el
+    representante de una solicitud es siempre un autorizado suyo y nunca el
+    solicitante (`mutaciones_arbol.validar_representante`, que lo impone también
+    al guardar). Sin autorizados, la lista sale vacía.
 
     Respuesta JSON:
         { "data": [{"id": 1, "text": "Nombre (NIF)"}, ...] }
 
     Returns:
-        200 OK  con lista de autorizados (puede ser solo el titular si no hay más).
+        200 OK  con lista de autorizados (vacía si no tiene ninguno).
         404 Not Found si el titular no existe o no tiene rol_titular=True.
     """
     titular = Entidad.query.get(titular_id)
     if not titular or not titular.rol_titular:
         return jsonify({'error': 'Titular no encontrado'}), 404
 
-    # Siempre incluir al propio titular como primera opción
     def _label(e):
         return f'{e.nombre_completo} ({e.nif})' if e.nif else e.nombre_completo
 
-    data = [{'id': titular.id, 'text': _label(titular)}]
-
-    # Añadir autorizados vigentes (distintos del titular)
     autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(titular_id, solo_activos=True)
-    for aut in autorizaciones:
-        if aut.autorizado:
-            data.append({'id': aut.autorizado.id, 'text': _label(aut.autorizado)})
+    data = [{'id': aut.autorizado.id, 'text': _label(aut.autorizado)}
+            for aut in autorizaciones if aut.autorizado]
 
     return jsonify({'data': data}), 200
 

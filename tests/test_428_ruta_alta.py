@@ -24,7 +24,7 @@ CONTENIDO = b'%PDF-1.4 escrito de solicitud de prueba de ruta'
 def _catalogo(app):
     """Lo que el formulario necesita para un alta válida, por clave natural."""
     with app.app_context():
-        from app.models.entidad import Entidad
+        from app.models.autorizados_titular import AutorizadoTitular
         from app.models.municipios import Municipio
         from app.models.tipos_expedientes import TipoExpediente
         from app.models.tipos_solicitudes import TipoSolicitud
@@ -38,15 +38,13 @@ def _catalogo(app):
         municipio = Municipio.query.order_by(Municipio.id).first()
         assert municipio is not None, 'la semilla debe traer municipios'
 
-        titular = (Entidad.query
-                   .filter_by(activo=True, rol_titular=True)
-                   .order_by(Entidad.id).first())
-        assert titular is not None, 'la semilla debe traer alguna entidad titular'
-
-        representante = (Entidad.query
-                         .filter(Entidad.activo.is_(True), Entidad.id != titular.id)
-                         .order_by(Entidad.id).first())
-        assert representante is not None, 'la semilla debe traer más de una entidad activa'
+        # El representante tiene que ser autorizado del titular (ADR-051 §K): la
+        # semilla lo trae en el expediente tipo RESOLUCION_CON_ORGANISMOS.
+        autorizacion = (AutorizadoTitular.query
+                        .filter_by(activo=True)
+                        .order_by(AutorizadoTitular.id).first())
+        assert autorizacion is not None, 'la semilla debe traer un autorizado de un titular'
+        titular, representante = autorizacion.titular, autorizacion.autorizado
 
         return {
             'tipo_expediente_id': tipo_exp.id,

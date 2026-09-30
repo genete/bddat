@@ -237,7 +237,7 @@ El titular es quien solicita las autorizaciones, pero no es constante: hay cambi
 
 **Lo que guarda la solicitud:**
 
-- **Su representante** (`solicitudes.representante_entidad_id`, opcional): el autorizado o el apoderado que actúa por el solicitante **en esta solicitud** y recibe sus notificaciones. Por solicitud, no por expediente ni por titular: sobrevive a los cambios de titularidad. Al asignarlo se avisa, sin impedirlo, si la entidad no figura como autorizada del solicitante en `autorizados_titular` (un apoderado puede no estarlo). El representante no tiene sede: se usan siempre los datos de su ficha.
+- **Su representante** (`solicitudes.representante_entidad_id`, opcional): un autorizado activo del solicitante (`autorizados_titular`) que actúa por él **en esta solicitud** y recibe sus notificaciones. Por solicitud, no por expediente ni por titular: sobrevive a los cambios de titularidad. Solo se admite a quien ya figura como autorizado (`validar_representante`, error sin escape): si no lo es, se le da de alta como autorizado desde la ficha del titular y después se elige; también un apoderado. El selector del alta solo lista autorizados. El representante no tiene sede: se usan siempre los datos de su ficha.
 - **Su sede** (`solicitudes.direccion_notificacion_id`, opcional, #989): la del solicitante que figura en la solicitud. Tiene que ser suya, activa, de rol titular y sin otro NIF. Sin ella, los datos de la ficha. Ya no se toma la dirección de rol titular más reciente, que con varias sedes elegía por la fecha y no por la solicitud.
 
 **La regla**, con el ejemplo de Carlos (titular Edistribución, NIF B12345678, ficha en Madrid con `registrogeneral@…`; sede en Sevilla con `registro_and_occidental@…`; autorizado Ingeniería SMART, NIF B98765432, `notificaciones@…`):
@@ -333,3 +333,4 @@ No duplica `notificaciones`: `tramites_destinatario` es lo **pretendido** (el da
 - *(2026-09-29)* **Corregir la dirección en cada `NOTIFICAR`, una a una** (`direccion_id` de `fijar_destinatario`), en lugar de la sede en la solicitud: el dato es de la solicitud y se repetiría en cada notificación (§K, #989).
 - *(2026-09-29)* **Sede también para el representante:** el representante recibe con los datos de su ficha; la sede es del titular y es la dirección del oficio (§K, #989).
 - *(2026-09-29)* **Sin sede, la dirección de rol titular más reciente:** con varias sedes elige por la fecha, no por la solicitud; sin sede, la ficha (§K, #989).
+- *(2026-09-30)* **Representante no autorizado, con solo un aviso:** olvidar dar de alta la autorización no dejaría rastro; el representante es siempre un autorizado activo del solicitante (§K, #989).

@@ -10,7 +10,7 @@ Tests #967 (N5a-1) — toda NOTIFICAR guarda su destinatario (ADR-051 §B, §K).
     solicitud o su ficha. Cambiar el representante refresca lo que no ha salido.
   - El destinatario se refresca hasta el primer justificante y desde ahí es fijo.
   - Cotejo del NIF del justificante de Notifica con la ficha.
-  - Representante de la solicitud: aviso si no es autorizado, solo al cambiar.
+  - Representante de la solicitud: un autorizado del solicitante, validado al cambiar.
   - Rutas: PUT del destinatario, bypass al vincular, escritos no en NOTIFICAR.
 
 Desde #968 la NOTIFICAR nace ya con su destinatario si se sabe, y solo admite a
@@ -78,6 +78,14 @@ def _entidad(nombre, nif=None, **kw):
     db.session.add(e)
     db.session.flush()
     return e
+
+
+def _autorizar(titular_id, autorizado):
+    """`autorizado` pasa a ser autorizado del titular: único representante posible."""
+    from app.models.autorizados_titular import AutorizadoTitular
+    db.session.add(AutorizadoTitular(titular_entidad_id=titular_id,
+                                     autorizado_entidad_id=autorizado.id))
+    db.session.flush()
 
 
 def _direccion(entidad, *, titular=False, consultado=False, direccion='Calle Mayor 1',
@@ -391,26 +399,15 @@ def test_cotejo_del_nif(con_usuario, arbol_aislado, fs_tmp, nif_ficha, nif_repre
 # Representante de la solicitud (§K)
 # ---------------------------------------------------------------------------
 
-def test_representante_no_autorizado_avisa_solo_al_cambiar(con_usuario, arbol_aislado):
-    from app.models.autorizados_titular import AutorizadoTitular
+def test_representante_autorizado_del_solicitante(con_usuario, arbol_aislado):
     solicitud = arbol_aislado.solicitud_propia()
-    ajeno = _entidad('Representante no autorizado')
-
-    res = svc.editar_solicitud(solicitud, observaciones=None, representante_entidad_id=ajeno.id)
-    assert res.ok and res.advertencia is not None
-    assert solicitud.representante_entidad_id == ajeno.id
-
-    res = svc.editar_solicitud(solicitud, observaciones='otra cosa',
-                               representante_entidad_id=ajeno.id)
-    assert res.ok and res.advertencia is None
 
     autorizado = _entidad('Representante autorizado')
-    db.session.add(AutorizadoTitular(titular_entidad_id=solicitud.entidad_id,
-                                     autorizado_entidad_id=autorizado.id))
-    db.session.flush()
+    _autorizar(solicitud.entidad_id, autorizado)
     res = svc.editar_solicitud(solicitud, observaciones=None,
                                representante_entidad_id=autorizado.id)
     assert res.ok and res.advertencia is None
+    assert solicitud.representante_entidad_id == autorizado.id
 
     res = svc.editar_solicitud(solicitud, observaciones=None,
                                representante_entidad_id=solicitud.entidad_id)
@@ -433,6 +430,7 @@ def test_cambiar_representante_refresca_lo_que_no_ha_salido(con_usuario, arbol_a
     assert _vincular(enviada, consumidos=[
         _doc(enviada, 'JUSTIFICANTE_NOTIFICA_DISPOSICION', fs_tmp)]).ok
     gestora = _entidad('Ingeniería de Prueba S.L.', nif='B98765432')
+    _autorizar(solicitud.entidad_id, gestora)
 
     res = svc.editar_solicitud(solicitud, observaciones=None,
                                representante_entidad_id=gestora.id)
