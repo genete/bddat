@@ -9,9 +9,11 @@ Ejecuta el workflow completo de Pull Request para el proyecto BDDAT.
 
 ## Contexto actual
 
-- Rama actual: !`git -C /d/BDDAT branch --show-current`
-- Commits respecto a develop: !`git -C /d/BDDAT log origin/develop..HEAD --oneline`
-- Ficheros cambiados: !`git -C /d/BDDAT diff origin/develop..HEAD --name-only`
+- Rama actual: !`git branch --show-current`
+- Commits respecto a develop: !`git log origin/develop..HEAD --oneline`
+- Ficheros cambiados: !`git diff origin/develop..HEAD --name-only`
+
+Se ejecuta desde la raíz del repo, en el PC y en la nube. Si alguna línea sale vacía o con error (en la nube, `origin/develop` puede no estar traído), ejecuta `git fetch origin develop` y repítela.
 
 ## Pasos a seguir
 
@@ -33,23 +35,31 @@ Analiza los commits y ficheros cambiados para redactar:
 - **Título:** breve (≤70 caracteres), en imperativo, sin prefijo de categoría
 - **Cuerpo:** sección "## Cambios" con bullets de los cambios principales. Si se detectó un issue, la **última línea del cuerpo DEBE ser `Closes #XX`** — GitHub cierra el issue automáticamente al mergear, sin necesidad de `gh issue close`.
 
-Escribe el cuerpo con la tool `Write` en un fichero **nuevo y único** dentro de `D:\BDDAT\docs_prueba\temp\`, y **redáctalo desde cero** a partir de los commits/diff actuales — **nunca copies el texto de un PR anterior ni reutilices/sobrescribas** un `pr_body_*.md` existente. El número de issue NO garantiza unicidad (un mismo issue puede tener varios PRs en distintas sesiones), así que añade un sufijo distintivo: p. ej. `pr_body_<issue>_<rama-o-fecha>.md` (ej. `pr_body_500_arbol-edicion.md`); si aun así existe, usa `-v2`, `-v3`… Nunca uses heredoc ni redirección bash.
+Escribe el cuerpo con la tool `Write` en un fichero **nuevo y único** dentro de `docs_prueba/temp/` de la raíz del repo (ruta absoluta para `Write`: en el PC, `D:\BDDAT\docs_prueba\temp\`; en la nube, la salida de `git rev-parse --show-toplevel` seguida de `/docs_prueba/temp/`), y **redáctalo desde cero** a partir de los commits/diff actuales — **nunca copies el texto de un PR anterior ni reutilices/sobrescribas** un `pr_body_*.md` existente. El número de issue NO garantiza unicidad (un mismo issue puede tener varios PRs en distintas sesiones), así que añade un sufijo distintivo: p. ej. `pr_body_<issue>_<rama-o-fecha>.md` (ej. `pr_body_500_arbol-edicion.md`); si aun así existe, usa `-v2`, `-v3`… Nunca uses heredoc ni redirección bash.
 
 ### 4. Crear el PR
 
+Saca `<owner>/<repo>` de `git remote get-url origin` (las dos últimas partes de la ruta, sin `.git`). Se pasa siempre `--repo`, por si `gh` no reconoce el remoto: en la nube es un proxy local.
+
+Sube la rama (no hace nada si ya está al día; en la nube el push solo vale para la rama de trabajo de la sesión):
+
 ```
-gh pr create --base develop --title "..." --body-file /d/BDDAT/docs_prueba/temp/pr_body_XX.md
+git push -u origin <rama>
 ```
 
-Muestra la URL del PR al usuario.
+```
+gh pr create --repo <owner>/<repo> --base develop --head <rama> --title "..." --body-file docs_prueba/temp/pr_body_XX.md
+```
+
+Muestra la URL del PR al usuario. Su última parte es el número del PR.
 
 ### 5. Hacer merge
 
 ```
-gh pr merge --merge --delete-branch
+gh pr merge <nº> --repo <owner>/<repo> --merge --delete-branch
 ```
 
-(El flag `--delete-branch` borra la rama remota automáticamente.)
+(El flag `--delete-branch` borra la rama remota automáticamente.) Si el borrado falla —en la nube el acceso a git está limitado a la rama de trabajo—, no insistas ni busques otra vía: dilo en el resumen.
 
 ### 6. Limpieza
 
@@ -61,5 +71,7 @@ git checkout develop
 git pull origin develop
 git branch -D <nombre-rama>
 ```
+
+Si no se pudo borrar la rama remota: `git push origin --delete <nombre-rama>`.
 
 **No ejecutar `gh issue close`** — si el cuerpo del PR incluía `Closes #XX`, GitHub ya cerró el issue al mergear.
