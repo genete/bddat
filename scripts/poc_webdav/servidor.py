@@ -18,9 +18,12 @@ LibreOffice de verdad.
 Uso:
     python servidor.py <dir_datos> <fichero_inicial.odt> [puerto]
 Imprime la URL de edición del documento 1 para dos usuarios (ana, beto) y un
-token caducado.
+token caducado, y sirve en / una página con un botón «Editar en Writer» para
+cada una (prueba en un puesto, #1000). Escucha en 127.0.0.1; con
+POC_HOST=<ip> escucha en esa IP y construye las URL con ella.
 """
 import hashlib
+import html
 import json
 import os
 import sys
@@ -36,6 +39,9 @@ from flask import Flask, Response, request
 DATOS = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else './datos_poc')
 INICIAL = sys.argv[2] if len(sys.argv) > 2 else None
 PUERTO = int(sys.argv[3]) if len(sys.argv) > 3 else 5077
+# Casos 2 y 3 de #1000: escuchar en la IP de red del puesto. Las URL de edición
+# se construyen con este mismo host, así que tiene que ser una IP concreta, no 0.0.0.0.
+HOST = os.environ.get('POC_HOST', '127.0.0.1')
 
 app = Flask(__name__)
 _cerrojo = threading.Lock()
@@ -44,6 +50,8 @@ _cerrojo = threading.Lock()
 TOKENS: dict[str, dict] = {}
 # doc_id -> {lock_token, usuario, caduca}
 LOCKS: dict[int, dict] = {}
+# quién -> URL de edición (ana, beto, caducado); la rellena _preparar()
+URLS: dict[str, str] = {}
 
 
 # ── Almacén direccionado por contenido ──────────────────────────────────────
@@ -83,13 +91,13 @@ def _ruta_bd() -> str:
 def cargar_bd() -> dict:
     if not os.path.exists(_ruta_bd()):
         return {}
-    with open(_ruta_bd()) as f:
+    with open(_ruta_bd(), encoding='utf-8') as f:
         return json.load(f)
 
 
 def guardar_bd(bd: dict) -> None:
     tmp = _ruta_bd() + '.tmp'
-    with open(tmp, 'w') as f:
+    with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(bd, f, indent=2, ensure_ascii=False)
     os.replace(tmp, _ruta_bd())
 
@@ -142,7 +150,9 @@ def _registrar_fin(resp):
         linea['cuerpo'] = request.get_data(as_text=True)
     if request.method in ('PROPFIND', 'LOCK'):
         linea['respuesta'] = resp.get_data(as_text=True)[:600]
-    with open(os.path.join(DATOS, 'peticiones.jsonl'), 'a') as f:
+    # utf-8 explícito: en Windows el defecto es cp1252, y una excepción aquí
+    # convierte la respuesta en un 500 que LibreOffice vería como fallo propio.
+    with open(os.path.join(DATOS, 'peticiones.jsonl'), 'a', encoding='utf-8') as f:
         f.write(json.dumps(linea, ensure_ascii=False) + '\n')
     return resp
 
@@ -327,6 +337,41 @@ def dav_documento(token, nombre):
     return Response('operación no admitida', status=403)
 
 
+# ── Página de lanzamiento (#1000) ───────────────────────────────────────────
+
+@app.route('/')
+def inicio():
+    """Un botón por URL de edición, para abrir Writer desde el navegador como
+    lo haría BDDAT. `vnd.libreoffice.command:ofe|u|<url>` es el esquema que
+    registra el instalador de LibreOffice en Windows («ofe»: abrir para editar).
+    Debajo, el bloqueo y las versiones: recargar dice si un Ctrl+S ha llegado."""
+    doc = cargar_bd()['1']
+    lk = _lock_vigente(1)
+    filas_urls = ''.join(
+        f'<tr><td>{html.escape(quien)}</td>'
+        f'<td><a href="vnd.libreoffice.command:ofe|u|{html.escape(url)}">Editar en Writer</a></td>'
+        f'<td><input readonly size="120" value="{html.escape(url)}"></td></tr>'
+        for quien, url in URLS.items())
+    filas_versiones = ''.join(
+        f'<tr><td>{v["n"]}</td><td>{v["creada"]}</td><td>{html.escape(v["usuario"])}</td>'
+        f'<td>{v["origen"]}</td><td>{v["tamano"]}</td><td><code>{v["sha256"][:12]}</code></td></tr>'
+        for v in reversed(doc['versiones']))
+    bloqueo = (f'{html.escape(lk["usuario"])}, caduca en {int(lk["caduca"] - time.time())} s'
+               if lk else 'ninguno')
+    cuerpo = (
+        '<!doctype html><html lang="es"><head><meta charset="utf-8">'
+        '<title>Prueba de edición WebDAV (#1000)</title>'
+        '<style>body{font-family:sans-serif;margin:2em}td,th{padding:.3em .8em;text-align:left}</style>'
+        f'</head><body><h1>{html.escape(doc["nombre"])}</h1>'
+        '<p>Guarda con Ctrl+S. Recarga esta página para ver si el guardado ha llegado.</p>'
+        f'<h2>Abrir</h2><table>{filas_urls}</table>'
+        f'<h2>Bloqueo</h2><p>{bloqueo}</p>'
+        '<h2>Versiones (la vigente arriba)</h2><table><tr><th>n</th><th>creada (UTC)</th>'
+        '<th>usuario</th><th>origen</th><th>bytes</th><th>sha256</th></tr>'
+        f'{filas_versiones}</table></body></html>')
+    return Response(cuerpo, content_type='text/html; charset=utf-8')
+
+
 # ── Arranque ────────────────────────────────────────────────────────────────
 
 def _emitir_token(doc_id: int, usuario: str, *, segundos: int = 8 * 3600, solo_lectura=False) -> str:
@@ -349,17 +394,19 @@ def _preparar():
         nueva_version(1, contenido, 'generador', 'generado')
     nombre = cargar_bd()['1']['nombre']
     from urllib.parse import quote
-    base = f'http://127.0.0.1:{PUERTO}/dav'
+    base = f'http://{HOST}:{PUERTO}/dav'
     urls = {
         'ana': f'{base}/{_emitir_token(1, "ana")}/{quote(nombre)}',
         'beto': f'{base}/{_emitir_token(1, "beto")}/{quote(nombre)}',
         'caducado': f'{base}/{_emitir_token(1, "ana", segundos=-1)}/{quote(nombre)}',
     }
-    with open(os.path.join(DATOS, 'urls.json'), 'w') as f:
+    URLS.update(urls)
+    with open(os.path.join(DATOS, 'urls.json'), 'w', encoding='utf-8') as f:
         json.dump(urls, f, indent=2)
     print(json.dumps(urls, indent=2), flush=True)
+    print(f'Página de lanzamiento: http://{HOST}:{PUERTO}/', flush=True)
 
 
 if __name__ == '__main__':
     _preparar()
-    app.run(host='127.0.0.1', port=PUERTO, threaded=True, debug=False)
+    app.run(host=HOST, port=PUERTO, threaded=True, debug=False)
