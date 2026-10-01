@@ -32,10 +32,13 @@ VERSIÓN: 1.0
 FECHA: 2026-03-27
 """
 
+import logging
+
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func, cast, String, or_, and_
+from sqlalchemy import func, cast, String, or_, and_, true
 
 from app import db
 from app.models.expedientes import Expediente
@@ -43,9 +46,13 @@ from app.models.solicitudes import Solicitud
 from app.models.fases import Fase
 from app.models.tipos_fases import TipoFase
 from app.models.tipos_resultados_fases import TipoResultadoFase
+from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.entidad import Entidad
+from app.services.actos_solicitud import FASES_PARTIDAS, fases_resolutoras_de_siglas
 from app.services.seguimiento import estado_solicitud, fin_total
 from app.services.arbol_expediente import opciones_solicitud
+
+log = logging.getLogger(__name__)
 
 api_seguimiento_bp = Blueprint('api_seguimiento', __name__, url_prefix='/api')
 
@@ -74,7 +81,11 @@ def _filtro_estado(estado: str):
     property con la misma precisión (aquí solo se mira el código de UNA
     finalizadora, `codigo_finalizadora` abajo): cae igual en el filtro genérico
     RESUELTA salvo que esa finalizadora arbitraria fuera DESISTIDA o ARCHIVADA,
-    caso residual no cubierto — ver ADR-044 R5, issue #901.
+    caso residual no cubierto (#912) — ver ADR-044 R5, issue #901.
+
+    `_actos_resueltos()` es la regla por acto de #996 (D6), la misma de la property:
+    cada acto con su fase de resolución. No se reescribe a mano: se genera desde
+    el mapa de `actos_solicitud`, por tipo de solicitud (`_actos_resueltos`).
     """
     tiene_fases = db.session.query(Fase).filter(Fase.solicitud_id == Solicitud.id).exists()
     fase_sin_finalizar = db.session.query(Fase).filter(
@@ -87,7 +98,7 @@ def _filtro_estado(estado: str):
         .filter(Fase.solicitud_id == Solicitud.id, TipoFase.es_finalizadora.is_(True))
         .exists()
     )
-    resuelta = and_(tiene_fases, ~fase_sin_finalizar, tiene_finalizadora)
+    resuelta = and_(tiene_fases, ~fase_sin_finalizar, tiene_finalizadora, _actos_resueltos())
 
     if estado == 'EN_TRAMITE':
         return ~resuelta
@@ -118,6 +129,53 @@ def _filtro_estado(estado: str):
         codigo_finalizadora.is_(None),
         ~codigo_finalizadora.in_(_CODIGOS_DESISTIDA | {'ARCHIVADA'}),
     ))
+
+
+def _actos_resueltos():
+    """Cláusula SQL de «cada acto de la solicitud tiene su fase de resolución»
+    (#996, D6): la copia en SQL de `actos_solicitud.actos_sin_resolver`.
+
+    Se genera, no se escribe: para cada tipo de solicitud, las fases que
+    resuelven sus actos salen de `fases_resolutoras_de_siglas`, el mismo mapa que
+    usa la property, de modo que una finalizadora o un acto nuevos llegan aquí
+    sin tocar este código. Los tipos con las mismas fases comparten cláusula.
+
+    Basta con que existan: `_filtro_estado` ya exige que no quede ninguna fase sin
+    cerrar. En los tipos partibles (AAP+AAC, AAP+AAC+DUP) la elección la dice el
+    árbol, como en la property: si consta alguna fase partida, hacen falta las
+    partidas; si no, la conjunta.
+
+    Catálogo de tipos no disponible: se degrada a no restringir por acto (el
+    filtro de antes de #996) y se avisa en el log.
+    """
+    try:
+        tipos = TipoSolicitud.query.with_entities(TipoSolicitud.id, TipoSolicitud.siglas).all()
+    except (OperationalError, ProgrammingError) as exc:
+        log.warning('seguimiento: catálogo de tipos de solicitud no disponible, el '
+                    'filtro por estado no comprueba los actos — %s', exc)
+        return true()
+
+    por_fases: dict = {}
+    for tipo_id, siglas in tipos:
+        por_fases.setdefault(fases_resolutoras_de_siglas(siglas), []).append(tipo_id)
+
+    def existe(codigos):
+        return (db.session.query(Fase)
+                .join(TipoFase, Fase.tipo_fase_id == TipoFase.id)
+                .filter(Fase.solicitud_id == Solicitud.id, TipoFase.codigo.in_(codigos))
+                .exists())
+
+    def todas(codigos):
+        return and_(*[existe([c]) for c in sorted(codigos)]) if codigos else true()
+
+    clausulas = []
+    for (conjunta, partida), tipo_ids in por_fases.items():
+        requisito = todas(conjunta)
+        if partida is not None:
+            requisito = or_(and_(~existe(sorted(FASES_PARTIDAS)), requisito), todas(partida))
+        clausulas.append(and_(Solicitud.tipo_solicitud_id.in_(tipo_ids), requisito))
+    # Sin tipos no hay solicitudes (la FK es NOT NULL): nada que restringir.
+    return or_(*clausulas) if clausulas else true()
 
 
 @api_seguimiento_bp.route('/expedientes/seguimiento', methods=['GET'])

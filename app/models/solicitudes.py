@@ -80,16 +80,22 @@ class Solicitud(db.Model):
         - Tampoco cuelga de una fase: ninguna representa el conjunto de la
           instrucción (`CertificadoFase.fase_id` queda NULL para este certificado)
 
-    CAMPO DOCUMENTO_CIERRE_ID (#778, ADR-041 §D bis):
+    CAMPO DOCUMENTO_CIERRE_ID (#778, ADR-041 §D bis; lo llena #996):
         - NULLABLE: FK al certificado de cierre de la solicitud (CERT_CIERRE_SOLICITUD)
         - Nació (#778) como pareja de DOCUMENTO_SOLICITUD_ID: uno anclaba la fecha
           de inicio del plazo para resolver y notificar, este la de fin. Ya no
           cierra ningún plazo: el de resolver es de cada acto y se cumple con la
           notificación al solicitante en la fase que lo resuelve (#930, ADR-049 §E);
           desde #931 ninguna fila de catalogo_plazos lo nombra
-        - Se mantiene como constancia (ADR-049): CERT_CIERRE_SOLICITUD enumera,
-          por acto, la resolución y su notificación, y sirve después como
-          documento consumido por otras solicitudes
+        - Es la constancia del cierre (ADR-049 §F, #996): el certificado resume el
+          plazo de cada acto, cita el de fin de instrucción y copia los de cierre
+          de las fases que resuelven. Lo emite el tramitador desde el inspector
+          (`services/cert_cierre_solicitud.py`), solo con todos los actos resueltos;
+          se retira con justificación, y entonces esta columna vuelve a NULL
+        - Su fila de `certificados` va sin `solicitud_id` ni `fase_id`: se llega a
+          ella por aquí (`sellos.certificado_cierre_solicitud`), que ya garantiza
+          uno por solicitud
+        - Sirve después como documento consumido por otras solicitudes (#997)
         - NO es Fase(RESOLUCION).documento_resultado_id: ese es, desde #956, el
           CERT_CIERRE_FASE que cierra la fase que resuelve (antes era la propia
           resolución, cuya fecha es la de dictar, anterior a la de notificar). El
@@ -100,12 +106,11 @@ class Solicitud(db.Model):
           solicitud está cerrada»: lo que se ancla aquí es el certificado que
           constata el hecho agregado
 
-    CAMPO ESTADO (property derivada, no columna):
-        - EN_TRAMITE: alguna fase no está finalizada
-        - RESUELTA: todas las fases finalizadas Y motor confirma existencia de resolución exigida
-        - El resultado final (RESUELTA_FAVORABLE, RESUELTA_ARCHIVADA, etc.) se deriva
-          del resultado de las fases que el motor obliga a existir
-        - Ver §311 P4 en DISEÑO_MOTOR_AGNOSTICO.md
+    CAMPO ESTADO (property derivada, no columna; ver la property):
+        - EN_TRAMITE: alguna fase sin cerrar, ninguna fase finalizadora, o algún
+          acto sin su fase de resolución creada y cerrada (#996, D6)
+        - RESUELTA_<código>: todo lo anterior cumplido; el código es el resultado
+          común de las finalizadoras, o DISCREPANTE si no coinciden (ADR-044 R5)
     
     RELACIONES:
         - expediente → EXPEDIENTES.id (FK, expediente contenedor)
@@ -116,7 +121,6 @@ class Solicitud(db.Model):
     REGLAS DE NEGOCIO:
         - DESISTIMIENTO/RENUNCIA: Requiere SOLICITUD_AFECTADA_ID NOT NULL
         - MOD: Debe existir AAC previa en el expediente (validar en interfaz)
-        - Estado RESUELTA: requiere confirmación del motor (ver CAMPO ESTADO)
     """
     __tablename__ = 'solicitudes'
     __table_args__ = (
@@ -263,13 +267,22 @@ class Solicitud(db.Model):
         no es "resuelta" cuando ninguna de ellas es la que resuelve — es un
         momento normal, entre fases, de cualquier tramitación).
 
-        RESUELTA_<código> cuando TODAS las fases finalizadoras que tenga la
-        solicitud están cerradas y coinciden en resultado_fase.codigo. Universal,
-        no "la última creada" (ADR-044 R5): con una sola finalizadora —el caso
-        de hoy— es exactamente el comportamiento anterior. Con más de una
-        —AAP+AAC+DUP puede resolver en dos actos independientes, ADR-045 §B—
-        ninguna de las dos supersede a la otra, así que "coger la más reciente"
-        daría por resuelto un acto que en realidad sigue abierto.
+        También EN_TRAMITE mientras algún acto no tenga su fase de resolución
+        creada y cerrada (#996, D6; `actos_solicitud.actos_sin_resolver`). Antes
+        se miraban solo las fases que existían: una AAC+DUP con la RESOLUCION
+        cerrada y sin RESOLUCION_DUP salía resuelta —y, notificada, firme— con
+        la DUP sin resolver. La comprobación es la misma que usan la frase de
+        `cert_cierre_fase` y el certificado de cierre de la solicitud. Vale
+        también cuando la solicitud termina sin resolver el fondo (tenida por
+        desistida, archivada…): la parte de la DUP se cierra en su propia fase,
+        porque es un acto de otro órgano (ADR-045 §B).
+
+        RESUELTA_<código> cuando, cumplido lo anterior, TODAS las fases
+        finalizadoras que tenga la solicitud están cerradas y coinciden en
+        resultado_fase.codigo. Universal, no "la última creada" (ADR-044 R5):
+        con más de una —AAP+AAC+DUP puede resolver en dos actos independientes,
+        ADR-045 §B— ninguna de las dos supersede a la otra, así que "coger la
+        más reciente" daría por resuelto un acto que en realidad sigue abierto.
 
         RESUELTA_DISCREPANTE cuando todas están cerradas pero sus resultados NO
         coinciden. Sigue empezando por RESUELTA a propósito (no rompe el
@@ -279,20 +292,25 @@ class Solicitud(db.Model):
         dos anclas de cierre) es su propio issue futuro. Aquí solo se evita
         camuflar la discrepancia bajo un RESUELTA mudo.
 
-        El llamador debe confirmar via motor de reglas (accion=FINALIZAR, rule id=5)
-        que existe la resolución exigida por el tipo de solicitud (#311 P4).
-
-        Sobre `self.fases`, no una consulta aparte: sigue siendo una computación
-        pura sobre la relación cargada, testable con stubs sin BD (bloque C de
-        `test_296_senal_resultado.py`). Para que no vea una colección vieja justo
-        después de crear o cerrar una fase en la misma sesión, quien crea fases
-        (`crear_fase`) tiene que asignarlas por la relación, no por el FK a pelo
-        —ver comentario en `mutaciones_arbol.crear_fase`—.
+        Sobre `self.fases` y `self.tipo_solicitud`, no una consulta aparte: sigue
+        siendo una computación pura sobre las relaciones cargadas —el árbol, el
+        seguimiento y la cola ya traen las dos—, testable con stubs sin BD
+        (bloque C de `test_296_senal_resultado.py`). Para que no vea una
+        colección vieja justo después de crear o cerrar una fase en la misma
+        sesión, quien crea fases (`crear_fase`) tiene que asignarlas por la
+        relación, no por el FK a pelo —ver comentario en
+        `mutaciones_arbol.crear_fase`—. Su copia en SQL, para filtrar listados,
+        es `api_seguimiento._filtro_estado`.
         """
         if not self.fases or not all(f.finalizada for f in self.fases):
             return 'EN_TRAMITE'
         fases_fin = [f for f in self.fases if f.tipo_fase and f.tipo_fase.es_finalizadora]
         if not fases_fin:
+            return 'EN_TRAMITE'
+        # Import diferido: `actos_solicitud` arrastra servicios que importan
+        # modelos, y desde aquí cerraría el ciclo al cargar `app.models`.
+        from app.services.actos_solicitud import actos_sin_resolver
+        if actos_sin_resolver(self):
             return 'EN_TRAMITE'
         codigos = {f.resultado_fase.codigo for f in fases_fin if f.resultado_fase}
         if len(codigos) == 1:

@@ -72,7 +72,7 @@ from app.models.tipos_documentos import TipoDocumento
 from app.services import bitacora as bitacora_svc
 from app.services import informe_instruccion as informe_svc
 from app.services import sellos
-from app.services.actos_solicitud import actos_de, fase_de
+from app.services.actos_solicitud import actos_de, actos_sin_resolver, fase_de
 from app.services.assembler import build_sujeto
 from app.services.informe_instruccion import PASA, PENDIENTE, SALVADO, Bloque
 from app.services.invariantes_esftt import (
@@ -184,12 +184,17 @@ def revisar(fase) -> Informe:
 def cierra_solicitud(fase) -> bool:
     """True si cerrar `fase` dejaría la solicitud resuelta (D5).
 
-    `Solicitud.estado` pasa a RESUELTA_* cuando todas las fases están cerradas y
-    alguna es finalizadora; como `fase` lo es, basta con que las demás lo estén. Con
-    dos finalizadoras (RESOLUCION + RESOLUCION_DUP), cerrar la primera no la
-    resuelve y se deshace con una reapertura normal.
+    La misma pregunta que `Solicitud.estado`, contando `fase` como ya cerrada: las
+    demás fases cerradas y cada acto con su fase de resolución creada y cerrada
+    (#996, D6, `actos_solicitud.actos_sin_resolver`). Con dos finalizadoras
+    (RESOLUCION + RESOLUCION_DUP), cerrar la primera no la resuelve y se deshace con
+    una reapertura normal; y tampoco si la del otro acto aún no existe —una AAC+DUP
+    sin RESOLUCION_DUP—, que hasta #996 se daba por la última y pedía la frase.
     """
-    return all(f.finalizada for f in fase.solicitud.fases if f is not fase)
+    solicitud = fase.solicitud
+    if not all(f.finalizada for f in solicitud.fases if f is not fase):
+        return False
+    return not actos_sin_resolver(solicitud, contando_cerrada=fase)
 
 
 def _bloques_de_fase(fase, escapes: dict) -> list:
@@ -546,24 +551,12 @@ def vista(fase) -> Vista:
     fija; o, si no lo hay, el informe calculado al vuelo, sin guardar nada."""
     certificado = sellos.certificado_cierre(fase)
     if certificado is not None:
-        datos = certificado.datos or {}
-        bloques = datos.get('bloques') or []
         momento = sellos.momento_emision(certificado)
-        return Vista(
-            expediente=datos.get('expediente', ''),
-            solicitud=datos.get('solicitud', ''),
-            fase_id=fase.id,
-            fase=datos.get('fase', _nombre_fase(fase)),
-            actos=datos.get('actos') or [],
-            resultado=datos.get('resultado'),
-            emitido=True, limpio=True,
-            cierra_solicitud=bool(datos.get('cierra_solicitud')),
-            pendientes=[],
-            salvados=[b for b in bloques if b.get('salvado')],
-            relato=[linea for b in bloques for linea in (b.get('relato') or [])],
-            certificado_id=certificado.id,
+        return vista_emitida(
+            certificado.datos or {}, fase_id=fase.id, certificado_id=certificado.id,
             documento_certificado_id=certificado.documento_id,
             emitido_en=momento.strftime('%d/%m/%Y %H:%M') if momento else None,
+            fase_nombre=_nombre_fase(fase),
         )
 
     informe = revisar(fase)
@@ -585,6 +578,35 @@ def vista(fase) -> Vista:
         advertencia=(informe.advertencia or {}).get('motivo'),
         falta=informe.falta,
         calculado_en=datetime.now().strftime('%d/%m/%Y %H:%M'),
+    )
+
+
+def vista_emitida(datos: dict, *, fase_id: int, certificado_id: Optional[int],
+                  documento_certificado_id: Optional[int], emitido_en: Optional[str],
+                  fase_nombre: str = '') -> Vista:
+    """La vista de un certificado de cierre de fase emitido, leída solo de su foto
+    fija (`datos`) y de su huella, sin tocar el árbol.
+
+    La usan la vista del propio certificado y la copia literal que lleva el de
+    cierre de la solicitud (#996), que guarda `datos` y la huella tal cual y los
+    pinta con la misma plantilla (`_cert_cierre_fase_cuerpo.html`).
+    """
+    bloques = datos.get('bloques') or []
+    return Vista(
+        expediente=datos.get('expediente', ''),
+        solicitud=datos.get('solicitud', ''),
+        fase_id=fase_id,
+        fase=datos.get('fase', fase_nombre),
+        actos=datos.get('actos') or [],
+        resultado=datos.get('resultado'),
+        emitido=True, limpio=True,
+        cierra_solicitud=bool(datos.get('cierra_solicitud')),
+        pendientes=[],
+        salvados=[b for b in bloques if b.get('salvado')],
+        relato=[linea for b in bloques for linea in (b.get('relato') or [])],
+        certificado_id=certificado_id,
+        documento_certificado_id=documento_certificado_id,
+        emitido_en=emitido_en,
     )
 
 

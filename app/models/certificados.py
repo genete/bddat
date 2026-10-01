@@ -33,6 +33,16 @@ class Certificado(db.Model):
             Texto, no ids: la vista del emitido lo pinta tal cual y no recalcula,
             porque ADR-036 no protege los datos de los documentos de la fase en el
             pool (#954). Su documento es `fases.documento_resultado_id`.
+        CERT_CIERRE_SOLICITUD — la foto fija del cierre de la solicitud (#996,
+            ADR-049 §F, D2/D3): {version, expediente, solicitud_id, solicitud,
+            solicitante, presentada, actos, instruccion, fases, retiradas}.
+            `actos`: el resumen del plazo de cada acto ya redactado (fase y
+            resultado, plazo y norma, fecha límite y suspensión, notificación al
+            solicitante, veredicto y efecto). `instruccion`: documento, número y
+            emisión del CERT_FIN_INSTRUCCION, o null. `fases`: copia literal de cada
+            CERT_CIERRE_FASE ({fase_id, fase, actos, certificado_id, documento_id,
+            emitido, datos}). Su documento es `solicitudes.documento_cierre_id`;
+            la fila va sin solicitud_id ni fase_id (ver SCOPING POR SOLICITUD).
 
     URI: bddat://certificados/{id}  →  resolver_url() devuelve dict completo.
 
@@ -49,6 +59,12 @@ class Certificado(db.Model):
         ronda), para poder buscar y no confundir el certificado de una solicitud
         o una ronda con el de otra del mismo expediente. reformado_id NULL =
         versión inicial, mismo criterio que fases.reformado_id (R3).
+
+        CERT_CIERRE_SOLICITUD (#996) es de una solicitud y aun así va con
+        solicitud_id NULL: el índice uq_certificado_ip_consultas_no_reformado es por
+        solicitud_id sin `tipo` y chocaría con el CERT_FIN_IP_CONSULTAS de la misma
+        solicitud. Se llega a él por solicitudes.documento_cierre_id, que ya
+        garantiza uno por solicitud (sellos.certificado_cierre_solicitud).
 
     SCOPING POR FASE (N3, ADR-049 §F, #932):
         fase_id es el tercer eje de scoping, NULL salvo en los certificados que

@@ -613,8 +613,23 @@ def _relato_reversiones(solicitud) -> tuple:
     esto no lo es. Una consulta más en un gesto puntual, mismo criterio que el plazo
     de las esperas.
     """
-    from app.models.bitacora import Bitacora
     from app.services.cert_fin_instruccion import ACCION_DESHACER
+    return relato_retiradas(
+        solicitud, accion=ACCION_DESHACER,
+        que='un certificado de fin de instrucción anterior de esta solicitud')
+
+
+def relato_retiradas(solicitud, *, accion: str, que: str) -> tuple:
+    """Los certificados anteriores de `solicitud` que se dejaron sin efecto, ya
+    redactados: las filas de bitácora `ALTERAR solicitudes` con `detalle.accion ==
+    accion`, en orden, con quién, cuándo y la justificación.
+
+    `que` nombra el certificado en la frase («un certificado de fin de instrucción
+    anterior de esta solicitud»). Lo comparten el fin de instrucción (#838,
+    `_relato_reversiones`) y el cierre de la solicitud (#996), que se retiran igual:
+    con justificación y sobre la solicitud, que es lo que permanece.
+    """
+    from app.models.bitacora import Bitacora
 
     try:
         filas = (Bitacora.query
@@ -624,20 +639,19 @@ def _relato_reversiones(solicitud) -> tuple:
                  .order_by(Bitacora.id)
                  .all())
     except (OperationalError, ProgrammingError) as exc:
-        log.warning('informe_instruccion: bitácora no disponible para las reversiones '
+        log.warning('informe_instruccion: bitácora no disponible para las retiradas '
                     'de la solicitud %s — %s', solicitud.id, exc)
         return ()
 
     frases = []
     for fila in filas:
         detalle = fila.detalle or {}
-        if detalle.get('accion') != ACCION_DESHACER:
+        if detalle.get('accion') != accion:
             continue
         cuando = f'El {_fecha(fila.created_at)}, ' if fila.created_at else ''
         quien = _quien(fila.usuario_id)
         sujeto = f'{quien} dejó' if quien else 'se dejó'
-        frase = (f'{cuando}{sujeto} sin efecto un certificado de fin de instrucción '
-                 f'anterior de esta solicitud')
+        frase = f'{cuando}{sujeto} sin efecto {que}'
         justificacion = _citable(detalle.get('justificacion'))
         if justificacion:
             frase += f', con esta justificación: «{justificacion}»'

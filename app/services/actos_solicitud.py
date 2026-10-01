@@ -23,6 +23,18 @@ Es un invariante en código (ADR-046/047 lo fijan), no regla del motor ni dato
 de catálogo: si aparece una finalizadora nueva en `tipos_fases` y no aquí, lo
 dicen el aviso de arranque de `catalogo_requerido` y el test de catálogo.
 
+¿ESTÁ RESUELTO CADA ACTO? (#996, D6)
+====================================
+
+`actos_sin_resolver` es la única respuesta a «¿queda algún acto sin su fase de
+resolución creada y cerrada?». La usan `Solicitud.estado` (la solicitud no está
+resuelta mientras quede alguno), `cert_cierre_fase.cierra_solicitud` (¿cerrar
+esta fase es lo último?) y el certificado de cierre de la solicitud. Antes de
+#996 el estado contaba solo las fases que existen, y una `AAC+DUP` con la
+`RESOLUCION` cerrada y sin `RESOLUCION_DUP` salía resuelta y firme. El filtro SQL
+del seguimiento no puede llamarla —no tiene la solicitud cargada— y se genera
+desde el mismo mapa con `fases_resolutoras_de_siglas`.
+
 Dependencias en una sola dirección: este módulo importa
 `services.notificaciones` (el cumplimiento); `notificaciones` no importa este.
 """
@@ -51,6 +63,8 @@ _FASE_DE_ACTO_PARTIDA = {
     'AAC': 'RESOLUCION_AAC',
 }
 _SOLICITUDES_PARTIBLES = frozenset({'AAP+AAC', 'AAP+AAC+DUP'})
+# Las fases cuya mera existencia dice que la solicitud se resuelve partida.
+FASES_PARTIDAS = frozenset(_FASE_DE_ACTO_PARTIDA.values())
 
 # Todo lo que el mapa puede emitir. El guardián de catalogo_requerido lo
 # compara con `TipoFase.es_finalizadora`.
@@ -96,11 +110,35 @@ def actos_de(solicitud) -> list[ActoSolicitud]:
 
 def fase_resolutora(solicitud, siglas: str) -> str:
     """Código de la fase que resuelve el acto `siglas`, exista ya o no."""
+    partida = siglas in _FASE_DE_ACTO_PARTIDA and _resuelta_partida(solicitud)
+    return _fase_de_siglas(siglas, partida=partida)
+
+
+def _fase_de_siglas(siglas: str, *, partida: bool) -> str:
+    """El mapa acto → fase, con la elección conjunta/partida ya hecha."""
     if siglas in _FASE_DE_ACTO:
         return _FASE_DE_ACTO[siglas]
-    if siglas in _FASE_DE_ACTO_PARTIDA and _resuelta_partida(solicitud):
+    if partida and siglas in _FASE_DE_ACTO_PARTIDA:
         return _FASE_DE_ACTO_PARTIDA[siglas]
     return _FASE_POR_DEFECTO
+
+
+def fases_resolutoras_de_siglas(siglas_solicitud: str) -> tuple[frozenset, Optional[frozenset]]:
+    """Las fases que resuelven los actos de un tipo de solicitud, sin mirar el
+    árbol: `(conjunta, partida)`, con `partida` None si el tipo no admite
+    resolución partida (#996).
+
+    Para quien pregunta en SQL y no tiene la solicitud cargada —el filtro por
+    estado del seguimiento—: la misma regla que `fase_resolutora`, desde las
+    siglas del tipo. `'AAC+DUP'` → `({'RESOLUCION', 'RESOLUCION_DUP'}, None)`;
+    `'AAP+AAC'` → `({'RESOLUCION'}, {'RESOLUCION_AAP', 'RESOLUCION_AAC'})`. Cuál
+    de las dos vale lo decide el árbol: partida si consta alguna de `FASES_PARTIDAS`.
+    """
+    actos = siglas_solicitud.split('+') if siglas_solicitud else []
+    conjunta = frozenset(_fase_de_siglas(s, partida=False) for s in actos)
+    if siglas_solicitud not in _SOLICITUDES_PARTIBLES:
+        return conjunta, None
+    return conjunta, frozenset(_fase_de_siglas(s, partida=True) for s in actos)
 
 
 def fase_de(acto: ActoSolicitud):
@@ -112,6 +150,31 @@ def fase_de(acto: ActoSolicitud):
         (f for f in acto.solicitud.fases if f.tipo_fase and f.tipo_fase.codigo == codigo),
         None,
     )
+
+
+def actos_sin_resolver(solicitud, *, contando_cerrada=None) -> list[ActoSolicitud]:
+    """Los actos de `solicitud` cuya fase de resolución no existe o no está
+    cerrada (#996, D6). Lista vacía = cada acto tiene la suya creada y cerrada.
+
+    `contando_cerrada` es una fase que se da por cerrada aunque aún no lo esté:
+    la pregunta de `cert_cierre_fase.cierra_solicitud`, «si cierro esta, ¿queda
+    alguno?».
+
+    Una solicitud con DUP que termina sin resolver el fondo (tenida por
+    desistida, archivada…) tampoco está resuelta hasta que la parte de la DUP se
+    cierre en su propia fase: son dos actos de órganos distintos, que no pueden
+    ser el mismo ni compartir pie de recurso (ADR-045 §B; decisión de Carlos en
+    #996).
+
+    Sin consultas: lee `tipo_solicitud`, `fases` y `fase.tipo_fase`, que el árbol
+    ya carga (`opciones_solicitud`), y `finalizada`, que es una columna.
+    """
+    pendientes = []
+    for acto in actos_de(solicitud):
+        fase = fase_de(acto)
+        if fase is None or not (fase is contando_cerrada or fase.finalizada):
+            pendientes.append(acto)
+    return pendientes
 
 
 def _resuelta_partida(solicitud) -> bool:
