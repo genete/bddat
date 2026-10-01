@@ -542,6 +542,100 @@ function SelloInstruccion() {
   )
 }
 
+// Cierre de la solicitud (#996, ADR-049 §F): el certificado que cuenta cómo terminó la
+// solicitud entera —el plazo de resolver de cada acto, la instrucción y copia de los
+// certificados de cierre de sus fases—. Junto al fin de instrucción, con el gesto del
+// cumplimiento de la fase: el botón siempre responde con la vista HTML en el modal
+// grande, que dice qué falta o enseña el certificado.
+function CierreSolicitud() {
+  const detalle      = useArbolStore((s) => s.detalle)
+  const certificando = useArbolStore((s) => s.certificandoCierreSolicitud)
+  const certificar   = useArbolStore((s) => s.certificarCierreSolicitud)
+
+  const cert = detalle && detalle.cert_cierre
+  if (!cert) return null
+
+  if (cert.emitido) return <SelloCierreSolicitud cert={cert} />
+
+  return (
+    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border bg-light mb-3">
+      <span className="small">
+        <i className="bi bi-flag me-1" />
+        <strong>Cierre de la solicitud.</strong> El certificado cuenta cómo terminó: el
+        plazo de resolver de cada acto, la instrucción y los certificados de cierre de sus
+        fases.
+      </span>
+      <span className="small text-muted">
+        Se emite cuando cada acto tiene su fase de resolución cerrada con su certificado. Si
+        falta algo, verá qué es y no se creará ningún documento.
+      </span>
+      <button type="button" className="btn btn-sm btn-primary"
+              disabled={certificando} onClick={certificar}>
+        {certificando ? 'Revisando…' : '📜 Certificar el cierre de la solicitud'}
+      </button>
+    </div>
+  )
+}
+
+// El certificado emitido, con su salida (D4). Mismo esquema que SelloInstruccion: el
+// estado normal es que se quede, y el formulario para retirarlo está plegado.
+function SelloCierreSolicitud({ cert }) {
+  const [abierto, setAbierto] = React.useState(false)
+  const [justificacion, setJustificacion] = React.useState('')
+  const retirando = useArbolStore((s) => s.retirandoCierreSolicitud)
+  const retirar   = useArbolStore((s) => s.retirarCierreSolicitud)
+
+  return (
+    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border border-success-subtle bg-success-subtle mb-3">
+      <span className="small">
+        <i className="bi bi-patch-check-fill me-1" />
+        <strong>Cierre de la solicitud certificado.</strong> Su contenido se fijó al
+        emitirlo y no se recalcula.
+      </span>
+      <button type="button" className="btn btn-sm btn-outline-success align-self-start"
+              onClick={() => window.AppModalLarge && window.AppModalLarge.open(
+                cert.enlace_vista, { title: 'Certificado de cierre de la solicitud' })}>
+        <i className="bi bi-eye me-1" />Ver el certificado
+      </button>
+
+      {!abierto ? (
+        <button type="button" className="btn btn-sm btn-link text-danger p-0 text-start"
+                onClick={() => setAbierto(true)}>
+          El resumen del plazo no es correcto: retirar el certificado
+        </button>
+      ) : (
+        <>
+          <span className="small text-muted">
+            Se borrará el certificado; después podrá corregir lo que fallaba y volver a
+            emitirlo. No se puede si alguna tarea lo tiene vinculado. Queda registrado en
+            bitácora y el próximo certificado lo hará constar.
+          </span>
+          <textarea
+            className="form-control form-control-sm"
+            rows={2}
+            placeholder="Justificación obligatoria para retirar el certificado"
+            value={justificacion}
+            onChange={(e) => setJustificacion(e.target.value)}
+            disabled={retirando}
+          />
+          <div className="d-flex gap-2">
+            <button type="button" className="btn btn-sm btn-danger"
+                    disabled={retirando || !justificacion.trim()}
+                    onClick={() => retirar(justificacion.trim())}>
+              {retirando ? 'Retirando…' : '↩️ Retirar el certificado'}
+            </button>
+            <button type="button" className="btn btn-sm btn-outline-secondary"
+                    disabled={retirando}
+                    onClick={() => { setAbierto(false); setJustificacion('') }}>
+              Cancelar
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // Cumplimiento del plazo de resolver (#947, ADR-049 §F): el botón de la fase
 // finalizadora. Mismo gesto que el fin de instrucción —siempre activo, nunca un
 // error—, pero la respuesta no es un informe propio: es la vista HTML del
@@ -1115,6 +1209,7 @@ function InspectorEdicion({ nodo }) {
         {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
         {!borrarPendienteConfirm && esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
         {!borrarPendienteConfirm && esSolicitud && <CertFinInstruccion />}
+        {!borrarPendienteConfirm && esSolicitud && <CierreSolicitud />}
         {!borrarPendienteConfirm && esFase && <CertCumplimientoFase />}
         {!borrarPendienteConfirm && esFase && <CierreFase nodo={nodo} />}
         {esSolicitud && <ModalInformeFinInstruccion />}
