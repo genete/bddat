@@ -723,7 +723,8 @@ def test_plazos_sobre_el_arbol_cargado_solo_catalogo_e_inhabiles(
     en la carga del árbol y el documento que cita, entre los vínculos de su
     tarea, así que leer el sello no añade ninguna. Y con la fase cerrada por su
     `CERT_CIERRE_FASE` (#956): el backref de la fase trae las dos filas, y el
-    filtro por tipo es en memoria.
+    filtro por tipo es en memoria. Tampoco el estado de la solicitud, que desde
+    #996 (D6) se decide por acto: lee el tipo y las fases que ya trae la carga.
 
     Se reproduce la carga en vez de llamar a `construir_arbol` porque este
     devuelve un dict y suelta los objetos: el mapa de identidad es débil y
@@ -767,6 +768,8 @@ def test_plazos_sobre_el_arbol_cargado_solo_catalogo_e_inhabiles(
         plazos = plazos_de_la_solicitud(sol)
         assert [p.acto for p in plazos] == ['AAP', 'AAC', 'DUP']
         assert plazos[0].fecha_cumplimiento == date(2025, 3, 20)
+        # Sin RESOLUCION_DUP la DUP no está resuelta, ni con la RESOLUCION cerrada.
+        assert sol.estado == 'EN_TRAMITE'
 
     assert contar_consultas(arbol_y_plazos) - contar_consultas(cargar_arbol) == 3
 
