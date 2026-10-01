@@ -67,16 +67,54 @@ fichero original no se toca nunca.
    LibreOffice, no un mensaje propio: el token debería durar la jornada y
    regenerarse desde el botón «Editar».
 
+## Prueba en un puesto de la Junta (#1000, 2026-10-01)
+
+Prueba manual, con pantallas reales, en un puesto Windows 11 con el LibreOffice
+corporativo **7.6.7.2**. El servidor corre con el Python del venv de BDDAT. Los
+escenarios los maneja una persona desde la página de botones de `servidor.py`
+(`/`), sin `cliente_lo.py`.
+
+| Caso | Escenario | Resultado |
+|---|---|---|
+| 1 | Botón del navegador (`vnd.libreoffice.command:ofe\|u\|<url>`) → Writer → Ctrl+S | ✅ Sin credenciales; `LOCK` → `PUT` → `UNLOCK` al cerrar |
+| 1 | Segundo LibreOffice (otro perfil) sobre el mismo documento | ✅ `LOCK` 423 → aviso «Otro usuario ha bloqueado este archivo» → solo lectura |
+| 1 | Autorrecuperación cada minuto, 2 min sin guardar | Ningún `PUT`: la copia va al perfil del usuario, no al servidor |
+| 1 | «Guardar una copia», y después Ctrl+S | ✅ No suelta el bloqueo; el Ctrl+S llega |
+| 1 | «Guardar como» con otro nombre en la carpeta WebDAV | ⚠️ Ningún `PUT` y ningún aviso (ver hallazgo 8) |
+| 1 | Token caducado | ✅ `OPTIONS`/`HEAD` 403: no abre |
+| 1 | «Guardar como» al disco, y después Ctrl+S | ✅ `UNLOCK` inmediato; el Ctrl+S ya no llega, como prevé ADR-050 §D |
+| 2 | El mismo puesto contra su IP de red | ✅ Igual que contra `127.0.0.1`; proxy de LibreOffice en «Sistema» |
+| 3 | Segunda máquina por la VPN (LibreOffice 26.2), dos usuarios a la vez | ✅ Bloqueo y solo lectura entre máquinas |
+| 3 | Edición de más de 3 minutos desde la segunda máquina | ✅ Renueva el bloqueo sin que se note y el guardado entra |
+
+Hallazgos (siguen la numeración de arriba):
+
+7. **El lanzador no necesita instalador.** El MSI de LibreOffice registra
+   `vnd.libreoffice.command` en `HKLM\SOFTWARE\Classes`, y con él funciona el
+   botón en el puesto y en la segunda máquina. El navegador pide confirmación
+   para abrir LibreOffice la primera vez desde cada dirección.
+8. **«Guardar como» dentro de la carpeta WebDAV.** El diálogo de Windows ni
+   ofrece esa carpeta: propone «Documentos». Con los diálogos de LibreOffice sí
+   se llega, y solo muestra el documento del token. Al guardar con otro nombre,
+   la 7.6 consulta la carpeta sin barra final (`/dav/<token>`); Flask contesta
+   con una redirección 308, y LibreOffice abandona en silencio: no hay `PUT` ni
+   aviso. El documento sigue apuntando al servidor. Con la 24.2 el resultado
+   fue un 403 con error visible. El servidor real tiene que responder a la
+   carpeta con y sin barra.
+9. **La 7.6 usa `HEAD`** (token caducado, comprobaciones del diálogo de
+   guardar), además de los verbos del hallazgo 4.
+10. **«Más detalles» en el aviso de bloqueo muestra el `owner` que devuelve el
+    servidor** («Nombre de usuario: ana»), no el de LibreOffice. En la 7.6 los
+    botones de ese aviso salen sin traducir («Open R/O», «Open Copy»,
+    «Notify»); en la 26.2 salen traducidos.
+11. **Token caducado.** El error es el genérico de LibreOffice («Error al leer
+    los datos desde Internet… HEAD => HTTP/1.1 403 FORBIDDEN»): muestra la
+    línea de estado, no el cuerpo, así que el texto no se puede personalizar.
+
 ## Lo que esta prueba NO ha verificado
 
-- **Puesto Windows con interfaz gráfica.** Todo se ha manejado por UNO en Linux
-  sin interfaz. Faltan los diálogos reales («documento bloqueado por…»,
-  autorrecuperación) y cómo se comporta la opción de autoguardado.
-- **Lanzar LibreOffice desde el navegador.** Un enlace `http://` lo abre el
-  navegador, no Writer. Hay dos vías por probar: un protocolo propio como el
-  `bddat-explorador://` que ya instala `scripts/cliente/` y que ejecute
-  `soffice.exe "<url>"`, o el esquema `vnd.libreoffice.command:`, si la versión
-  instalada en los puestos lo registra.
+- **El registro de `vnd.libreoffice.command` en otros puestos de la Junta.**
+  Solo se ha mirado en el de la prueba.
 - **HTTPS** con el certificado corporativo: LibreOffice usa su propio libcurl y
   OpenSSL (lo muestra en su User-Agent) y hay que ver qué almacén de
   certificados de confianza consulta en Windows.
@@ -88,7 +126,7 @@ fichero original no se toca nunca.
 
 | Fichero | Rol |
 |---|---|
-| `servidor.py` | Flask: almacén direccionado por contenido (`blobs/<sha256>`), versiones en JSON, token en la URL, WebDAV mínimo con `LOCK`. Registra cada petición en `peticiones.jsonl`. |
+| `servidor.py` | Flask: almacén direccionado por contenido (`blobs/<sha256>`), versiones en JSON, token en la URL, WebDAV mínimo con `LOCK`. Registra cada petición en `peticiones.jsonl`. En `/`, la página de botones con el bloqueo y las versiones (#1000). |
 | `cliente_lo.py` | Maneja LibreOffice por UNO. Cada escenario arranca su propio `soffice` con perfil propio, como puestos distintos. |
 | `ejecutar.sh` | Arranca el servidor sobre un directorio limpio, ejecuta los escenarios y para el servidor. |
 | `resumen_peticiones.py` | Resume `peticiones.jsonl` (`-v` muestra los cuerpos XML). |
@@ -107,3 +145,16 @@ python scripts/poc_webdav/resumen_peticiones.py /tmp/poc_webdav
 
 Si hay un proxy HTTP en el entorno, `ejecutar.sh` ya exporta `NO_PROXY` para
 `127.0.0.1`: sin eso, LibreOffice y urllib intentan salir por el proxy.
+
+**Prueba manual en Windows** (#1000), con el venv de BDDAT y la página de
+botones en `http://<host>:5077/`:
+
+```bash
+venv/Scripts/python.exe scripts/poc_webdav/servidor.py <dir_datos> app/data/plantillas_base/carta_base.odt 5077
+POC_HOST=<ip_del_puesto> venv/Scripts/python.exe scripts/poc_webdav/servidor.py <dir_datos> app/data/plantillas_base/carta_base.odt 5077
+POC_HOST=0.0.0.0 POC_URL_HOST=<ip_del_puesto> venv/Scripts/python.exe scripts/poc_webdav/servidor.py <dir_datos> app/data/plantillas_base/carta_base.odt 5077
+venv/Scripts/python.exe -X utf8 scripts/poc_webdav/resumen_peticiones.py <dir_datos>
+```
+
+Un segundo usuario en el mismo puesto es otro LibreOffice con perfil propio:
+`soffice.exe -env:UserInstallation=file:///<carpeta_perfil> "<url de beto>"`.
