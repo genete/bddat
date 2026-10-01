@@ -8,7 +8,7 @@ import sys
 
 datos = sys.argv[1] if len(sys.argv) > 1 else './datos_poc'
 detalle = '-v' in sys.argv
-with open(os.path.join(datos, 'peticiones.jsonl')) as f:
+with open(os.path.join(datos, 'peticiones.jsonl'), encoding='utf-8') as f:
     for n, linea in enumerate(f, 1):
         d = json.loads(linea)
         cab = {k: v for k, v in d['cabeceras'].items() if k != 'User-Agent'}
