@@ -10,6 +10,7 @@ RUTAS:
     GET  /expedientes/<id>/gestionar-municipios → parcial modal grande municipios (ADR-023 §6 #543)
     POST /expedientes/<id>/municipios           → guardar municipios; JSON si XHR (#543)
     GET  /expedientes/<id>/fases/<fase_id>/certificado-cumplimiento → vista del certificado (#947)
+    GET  /expedientes/<id>/solicitudes/<sol_id>/certificado-cierre → vista del cierre de la solicitud (#996)
     (otros: arbol, pool_documentos, cert_pdf…)
 
     Seguimiento se movió a seguimiento_y_huerfanos (#630, ADR-038) — ya no vive aquí.
@@ -33,6 +34,7 @@ from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_ia import TipoIA
 from app.models.municipios_proyecto import MunicipioProyecto
 from app.models.fases import Fase
+from app.models.solicitudes import Solicitud
 from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
@@ -549,10 +551,12 @@ _MOTIVO_ANCLA = {
         'cuelga la fecha de inicio del plazo para resolver. No puede eliminarse '
         'mientras la solicitud lo tenga por ancla.'
     ),
+    # Desde #996 lo dice antes `sellos.motivo_sellado`, porque el certificado tiene su
+    # fila en `certificados`. Queda por si un documento ancla el cierre sin ella.
     'anclado_en_cierre': (
-        'Este documento es el certificado de cierre de la solicitud #{sol}, del que '
-        'cuelga la fecha de fin del plazo para resolver. No puede eliminarse '
-        'mientras la solicitud lo tenga por ancla.'
+        'Este documento es el certificado de cierre de la solicitud #{sol}. No puede '
+        'eliminarse mientras la solicitud lo tenga por ancla: retírelo desde el '
+        'inspector de la solicitud, con justificación.'
     ),
 }
 
@@ -1087,6 +1091,31 @@ def cert_cierre_fase_vista(id, fase_id):
     from app.services.cert_cierre_fase import vista
     return render_template('expedientes/_cert_cierre_fase_fragmento.html',
                            vista=vista(fase))
+
+
+@bp.route('/<int:id>/solicitudes/<int:sol_id>/certificado-cierre')
+@login_required
+def cert_cierre_solicitud_vista(id, sol_id):
+    """Fragmento modal grande — el certificado de cierre de la solicitud (#996).
+
+    Mismo patrón que los de la fase: vista única para los dos momentos y siempre de
+    solo lectura. Sin emitir, lo que diría el certificado y qué falta, calculado al
+    vuelo sin guardar nada; emitido, su foto fija, que no se recalcula. Se abre desde
+    el bloque «Cierre de la solicitud» del inspector y, emitido, desde su documento
+    en el pool, la Despensa o el inspector (`info_apertura_documento`).
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return '', 403
+
+    solicitud = Solicitud.query.get_or_404(sol_id)
+    if solicitud.expediente_id != id:
+        abort(404)
+
+    from app.services.cert_cierre_solicitud import vista
+    return render_template('expedientes/_cert_cierre_solicitud_fragmento.html',
+                           vista=vista(solicitud))
 
 
 @bp.route('/<int:id>/documentos/url-externa', methods=['POST'])

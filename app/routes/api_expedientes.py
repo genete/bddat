@@ -1198,6 +1198,83 @@ def emitir_cert_cierre_fase_nodo(expediente_id, nodo_id):
 
 
 # =============================================================================
+# ENDPOINT 8septies: Certificar el cierre de la solicitud (#996, ADR-049 §F)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/solicitud/<int:nodo_id>'
+              '/certificado-cierre', methods=['POST'])
+@login_required
+def emitir_cert_cierre_solicitud_nodo(expediente_id, nodo_id):
+    """
+    POST .../nodo/solicitud/<solicitud_id>/certificado-cierre — el botón «Cierre de
+    la solicitud» del inspector (#996, D1). Sin body: no hay nada que elegir.
+
+    Respuestas 200, todas con el informe (`cert_cierre_solicitud.Emision.a_dict`) y
+    `enlace_vista` para abrir la vista en el modal grande:
+    - falta algo → `emitido: false` y `pendientes`; nada creado;
+    - emitido ahora → `emitido: true`;
+    - ya estaba → `emitido: true, ya_emitido: true`.
+
+    422 para errores de verdad (catálogo sin el tipo) y, de bloqueo
+    (`puede_escapar: false`), solo si la puerta cerrada discrepara del informe.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    # Mismo permiso que los otros certificados y que cerrar o reabrir una fase.
+    if verificar_acceso_expediente(expediente, 'gestionar_estructura'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        solicitud = _resolver_nodo(expediente, 'solicitud', nodo_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    from app.services.cert_cierre_solicitud import emitir
+
+    res = emitir(solicitud)
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    payload = res.a_dict()
+    payload['enlace_vista'] = url_for('expedientes.cert_cierre_solicitud_vista',
+                                      id=expediente.id, sol_id=solicitud.id)
+    if res.error:
+        payload['error'] = res.error
+        return jsonify(payload), 422
+    return jsonify(payload), 200
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/solicitud/<int:nodo_id>'
+              '/certificado-cierre', methods=['DELETE'])
+@login_required
+def retirar_cert_cierre_solicitud_nodo(expediente_id, nodo_id):
+    """
+    DELETE .../nodo/solicitud/<solicitud_id>/certificado-cierre — retira el
+    certificado de cierre de la solicitud (#996, D4). Mismo path que la emisión con
+    otro verbo, como en el fin de instrucción.
+
+    Body JSON: {justificacion}, obligatoria. 422 con `error` si no hay certificado,
+    falta la justificación o alguna tarea lo tiene vinculado.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_estructura'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        solicitud = _resolver_nodo(expediente, 'solicitud', nodo_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    from app.services.cert_cierre_solicitud import retirar
+
+    datos = request.get_json(silent=True) or {}
+    res = retirar(solicitud, justificacion=(datos.get('justificacion') or ''))
+    if res.error:
+        payload = res.a_dict()
+        payload['error'] = res.error
+        return jsonify(payload), 422
+    return jsonify(res.a_dict()), 200
+
+
+# =============================================================================
 # ENDPOINT 8ter: Alta de organismo consultado en una fase CONSULTAS (ADR-042 §C)
 # =============================================================================
 
