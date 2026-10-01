@@ -17,7 +17,9 @@ Una función por tipo de certificado y un solo punto de comprobación, sin motor
 declarativo genérico (§F). Nació con `CERT_CUMPLIMIENTO_FASE` (#947); #956 (N4b)
 añade `CERT_CIERRE_FASE`, que no cita documentos —sella la fase entera, y eso ya
 lo hace ADR-036 por `documento_resultado_id`— pero sí necesita decir por qué su
-propio documento no se toca y cuál es la salida. El sello de
+propio documento no se toca y cuál es la salida. #996 (N6) añade
+`CERT_CIERRE_SOLICITUD`, que no sella nada (solo cuenta sellos, §F): aquí solo
+están dónde se encuentra y la salida para su documento. El sello de
 `CERT_FIN_INSTRUCCION` (#838) sigue en `invariantes_esftt` hasta que se mude aquí
 (N7/N9).
 
@@ -52,6 +54,7 @@ log = logging.getLogger(__name__)
 
 CERT_CUMPLIMIENTO_FASE = 'CERT_CUMPLIMIENTO_FASE'
 CERT_CIERRE_FASE = 'CERT_CIERRE_FASE'
+CERT_CIERRE_SOLICITUD = 'CERT_CIERRE_SOLICITUD'
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +85,18 @@ def certificado_cierre(fase) -> Optional[Certificado]:
     está cerrada por él y solo por él (D6).
     """
     return _certificado_de_fase(fase, CERT_CIERRE_FASE)
+
+
+def certificado_cierre_solicitud(solicitud) -> Optional[Certificado]:
+    """El `CERT_CIERRE_SOLICITUD` emitido de `solicitud`, o `None` (#996).
+
+    Por `solicitud.documento_cierre` y su fila de `certificados`, no por
+    `certificados.solicitud_id`: la fila va sin él, porque el índice único por
+    `solicitud_id` (#901) no lleva `tipo` y chocaría con el `CERT_FIN_IP_CONSULTAS`
+    de la misma solicitud. La FK ya garantiza uno por solicitud.
+    """
+    documento = solicitud.documento_cierre
+    return documento.certificado if documento is not None else None
 
 
 def documento_citado(certificado) -> Optional[Documento]:
@@ -180,6 +195,16 @@ def motivo_sellado(documento) -> Optional[str]:
             f'Este documento es el certificado de cierre de la fase '
             f'«{_nombre_fase(propio.fase)}»: no se edita ni se borra desde el pool. '
             f'Para retirarlo, reabra la fase desde el inspector.'
+        )
+    if propio.tipo == CERT_CIERRE_SOLICITUD:
+        # La solicitud sale del ancla (`documento_cierre_id`): la fila de
+        # `certificados` va sin `solicitud_id` (#996).
+        solicitudes = documento.anclado_en_cierre or []
+        de_cual = f' #{solicitudes[0].id}' if solicitudes else ''
+        return (
+            f'Este documento es el certificado de cierre de la solicitud{de_cual}: no '
+            f'se edita ni se borra desde el pool. Para retirarlo, hágalo desde el '
+            f'inspector de la solicitud, con justificación.'
         )
     nombre = documento.tipo_doc.nombre if documento.tipo_doc else propio.tipo
     return (

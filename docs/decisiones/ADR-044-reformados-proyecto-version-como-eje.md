@@ -6,6 +6,7 @@
 **Enmienda:** ADR-016 §1 (modelo de niveles del árbol) · ADR-043 §E (el registry por tipo de fase deja de ser necesario para el ámbito)
 **Origen:** sesiones de análisis del 2026-09-07 y 2026-09-08. Análisis completo, con el barrido fase a fase y las alternativas descartadas, en `docs/referencia/ANALISIS_REFORMADOS_PROYECTO.md`.
 **Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F, aún diferido) · #885 (R1) · #887 (R2) · #895 (R3) · #899 (R4) · #901 (R5, absorbe #848) · #903 (R6, y de paso #896)
+**Enmendado por:** ADR-049 §F (#996, 2026-10-01). R5: la solicitud está resuelta cuando están cerradas todas las finalizadoras que **debe** tener (una por acto, `actos_solicitud.actos_sin_resolver`), no solo las que tiene. Mientras falte la de algún acto, aunque no se haya creado, sigue `EN_TRAMITE`. El filtro por estado del seguimiento sigue la misma regla.
 
 ---
 

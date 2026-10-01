@@ -239,9 +239,10 @@ def _check_crear(sujeto: str, padre_id: int,
     `ESPERAR_PLAZO` lee `tramites_tareas` desde #964, pero no el orden: solo si el
     trámite tiene una notificación que esperar.
 
-    La rama `FASE` no es de #823 sino del sello de la instrucción (#838, ADR-043
-    §F): abrir una fase de instrucción nueva y reabrir una ya cerrada son el mismo
-    acto por sus dos extremos, y por eso comparten check con `_check_reabrir`.
+    La rama `FASE` no es de #823 sino de las dos puertas de `_check_reabrir`, cada
+    una por su otro extremo: abrir una fase nueva y reabrir una ya cerrada son el
+    mismo acto. La resolución firme (#720, ADR-036 §4; el extremo de crear, #996)
+    va primero, como allí; después, el sello de la instrucción (#838, ADR-043 §F).
     """
     if not tipo_codigo:
         return None
@@ -253,7 +254,8 @@ def _check_crear(sujeto: str, padre_id: int,
         return _check_crear_vuelta_cadena(padre_id)
 
     if sujeto == 'FASE':
-        return _check_crear_fase_instruccion(padre_id, tipo_codigo)
+        return (_check_crear_fase_resolucion_firme(padre_id)
+                or _check_crear_fase_instruccion(padre_id, tipo_codigo))
 
     return None
 
@@ -394,17 +396,18 @@ def _check_emitir(sujeto: str, entidad_id: int,
     """Precondiciones de la emisión de un certificado interno (#827, ADR-043 §E).
 
     Discrimina por tipo documental, no por sujeto: el sujeto solo dice a qué se
-    ancla. Tres casos: el fin de instrucción (SOLICITUD), el cumplimiento del
-    plazo de resolver (FASE, #947) y el cierre de la fase finalizadora (FASE,
-    #956). El hueco natural para el siguiente es `CERT_CIERRE_SOLICITUD` (ancla
-    implementada en #778, emisión sin dueño), que se ancla a la solicitud y
-    exigirá otra cosa muy distinta.
+    ancla. Cuatro casos: el fin de instrucción (SOLICITUD), el cumplimiento del
+    plazo de resolver (FASE, #947), el cierre de la fase finalizadora (FASE, #956)
+    y el cierre de la solicitud (SOLICITUD, #996), que solo cuenta sellos.
     """
     if not tipo_codigo:
         return None
 
     if sujeto == 'SOLICITUD' and tipo_codigo == 'CERT_FIN_INSTRUCCION':
         return _check_emitir_cert_fin_instruccion(entidad_id)
+
+    if sujeto == 'SOLICITUD' and tipo_codigo == 'CERT_CIERRE_SOLICITUD':
+        return _check_emitir_cert_cierre_solicitud(entidad_id)
 
     if sujeto == 'FASE' and tipo_codigo == 'CERT_CUMPLIMIENTO_FASE':
         return _check_emitir_cert_cumplimiento_fase(entidad_id)
@@ -470,6 +473,48 @@ def _check_emitir_cert_cierre_fase(fase_id: int) -> Optional[EvaluacionResult]:
             + (f'{detalle} ' if detalle else '')
             + 'Complételo, o use el escape de la propia tarea si lo admite.'
         )
+    return None
+
+
+def _check_emitir_cert_cierre_solicitud(solicitud_id: int) -> Optional[EvaluacionResult]:
+    """No se certifica el cierre de una solicitud con una fase abierta, un acto sin
+    su fase de resolución cerrada o una de esas fases sin su certificado de cierre
+    (#996, ADR-049 §F: «cuenta sellos»).
+
+    **Invariante, no regla del motor**, y puerta cerrada: un certificado que dijera
+    «la solicitud terminó» con un acto sin resolver sería un documento que miente.
+    El informe (`cert_cierre_solicitud.revisar`) ya cubre todos estos supuestos y
+    dice además por qué; esto es la última palabra, y solo nombra el primero.
+    """
+    solicitud = Solicitud.query.get(solicitud_id)
+    if solicitud is None:
+        return None
+
+    from app.services.actos_solicitud import actos_de, actos_sin_resolver, fase_de
+    from app.services.sellos import certificado_cierre
+
+    actos = actos_de(solicitud)
+    if not actos:
+        return _bloquear('No se puede certificar el cierre de una solicitud sin tipo: no '
+                         'hay actos que certificar.')
+    abierta = next((f for f in sorted(solicitud.fases, key=lambda f: f.id)
+                    if not f.finalizada), None)
+    if abierta is not None:
+        nombre = abierta.tipo_fase.nombre if abierta.tipo_fase else f'#{abierta.id}'
+        return _bloquear(f'No se puede certificar el cierre de la solicitud: la fase '
+                         f'«{nombre}» sigue abierta.')
+    pendientes = actos_sin_resolver(solicitud)
+    if pendientes:
+        return _bloquear(f'No se puede certificar el cierre de la solicitud: el acto '
+                         f'{pendientes[0].siglas} no tiene su fase de resolución creada y '
+                         f'cerrada.')
+    for acto in actos:
+        fase = fase_de(acto)
+        if certificado_cierre(fase) is None:
+            nombre = fase.tipo_fase.nombre if fase.tipo_fase else f'#{fase.id}'
+            return _bloquear(f'No se puede certificar el cierre de la solicitud: la fase '
+                             f'«{nombre}», que resuelve {acto.siglas}, se cerró sin su '
+                             f'certificado de cierre.')
     return None
 
 
@@ -934,14 +979,51 @@ def _solicitud_notificada_en_fase_finalizadora(solicitud) -> bool:
     ).scalar()
 
 
+def _resolucion_firme(solicitud) -> bool:
+    """La solicitud está resuelta (`Solicitud.estado` RESUELTA*, que desde #996
+    exige cada acto cerrado en su fase) y notificada en una fase finalizadora: el
+    acto salió fuera (#720, ADR-036 §4). La comparten las dos caras de la misma
+    puerta: reabrir una fase (`_check_reabrir`) y crear una nueva (#996)."""
+    return (solicitud.estado.startswith('RESUELTA')
+            and _solicitud_notificada_en_fase_finalizadora(solicitud))
+
+
+def _check_crear_fase_resolucion_firme(solicitud_id: int) -> Optional[EvaluacionResult]:
+    """En una solicitud resuelta y notificada no se abre ninguna fase (#996).
+
+    Es el otro extremo de la primera puerta de `_check_reabrir` (#720, ADR-036
+    §4): crear una fase nueva y reabrir una cerrada son el mismo acto —volver a
+    tramitar lo ya resuelto y notificado—, igual que #838 resolvió para el sello
+    de la instrucción. Hasta #996 solo se miraba reabrir, y bastaba crear una fase
+    cualquiera —un reconocimiento de interesado en una AAP, sin forzar nada— para
+    que la solicitud volviera a «en trámite» y su resolución notificada pudiera
+    reabrirse. Con ello caía también la promesa del certificado de cierre de la
+    solicitud, que copia los de cierre de sus fases porque ninguna puede reabrirse.
+
+    No quita nada legítimo: «resuelta» exige desde #996 (D6) cada acto cerrado en
+    su fase, y lo posterior —un recurso, una corrección de errores, una renuncia—
+    es otra solicitud. Puerta cerrada, sin justificación, como su gemela.
+    """
+    solicitud = Solicitud.query.get(solicitud_id)
+    if solicitud is None or not _resolucion_firme(solicitud):
+        return None
+    return _bloquear(
+        'La solicitud ya está resuelta y notificada: la resolución es firme y no se '
+        'abren fases nuevas en ella. Lo que venga después —un recurso, una corrección '
+        'de errores, una renuncia— es otra solicitud; corregir lo resuelto exige un acto '
+        'administrativo expreso (revocación/anulación), fuera de este flujo.'
+    )
+
+
 def _check_reabrir(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
     """Dos puertas cerradas sobre `reabrir_fase`, de más fuerte a menos:
 
     1. **Resolución firme** (#720, ADR-036 §4): si la solicitud ya está resuelta
-       (todas sus fases finalizadas) y notificada, el acto salió fuera — ninguna de
-       sus fases se reabre, ni con justificación. Mismo criterio LPACAP que la
-       reversión de diagnóstico ya notificado (#714) y el borrado de evidencia
-       notificada (#722).
+       (todas sus fases finalizadas y, desde #996, cada acto en la suya) y
+       notificada, el acto salió fuera — ninguna de sus fases se reabre, ni con
+       justificación. Mismo criterio LPACAP que la reversión de diagnóstico ya
+       notificado (#714) y el borrado de evidencia notificada (#722). Su otro
+       extremo, crear una fase nueva, lo cierra `_check_crear_fase_resolucion_firme`.
     2. **El sello de la instrucción** (#838, ADR-043 §F): con el certificado de fin
        de instrucción emitido, una fase de instrucción cerrada no vuelve a abrirse.
 
@@ -962,8 +1044,7 @@ def _check_reabrir(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
         return None
     solicitud = fase.solicitud
 
-    if solicitud.estado.startswith('RESUELTA') and \
-            _solicitud_notificada_en_fase_finalizadora(solicitud):
+    if _resolucion_firme(solicitud):
         return _bloquear(
             'La solicitud ya está resuelta y notificada: la resolución es firme. '
             'Ninguna de sus fases puede reabrirse; corríjalo mediante un acto '

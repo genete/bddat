@@ -4,6 +4,7 @@
 **Fecha:** 2026-08-01
 **Origen:** #720 (absorbe #716) — detectado al revisar la coherencia del cuadro de salvaguardas de #714 (sesión 2026-07-29)
 **Relacionado:** #419/#711 (`_check_cierre_fase`, la puerta de entrada que sí se vigila), #714 (reversión de diagnóstico, mismo criterio de puerta cerrada), #722 (guardia de borrado del árbol, mismo patrón de invariante hardcoded no bypasseable)
+**Enmendado por:** ADR-049 §F (#996, 2026-10-01). §4: la puerta cerrada también impide crear fases. En una solicitud resuelta y notificada no se crea ninguna (`invariantes_esftt._check_crear_fase_resolucion_firme`, con la misma condición que `_check_reabrir`); lo que venga después es otra solicitud. §3: desde ADR-044 R5 y #996, «resuelta» exige además al menos una finalizadora y que cada acto tenga su fase de resolución cerrada.
 
 ---
 

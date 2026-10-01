@@ -1,0 +1,220 @@
+{# _cert_cierre_solicitud_fragmento.html — Certificado de cierre de la solicitud (#996, ADR-049 §F).
+   No extiende base_app.html. Inyectado por AppModalLarge (ADR-023 §6), como los de la fase.
+
+   Vista ÚNICA para los dos momentos: sin emitir, lo que diría el certificado y qué falta,
+   calculado al vuelo y sin guardar nada; emitido, la foto fija de `certificados.datos`
+   (D3), que no se recalcula. Siempre de solo lectura: emitir y retirar son gestos del
+   inspector de la solicitud.
+
+   Datos: `vista` (services/cert_cierre_solicitud.Vista). `vista.datos` tiene siempre la
+   forma de la foto fija. Las copias de los certificados de cierre de las fases llegan ya
+   como `cert_cierre_fase.Vista` y se pintan con su misma plantilla
+   (`_cert_cierre_fase_cuerpo.html`).
+#}
+{% set d = vista.datos %}
+<div class="p-3">
+
+  <div class="mb-3">
+    {% if vista.emitido %}
+      <span class="badge text-bg-success">
+        <i class="bi bi-patch-check-fill me-1"></i>Solicitud cerrada — certificado emitido
+      </span>
+    {% elif not vista.limpio %}
+      <span class="badge text-bg-warning">
+        <i class="bi bi-exclamation-triangle me-1"></i>El cierre todavía no puede certificarse
+      </span>
+    {% else %}
+      <span class="badge text-bg-light border">
+        <i class="bi bi-pencil me-1"></i>Borrador — listo para certificar, sin emitir
+      </span>
+    {% endif %}
+  </div>
+
+  <p class="small mb-3">
+    {% if vista.emitido %}
+      Constata, acto por acto, el plazo de resolver y si se resolvió y notificó al
+      solicitante en plazo; cita el certificado de fin de instrucción y copia los
+      certificados de cierre de las fases que resuelven. Su contenido se fijó al
+      emitirlo y no se recalcula.
+    {% elif not vista.limpio %}
+      Resuelva lo que falta y vuelva a pedir el certificado cuando quiera. No se ha
+      creado ningún documento. Este informe se calcula al abrirlo y no se guarda.
+    {% else %}
+      Si se emitiera ahora, el certificado diría lo que sigue. Este borrador se calcula
+      al abrirlo y no se guarda.
+    {% endif %}
+  </p>
+
+  {# col-lg-2: el modal grande ocupa casi toda la ventana (mismo criterio que los de la fase). #}
+  <dl class="row small mb-3">
+    <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Expediente</dt>
+    <dd class="col-sm-8 col-lg-10">{{ d.expediente }} · {{ d.solicitud }}</dd>
+
+    <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Solicitante</dt>
+    <dd class="col-sm-8 col-lg-10">{{ d.solicitante or '—' }}</dd>
+
+    <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Presentada</dt>
+    <dd class="col-sm-8 col-lg-10">{{ d.presentada or '—' }}</dd>
+  </dl>
+
+  {% if vista.pendientes %}
+    <h6 class="small text-uppercase text-muted mt-3">Qué falta</h6>
+    <ul class="list-group list-group-flush mb-3">
+      {% for linea in vista.pendientes %}
+        <li class="list-group-item px-0 py-2 small">{{ linea }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if vista.advertencia %}
+    <div class="alert alert-warning small py-2">
+      <i class="bi bi-info-circle me-1"></i>{{ vista.advertencia }}
+    </div>
+  {% endif %}
+
+  <h6 class="small text-uppercase text-muted mt-3">El plazo de resolver, acto por acto</h6>
+  {% for a in d.actos %}
+    <div class="border rounded px-3 py-2 mb-2">
+      <div class="small fw-semibold mb-1">
+        {{ a.acto }}
+        {% if a.veredicto == 'EN_PLAZO' %}
+          <span class="badge text-bg-success ms-1">Resuelto y notificado en plazo</span>
+        {% elif a.veredicto == 'FUERA_DE_PLAZO' %}
+          <span class="badge text-bg-danger ms-1">Notificado fuera de plazo</span>
+        {% elif a.veredicto == 'SIN_PLAZO' %}
+          <span class="badge text-bg-secondary ms-1">Sin plazo de resolver en el catálogo</span>
+        {% else %}
+          <span class="badge text-bg-warning ms-1">No consta la notificación al solicitante</span>
+        {% endif %}
+      </div>
+      <dl class="row small mb-0">
+        <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Fase que lo resuelve</dt>
+        <dd class="col-sm-8 col-lg-10">
+          {{ a.fase }}
+          {% if a.situacion == 'SIN_CREAR' %} — sin crear
+          {% elif a.situacion == 'ABIERTA' %} — abierta
+          {% elif a.situacion == 'SIN_CERTIFICADO' %} — cerrada sin certificado de cierre
+          {% endif %}
+        </dd>
+
+        <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Resultado</dt>
+        <dd class="col-sm-8 col-lg-10">{{ a.resultado or '—' }}</dd>
+
+        <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Plazo para resolver</dt>
+        <dd class="col-sm-8 col-lg-10">
+          {% if a.plazo %}
+            {{ a.plazo.duracion }} desde la presentación ({{ a.plazo.norma or 'sin norma citada' }})
+          {% else %}
+            Sin plazo de resolver en el catálogo.
+          {% endif %}
+        </dd>
+
+        {% if a.plazo %}
+          <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Fecha límite</dt>
+          <dd class="col-sm-8 col-lg-10">
+            {{ a.plazo.fecha_limite or '—' }}
+            {% if a.plazo.dias_suspendidos %}
+              — con {{ a.plazo.dias_suspendidos }}
+              {{ 'día hábil' if a.plazo.dias_suspendidos == 1 else 'días hábiles' }} de
+              suspensión (sin ellos, {{ a.plazo.fecha_limite_sin_suspender }})
+            {% endif %}
+          </dd>
+        {% endif %}
+
+        <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Notificación al solicitante</dt>
+        <dd class="col-sm-8 col-lg-10">
+          {% if a.notificacion %}
+            {{ a.notificacion.fecha or 'sin fecha' }} — {{ a.notificacion.documento }}
+            (documento nº {{ a.notificacion.documento_id }})
+          {% else %}
+            No consta.
+          {% endif %}
+        </dd>
+
+        {% if a.efecto %}
+          <dt class="col-sm-4 col-lg-2 text-muted fw-normal">Efecto del vencimiento</dt>
+          <dd class="col-sm-8 col-lg-10">{{ a.efecto }}, según el catálogo de plazos</dd>
+        {% endif %}
+      </dl>
+    </div>
+  {% endfor %}
+
+  <h6 class="small text-uppercase text-muted mt-3">La instrucción</h6>
+  {% if d.instruccion %}
+    <p class="small mb-3">
+      Certificado de fin de instrucción{% if d.instruccion.certificado_id %} nº {{ d.instruccion.certificado_id }}{% endif %},
+      emitido el {{ d.instruccion.emitido or '—' }} (documento nº {{ d.instruccion.documento_id }}).
+      {% if vista.enlace_instruccion %}
+        <a href="{{ vista.enlace_instruccion }}" target="_blank" rel="noopener">
+          Abrir su PDF<i class="bi bi-box-arrow-up-right ms-1"></i>
+        </a>
+      {% endif %}
+    </p>
+  {% else %}
+    {# Sin él, solo si ya hay fase de resolución se abrió sin él (forzando la regla del
+       motor); si no, la instrucción no ha terminado. Lo segundo solo pasa en el borrador:
+       emitido, cada acto tiene ya su fase. #}
+    {% set fases_resolucion = d.actos | map(attribute='fase_id') | select | unique | list %}
+    <p class="small mb-3">
+      {% if fases_resolucion | length > 1 %}
+        No consta certificado de fin de instrucción de esta solicitud: sus fases de
+        resolución se abrieron sin él.
+      {% elif fases_resolucion %}
+        No consta certificado de fin de instrucción de esta solicitud: su fase de
+        resolución se abrió sin él.
+      {% else %}
+        Todavía no consta certificado de fin de instrucción de esta solicitud.
+      {% endif %}
+    </p>
+  {% endif %}
+
+  {% if d.retiradas %}
+    <h6 class="small text-uppercase text-muted mt-3">Certificados de cierre anteriores</h6>
+    <div class="mb-3">
+      {% for linea in d.retiradas %}
+        <div class="small">{{ linea }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <h6 class="small text-uppercase text-muted mt-3">Certificados de cierre de las fases</h6>
+  {% if vista.copias %}
+    <p class="small text-muted mb-2">
+      {% if vista.emitido %}
+        Copia literal, tal como constaban al emitir este certificado.
+      {% else %}
+        Copia literal de los ya emitidos.
+      {% endif %}
+    </p>
+    {% for copia in vista.copias %}
+      <div class="border rounded p-3 mb-3 bg-body-tertiary">
+        {% with vista=copia %}
+          {% include 'expedientes/_cert_cierre_fase_cuerpo.html' %}
+        {% endwith %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <p class="small text-muted mb-3">
+      Ninguna de las fases que resuelven tiene todavía su certificado de cierre.
+    </p>
+  {% endif %}
+
+  {# Huella: un papel siempre lleva a su fila de `certificados`. #}
+  <div class="border-top pt-2 small text-muted">
+    {% if vista.emitido %}
+      Certificado nº {{ vista.certificado_id }} · Documento nº {{ vista.documento_certificado_id }}
+      · Emitido el {{ vista.emitido_en or '—' }} · {{ d.expediente }}
+      · Solicitud nº {{ d.solicitud_id }} ({{ d.solicitud }})
+    {% else %}
+      Borrador calculado el {{ vista.calculado_en }} · {{ d.expediente }}
+      · Solicitud nº {{ d.solicitud_id }} ({{ d.solicitud }}) · No emitido
+    {% endif %}
+  </div>
+
+  <div class="d-flex justify-content-end border-top pt-3 mt-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-modal-large-close>
+      Cerrar
+    </button>
+  </div>
+
+</div>

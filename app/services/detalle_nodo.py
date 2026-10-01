@@ -39,7 +39,8 @@ from app.models.tareas import Tarea
 from app.models.organismos_expediente import OrganismoExpediente
 from app.services.arbol_expediente import ID_VERSION_INICIAL_BASE, plazo_tarea
 from app.services.sellos import (
-    CERT_CIERRE_FASE, CERT_CUMPLIMIENTO_FASE, certificado_cierre, certificado_cumplimiento,
+    CERT_CIERRE_FASE, CERT_CIERRE_SOLICITUD, CERT_CUMPLIMIENTO_FASE, certificado_cierre,
+    certificado_cierre_solicitud, certificado_cumplimiento,
 )
 
 # Certificados sin PDF, que se consultan en su vista HTML (#947, #956): tipo → endpoint
@@ -130,9 +131,10 @@ def info_apertura_documento(exp_id: int, doc, *, estricto: bool = True) -> dict:
     bddat:// (ADR-006) no tiene fichero físico: el enlace despacha por recurso (#610).
     - certificados/<id>: la url dice «no hay papel, se pinta»; QUÉ se pinta lo dice
       la fila de `certificados` (su `tipo`), nunca la url (#947, D2). El
-      CERT_CUMPLIMIENTO_FASE y el CERT_CIERRE_FASE (#956) se consultan en su vista
-      HTML (`abrir_en` 'modal', como un diagnóstico); los demás, PDF generado
-      on-demand (cert_pdf, `abrir_en`
+      CERT_CUMPLIMIENTO_FASE, el CERT_CIERRE_FASE (#956) y el CERT_CIERRE_SOLICITUD
+      (#996, la solicitud por su ancla: la fila va sin `solicitud_id`) se consultan
+      en su vista HTML (`abrir_en` 'modal', como un diagnóstico); los demás, PDF
+      generado on-demand (cert_pdf, `abrir_en`
       'enlace': el consumidor sigue el href en pestaña nueva). La fila solo se lee
       para los certificados: el resto del pool no paga esa consulta.
     - diagnosticos/<id>: sin representación física — se consulta en un modal
@@ -160,6 +162,17 @@ def info_apertura_documento(exp_id: int, doc, *, estricto: bool = True) -> dict:
                     'puede_abrir': True,
                     'puede_abrir_carpeta': False,
                     'abrir_en': 'modal',
+                }
+            if cert is not None and cert.tipo == CERT_CIERRE_SOLICITUD:
+                solicitudes = doc.anclado_en_cierre or []
+                return {
+                    'enlace': (url_for('expedientes.cert_cierre_solicitud_vista',
+                                       id=exp_id, sol_id=solicitudes[0].id)
+                               if solicitudes else None),
+                    'externo': False,
+                    'puede_abrir': bool(solicitudes),
+                    'puede_abrir_carpeta': False,
+                    'abrir_en': 'modal' if solicitudes else None,
                 }
             return {
                 'enlace': url_for('expedientes.cert_pdf', cert_id=int(partes[1])),
@@ -303,6 +316,9 @@ def _detalle_solicitud(exp, sol_id: int) -> dict:
     doc_fin = sol.documento_fin_instruccion
     if doc_fin:
         documentos.append(_serializar_documento(exp.id, doc_fin, 'PRODUCIDO'))
+    doc_cierre = sol.documento_cierre
+    if doc_cierre:
+        documentos.append(_serializar_documento(exp.id, doc_cierre, 'PRODUCIDO'))
     return {
         'nodo': {'tipo': 'solicitud', 'id': sol.id},
         'campos': campos,
@@ -310,6 +326,7 @@ def _detalle_solicitud(exp, sol_id: int) -> dict:
         'plazo': None,
         'referencia': _ref_solicitud(exp, sol),
         'cert_fin_instruccion': _cert_fin_instruccion(sol),
+        'cert_cierre': _cert_cierre_solicitud(exp, sol),
     }
 
 
@@ -327,6 +344,21 @@ def _cert_fin_instruccion(sol) -> dict:
     return {
         'emitido': sol.documento_fin_instruccion_id is not None,
         'documento_id': sol.documento_fin_instruccion_id,
+    }
+
+
+def _cert_cierre_solicitud(exp, sol) -> dict:
+    """El certificado de cierre de la solicitud para el inspector (#996): si consta
+    emitido, cuál es, y dónde está su vista. Como en los otros certificados, qué
+    falta lo dice la vista al pulsar; cargar el inspector no calcula el informe.
+    Emitido, su documento ya sale en la lista de la solicitud."""
+    cert = certificado_cierre_solicitud(sol)
+    return {
+        'emitido': cert is not None,
+        'documento_id': cert.documento_id if cert else None,
+        'certificado_id': cert.id if cert else None,
+        'enlace_vista': url_for('expedientes.cert_cierre_solicitud_vista',
+                                id=exp.id, sol_id=sol.id),
     }
 
 

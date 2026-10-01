@@ -240,17 +240,23 @@ class TestReabrirFase:
         from app.models.notificaciones import Notificacion
         from app.services import mutaciones_arbol as svc
 
+        from app.models.tipos_solicitudes import TipoSolicitud
+
         base = Solicitud.query.first()
         if base is None:
             pytest.skip('No hay solicitudes en la BD de desarrollo')
-        tipo_fase_fin = TipoFase.query.filter_by(es_finalizadora=True).first()
-        if tipo_fase_fin is None:
-            pytest.skip('No hay TipoFase con es_finalizadora=True en el catálogo')
+        # Una AAP y su RESOLUCION, por código. Desde #996 (D6) la solicitud solo
+        # está resuelta con cada acto cerrado en su fase, y «la primera
+        # finalizadora» sin orden podía no ser la suya: en la base de tests salía
+        # RECONOCIMIENTO_INTERESADO para una AAP+AAC.
+        tipo_aap = TipoSolicitud.query.filter_by(siglas='AAP').first()
+        assert tipo_aap is not None, "la semilla debe traer el TipoSolicitud 'AAP'"
+        tipo_fase_fin = _tipo(TipoFase, 'RESOLUCION')
 
         from tests.conftest import documento_ancla_de_prueba
         solicitud = Solicitud(
             expediente_id=base.expediente_id, entidad_id=base.entidad_id,
-            tipo_solicitud_id=base.tipo_solicitud_id,
+            tipo_solicitud_id=tipo_aap.id,
             documento_solicitud_id=documento_ancla_de_prueba(base.expediente_id).id)
         db.session.add(solicitud)
         db.session.flush()

@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCertificarFinInstruccion, deleteCertFinInstruccion, postCertificarCumplimiento, deleteCertCumplimiento, postCerrarFaseFinalizadora,subirDocumentoPool, getSugerenciaDocumento } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCertificarFinInstruccion, deleteCertFinInstruccion, postCertificarCumplimiento, deleteCertCumplimiento, postCerrarFaseFinalizadora, postCertificarCierreSolicitud, deleteCertCierreSolicitud, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
 import { showToast } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -101,6 +101,10 @@ export const useArbolStore = create((set, get) => ({
   // Confirmación pendiente antes de cerrar: null | 'simple' | 'frase'. 'frase' cuando
   // el cierre deja la solicitud resuelta (irreversible, D5): hay que escribirla.
   confirmacionCierre: null,
+
+  // --- certificado de cierre de la solicitud (#996, ADR-049 §F) ---
+  certificandoCierreSolicitud: false,
+  retirandoCierreSolicitud: false,
 
   // --- menú contextual (S3b-4) ---
   menuCtx: null,           // { x, y, sel } | null
@@ -527,6 +531,60 @@ export const useArbolStore = create((set, get) => ({
         showToast(e.payload.error || e.payload.motivo, 'danger')
       } else {
         showToast(e.message || 'No se pudo cerrar la fase', 'danger')
+      }
+    }
+  },
+
+  // El botón «Cierre de la solicitud» (#996, D1). Mismo gesto que el cumplimiento de la
+  // fase: con cualquier desenlace se abre la vista en el modal grande —qué falta, o el
+  // certificado—, y si se emitió ahora se refresca el árbol, porque su documento entra
+  // en la solicitud.
+  certificarCierreSolicitud: async () => {
+    const { expedienteId, seleccion } = get()
+    if (!seleccion || seleccion.tipo !== 'solicitud' || !expedienteId) return
+    set({ certificandoCierreSolicitud: true })
+    try {
+      const res = await postCertificarCierreSolicitud(expedienteId, seleccion.id)
+      set({ certificandoCierreSolicitud: false })
+      if (res.emitido && !res.ya_emitido) {
+        showToast('Certificado de cierre de la solicitud emitido', 'success')
+        await get().refrescarArbol()
+      } else if (!res.emitido) {
+        showToast('El cierre todavía no puede certificarse: vea qué falta', 'warning')
+      }
+      if (window.AppModalLarge && res.enlace_vista) {
+        window.AppModalLarge.open(res.enlace_vista, { title: 'Certificado de cierre de la solicitud' })
+      }
+    } catch (e) {
+      set({ certificandoCierreSolicitud: false })
+      if (e.status === 401 || e.status === 403) return
+      if (e.status === 422 && e.payload && (e.payload.error || e.payload.motivo)) {
+        showToast(e.payload.error || e.payload.motivo, 'danger')
+      } else {
+        showToast(e.message || 'No se pudo certificar el cierre de la solicitud', 'danger')
+      }
+    }
+  },
+
+  // Retira el certificado de cierre de la solicitud (#996, D4), con justificación. O se
+  // retira o se explica por qué no (lo usa una tarea), en toast.
+  retirarCierreSolicitud: async (justificacion) => {
+    const { expedienteId, seleccion } = get()
+    if (!seleccion || seleccion.tipo !== 'solicitud' || !expedienteId) return
+    if (!justificacion || !justificacion.trim()) return
+    set({ retirandoCierreSolicitud: true })
+    try {
+      await deleteCertCierreSolicitud(expedienteId, seleccion.id, justificacion.trim())
+      showToast('Certificado de cierre de la solicitud retirado', 'success')
+      set({ retirandoCierreSolicitud: false })
+      await get().refrescarArbol()
+    } catch (e) {
+      set({ retirandoCierreSolicitud: false })
+      if (e.status === 401 || e.status === 403) return
+      if (e.status === 422 && e.payload && (e.payload.motivo || e.payload.error)) {
+        showToast(e.payload.motivo || e.payload.error, 'danger')
+      } else {
+        showToast(e.message || 'No se pudo retirar el certificado', 'danger')
       }
     }
   },

@@ -134,6 +134,29 @@ export function postCerrarFaseFinalizadora(expedienteId, faseId, confirmacion) {
   )
 }
 
+// Certificado de cierre de la solicitud (POST, #996, ADR-049 §F). Sin body. Tres
+// desenlaces, todos 200 y con `enlace_vista` (la vista HTML para AppModalLarge):
+//   {emitido:false, limpio:false, pendientes[]} — falta algo; nada creado
+//   {emitido:true, ya_emitido:false}            — emitido ahora
+//   {emitido:true, ya_emitido:true}             — ya estaba
+// 422 solo por errores reales (catálogo incompleto).
+export function postCertificarCierreSolicitud(expedienteId, solicitudId) {
+  return api.post(
+    `/api/expedientes/${expedienteId}/nodo/solicitud/${solicitudId}/certificado-cierre`,
+    {},
+  )
+}
+
+// Retira el certificado de cierre de la solicitud (DELETE, #996, D4). body:
+// {justificacion} — obligatoria. 422: sin certificado, sin justificación o vinculado
+// a alguna tarea (otra solicitud lo usa como entrada).
+export function deleteCertCierreSolicitud(expedienteId, solicitudId, justificacion) {
+  return api.delete(
+    `/api/expedientes/${expedienteId}/nodo/solicitud/${solicitudId}/certificado-cierre`,
+    { body: { justificacion } },
+  )
+}
+
 // Contenedor de la tarea ANALIZAR (#442). Respuesta: {resultado, documento_producido,
 // secciones_extendidas, defectos_consolidado, completo}.
 export function getAnalizar(expedienteId, tareaId) {
