@@ -151,9 +151,20 @@
       {% endif %}
     </p>
   {% else %}
+    {# Sin él, solo si ya hay fase de resolución se abrió sin él (forzando la regla del
+       motor); si no, la instrucción no ha terminado. Lo segundo solo pasa en el borrador:
+       emitido, cada acto tiene ya su fase. #}
+    {% set fases_resolucion = d.actos | map(attribute='fase_id') | select | unique | list %}
     <p class="small mb-3">
-      No consta certificado de fin de instrucción de esta solicitud: su fase de
-      resolución se abrió sin él.
+      {% if fases_resolucion | length > 1 %}
+        No consta certificado de fin de instrucción de esta solicitud: sus fases de
+        resolución se abrieron sin él.
+      {% elif fases_resolucion %}
+        No consta certificado de fin de instrucción de esta solicitud: su fase de
+        resolución se abrió sin él.
+      {% else %}
+        Todavía no consta certificado de fin de instrucción de esta solicitud.
+      {% endif %}
     </p>
   {% endif %}
 
