@@ -8,7 +8,7 @@
 **Origen:** discusión del 2026-09-25 a raíz de #953 (validador de `Documento.url` dependiente del sistema operativo), revisada el 2026-09-26
 **Evidencia:** prueba de concepto en [`scripts/poc_webdav/`](../../scripts/poc_webdav/README.md): LibreOffice 24.2 abriendo, bloqueando y guardando un `.odt` contra un WebDAV mínimo en Flask; y los tres casos de «Guardar como» de §D, probados contra ella el 2026-09-26
 **Relacionados:** #151 (carpetas y permisos pedidos a Informática, comentario del 2026-09-25, corregido el 2026-10-01: dos carpetas, sin buzón) · #573 (remisión del expediente con índice, distinta de la exportación de §H) · #852 (resiliencia del share, sigue vigente) · #853 (`explorer /select` en el servidor, lo absorbe este ADR) · #330 (entornos y despliegue) · #954 (sellado de datos en el pool) · N009, N021, N077
-**Issues de implementación:** por crear al cerrar N6 (§I)
+**Issues de implementación:** fase 0 — #1000 (prueba de la edición WebDAV en un puesto de la Junta, puerta de la fase 1) y #1001 (congelar los consumidores del modelo de rutas); el resto, por crear en la fase 0 al revalidar §M (§I)
 
 ---
 
