@@ -20,7 +20,8 @@ Uso:
 Imprime la URL de edición del documento 1 para dos usuarios (ana, beto) y un
 token caducado, y sirve en / una página con un botón «Editar en Writer» para
 cada una (prueba en un puesto, #1000). Escucha en 127.0.0.1; con
-POC_HOST=<ip> escucha en esa IP y construye las URL con ella.
+POC_HOST=<ip> escucha en esa IP y construye las URL con ella. Con
+POC_HOST=0.0.0.0, POC_URL_HOST=<ip> da la dirección de las URL.
 """
 import hashlib
 import html
@@ -39,9 +40,11 @@ from flask import Flask, Response, request
 DATOS = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else './datos_poc')
 INICIAL = sys.argv[2] if len(sys.argv) > 2 else None
 PUERTO = int(sys.argv[3]) if len(sys.argv) > 3 else 5077
-# Casos 2 y 3 de #1000: escuchar en la IP de red del puesto. Las URL de edición
-# se construyen con este mismo host, así que tiene que ser una IP concreta, no 0.0.0.0.
+# Casos 2 y 3 de #1000: escuchar en la red del puesto (su IP, o 0.0.0.0). Las URL
+# de edición necesitan una dirección a la que se pueda llegar: POC_URL_HOST, o la
+# de escucha si no se da (con 0.0.0.0 hay que darla).
 HOST = os.environ.get('POC_HOST', '127.0.0.1')
+URL_HOST = os.environ.get('POC_URL_HOST', HOST)
 
 app = Flask(__name__)
 _cerrojo = threading.Lock()
@@ -394,7 +397,7 @@ def _preparar():
         nueva_version(1, contenido, 'generador', 'generado')
     nombre = cargar_bd()['1']['nombre']
     from urllib.parse import quote
-    base = f'http://{HOST}:{PUERTO}/dav'
+    base = f'http://{URL_HOST}:{PUERTO}/dav'
     urls = {
         'ana': f'{base}/{_emitir_token(1, "ana")}/{quote(nombre)}',
         'beto': f'{base}/{_emitir_token(1, "beto")}/{quote(nombre)}',
@@ -404,7 +407,7 @@ def _preparar():
     with open(os.path.join(DATOS, 'urls.json'), 'w', encoding='utf-8') as f:
         json.dump(urls, f, indent=2)
     print(json.dumps(urls, indent=2), flush=True)
-    print(f'Página de lanzamiento: http://{HOST}:{PUERTO}/', flush=True)
+    print(f'Página de lanzamiento: http://{URL_HOST}:{PUERTO}/', flush=True)
 
 
 if __name__ == '__main__':
