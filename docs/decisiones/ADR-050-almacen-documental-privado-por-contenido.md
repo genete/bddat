@@ -1,9 +1,9 @@
 # ADR-050 — BDDAT, único dueño de los ficheros: almacén privado direccionado por contenido y edición sin acceso al servidor de ficheros
 
 **Estado:** Adoptada — en implementación: fase 0 en curso (#1000 y #1001 hechos; falta revalidar §M y crear los issues de las fases 1 a 7). Se implementa **después de N6** (cierre de la cadena de ADR-049) y **antes de producción** (§I)
-**Fecha:** 2026-09-25 · **Enmendada:** 2026-09-26 — **sin sistema de versiones** en ningún sitio: un documento apunta a un fichero y editarlo lo sustituye (§C, §F); el PDF para firma es un documento sincronizado con su borrador (§D); una sola plantilla vigente en BDDAT, con el versionado a cargo del supervisor y la trazabilidad por hash (§J); «Guardar como» (§D), el mismo fichero en otro expediente (§H) y qué fichero subir (§E) · **Enmendada (revisión de diseño), mismo día:** el almacén se habla desde un puerto agnóstico, con la identidad de almacenamiento (`ref`) separada de la identidad de contenido (`contenido_sha256`, calculada por BDDAT) — pensado para poder sustituir el adaptador de filesystem por un gestor documental corporativo el día de mañana (§B, §C); manifiestos particionados por año de solicitud (§H); el buzón por usuario se aparca hasta que haya métricas que lo justifiquen (Alternativas) · **Enmendada (salvaguardas de riesgo), 2026-10-01:** la edición por WebDAV se prueba en un puesto de la Junta en la fase 0 y la fase 1 no empieza sin ese resultado (§D, §I); el manifiesto y el exportador pasan a la fase 1, el exportador lee solo el manifiesto y funciona sin BDDAT, y los manifiestos se rehacen de noche y antes de cada exportación (§H); solo el subsistema de almacenamiento ve `ficheros` y la `ref`, y desde ya no entran consumidores nuevos del modelo de rutas (§B, §I); la migración es de ida, sin camino de vuelta (§L, Alternativas O) · **Enmendada (prueba en un puesto de la Junta, #1000), 2026-10-01:** el botón «Editar» usa `vnd.libreoffice.command:`, que registra el LibreOffice corporativo, sin instalador en el cliente; `HEAD` entre los verbos, el dueño del bloqueo es el nombre del tramitador y la carpeta del token responde con y sin barra final (§D); puerta de la fase 1 pasada (§I)
+**Fecha:** 2026-09-25 · **Enmendada:** 2026-09-26 — **sin sistema de versiones** en ningún sitio: un documento apunta a un fichero y editarlo lo sustituye (§C, §F); el PDF para firma es un documento sincronizado con su borrador (§D); una sola plantilla vigente en BDDAT, con el versionado a cargo del supervisor y la trazabilidad por hash (§J); «Guardar como» (§D), el mismo fichero en otro expediente (§H) y qué fichero subir (§E) · **Enmendada (revisión de diseño), mismo día:** el almacén se habla desde un puerto agnóstico, con la identidad de almacenamiento (`ref`) separada de la identidad de contenido (`contenido_sha256`, calculada por BDDAT) — pensado para poder sustituir el adaptador de filesystem por un gestor documental corporativo el día de mañana (§B, §C); manifiestos particionados por año de solicitud (§H); el buzón por usuario se aparca hasta que haya métricas que lo justifiquen (Alternativas) · **Enmendada (salvaguardas de riesgo), 2026-10-01:** la edición por WebDAV se prueba en un puesto de la Junta en la fase 0 y la fase 1 no empieza sin ese resultado (§D, §I); el manifiesto y el exportador pasan a la fase 1, el exportador lee solo el manifiesto y funciona sin BDDAT, y los manifiestos se rehacen de noche y antes de cada exportación (§H); solo el subsistema de almacenamiento ve `ficheros` y la `ref`, y desde ya no entran consumidores nuevos del modelo de rutas (§B, §I); la migración es de ida, sin camino de vuelta (§L, Alternativas O) · **Enmendada (prueba en un puesto de la Junta, #1000), 2026-10-01:** el botón «Editar» usa `vnd.libreoffice.command:`, que registra el LibreOffice corporativo, sin instalador en el cliente; `HEAD` entre los verbos, el dueño del bloqueo es el nombre del tramitador y la carpeta del token responde con y sin barra final (§D); puerta de la fase 1 pasada (§I) · **Enmendada (revalidación de §M, fase 0), 2026-10-02:** la fase 1 absorbe la 2 y la 3 — corta a la vez todos los escritores de rutas, vincular deja de mover, y en el mismo issue se retiran el modelo de rutas y los botones de carpeta, que tras la migración no quedan en pie (§I); la papelera pasa a la fase 7, con el documento a la vista y marcado hasta el borrado definitivo, y la bitácora de la limpieza guarda la `ref` de lo borrado (§G); el motor de Word se retira en la fase 4 (§J); §M revalidada
 **Sobrepasa:** ADR-032 §1-§4 (entrada al pool, rutas relativas en `Documento.url`, movimiento al vincular, naming con MD5 en `pool/`). ADR-032 no queda derogado: describe lo que hay implementado hasta que este ADR se ejecute, y su nota de cabecera lo remite aquí
-**Amplía:** ADR-006 (el esquema «ruta local» de `documentos.url` desaparece; `http(s)://` y `bddat://` siguen) · ADR-035 (plantillas y fragmentos pasan al almacén y se suben desde el navegador; §6 «lo que no cambia» deja de ser cierto en lo del pool y del protocolo `bddat-explorador://`)
+**Amplía:** ADR-006 (el esquema «ruta local» de `documentos.url` desaparece; `http(s)://` y `bddat://` siguen) · ADR-035 (plantillas y fragmentos pasan al almacén y se suben desde el navegador; §6 «lo que no cambia» deja de ser cierto en lo del pool y del protocolo `bddat-explorador://`; el motor `.docx` que conservaba §2 se retira, §J)
 **No cambia:** ADR-010 (N:M documento-tarea) · ADR-027 (pertenencia al expediente por naturaleza, no por mecanismo de almacenamiento) · ADR-044 (reformados como documentos aparte) · el sellado de ADR-036 y de #947 (§F se apoya en él)
 **Origen:** discusión del 2026-09-25 a raíz de #953 (validador de `Documento.url` dependiente del sistema operativo), revisada el 2026-09-26
 **Evidencia:** prueba de concepto en [`scripts/poc_webdav/`](../../scripts/poc_webdav/README.md): LibreOffice 24.2 abriendo, bloqueando y guardando un `.odt` contra un WebDAV mínimo en Flask; y los tres casos de «Guardar como» de §D, probados contra ella el 2026-09-26; y la prueba en un puesto de la Junta del 2026-10-01 (#1000), con el LibreOffice corporativo 7.6, contra la IP de red y desde una segunda máquina por la VPN
@@ -127,7 +127,7 @@ ALMACEN_BASE/
 | `url` | **solo** `http(s)://` y `bddat://` (ADR-006). `NULL` para un fichero propio |
 | `hash_md5` | **desaparece**: la identidad de almacenamiento es `fichero_ref`; la deduplicación por contenido la da `ficheros.contenido_sha256` |
 | `tipo_contenido` | **desaparece**: el formato es `ficheros.formato` |
-| `borrado_en` | **nueva**: papelera |
+| `borrado_en` | **nueva**: papelera (fase 7, §G) |
 
 Restricción: `CHECK ((url IS NULL) <> (fichero_ref IS NULL))`. Un documento es un fichero propio o una referencia, nunca las dos cosas ni ninguna.
 
@@ -160,7 +160,7 @@ Restricción: `CHECK ((url IS NULL) <> (fichero_ref IS NULL))`. Un documento es 
 | Descargar el PDF para firma | si está desfasado, se regenera antes de servirlo (§D) | escribe si regenera |
 | Descargar / abrir cualquier otro | nada | lee |
 | Sustituir por error | cambia `fichero_ref`, con motivo; prohibida si está sellado (§F) | escribe |
-| Borrar | `borrado_en = now()` | **nada** |
+| Borrar | `borrado_en = now()` (hasta la fase 7, borra la ficha, §G) | **nada** |
 
 La matriz de 8 casos de #730 se reduce a dos: mismo contenido que el actual, no pasa nada; contenido distinto, se sustituye. Desaparecen las colisiones de nombre y los ficheros apartados.
 
@@ -264,10 +264,17 @@ Un proceso nocturno, con el mecanismo de tareas diarias de §H:
 
 1. marca `sin_referencias_desde` en los ficheros a los que no apunta nada, y la quita si han vuelto a tener referencias. **Cuentan como referencia:** `documentos.fichero_ref` y `documentos.plantilla_ref` de documentos sin borrar, `generacion_fragmentos.fichero_ref`, `plantillas.fichero_ref` y `fragmentos.fichero_ref`. **No cuenta:** `documentos.origen_sha256`, que es identidad de contenido, no de almacenamiento, y solo sirve para saber si el PDF está desfasado;
 2. borra del almacén (`borrar(ref)` del puerto, §B) los que llevan más de N días sin referencias, y luego su fila;
-3. borra definitivamente los documentos con `borrado_en` de hace más de N días;
-4. lo registra todo en la bitácora.
+3. borra definitivamente los documentos con `borrado_en` de hace más de N días, repitiendo antes la guarda de borrado por si algo los ha referenciado entretanto;
+4. lo registra todo en la bitácora. De cada fichero borrado, su **`ref`** y su `contenido_sha256`, con el nombre, el tipo y el expediente del documento que lo usó: la fila de `ficheros` desaparece, y la bitácora es lo único que conserva qué `ref` pedir a la copia de seguridad y con qué hash comprobar lo restaurado (enmienda del 2026-10-02).
 
-Con la deduplicación, un fichero compartido por dos documentos solo se borra cuando **ninguno** lo usa. Lo resuelve la consulta, sin contadores. La comprobación periódica de integridad relee cada fichero (`leer(ref)`) y recalcula su `contenido_sha256`: si no coincide, `CORRUPTO`; si no está, `AUSENTE`. El resultado aparece en el panel del supervisor, y el hash dice qué fichero exacto pedir a Informática de una copia de seguridad. **Restaurar:** primero el almacén y luego la BD. Si sobran ficheros, son huérfanos y los recoge la limpieza; nunca faltan.
+Con la deduplicación, un fichero compartido por dos documentos solo se borra cuando **ninguno** lo usa. Lo resuelve la consulta, sin contadores. La comprobación periódica de integridad relee cada fichero (`leer(ref)`) y recalcula su `contenido_sha256`: si no coincide, `CORRUPTO`; si no está, `AUSENTE`. El resultado aparece en el panel del supervisor, y la `ref` dice qué fichero exacto pedir a Informática de una copia de seguridad. **Restaurar:** primero el almacén y luego la BD. Si sobran ficheros, son huérfanos y los recoge la limpieza; nunca faltan.
+
+**La papelera** (enmienda del 2026-10-02, propuesta de Carlos). Llega en la fase 7, con la limpieza; hasta entonces «Borrar» elimina la ficha como hoy, con la misma guarda, y su fichero se queda en el almacén sin referencias hasta que lo recoja la limpieza.
+
+- **Va a la papelera** un documento al que no referencia nada (la guarda de borrado de hoy).
+- **Sigue a la vista, marcado,** hasta el borrado definitivo, y se puede **sacar de la papelera** si se borró por error. No se esconde de los listados: si uno se olvida de tratarlo, el documento aparece, que es lo esperado, en vez de desaparecer sin aviso.
+- **Tres sitios lo tratan distinto:** no se ofrece para **vincular** (primero se saca de la papelera; si no, estaría vinculado y en la papelera a la vez y la limpieza lo borraría en uso); no cuenta en los **avisos de huérfanos** (el radar y el aviso de justificantes sin vincular al cerrar fase, #738), porque estar en la papelera es la decisión de no usarlo; y la limpieza **repite la guarda** antes del borrado definitivo (paso 3).
+- **Su fichero** sigue la regla general del paso 1: un documento en la papelera no cuenta como referencia, así que el fichero empieza a contar al mandarlo y, si se saca, vuelve a tener referencia y la cuenta se anula. Documento y fichero caducan juntos, y la misma regla cubre los contenidos sustituidos (§F) y los ficheros compartidos.
 
 ### H — Entrada de documentos y N009
 
@@ -299,7 +306,7 @@ Medido el 2026-09-25 contra la cadena de ADR-049: los dos trabajos **apenas se t
 
 - **Se implementa después de N6 y antes de producción.** Esperar no encarece el cambio: no hay datos reales, y N4b y N6 no añaden consumidores del disco.
 - **Regla mientras tanto:** nada nuevo de la cadena escribe ficheros en disco. Los certificados, en HTML y `bddat://`, como decidió #947. **Ampliada el 2026-10-01 a todo el desarrollo:** no entran consumidores nuevos del modelo de rutas (`ruta_absoluta()`, `FILESYSTEM_BASE`, `PLANTILLAS_BASE`, `hash_md5`, `ruta_plantilla`, `ruta_pdf`, los `mover_*` de `rutas_esftt.py`); lo nuevo que necesite un fichero lo pide por el documento. Un test con el número de apariciones permitido en cada fichero lo vigila desde la fase 0 (`tests/test_1001_consumidores_modelo_rutas.py`, #1001; el 2026-10-02, 22 ficheros y 116 apariciones), y cada fase lo baja. Cuando se retire el último símbolo, esa parte del test se borra; la otra, que solo el subsistema de almacenamiento vea la `ref` (§B), es permanente. **La regla pasa a `REGLAS_DESARROLLO.md` cuando hay algo implementado que la sostenga**, no antes: la congelación, con el test de la fase 0; la de la `ref`, en la fase 1, con el módulo de contenido. Hasta entonces vive aquí.
-- **Válvula:** si en N5 el conflicto en `mutaciones_arbol.py` pesa más de lo previsto, se adelanta solo la fase 2 (vincular sin mover).
+- **Válvula:** si en N5 el conflicto en `mutaciones_arbol.py` pesa más de lo previsto, se adelanta solo la fase 2 (vincular sin mover). Sin uso: N5 se cerró sin necesitarla, y vincular sin mover está ya en la fase 1.
 - **Puerta de la fase 1** (2026-10-01): la prueba de la edición en un puesto de la Junta (§D). Las fases 1-4 no usan WebDAV, pero son las que quitan a los usuarios el acceso a las carpetas: si Writer no se puede abrir desde BDDAT en un puesto real, editar el borrador sería para siempre descargar y volver a subir, y eso hay que saberlo antes de invertir en ellas. La fase 1 empieza cuando la prueba pasa, o cuando Carlos acepta esa alternativa como definitiva. **Pasada el 2026-10-01** (#1000, §D): la fase 1 puede empezar.
 - **La respuesta de Informática (#151) no frena el código, sí la producción** (2026-10-01). Con el puerto agnóstico (§B), dónde viva el almacén —carpeta solo para la cuenta de servicio, o disco del servidor con réplica nocturna (§A)— es el valor de `ALMACEN_BASE`. Solo cambiaría código si no permiten LibreOffice en el servidor (fase 6) o si ofrecen S3 o un gestor documental (un adaptador más; la fase 1 sigue valiendo).
 - **Ya hecho, fuera de este ADR:** #953 (validador, PR #959) y el pedido a Informática en #151.
@@ -309,14 +316,16 @@ Fases, con tamaños estimados por comparación con los PR de la cadena (#934 N1:
 | Fase | Contenido | Comparable a |
 |---|---|---|
 | 0 | Revalidar la tabla de consumidores (§M) y crear los issues; prueba de la edición en un puesto de la Junta (§D, puerta de la fase 1); test de consumidores del modelo de rutas | — |
-| 1 | Almacén, `ficheros`, columnas nuevas de `documentos`, módulo de contenido (§B), subida, descarga, lectores, «Aportar desde otro expediente», migración de datos de desarrollo con su comprobación (§L); manifiesto, exportador independiente, reconstrucción a mano y tareas diarias (§H) | N1 |
-| 2 | Vincular sin mover; regeneración de 8 casos → 2; PDF de `CERT_FIN_INSTRUCCION` al almacén | N2b (más borrar que escribir) |
+| 1 | Almacén, `ficheros`, columnas nuevas de `documentos`, módulo de contenido (§B), detección de formato (§E), subida, descarga, lectores, «Aportar desde otro expediente», migración de datos de desarrollo con su comprobación (§L); manifiesto, exportador independiente, reconstrucción a mano y tareas diarias (§H). **Absorbe la 2 y la 3** (enmienda del 2026-10-02, abajo): todos los escritores al almacén a la vez —generar y regenerar escritos (8 casos → 2), PDF de `CERT_FIN_INSTRUCCION`, copia del anuncio edictal, sustitución con motivo—, vincular sin mover, fuera el registro in situ; y en el mismo issue se retiran el modelo de rutas (`mover_*`, MD5, rama local del validador, `ruta_absoluta()`, `FILESYSTEM_BASE`) y los botones de carpeta del pool y del árbol con su `explorer` (#853). Varios PR bajo un issue | N1 y algo más |
+| 2 | Absorbida por la 1 | — |
 | 2b | «Exportar expediente» (ZIP) y exportación automática al finalizar (§H): dos capas sobre el exportador, cuando las tareas de cada documento ya no cambian por debajo | pequeño |
-| 3 | Fuera explorador del servidor, registro in situ y `explorer` | mediano |
-| 4 | Plantillas y fragmentos (§J) | mediano |
+| 3 | Absorbida por la 1 | — |
+| 4 | Plantillas y fragmentos (§J); retira el motor de Word, el explorador de ficheros de la gestión de plantillas y `bddat-explorador://` con `scripts/cliente/` | mediano |
 | 5 | Edición por WebDAV, sesiones en BD, botón «Editar» con `vnd.libreoffice.command:` (sin instalador en el cliente, #1000); HTTPS con el certificado corporativo | mediano |
 | 6 | PDF para firma en el servidor, sincronizado con el borrador | pequeño; depende del Dockerfile (#330) |
-| 7 | Limpieza, integridad, parámetros (§K) | mediano, independiente |
+| 7 | Papelera, limpieza, integridad, parámetros (§G, §K) | mediano, independiente |
+
+**Por qué la fase 1 absorbe la 2 y la 3** (enmienda del 2026-10-02, revalidación de §M; decisión de Carlos). La migración (§L) deja `url = NULL` en los ficheros propios, y con eso no queda en pie nada del modelo de carpetas: `mover_a_esftt` falla al vincular un documento migrado (`os.path.dirname(None)`); lo que generaran después los escritores de rutas (escritos, PDF del `CERT_FIN_INSTRUCCION`, registro in situ) quedaría en el modelo viejo, sin migrar; y «abrir en carpeta» ya no encuentra el fichero. Por eso la fase 1 corta todos los escritores a la vez, y lo que deja muerto se retira en el mismo issue, en su último PR, sin código muerto ni botones que fallen entre fases. Los números de fase se conservan: «las fases 0-3» siguen siendo las que espera #929. El explorador de la gestión de plantillas y `bddat-explorador://` siguen en uso hasta la fase 4 y se retiran allí.
 
 Las fases 0-4, con la 2b, van antes de producción: sin manifiesto ni exportación, retirar a los usuarios las carpetas dejaría N009 peor que hoy (enmienda del 2026-10-01; antes estaban en la fase 7). La limpieza puede esperar sin riesgo: es lo único que borra, y mientras no exista solo crece el almacén. Las fases 5-7 pueden ir al ritmo del despliegue: hasta la 5, el borrador se retoca descargándolo y volviéndolo a subir (§D), y hasta la 6, el PDF para firma lo exporta el usuario.
 
@@ -343,6 +352,7 @@ Las fases 0-4, con la 2b, van antes de producción: sin manifiesto ni exportaci�
 - **Fragmentos:** se sustituyen igual, subiendo el fichero. Antes de confirmar se muestra en cuántas plantillas se usa, porque el cambio las afecta a todas a la vez; que es lo que se quiere (p. ej. el pie de recurso tras un cambio legal), pero con el alcance a la vista. El nombre no se puede cambiar si alguna plantilla lo usa. Subir una plantilla exige que existan todos los fragmentos que cita. **Al generar, un fragmento que falte detiene la generación con error.**
 - **Motor:** `generar_escrito` trabaja con bytes en vez de rutas. Recibe la plantilla y una función que devuelve el fragmento vigente por nombre. No toca el disco, y los tests dejan de necesitar carpetas temporales.
 - **Las bases canónicas siguen en el repositorio** (`app/data/plantillas_base/`): son código y se versionan con git. Desaparece el paso de copiarlas a `PLANTILLAS_BASE` (ANALISIS_DESPLIEGUE §9).
+- **El motor de Word se retira en la fase 4** (enmienda del 2026-10-02, decisión de Carlos). En la Junta no hay Word instalado y los `.docx` se abren con LibreOffice: no tiene sentido mantener un formato que no es el nativo del ecosistema. Lo que ADR-035 §2 dejó para «cuando no haya prisa» se hace aquí, porque el motor de Word usa dos cosas sin sitio en este diseño: sus fragmentos `.docx`, con el mismo nombre que los `.odt` (la tabla `fragmentos` guarda un fichero por nombre), y la carpeta `PLANTILLAS_BASE/recursos/` con las imágenes que inserta `img()`. Solo pasan al almacén las plantillas y los fragmentos `.odt`; las plantillas `.docx` no se migran.
 
 ### K — Parámetros configurables por el administrador
 
@@ -360,58 +370,67 @@ En `ConfiguracionSistema`, que ya existe. Cada cambio va a la bitácora. Los lí
 ### L — Migración
 
 - Cada documento con ruta local: se lee el fichero, se guarda en el almacén y se rellenan `fichero_ref`, `nombre` (el nombre original sin el prefijo de hash del pool, `3af1c9e0_`) y `contenido_modificado_en`. Los que no se encuentren salen en un informe.
-- Cada plantilla: su fichero pasa a `fichero_ref`. Cada `.odt` de `fragmentos/`: fila en `fragmentos` con su `fichero_ref`. Los borradores ya generados quedan sin `plantilla_ref` (no hay forma fiable de saber con cuál se generaron).
+- Cada plantilla: su fichero pasa a `fichero_ref`. Cada `.odt` de `fragmentos/`: fila en `fragmentos` con su `fichero_ref`. Los borradores ya generados quedan sin `plantilla_ref` (no hay forma fiable de saber con cuál se generaron). Esto es de la fase 4; la de los documentos, de la fase 1. Las plantillas `.docx` no se migran (§J).
 - Sin producción, es un script de una tarde; se valida contra la BD de desarrollo del PC.
 - **Comprobación de punta a punta** (enmienda del 2026-10-01): tras migrar, se rehacen los manifiestos, se exporta con el exportador de §H y se compara el resultado con el árbol de antes. Cada documento tiene que salir con los mismos bytes y en la misma carpeta ESFTT. Diferencias admitidas: los sufijos por choque de nombres (dependen del orden de llegada), los documentos registrados in situ (salen dentro del árbol, no donde los dejó el usuario) y los ficheros apartados por la regeneración sin referencias (no salen). Prueba con datos reales que la migración no pierde ningún documento, sin código nuevo.
 - **La migración es de ida.** No hay script inverso ni camino de vuelta al modelo de carpetas (Alternativas O).
 
 ### M — Consumidores (REGLAS_DESARROLLO §Análisis de impacto previo)
 
-Inventario del 2026-09-25 sobre `develop` en `d3bb6e0`, ajustado a la enmienda del 2026-09-26. **Se revalida en la fase 0** antes de escribir código: la cadena de ADR-049 sigue avanzando.
+Inventario del 2026-09-25 sobre `develop` en `d3bb6e0`, ajustado a la enmienda del 2026-09-26 y **revalidado en la fase 0, el 2026-10-02, sobre `develop` en `025f720`**: lo marcado «(2026-10-02)» es nuevo o corregido en la revalidación. Entre paréntesis, la fase de cada acción cuando no es la 1.
 
 **Modelos y servicios**
 
 | Consumidor | Acción |
 |---|---|
-| `app/models/documentos.py` | **Actualizar**: `url` solo `http(s)`/`bddat`; `nombre`, `fichero_ref`, `contenido_modificado_en`, `origen_sha256`, `plantilla_ref`, `borrado_en`; fuera `hash_md5`, `tipo_contenido`, `ruta_absoluta()` y la rama local del validador; `resolver_url()` lee del almacén |
-| `app/models/plantillas.py` | **Actualizar**: `ruta_plantilla` → `fichero_ref` |
+| `app/models/documentos.py` | **Actualizar**: `url` solo `http(s)`/`bddat`; `nombre`, `fichero_ref`, `contenido_modificado_en`, `origen_sha256` (fase 6), `plantilla_ref` (fase 4), `borrado_en` (fase 7); fuera `hash_md5`, `tipo_contenido`, `ruta_absoluta()` y la rama local del validador; `resolver_url()` lee del almacén; `__str__` deja de sacar el nombre de la `url` (2026-10-02) |
+| `app/models/plantillas.py` | **Actualizar** (fase 4): `ruta_plantilla` → `fichero_ref` |
 | `app/models/certificados_fase.py` | **Actualizar**: fuera `ruta_pdf` (ruta absoluta en disco) |
-| Modelos nuevos: `ficheros` (`ref` + `contenido_sha256` por separado, §B), `fragmentos`, `generacion_fragmentos`, `sesiones_edicion` | **Crear** |
+| Modelos nuevos: `ficheros` (`ref` + `contenido_sha256` por separado, §B); `fragmentos` y `generacion_fragmentos` (fase 4); `sesiones_edicion` (fase 5) | **Crear** |
 | `app/services/rutas_esftt.py` | **Actualizar**: se conserva `ruta_esftt_documento` (manifiesto); la adaptación de nombres a Windows pasa al exportador (§H); **eliminar** `mover_a_esftt`, `mover_a_pool`, `nombre_pool_unico`, `ruta_pool_documento`, `ruta_destino_esftt_fichero` y el MD5 |
 | `app/services/ingesta_pool.py` | **Actualizar**: escribe en el almacén; aviso de fichero existente (§H) |
 | `app/services/regeneracion_escritos.py` | **Actualizar**: 8 casos → 2; confirmación si hay retoques; fuera el apartado de ficheros |
-| `app/services/generador_escritos.py`, `generador_escritos_odt.py`, `generador_escritos_docx.py` | **Actualizar**: bytes, fragmentos por tabla, fragmento ausente = error, `plantilla_ref` y `generacion_fragmentos`; fuera `guardar_documento` a ruta y `_ruta_plantilla` |
+| `app/services/generador_escritos.py`, `generador_escritos_odt.py` | **Actualizar**: el escrito generado va al almacén, fuera `guardar_documento` a ruta; bytes, fragmentos por tabla, fragmento ausente = error, `plantilla_ref` y `generacion_fragmentos`, fuera `_ruta_plantilla` (fase 4) |
+| `app/services/generador_escritos_docx.py` | **Eliminar** (fase 4): se retira el motor de Word, con sus fragmentos `.docx` y `PLANTILLAS_BASE/recursos/` (§J; 2026-10-02) |
 | `app/services/generador_cert.py`, `cert_fin_instruccion.py` | **Actualizar**: PDF al almacén; fuera `_borrar_pdf` (lo hace la limpieza) |
-| `app/services/mutaciones_arbol.py` | **Actualizar**: fuera las llamadas a `mover_*`; la lectura del hook de #717 pasa por el almacén; congelar borrador y PDF al vincular el firmado |
-| `app/services/extraccion_texto_documento.py`, `context_builders/contexto_analisis_documental.py` | **Actualizar**: leen del almacén |
+| `app/services/mutaciones_arbol.py` | **Actualizar**: fuera las llamadas a `mover_*`; la lectura del hook de #717 pasa por el almacén, y también la del justificante NOTIFICA (`parsear_documento_notifica`, #657), con el formato de `ficheros.formato` y no de la extensión (2026-10-02); la copia del anuncio edictal (`aplicar_anuncio_edicto`, #568) crea la ficha con el mismo `fichero_ref` y `nombre` en vez de copiar `url` y `hash_md5` (2026-10-02); congelar el borrador al vincular el firmado, y su PDF en la fase 6 |
+| `app/services/extraccion_texto_documento.py` | **Actualizar**: lee del almacén; el formato, de `ficheros.formato` y no de la extensión (2026-10-02) |
+| `app/services/context_builders/contexto_analisis_documental.py` | **Dejar** (2026-10-02, corrige «leen del almacén»): solo lee un diagnóstico `bddat://` con `resolver_url()`, que no cambia |
 | `app/services/alta_expediente.py` | **Actualizar**: ingesta nueva; fuera el `os.remove` de limpieza en fallo |
 | `app/services/sellos.py` | **Actualizar**: `motivo_sellado` también impide cambiar el fichero |
-| `app/services/detalle_nodo.py` | **Actualizar**: `puede_abrir_carpeta` desaparece; «Editar» / descargar |
-| `app/config.py` | **Actualizar**: `FILESYSTEM_BASE` → `ALMACEN_BASE`, `BUZON_BASE`, `ARCHIVO_BASE`; fuera `PLANTILLAS_BASE` |
-| Servicios nuevos: puerto de almacenamiento + adaptador de filesystem (CAS), módulo de contenido (único que ve la `ref` fuera del puerto, §B), WebDAV, conversión y sincronización del PDF para firma, limpieza, integridad, manifiesto, exportador independiente (solo biblioteca estándar, §H), tareas diarias, detección de formato | **Crear** |
+| `app/services/detalle_nodo.py` | **Actualizar**: `puede_abrir_carpeta` desaparece; descargar, y «Editar» en la fase 5; `_nombre_doc` lee `nombre` (2026-10-02) |
+| `app/services/esquema_editable.py` | **Actualizar** (2026-10-02): `_nombre_doc` lee `nombre` en vez de la `url` |
+| `app/config.py` | **Actualizar**: `FILESYSTEM_BASE` → `ALMACEN_BASE`; `ARCHIVO_BASE` (fase 2b); fuera `PLANTILLAS_BASE` (fase 4); lo mismo en `TestingConfig` (`TEST_FILESYSTEM_BASE`, `TEST_PLANTILLAS_BASE`; 2026-10-02). Sin `BUZON_BASE`: el buzón está aparcado (§A) |
+| Servicios nuevos: puerto de almacenamiento + adaptador de filesystem (CAS), módulo de contenido (único que ve la `ref` fuera del puerto, §B), detección de formato, manifiesto, exportador independiente (solo biblioteca estándar, §H), tareas diarias; WebDAV (fase 5); conversión y sincronización del PDF para firma (fase 6); papelera, limpieza e integridad (fase 7) | **Crear** |
 
 **Rutas, módulos, plantillas HTML y JS**
 
 | Consumidor | Acción |
 |---|---|
-| `expedientes/routes.py`: `pool_explorador_fs`, `pool_registrar_rutas` | **Eliminar** (registro in situ; sin sustituto directo en fase 1, §H) |
+| `expedientes/routes.py`: `pool_explorador_fs`, `pool_registrar_rutas` | **Eliminar** (registro in situ; sin sustituto directo, §H) |
 | `expedientes/routes.py`: `pool_abrir_en_carpeta`, `abrir_carpeta_expediente` | **Eliminar** (absorbe #853) |
-| `expedientes/routes.py`: descarga, subida, `pool_editar_documento`, `pool_borrar_documento` | **Actualizar**: almacén; la `url` deja de ser editable (sustitución con motivo); borrar va a la papelera; descarga del PDF para firma con regeneración si está desfasado |
+| `expedientes/routes.py`: descarga, subida, `pool_editar_documento`, `pool_borrar_documento`, listado y JSON del pool | **Actualizar**: almacén; la `url` deja de ser editable (sustitución con motivo); el nombre, de `nombre` y no de la `url` (2026-10-02); borrar va a la papelera (fase 7); descarga del PDF para firma con regeneración si está desfasado (fase 6) |
 | Ruta nueva: «Aportar desde otro expediente» (listado plano con búsqueda) | **Crear** |
 | `app/routes/api_escritos.py` | **Actualizar**: fuera `ruta` y `uri_explorador` en la respuesta |
-| `app/routes/api_expedientes.py`, `api_huerfanos.py` | **Actualizar**: `puede_abrir_carpeta` |
-| `admin_plantillas/routes.py` y sus plantillas (`form.html`, `_detalle_fragmento.html`, `_editar_fragmento.html`, `_explorador_fragmento.html`, `_panel_tokens.html`) | **Actualizar**: subida y sustitución validadas, prueba con expediente real, fragmentos con tabla; fuera explorador y `bddat-explorador://` |
+| `app/routes/api_expedientes.py` | **Actualizar**: `puede_abrir_carpeta`; `_nombre_documento` lee `nombre` (2026-10-02) |
+| `app/routes/api_huerfanos.py` | **Actualizar**: `puede_abrir_carpeta`; el nombre, de `nombre` (2026-10-02). **Fallo silencioso** (2026-10-02): el filtro SQL `~Documento.url.like('bddat://%')` descarta las filas con `url` NULL (`NOT (NULL LIKE …)` es NULL) y dejaría vacío el radar de huérfanos sin error |
+| `seguimiento_y_huerfanos/templates/…/_inspector_huerfano.html` | **Actualizar** (2026-10-02): el nombre, de `nombre` |
+| `admin_plantillas/routes.py` y sus plantillas (`form.html`, `_detalle_fragmento.html`, `_editar_fragmento.html`, `_explorador_fragmento.html`, `_panel_tokens.html`) | **Actualizar** (fase 4): subida y sustitución validadas, prueba con expediente real, fragmentos con tabla; fuera explorador, `bddat-explorador://` y el motor de Word |
 | `expedientes/templates/expedientes/pool_documentos.html` | **Actualizar** |
-| `app/static/js/plantillas-inspector.js` | **Actualizar** |
-| `react-src`: `Despensa.jsx`, `MenuContextual.jsx`, `Inspector.jsx`, `ElaborarEditor.jsx`, `api.js` | **Actualizar**: «abrir carpeta» → «Editar» / descargar; aviso de plantilla desfasada; fuera la casilla B5 de abrir carpeta tras generar |
+| `app/static/js/plantillas-inspector.js` | **Actualizar** (fase 4) |
+| `react-src`: `Despensa.jsx`, `MenuContextual.jsx`, `Inspector.jsx`, `ElaborarEditor.jsx`, `api.js` | **Actualizar**: fuera «abrir carpeta» y la casilla B5 de abrir carpeta tras generar; «Editar» (fase 5); aviso de plantilla desfasada (fase 4) |
 
-**Tests** (35 ficheros tocan el disco o sus símbolos)
+**Tests** (36 ficheros tocan el disco o sus símbolos, 2026-10-02)
 
 | Consumidor | Acción |
 |---|---|
 | `test_667_mover_documento_esftt`, `test_926_documento_comparte_fichero` | **Eliminar**: prueban el movimiento, que desaparece. Sustituir por tests de «vincular no toca el almacén» y de deduplicación |
 | `test_730_regeneracion_escritos`, `test_666_ingesta_multipart`, `test_665_ruta_esftt`, `test_365_bddat_uri` (parte local) | **Actualizar** (reescritura parcial) |
-| `conftest.py` (`fs_tmp`) y los que montan carpetas: `test_928_*`, `test_657_658_notificar`, `test_717`, `test_677`, `test_428_*`, `test_373`, `test_827`, `test_838`, `test_574`, `test_367`, `test_885`, `test_442`, `test_678`, `test_341`, `test_328`, `test_591`, `test_726`, `smoke/test_smoke_pool_documentos`, `smoke/test_smoke_plantillas_inspector` y el resto de la lista | **Actualizar**: almacén temporal en lugar de árbol de carpetas |
+| `conftest.py` (`fs_tmp`) y los que montan carpetas: `test_928_*`, `test_657_658_notificar`, `test_717`, `test_677`, `test_428_*`, `test_373`, `test_827`, `test_838`, `test_574`, `test_367`, `test_885`, `test_442`, `test_678`, `test_341`, `test_328`, `test_591`, `test_726`, `test_568`, `test_967`, `test_968` (2026-10-02), `smoke/test_smoke_pool_documentos`, `smoke/test_smoke_plantillas_inspector` y el resto de la lista | **Actualizar**: almacén temporal en lugar de árbol de carpetas |
+| `test_847_pool_recurso_no_contemplado` | **Actualizar** (2026-10-02): `puede_abrir_carpeta` |
+| `test_932::test_ruta_pdf_del_certificado` | **Eliminar** con la columna (2026-10-02) |
+| Los casos del motor de Word: `test_726` (nombre y MIME `.docx`), `test_727::test_docx_no_tiene_avisos_de_canonicidad` | **Eliminar** (fase 4; 2026-10-02) |
+| Nuevo (2026-10-02): el radar de huérfanos lista un documento con `url` NULL (fallo silencioso de `api_huerfanos.py`) | **Crear** |
 | Nuevos: almacén, sustitución y congelado, PDF sincronizado, WebDAV, formatos, limpieza (qué cuenta como referencia), integridad, sustitución de plantillas, aportar desde otro expediente | **Crear** |
 | Nuevos (2026-10-01): consumidores del modelo de rutas y de la `ref` con lista de ficheros permitidos (fase 0, §I); el exportador solo importa la biblioteca estándar (fase 1, §H) | **Crear** |
 
@@ -419,9 +438,10 @@ Inventario del 2026-09-25 sobre `develop` en `d3bb6e0`, ajustado a la enmienda d
 
 | Consumidor | Acción |
 |---|---|
-| `scripts/semilla_test.py` | **Actualizar**: variables nuevas; plantillas desde las bases del repo en vez de desactivarlas |
+| `scripts/semilla_test.py` | **Actualizar**: variables nuevas; plantillas desde las bases del repo en vez de desactivarlas (fase 4) |
 | `scripts/expedientes_dummy/limpiar_reciclables.py` | **Actualizar** |
-| `scripts/cliente/` (`bddat-explorador://`) | **Eliminar**: el botón «Editar» no necesita instalador, usa `vnd.libreoffice.command:`, que registra el LibreOffice corporativo (§D, #1000) |
+| El resto de `scripts/expedientes_dummy/` | **Dejar** (2026-10-02): suben por la ruta multipart, que se conserva |
+| `scripts/cliente/` (`bddat-explorador://`) | **Eliminar** (fase 4: la gestión de plantillas lo usa hasta entonces; 2026-10-02): el botón «Editar» no necesita instalador, usa `vnd.libreoffice.command:`, que registra el LibreOffice corporativo (§D, #1000) |
 | `scripts/nube/` (`preparar_entorno.sh`, `README.md`) | **Actualizar**: variables del `.env` |
 | `scripts/poc_webdav/` | **Dejar**: evidencia de §D |
 
@@ -436,10 +456,10 @@ Inventario del 2026-09-25 sobre `develop` en `d3bb6e0`, ajustado a la enmienda d
 
 | Consumidor | Acción |
 |---|---|
-| ADR-032, ADR-006, ADR-035 | **Dejar**, con nota de cabecera que remite aquí (hecho con este ADR) |
+| ADR-032, ADR-006, ADR-035 | **Dejar**, con nota de cabecera que remite aquí (hecho con este ADR; puesta al día el 2026-10-02: `fichero_ref` en vez de `fichero_sha256`, sin buzón, y el motor `.docx` de ADR-035 §2 se retira) |
 | ADR-009, ADR-028, ADR-030, ADR-034, ADR-044, `historial/*` | **Dejar** (congelados) |
 | `DISEÑO_GENERACION_ESCRITOS.md` (procedimiento del supervisor, B5, B6), `DISEÑO_SUBSISTEMA_DOCUMENTAL.md`, `ANALISIS_DESPLIEGUE.md` (§6, §9), `ANALISIS_ESCALABILIDAD.md` (§3.6), `INVENTARIO_BACKEND.md`, `MATRIZ_COBERTURA_BDDAT.md` (N009, N021, N077), `scripts/cliente/README.md`, `tests/README.md`, `.env.example` | **Actualizar al implementar**: hasta entonces describen lo que hay |
-| `docs/guias/REGLAS_DESARROLLO.md` | **Actualizar al implementar** (2026-10-01): sección «la ficha, no el fichero» — congelación del modelo de rutas con el test de la fase 0; solo el subsistema de almacenamiento ve la `ref`, en la fase 1 (§I) |
+| `docs/guias/REGLAS_DESARROLLO.md` | **Actualizar al implementar** (2026-10-01): sección «la ficha, no el fichero» — la congelación del modelo de rutas, hecha en la fase 0 (#1001); solo el subsistema de almacenamiento ve la `ref`, en la fase 1 (§I) |
 
 ---
 
