@@ -5,6 +5,7 @@ donde nacieron —aquí se resumen y se enlazan—:
 
 | Qué | Fuente de verdad |
 |---|---|
+| Dónde busca `pytest` a secas (`testpaths`) | [`pytest.ini`](../pytest.ini) |
 | Fixtures, aislamiento por SAVEPOINT, `fs_tmp`, `ArbolESFTT` | docstrings de [`conftest.py`](conftest.py) |
 | Construcción y semilla de la BD de tests | [`scripts/preparar_bd_test.py`](../scripts/preparar_bd_test.py), [`scripts/semilla_test.py`](../scripts/semilla_test.py) |
 | Variables de entorno | [`.env.example`](../.env.example) |
