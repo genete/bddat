@@ -181,6 +181,17 @@ retoques a ficheros de test que ya existían.
 - **Lo que otro fichero ya prueba del mismo servicio** desde otro issue (§5).
 - **Mocks que solo comprueban que se llamó a una función.**
 
+**Ante un «hueco de cobertura»** (p. ej. al retirar un seed que ejercitaba una vista),
+preguntarse primero si el código escribe o decide algo. Si es solo presentación o
+resumen, el test no es la opción por defecto: si algo falla se corrige, y lo que cabe
+es revisar la utilidad de la vista, no armarle una guarda.
+
+**Al planificar la cobertura de un hito** (p. ej. la puerta a producción, ADR-030),
+mapear **todos** los mecanismos que necesitan verificación, aunque la implementación
+de algunos quede como hueco documentado en la matriz. Priorizar y diferir la
+implementación es lícito; recortar el análisis oculta huecos que costarán más al
+descubrirlos después.
+
 **Tamaño.** Un issue no necesita un fichero de 600 líneas. Si las líneas de
 test de un cambio superan a las de `app/` que cambia, repasar cuáles de la
 lista «No» se han colado. Es una señal, no un tope.
@@ -239,6 +250,16 @@ cambio de firma), antes de repararlo se le pasa este criterio:
 8. **N+1**: `contar_consultas(f)` comparando dos variantes, no un número absoluto.
 
 ---
+
+### Avisos (warnings) de la suite
+
+No se silencian con `filterwarnings = ignore::…`, ni siquiera fechado y con issue de
+referencia: un `ignore` documentado sigue dependiendo de que alguien vuelva a leerlo.
+El orden es **arreglar el origen y luego cerrar la puerta** (el detector en `error`,
+sin excepciones), como `UMBRAL_SKIPS = 0` en `tests/conftest.py`. Antes de calificar
+el ruido de cosmético, mirar qué tapa: bajo miles de avisos idénticos de `Query.get()`
+había tres de `datetime.utcnow()` que destaparon dos convenciones horarias
+conviviendo en la misma base (#888).
 
 ## 5. Organización
 

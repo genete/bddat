@@ -134,5 +134,15 @@ contiene las normas del catálogo, no las 8 646. Añade siempre «prueba `/boe` 
 
 - El repo original se actualiza diariamente — si una norma reciente no está, puede no haberse indexado aún. En la nube, `bash scripts/nube/preparar_legalize.sh` vuelve a descargar lo último.
 - Los ficheros contienen el texto consolidado vigente (no el original publicado).
+- **Vigencia: no confundir fechas.** `publication_date` es la publicación original;
+  `last_updated`, la última modificación consolidada. Antes de concluir que una norma
+  antigua ha sido desplazada por otra posterior, mirar la fecha de la **modificación
+  concreta** que introduce el precepto, no la de publicación: un decreto de 2018 puede
+  contener un apartado añadido en 2023.
+- **Los skills de legislación no se encadenan.** `/boe` y `/boja` no llaman a `/legalize`
+  (cuando lo hacían, repetían un `NOT_FOUND` ya conocido). Para comprobar antes la
+  disponibilidad local, invocar `/legalize` como paso propio. No leer legislación con
+  `WebFetch` a mano (el único uso admitido es el que documenta `/boe` para normas fuera
+  del catálogo) y no usar `/boe` para normas del BOJA.
 - Para normas BOJA anteriores a 2012, responde `NOT_FOUND: sin cobertura (pre-2012)`.
 - `scripts/legalize_xref.py` y `scripts/legalize_compile.py` **no** funcionan con el clon reducido: necesitan el completo (solo PC).

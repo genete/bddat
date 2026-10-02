@@ -66,6 +66,16 @@ Esta ruta está en la allowlist del proyecto (`always allow access`).
 
 ---
 
+## Elegir la herramienta, no solo la sintaxis
+
+Ningún hook cubre esto. No usar Bash para listar, buscar o leer ficheros (`ls`, `find`,
+`grep`, `cat`, `head`, `tail`) cuando `Glob`, `Grep` o `Read` lo resuelven, **ni siquiera
+en una consulta simple de una sola vez**. Bash queda para lo que de verdad necesita shell:
+git, gh, scripts, el Python del venv, procesos. Aprobar una llamada así puede acabar
+consolidando el patrón en la allowlist, que es justo el hábito que se quiere evitar.
+
+---
+
 ## Cuándo usar el PowerShell tool en lugar de Bash
 
 El PowerShell tool (PS7+) es la alternativa cuando un patrón Bash dispararía un anti-bloqueo

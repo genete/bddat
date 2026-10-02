@@ -349,6 +349,18 @@ contenedor dentro de `#app-inspector-body`.
 {% endblock %}
 ```
 
+### Excepciones de los editores de tarea (bespoke)
+
+Los editores de ANALIZAR, ELABORAR y NOTIFICAR condicionan a veces algo del contenedor
+común (`InspectorEdicion`). Criterio para factorizar una excepción en un patrón
+compartido: no basta con contar apariciones. Una excepción que aparece en un solo editor
+sigue siendo un caso único (factorizarla sería generalizar a partir de N=1). Pero si una
+**segunda** excepción nace de la **misma causa raíz** (p. ej. «el editor gestiona su
+propio vínculo de documento y por eso el mecanismo genérico deja de tener sentido»), ya
+es un patrón: señalarlo como candidato a factorizar con una interfaz (cada editor declara
+si gestiona su propio vínculo) y no seguir apilando condicionales `esAnalizar`/`esX` en el
+contenedor. No esperar a una tercera aparición ni copiar el condicional sin más.
+
 ---
 
 ## Verificación de una isla

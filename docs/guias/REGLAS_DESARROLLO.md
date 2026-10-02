@@ -7,6 +7,7 @@
 | Solo HTML / CSS / JS | Flask › Templates · Notificaciones · Commits |
 | Modelos o migraciones | Flask › Modelos · Migraciones · Naming · Commits |
 | Commit o rama | Ramas · Commit directo vs rama · Commits |
+| Abrir un issue, redactar un PR, actualizar `CONTEXTO_ACTUAL.md` | Issues y pull requests |
 | Cierre de milestone | Releases |
 | Decisión de diseño | Decisiones arquitectónicas |
 | Nueva ruta o template con expediente / rol | Control de acceso |
@@ -23,6 +24,9 @@
 - `main` — solo recibe merges desde develop al cerrar milestone; lleva tags `vMAJOR.MINOR.PATCH`
 - Ramas temporales nacen de develop y vuelven via PR; borrar remota inmediatamente tras merge
 - No squash merge — preservar historial completo de commits
+- **Crear la rama antes de la primera edición**, no después de commitear en `develop`. Vale también al reanudar un issue tras mergear su fase anterior: la rama activa vuelve a ser `develop` y el paso hay que repetirlo.
+- **Verificar la rama con `git status` antes de commitear o pushear.** El estado del inicio de la sesión caduca: el usuario puede trabajar en paralelo en el mismo directorio. Si la rama no es la esperada, crear una de seguridad desde `develop` en vez de tocar la del usuario, y devolver el repo a su rama al terminar.
+- **Sin worktrees.** Se probaron en #776 (2026-08-22) y se descartaron: cada uno exige reconstruir el bundle de React y `node_modules`. No proponerlos salvo que el usuario lo pida.
 
 **Naming:** `feature/issue-XX-descripcion` · `bugfix/issue-XX-descripcion` · `refactor/descripcion` · `docs/descripcion`
 
@@ -33,6 +37,8 @@
 **Commit directo en develop** — docs, typos, 1-2 ficheros sin lógica de negocio, sin necesidad de `flask run`.
 Si el commit resuelve un issue, cerrarlo a mano (sin PR no hay auto-close):
 `gh issue close <N> --comment "Resuelto en commit <SHA> (develop)."`
+
+**Documentos de diseño vivos** (ADRs, `docs/diseño/`, `DETALLE_NECESIDADES_BDDAT.md`, `MATRIZ_COBERTURA_BDDAT.md`, `CONTEXTO_ACTUAL.md`): contenido editorial, no una tarea. Commit directo a `develop`, sin issue ni rama; el mensaje lleva el formato habitual sin número si no hay issue. Si hay duda de si algo "es tarea", preguntar.
 
 **Rama + PR** — 3+ ficheros, modelos, rutas, templates, migraciones, cualquier cambio que requiera prueba funcional.
 
@@ -62,6 +68,8 @@ Acción para cada consumidor encontrado:
 
 Presentar ese mapa como tabla al usuario y esperar confirmación **antes de implementar**.
 No hay excepciones por "es pequeño" o "es evidente".
+
+En el mapa, separar siempre tres cosas: las **fuentes de verdad** afectadas (requieren decisión de diseño), los **consumidores reales** (código, checks, migraciones: hay que actualizarlos) y los **documentos derivados** (se sincronizan con `/sync-derivados` cuando cambia su fuente; no son consumidores independientes que editar). Qué es fuente y qué derivado: `docs/historial/REGLAS_ARQUITECTURA.md` §2.1.
 
 ---
 
@@ -137,6 +145,10 @@ apariciones permitido en cada fichero de `app/`. **Si falla, el arreglo es pedir
 contenido por el documento, no subir el número ni añadir el fichero.** Cada fase de
 ADR-050 lo baja; cuando no quede ninguno, el test se borra.
 
+### Estilos ODT
+
+Una variante de un estilo de párrafo existente (p. ej. el mismo título en mayúsculas) se crea como estilo **hijo** (`style:parent-style-name` apuntando al original) que declara solo la propiedad añadida. Nunca se muta el estilo compartido: así queda reutilizable, el hijo hereda los cambios del padre y la variante se quita sin riesgo. Antes de tocar una plantilla compartida entre carta y resolución, confirmar en qué fichero vive el texto que describe el ADR: «cabecera» o «encabezamiento» puede ser el membrete (familia `Cabecera - *`) o el título del cuerpo.
+
 ---
 
 ## Tests
@@ -185,6 +197,29 @@ Formato: `[CATEGORÍA] #N descripción en imperativo`
 | `[MERGE]` | Merge commits |
 | `[RELEASE]` | Releases y tags |
 
+### Commits atómicos
+
+- En refactors grandes, y también cuando una petición agrupa varias piezas, trocear en commits atómicos y verificar cada uno (visualmente o con tests) antes del siguiente. No acumular todo en un commit monolítico.
+- Si dos piezas añaden bloques contiguos al mismo fichero y `git add -p` no puede partir el hunk: quitar temporalmente el segundo bloque, commitear la primera pieza, volver a añadirlo y commitear la segunda.
+- En implementaciones largas con varios commits planificados, enseñar el contenido completo de cada pieza (catálogo, migración, código) y esperar confirmación **antes** de `git commit`. Enmendar después es costoso si ya hay commits encima.
+- Si el issue elimina ficheros (modelos, servicios…), el `git rm` va en el mismo commit que los cambios de código; no dejar código muerto.
+- Si un fichero tiene cambios del usuario ajenos al commit, no descartarlos con `git checkout -- <fichero>` (irrecuperable): preguntar qué hacer.
+
+---
+
+## Issues y pull requests
+
+- **Antes de abrir un issue**, buscar los existentes sobre esa pieza, abiertos **y cerrados**, por el nombre del artefacto del dominio (tipo documental, tabla, servicio, código de catálogo) y no por palabras del título. Comprobar dos cosas: que no se repite y que ninguno propone un diseño **opuesto** al que se va a escribir. Al abrirlo, listar los issues afectados y qué pasa con cada uno (se cierra, se reduce, se reescribe la premisa).
+- **Tareas pendientes y checklists, en el cuerpo del issue**, no en comentarios: se revisan por el cuerpo y solo los checkboxes del cuerpo cuentan para la barra de progreso (`gh issue edit --body-file`).
+- **Milestone:** un issue relacionado con otro que ya tiene milestone va al mismo que su dependencia.
+- **Una conversación, un issue.** Al cerrar uno, el siguiente va en sesión nueva; actualizar el texto de un issue derivado es editar GitHub, implementarlo es sesión nueva. Encadenar issues muy relacionados en una sola sesión, o pedir issue e implementación juntos, solo lo decide el usuario; no se propone por iniciativa propia.
+- **`Refs #N` en issues de varias fases**, nunca `Closes #N`, hasta el PR de cierre. El skill `/pr` añade `Closes #XX` por defecto: sustituirlo.
+- **`docs/CONTEXTO_ACTUAL.md`:**
+  - «Hecho» se actualiza solo tras mergear el PR (`gh pr view <N> --json state,mergedAt`), y **sustituye** al anterior: lo último, sin encolar histórico.
+  - Registra solo lo que no está en ADRs, documentos de diseño ni issues, con un puntero a dónde está el detalle.
+  - «Próximo»: issues por su título, sin el porqué extendido. Sí merecen quedarse los huecos de diseño sin issue, las ausencias deliberadas («sin issue a propósito») y el motivo de cada aplazamiento en pocas palabras.
+  - «Próximo» exige propuesta y confirmación (ver `CLAUDE.md`).
+
 ---
 
 ## Migraciones de BD
@@ -198,6 +233,10 @@ flask db upgrade
 ```
 
 `env.py` sin `include_schemas` (estado por defecto del repo). Todas las tablas usan `schema='public'` explícito.
+
+**Un solo head.** Antes de crear una migración, `flask db heads` / `flask db current`. Si hay varios, resolverlos primero con una migración de merge (`down_revision = (head_A, head_B, ...)`, puede ir vacía o combinarse con la primera migración real). Ramas con migraciones en paralelo sin coordinar son la causa habitual de «Multiple head revisions».
+
+**No aplicar en el mismo turno en que se escribe.** Tras escribir una migración, enseñar el fichero completo al usuario y esperar confirmación explícita antes de `flask db upgrade`, también en la BD de desarrollo: ejecutarla escribe en una fuente de verdad (el catálogo) y necesita luz verde aparte.
 
 Toda migración que cree una tabla nueva debe incluir el GRANT al usuario MCP de desarrollo:
 
@@ -357,6 +396,10 @@ Si la ruta no llama a `verificar_acceso_expediente`, el indicador no aparece aun
 
 No mezclar. Flask hace fallback silencioso a la global sin lanzar error — difícil de depurar. (#127)
 
+**Sin responsive móvil.** BDDAT es una herramienta de escritorio Windows (decidido 2026-04-15). No añadir breakpoints ni CSS orientado a móvil; el responsive solo cubre la variación entre resoluciones de monitor. Ignorar viewports de menos de ~1024 px.
+
+**Fragmentos del inspector y del modal grande (ADR-023).** El inspector overlay (`inspector-overlay.js`) inyecta el fragmento con `innerHTML`, así que sus `<script>` **no se ejecutan**: el comportamiento va a JS global con delegación de eventos a nivel `document`. El modal grande (`modal-large.js`) sí reconstruye y re-ejecuta los `<script>`: un fragmento con JS inline funciona tal cual. El JS pesado (cascadas, exploradores, paneles con botones) va, por tanto, al modal. Al cerrarse, el modal llama a `onSaved` (por defecto `AppInspector.refresh()`): si se abre desde una edición en curso del inspector, pasar `onSaved: ()=>{}` para no perderla; el atributo declarativo `data-modal-large-url` usa el valor por defecto.
+
 ### Modelos
 
 Orden de imports en `app/models/__init__.py`: primero modelos sin FKs operacionales, luego dependencias simples, luego múltiples. Romper el orden causa circular imports.
@@ -387,6 +430,8 @@ def mi_servicio(elemento):
 ```
 
 Cuando se use un código nuevo en cualquier servicio, añadirlo en `app/checks/catalogo_requerido.py` (`REGISTROS_REQUERIDOS`).
+
+**Sin entradas «de conveniencia» en la interfaz de un servicio.** No añadir una función que acepte un nivel que, según el modelo, no tiene esa propiedad (p. ej. «plazo de un trámite» si el plazo cuelga de la solicitud o la tarea): la interfaz enseña el modelo y reintroduce un nivel que un rediseño eliminó. Antes de añadirla, mirar quién la llama y por qué llega con ese objeto: si llega por el nivel equivocado, la bajada al nivel correcto es una utilidad de navegación del árbol ESFTT, no una entrada del servicio de dominio.
 
 ### Notificaciones
 
