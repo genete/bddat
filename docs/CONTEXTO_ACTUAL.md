@@ -7,6 +7,6 @@
 
 ---
 
-**Hecho:** **#1000** (2026-10-01, PR #1002), la prueba de la edición WebDAV en un puesto de la Junta: funciona con el LibreOffice corporativo 7.6, contra la IP de red y desde otra máquina por la VPN. El botón «Editar» no necesita instalar nada en el puesto (`vnd.libreoffice.command:`). Los requisitos nuevos están en ADR-050 §D. La puerta de la fase 1 queda abierta.
+**Hecho:** **#1001** (2026-10-02, PR #1003), la congelación de los consumidores del modelo de rutas (ADR-050, fase 0). Un test cuenta, fichero a fichero, cuántas veces usa `app/` los símbolos del disco: falla si el número sube, y también si baja sin actualizarlo. La regla está en `REGLAS_DESARROLLO.md`, «Documentos: la ficha, no el fichero».
 
-**Próximo:** **ADR-050, fase 0** (confirmado por Carlos el 01/10/2026): #1001, congelar los consumidores del modelo de rutas. Después, revalidar §M y crear los issues de las fases 1 a 7. El frontend de notificaciones (#929) solo espera ya a las fases 0-3 de ADR-050; hasta entonces la tramitación de una `NOTIFICAR` en el navegador sigue coja (#928 D12, #967 D1).
+**Próximo:** **ADR-050, fase 0** (confirmado por Carlos el 02/10/2026): revalidar la tabla de consumidores de §M y crear los issues de las fases 1 a 7. El frontend de notificaciones (#929) solo espera ya a las fases 0-3 de ADR-050; hasta entonces la tramitación de una `NOTIFICAR` en el navegador sigue coja (#928 D12, #967 D1).
