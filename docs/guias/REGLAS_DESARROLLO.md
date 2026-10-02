@@ -13,6 +13,7 @@
 | Ruta que edita un registro existente (POST/PATCH) | Rutas que editan un registro existente |
 | Isla React (nueva o cambio) | React (islas) · `docs/guias/GUIA_REACT_ISLAS.md` |
 | Probar una guarda de plazo sin editar fechas a mano | Reloj de desarrollo |
+| Código que lee, escribe o sirve el fichero de un documento o de una plantilla | Documentos: la ficha, no el fichero |
 
 ---
 
@@ -115,6 +116,26 @@ Lo comprueba `tests/test_832_contrato_edicion_parcial.py` sobre las rutas de
 formulario, con un manifiesto explícito de la deuda pendiente (#834). El detector
 que usa (`scripts/auditar_escrituras_parciales.py`) **no ve el caso de API JSON**:
 ahí el criterio se sostiene con la revisión y esta regla.
+
+---
+
+## Documentos: la ficha, no el fichero
+
+Mientras se implementa ADR-050, **no entran consumidores nuevos del modelo de
+rutas**: nada nuevo lee ni escribe un fichero por su ruta en disco. Lo que necesite
+el contenido de un documento lo pide por el documento, con `documento.resolver_url()`,
+que sobrevive y pasará a leer del almacén. Cada consumidor nuevo es deuda que la
+fase 1 tendría que deshacer (ADR-050 §I).
+
+Símbolos congelados: `ruta_absoluta()`, `FILESYSTEM_BASE`, `PLANTILLAS_BASE`,
+`hash_md5`, `ruta_plantilla`, `ruta_pdf` y los de `rutas_esftt.py` que mueven o
+nombran ficheros (`mover_a_esftt`, `mover_a_pool`, `nombre_pool_unico`,
+`ruta_pool_documento`, `ruta_destino_esftt_fichero`).
+
+Lo vigila `tests/test_1001_consumidores_modelo_rutas.py`, con el número de
+apariciones permitido en cada fichero de `app/`. **Si falla, el arreglo es pedir el
+contenido por el documento, no subir el número ni añadir el fichero.** Cada fase de
+ADR-050 lo baja; cuando no quede ninguno, el test se borra.
 
 ---
 
