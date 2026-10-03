@@ -34,6 +34,14 @@ class Config:
     # Estructura: PLANTILLAS_BASE/plantillas/ y PLANTILLAS_BASE/fragmentos/
     # Desarrollo: p.ej. D:/BDDAT/docs_prueba/plantillas_escritos
     PLANTILLAS_BASE = _ruta_base_env('PLANTILLAS_BASE')
+    # Zonas del servidor de ficheros del almacén documental (ADR-050 §A). Son de
+    # despliegue, no se cambian desde la aplicación (§K). Cada una la escribe solo la
+    # cuenta de servicio de BDDAT; los usuarios no tienen acceso.
+    # ALMACEN_BASE: el contenido de cada fichero, una vez. Se inicializa una sola vez con
+    # `almacen.inicializar(ruta)`; sin su marca, el almacén responde «no disponible».
+    ALMACEN_BASE = _ruta_base_env('ALMACEN_BASE')
+    # MANIFIESTOS_BASE: un manifiesto por expediente, para reconstruir el árbol sin BDDAT.
+    MANIFIESTOS_BASE = _ruta_base_env('MANIFIESTOS_BASE')
 
 class DevelopmentConfig(Config):
     """Desarrollo"""
@@ -82,6 +90,11 @@ class TestingConfig(Config):
     SQLALCHEMY_ECHO = False
     FILESYSTEM_BASE = _ruta_base_env('TEST_FILESYSTEM_BASE')
     PLANTILLAS_BASE = _ruta_base_env('TEST_PLANTILLAS_BASE')
+    # Igual para el almacén y los manifiestos (ADR-050): un test que suba un fichero
+    # deja el contenido puesto aunque su transacción se deshaga. La fixture
+    # `almacen_tmp` lo redirige a un temporal; esto es la red para quien se olvide.
+    ALMACEN_BASE = _ruta_base_env('TEST_ALMACEN_BASE')
+    MANIFIESTOS_BASE = _ruta_base_env('TEST_MANIFIESTOS_BASE')
 
 
 config = {

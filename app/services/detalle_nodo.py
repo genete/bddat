@@ -110,20 +110,6 @@ def _fecha(d) -> Optional[str]:
     return d.strftime('%d/%m/%Y') if d else None
 
 
-def _nombre_doc(doc) -> str:
-    """Nombre legible: último segmento de la URL, o 'Documento <id>'.
-
-    bddat:// no tiene fichero real que dar nombre (el "segmento" sería solo
-    el id numérico, p.ej. "16") — se usa el nombre del tipo de documento.
-    """
-    url = doc.url or ''
-    if url.startswith('bddat://'):
-        return doc.tipo_doc.nombre if doc.tipo_doc else f'Documento {doc.id}'
-    filename = url.replace('\\', '/').rsplit('/', 1)[-1]
-    filename = filename.split('?')[0].split('#')[0]
-    return filename or f'Documento {doc.id}'
-
-
 def info_apertura_documento(exp_id: int, doc, *, estricto: bool = True) -> dict:
     """Enlace de apertura + flags de acción de un documento — no depende del rol
     (aplica igual a un documento aún no enlazado a ninguna tarea, #609).
@@ -214,7 +200,7 @@ def _serializar_documento(exp_id: int, doc, rol: str) -> dict:
     return {
         'id': doc.id,
         'rol': rol,
-        'nombre': _nombre_doc(doc),
+        'nombre': doc.nombre_visible(),
         'tipo_doc': doc.tipo_doc.nombre if doc.tipo_doc else None,
         'fecha': _fecha(doc.fecha_administrativa),
         **info_apertura_documento(exp_id, doc),

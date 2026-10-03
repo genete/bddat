@@ -132,6 +132,22 @@ class TestListadoHuerfanos:
         finally:
             _borrar_documento(app, doc_id)
 
+    def test_documento_sin_url_sin_vinculo_aparece_como_huerfano(self, usuario_tramitador, app):
+        """ADR-050: un documento con contenido propio en el almacén no tiene url (NULL).
+
+        Fallo silencioso que evita: `NOT url LIKE 'bddat://%'` da NULL cuando la url es
+        NULL, así que el documento sale del radar sin ningún error y nadie lo vincula
+        nunca a una tarea."""
+        _, doc_id = _documento_suelto(app, url=None)
+        try:
+            r = usuario_tramitador.get('/api/documentos/huerfanos?ver=todos&limit=200')
+            assert r.status_code == 200
+            fila = next((d for d in r.get_json()['data'] if d['id'] == doc_id), None)
+            assert fila is not None, 'el radar no lista el documento sin url'
+            assert fila['nombre'] == f'Documento {doc_id}'
+        finally:
+            _borrar_documento(app, doc_id)
+
     def test_filtro_ver_mis_solo_devuelve_expedientes_del_usuario(self, usuario_tramitador, app):
         from tests.conftest import id_usuario_autenticado
 

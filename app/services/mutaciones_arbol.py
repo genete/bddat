@@ -2011,7 +2011,8 @@ def aplicar_anuncio_edicto(tramite, tareas_ids: list[int]) -> ResultadoMutacion:
         ta = elegibles[tarea_id]
         copia = Documento(
             expediente_id=anuncio.expediente_id, tipo_doc_id=anuncio.tipo_doc_id,
-            url=anuncio.url, tipo_contenido=anuncio.tipo_contenido,
+            url=anuncio.url, nombre_fichero=anuncio.nombre_fichero,
+            tipo_contenido=anuncio.tipo_contenido,
             fecha_administrativa=anuncio.fecha_administrativa, asunto=anuncio.asunto,
             hash_md5=anuncio.hash_md5,
             observaciones=f'Copia del anuncio publicado #{anuncio.id} (notificación edictal, #568)',

@@ -88,7 +88,9 @@ def listar_huerfanos():
         .join(Entidad, Expediente.titular_id == Entidad.id, isouter=True)
         .outerjoin(DocumentoTarea, DocumentoTarea.documento_id == Documento.id)
         .filter(DocumentoTarea.id.is_(None))
-        .filter(~Documento.url.like('bddat://%'))
+        # url NULL = contenido propio en el almacén (ADR-050): sin el IS NULL, el
+        # NOT LIKE da NULL y el documento sale del radar sin ningún aviso.
+        .filter(or_(Documento.url.is_(None), ~Documento.url.like('bddat://%')))
         .filter(*filtros)
     )
 
@@ -113,7 +115,7 @@ def listar_huerfanos():
             'responsable':          {'id': responsable.id, 'siglas': responsable.siglas} if responsable else None,
             'tipo_doc':             doc.tipo_doc.nombre if doc.tipo_doc else None,
             'asunto':               doc.asunto,
-            'nombre':               (doc.url or '').replace('\\', '/').rsplit('/', 1)[-1].split('?')[0].split('#')[0] or f'Documento {doc.id}',
+            'nombre':               doc.nombre_visible(),
             **info_apertura_documento(expediente.id, doc, estricto=False),
         })
 

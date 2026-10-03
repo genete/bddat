@@ -14,17 +14,12 @@ import shutil
 from app import db
 from app.models.documentos import Documento
 from app.models.tareas import Tarea
+from app.services.almacenamiento.nombres import sanear_nombre
 
-# Caracteres no válidos en nombres de carpeta Windows (mismo patrón que generador_escritos.py)
-_CARACTERES_INVALIDOS = re.compile(r'[\\/:*?"<>|]')
+# Caracteres no válidos en nombres de carpeta Windows (mismo patrón que generador_escritos.py),
+# incluidos los de control (0-31), como en el saneado de nombres de fichero.
+_CARACTERES_INVALIDOS = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
 _LONGITUD_MAX_FALLBACK_ORGANISMO = 30
-
-# Nombres de dispositivo reservados en Windows (con o sin extensión): CON.txt también es inválido.
-_NOMBRES_RESERVADOS_WINDOWS = {
-    'CON', 'PRN', 'AUX', 'NUL',
-    'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
-    'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9',
-}
 
 # Longitud inicial del prefijo de hash en el nombre de fichero del pool (ADR-032 §4,
 # git-style: se extiende un carácter más ante colisión real con contenido distinto).
@@ -161,31 +156,9 @@ def ruta_pool_documento(expediente) -> str:
     return directorio
 
 
-def _saneado_nombre_pool(nombre_original: str) -> str:
-    """
-    Sanea un nombre de fichero recibido del navegador (`FileStorage.filename`,
-    dato controlado por el cliente) para uso seguro como nombre de fichero en
-    disco (ADR-032 §4, #666). Solo correctivo — nunca trunca por longitud
-    (ver ADR-032 §4 para el porqué).
-
-    - Descarta cualquier componente de directorio (previene path traversal:
-      '../../algo' o '..\\..\\algo' se reduce a 'algo').
-    - Sustituye caracteres inválidos en Windows por '_'.
-    - Recorta espacios y puntos finales (Windows los ignora al escribir;
-      normalizarlo aquí evita que BD y disco diverjan).
-    - Evita nombres de dispositivo reservados de Windows (CON, NUL, COM1…).
-    """
-    nombre = (nombre_original or '').replace('\\', '/').rsplit('/', 1)[-1]
-    nombre = _CARACTERES_INVALIDOS.sub('_', nombre)
-    nombre = nombre.rstrip(' .')
-    if not nombre:
-        nombre = 'documento'
-
-    base, _ext = os.path.splitext(nombre)
-    if base.upper() in _NOMBRES_RESERVADOS_WINDOWS:
-        nombre = f'_{nombre}'
-
-    return nombre
+# El saneado vive en el subsistema de almacenamiento (ADR-050 §C); aquí queda el
+# nombre de siempre hasta que el PR 5 retire este módulo.
+_saneado_nombre_pool = sanear_nombre
 
 
 def _hash_md5_fichero(ruta: str) -> str:

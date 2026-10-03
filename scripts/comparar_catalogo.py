@@ -58,6 +58,8 @@ TABLAS_OPERACIONALES = {
     'usuarios', 'usuarios_roles',
     # Contador del número AT: estado operacional, no catálogo.
     'contador_numero_at',
+    # Contenidos del almacén (ADR-050, #1007): los escribe la subida, no el catálogo.
+    'ficheros',
     # Control de Alembic.
     'alembic_version',
 }

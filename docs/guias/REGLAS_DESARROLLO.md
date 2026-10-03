@@ -14,7 +14,7 @@
 | Ruta que edita un registro existente (POST/PATCH) | Rutas que editan un registro existente |
 | Isla React (nueva o cambio) | React (islas) · `docs/guias/GUIA_REACT_ISLAS.md` |
 | Probar una guarda de plazo sin editar fechas a mano | Reloj de desarrollo |
-| Código que lee, escribe o sirve el fichero de un documento o de una plantilla | Documentos: la ficha, no el fichero |
+| Código que lee, escribe o sirve el fichero de un documento o de una plantilla | Documentos: el contenido es del almacén |
 
 ---
 
@@ -127,13 +127,44 @@ ahí el criterio se sostiene con la revisión y esta regla.
 
 ---
 
-## Documentos: la ficha, no el fichero
+## Documentos: el contenido es del almacén
 
-Mientras se implementa ADR-050, **no entran consumidores nuevos del modelo de
-rutas**: nada nuevo lee ni escribe un fichero por su ruta en disco. Lo que necesite
-el contenido de un documento lo pide por el documento, con `documento.resolver_url()`,
-que sobrevive y pasará a leer del almacén. Cada consumidor nuevo es deuda que la
-fase 1 tendría que deshacer (ADR-050 §I).
+El contenido de un documento vive en el **almacén** (ADR-050), no en una ruta de una
+carpeta de red, y solo lo ve el **subsistema de almacenamiento**
+(`app/services/almacenamiento/`). Hay dos reglas: una permanente y otra que dura hasta
+que el PR 5 de #1007 retire el modelo de rutas.
+
+### Permanente: solo el subsistema ve `ficheros` y la `ref`
+
+- Nada fuera del subsistema lee ni escribe la tabla `ficheros`, `documentos.fichero_ref`
+  ni una `ref`, ni importa la librería `almacen/`: esa la importa solo el adaptador
+  (`adaptador.py`). El resto de BDDAT trabaja con `documentos.id`, y la API y las
+  plantillas nunca devuelven una `ref` ni una ruta.
+- Lo que necesite el contenido de un documento lo pide al módulo de contenido
+  (`app.services.almacenamiento.contenido`): `subir`, `leer`, `comprobar_para_vincular`,
+  `servir_descarga`. Ahí viven las comprobaciones que dan coherencia al contenido (hoy,
+  el hash y el estado; con la sustitución del PR 6, el sellado y la bitácora): quien
+  escribiera `fichero_ref` por su cuenta se las saltaría.
+- `subir` valida todos los ficheros antes de enviar el primero y devuelve los `Documento`
+  **sin añadirlos a la sesión**: el llamador los añade y hace el commit. La fila de
+  `ficheros` se escribe en una conexión propia, así que no se deshace con el rollback
+  de quien llama.
+- El nombre que se enseña es `documento.nombre_visible()`; no se saca a mano de la `url`.
+  El nombre de un fichero que viene de fuera entra saneado (`nombres.sanear_nombre`) y
+  después no lo cambia nadie.
+- Un test que suba un documento usa la fixture `almacen_tmp` (ver `tests/README.md`
+  §4): el disco y la fila de `ficheros` no se revierten con el SAVEPOINT.
+
+Lo vigila `tests/test_1007_subsistema_almacenamiento.py`. **Si falla, el arreglo es pedir
+el contenido al módulo de contenido, no añadir el fichero a la lista de permitidos.**
+
+### Hasta el PR 5: no entran consumidores nuevos del modelo de rutas
+
+Mientras los escritores sigan escribiendo por ruta (hasta el corte del PR 4), nada
+nuevo lee ni escribe un fichero por su ruta en disco. Lo que necesite el contenido de
+un documento lo pide por el documento, con `documento.resolver_url()`, que sobrevive y
+pasará a leer del almacén. Cada consumidor nuevo es deuda que el corte tendría que
+deshacer (ADR-050 §I).
 
 Símbolos congelados: `ruta_absoluta()`, `FILESYSTEM_BASE`, `PLANTILLAS_BASE`,
 `hash_md5`, `ruta_plantilla`, `ruta_pdf` y los de `rutas_esftt.py` que mueven o

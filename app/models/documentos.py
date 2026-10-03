@@ -74,7 +74,20 @@ class Documento(db.Model):
           la naturaleza jurídica del documento, no el mecanismo de
           almacenamiento (#574).
         El helper resolver_url() despacha al mecanismo correcto según el esquema.
-        El nombre a mostrar en interfaz se deduce del último segmento de la URL.
+        NULLABLE desde ADR-050 (#1007): un documento con contenido propio en el
+        almacén no tiene url, sino fichero_ref. Hasta el corte (#1007, PR 4)
+        todos siguen teniéndola.
+
+    CAMPOS DEL ALMACÉN (ADR-050 §B, §C — #1007):
+        - nombre_fichero: nombre visible y de descarga. Del fichero que viene de
+          fuera, el original saneado; del generado, el que le pone el sistema.
+          Nadie lo cambia después. NULL en los que tienen url: lo toman del tipo
+          o de la URL.
+        - fichero_ref: FK a FICHEROS.ref, el contenido actual. Solo lo lee y lo
+          escribe el subsistema de almacenamiento (app/services/almacenamiento/).
+        - fecha_modificacion_fichero: cuándo cambió por última vez el fichero del
+          documento (subida, regeneración, sustitución, guardado desde
+          LibreOffice). No cambia al editar los datos del documento.
 
     CAMPO HASH_MD5:
         - Verificación de integridad del archivo
@@ -126,6 +139,7 @@ class Documento(db.Model):
         db.Index('idx_documentos_fecha_administrativa', 'fecha_administrativa'),
         db.Index('idx_documentos_hash', 'hash_md5'),
         db.Index('idx_documentos_tipo_doc', 'tipo_doc_id'),
+        db.Index('idx_documentos_fichero_ref', 'fichero_ref'),
         {'schema': 'public'}
     )
     
@@ -154,10 +168,29 @@ class Documento(db.Model):
 
     url = db.Column(
         db.Text,
-        nullable=False,
-        comment='Ruta local, http(s):// o bddat://<recurso>/<id> (ADR-006)'
+        nullable=True,
+        comment='http(s):// o bddat://<recurso>/<id> (ADR-006); ruta local hasta el corte de ADR-050 (#1007). NULL si tiene contenido propio (fichero_ref)'
     )
-    
+
+    nombre_fichero = db.Column(
+        db.Text,
+        nullable=True,
+        comment='Nombre visible y de descarga del fichero (ADR-050 §C). NULL en los que tienen url: lo toman del tipo o de la URL'
+    )
+
+    fichero_ref = db.Column(
+        db.Text,
+        db.ForeignKey('public.ficheros.ref', name='fk_documentos_fichero_ref'),
+        nullable=True,
+        comment='Contenido actual en el almacén (ADR-050 §B). Solo lo usa el subsistema de almacenamiento'
+    )
+
+    fecha_modificacion_fichero = db.Column(
+        db.DateTime(timezone=True),
+        nullable=True,
+        comment='Cuándo cambió por última vez el fichero del documento (getlastmodified del WebDAV, ADR-050 §D)'
+    )
+
     tipo_contenido = db.Column(
         db.Text,
         nullable=True,
@@ -305,13 +338,38 @@ class Documento(db.Model):
             }
         raise NotImplementedError(f'Recurso bddat:// no implementado: {recurso!r}')
 
+    def nombre_visible(self) -> str:
+        """Nombre con el que se presenta el documento en toda la interfaz (ADR-050 §C).
+
+        Un único sitio para lo que antes calculaban nueve (listados, JSON, inspector,
+        huérfanos…), cada uno con su variante. Orden:
+
+        1. `nombre_fichero`, si lo tiene (el original saneado, sin el prefijo MD5 del
+           pool).
+        2. `bddat://`: no hay fichero al que dar nombre (el último tramo sería solo
+           el id, «16»): el nombre del tipo de documento.
+        3. El último tramo de la url, sin `?` ni `#`.
+        4. `Documento <id>`.
+
+        Es método del modelo, y no una función suelta, para usarlo también desde
+        Jinja: `documento.nombre_visible()`.
+        """
+        if self.nombre_fichero:
+            return self.nombre_fichero
+        url = self.url or ''
+        if url.startswith('bddat://'):
+            return self.tipo_doc.nombre if self.tipo_doc else f'Documento {self.id}'
+        filename = url.replace('\\', '/').rsplit('/', 1)[-1]
+        filename = filename.split('?')[0].split('#')[0]
+        return filename or f'Documento {self.id}'
+
     def __repr__(self):
         """Representación técnica para debugging."""
         return f'<Documento id={self.id} expediente={self.expediente_id}>'
-    
+
     def __str__(self):
         """Representación legible para interfaz."""
-        return (self.url or '').rsplit('/', 1)[-1] or f'Documento {self.id}'
+        return self.nombre_visible()
 
 
 @event.listens_for(Documento, 'before_insert')
