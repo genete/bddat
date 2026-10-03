@@ -12,6 +12,7 @@ import hashlib
 import io
 import os
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -70,6 +71,34 @@ def test_volver_a_escribir_repara_un_contenido_danado(almacen_disco):
     assert almacen_disco.escribir(io.BytesIO(CONTENIDO)) == REF
     with almacen_disco.leer(REF) as f:
         assert f.read() == CONTENIDO
+
+
+def test_dos_escrituras_simultaneas_del_mismo_contenido_terminan_las_dos_bien(almacen_disco):
+    """Fallo silencioso que evita: en Windows, dos subidas del mismo contenido a la vez
+    hacían fallar a una con «almacén no disponible» (acceso denegado al renombrar sobre el
+    fichero que la otra estaba colocando), un falso aviso de almacén caído.
+
+    Varias rondas con una barrera: sin el reintento del renombrado, falla casi siempre."""
+    for ronda in range(30):
+        contenido = CONTENIDO + str(ronda).encode()
+        barrera = threading.Barrier(2, timeout=10)
+        refs, errores = [], []
+
+        def escribe():
+            barrera.wait()
+            try:
+                refs.append(almacen_disco.escribir(io.BytesIO(contenido)))
+            except BaseException as exc:
+                errores.append(exc)
+
+        hilos = [threading.Thread(target=escribe) for _ in range(2)]
+        for hilo in hilos:
+            hilo.start()
+        for hilo in hilos:
+            hilo.join()
+
+        assert not errores, f'ronda {ronda}: {errores}'
+        assert refs == [hashlib.sha256(contenido).hexdigest()] * 2
 
 
 def _imports(fichero):

@@ -65,6 +65,7 @@ import hashlib
 import os
 import re
 import tempfile
+import time
 from typing import BinaryIO, Iterator, NamedTuple
 
 __all__ = [
@@ -80,6 +81,9 @@ _TEXTO_MARCA = (
 _ALGORITMO = 'sha256'
 _TROZO = 1024 * 1024
 _RE_REF = re.compile(r'^[0-9a-f]{64}$')
+# Reintentos del renombrado final ante el «acceso denegado» transitorio de Windows.
+_REINTENTOS_REEMPLAZO = 10
+_ESPERA_REEMPLAZO = 0.02
 
 
 class ErrorAlmacen(Exception):
@@ -165,7 +169,7 @@ class AlmacenDisco:
                 # lo repara. Solo se llega aquí con el contenido ya en el almacén
                 # en dos casos raros (dos escrituras a la vez, o una reparación),
                 # así que releerlo para comprobarlo no cuesta en el uso normal.
-                if os.path.exists(destino) and _sha256_fichero(destino) == ref:
+                if _contenido_correcto(destino, ref):
                     os.remove(temporal)
                 else:
                     _reemplazar(temporal, destino, ref)
@@ -264,20 +268,39 @@ def _sha256_fichero(ruta: str) -> str:
     return hasher.hexdigest()
 
 
+def _contenido_correcto(ruta: str, ref: str) -> bool:
+    """¿Hay en `ruta` un fichero cuyo contenido es el de `ref`?
+
+    Un error al abrirlo cuenta como «no se puede confirmar», no como fallo: en Windows,
+    mientras otra escritura del mismo contenido lo está renombrando, el destino no se
+    puede abrir durante un instante.
+    """
+    try:
+        return os.path.exists(ruta) and _sha256_fichero(ruta) == ref
+    except OSError:
+        return False
+
+
 def _reemplazar(temporal: str, destino: str, ref: str) -> None:
     """Renombrado atómico del temporal a su sitio definitivo.
 
-    En Windows, renombrar sobre un fichero que otro proceso tiene abierto falla.
-    Si en ese momento el destino ya tiene el contenido correcto (otra escritura
-    simultánea del mismo contenido ganó la carrera), el resultado es el buscado.
+    En Windows, renombrar sobre un fichero que otro tiene abierto, o que otro está
+    renombrando en ese momento, falla durante un instante («acceso denegado»). Es lo que
+    pasa con dos escrituras simultáneas del mismo contenido. Se reintenta unas pocas
+    veces, y si el destino ya tiene el contenido correcto (la otra ganó la carrera), el
+    resultado es el buscado y se descarta el temporal.
     """
-    try:
-        os.replace(temporal, destino)
-    except OSError:
-        if os.path.exists(destino) and _sha256_fichero(destino) == ref:
-            os.remove(temporal)
+    for intento in range(_REINTENTOS_REEMPLAZO):
+        try:
+            os.replace(temporal, destino)
             return
-        raise
+        except OSError:
+            if _contenido_correcto(destino, ref):
+                os.remove(temporal)
+                return
+            if intento == _REINTENTOS_REEMPLAZO - 1:
+                raise
+            time.sleep(_ESPERA_REEMPLAZO)
 
 
 def _borrar_si_existe(ruta: str) -> None:
