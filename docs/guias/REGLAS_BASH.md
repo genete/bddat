@@ -48,7 +48,7 @@ Esta ruta está en la allowlist del proyecto (`always allow access`).
 
 ## Patrones concretos obligatorios
 
-- **Activar venv:** NUNCA `source venv/Scripts/activate` (el evaluador lo rechaza). Usar directamente el Python del venv: `venv/Scripts/python.exe script.py`
+- **Activar venv:** NUNCA `source venv/Scripts/activate` (el evaluador lo rechaza). Usar directamente el Python del venv, **escrito como `D:/BDDAT/venv/Scripts/python.exe …`** (scripts, `-m pytest`, `-m flask`): es la única forma que casa con la allowlist (`Bash(D:/BDDAT/venv/Scripts/python.exe *)`). Con `venv/Scripts/python.exe` o `/d/BDDAT/venv/Scripts/python.exe`, aunque haya regla escrita, pide permiso en cada comando: comprobado el 2026-10-03 con `--version` (#1007), y ya pasaba desde julio. En la nube no aplica: allí `pytest` y `python` están en el `PATH`
 - **cd + git:** usar SIEMPRE `git -C /ruta`. No basta con evitar `cd /ruta && git`: el
   evaluador marca la **mera convivencia** de un `cd` y un `git` en el mismo comando, en
   cualquier orden y con cualquier separador — `git -C ... ; cd ...` también salta. Si hace

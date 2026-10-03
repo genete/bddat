@@ -334,6 +334,8 @@ marcha.
 
 - snake_case en todo: tablas, columnas, variables, funciones, rutas, ficheros
 - CamelCase solo para clases de modelo Python (`Expediente`, `Solicitud`, `DocumentoPuro`)
+- **El nombre se tiene que leer solo**, sin mirar el tipo ni el contexto. Si se puede leer como otra cosa, no vale: `nombre` en `documentos` parecía el nombre del documento y era el del fichero (`nombre_fichero`).
+- **Fechas: `fecha_<qué>`** (`fecha_administrativa`, `fecha_modificacion_fichero`), **nunca `<participio>_en`** (`creado_en`, `generado_en`). `_en` es un calco del `_at` inglés: en español «modificado en 24/10/2025» no se dice (es «el 24/10»), y nada en `creado_en` indica que sea una fecha. Matiz: `fecha_` no dice si lleva hora (`fecha_administrativa` no la lleva, `fecha_modificacion_fichero` sí); eso lo dice el tipo de la columna. Las columnas que ya existen con `_en` (`generado_en`, `destinatario_fijado_en`) se quedan: renombrarlas cuesta una migración y todos sus consumidores sin ganar nada. Decisión de Carlos, 2026-10-03 (#1007).
 
 ---
 

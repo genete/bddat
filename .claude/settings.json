@@ -5,7 +5,7 @@
       "Bash(mv D:/BDDAT/docs_prueba/temp/*)",
       "Bash(PYTHONPATH=/d/BDDAT venv/Scripts/python.exe *)",
       "Bash(PYTHONIOENCODING=utf-8 PYTHONPATH=D:/BDDAT venv/Scripts/python.exe *)",
-      "Bash(/d/BDDAT/venv/Scripts/python.exe:*)",
+      "Bash(D:/BDDAT/venv/Scripts/python.exe *)",
       "Bash(/d/bddat-*/venv/Scripts/python.exe:*)",
       "Bash(npm --prefix /d/BDDAT/react-src run build)",
       "Bash(bash /d/BDDAT/scripts/build_react.sh)",
