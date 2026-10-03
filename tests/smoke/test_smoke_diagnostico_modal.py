@@ -14,10 +14,14 @@ def test_diagnostico_modal_doc_no_es_diagnostico_404(usuario_supervisor, expedie
     """GET .../diagnostico-modal sobre un Documento sin Diagnostico asociado → 404."""
     with app.app_context():
         from app.models.documentos import Documento
-        doc = Documento.query.filter_by(expediente_id=expediente_seed).first()
-        if doc is None or doc.diagnostico is not None:
-            import pytest
-            pytest.skip('No hay un documento sin diagnóstico en el expediente seed')
+        # Criterio explícito y ORDER BY (#836): con un first() a secas, el
+        # documento elegido dependía del orden físico de las filas.
+        doc = (Documento.query
+               .filter(Documento.expediente_id == expediente_seed,
+                       ~Documento.diagnostico.has())
+               .order_by(Documento.id)
+               .first())
+        assert doc is not None, 'la semilla debe traer un documento sin diagnóstico'
         doc_id = doc.id
     r = usuario_supervisor.get(f'/expedientes/{expediente_seed}/documentos/{doc_id}/diagnostico-modal')
     assert r.status_code == 404
