@@ -248,10 +248,11 @@ def _expediente_sin_asignar(app):
 def _arbol_ficheros(app):
     """Crea las raíces de ficheros de tests si no existen.
 
-    El almacén (ADR-050) además se inicializa: sin su marca de raíz responde «no
-    disponible» en vez de crear carpetas, y en tests el inicializador es el código
-    (`almacen.inicializar` es idempotente, así que se repite sin daño)."""
+    El almacén y la carpeta de manifiestos (ADR-050) además se inicializan: sin su
+    marca de raíz no escriben nada, y en tests el inicializador es el código (los dos
+    inicializadores son idempotentes, así que se repiten sin daño)."""
     import almacen
+    from app.services.almacenamiento.manifiestos import inicializar as inicializar_manifiestos
 
     creados = []
     for clave in ('FILESYSTEM_BASE', 'PLANTILLAS_BASE', 'ALMACEN_BASE', 'MANIFIESTOS_BASE'):
@@ -263,6 +264,8 @@ def _arbol_ficheros(app):
             creados.append(ruta)
         if clave == 'ALMACEN_BASE':
             almacen.inicializar(ruta)
+        elif clave == 'MANIFIESTOS_BASE':
+            inicializar_manifiestos(ruta)
     return creados
 
 

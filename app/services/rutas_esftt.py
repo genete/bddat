@@ -67,10 +67,13 @@ def _segmento_organismo(tramite) -> str | None:
 
 def ruta_esftt_documento(documento_o_tarea) -> str:
     """
-    Calcula la ruta ESFTT legible (relativa a FILESYSTEM_BASE, sin nombre de
-    fichero) donde debe vivir un documento, derivada de los códigos inmutables de
-    catálogo (tipos_fases.codigo, tipos_tramites.codigo, tipos_tareas.codigo) y las
-    siglas de tipos_solicitudes.
+    Calcula la carpeta ESFTT legible (`AT-N/…`, sin nombre de fichero) que le toca
+    a un documento, derivada de los códigos inmutables de catálogo
+    (tipos_fases.codigo, tipos_tramites.codigo, tipos_tareas.codigo) y las siglas
+    de tipos_solicitudes. Es relativa a la raíz del árbol legible: hoy
+    FILESYSTEM_BASE; con el almacén (ADR-050 §H), la carpeta que reconstruye el
+    exportador a partir del manifiesto, que es quien la sigue usando cuando se
+    retire el resto de este módulo (PR 5 de #1007).
 
     Acepta:
     - Tarea: construye la ruta directamente a partir de tarea.tramite.fase.solicitud

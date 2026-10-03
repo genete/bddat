@@ -346,10 +346,12 @@ def almacen_tmp(app, tmp_path_factory, _limpieza_ficheros):
     import almacen
     from sqlalchemy import text
 
+    from app.services.almacenamiento.manifiestos import inicializar as inicializar_manifiestos
+
     raiz = Path(tmp_path_factory.mktemp('almacen_tmp'))
     rutas = SimpleNamespace(almacen=raiz / 'almacen', manifiestos=raiz / 'manifiestos')
     almacen.inicializar(str(rutas.almacen))
-    rutas.manifiestos.mkdir()
+    inicializar_manifiestos(str(rutas.manifiestos))
 
     originales = (app.config.get('ALMACEN_BASE'), app.config.get('MANIFIESTOS_BASE'))
     app.config['ALMACEN_BASE'] = str(rutas.almacen)

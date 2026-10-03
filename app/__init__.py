@@ -129,6 +129,9 @@ def create_app(config_name='development'):
     from app.cli.reloj import reloj
     app.cli.add_command(reloj)
 
+    from app.cli.manifiestos import manifiestos
+    app.cli.add_command(manifiestos)
+
     # Context processor — indicador de asignación de expediente (#174)
     @app.context_processor
     def inject_indicador_asignacion():

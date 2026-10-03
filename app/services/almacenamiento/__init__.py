@@ -15,6 +15,8 @@ Piezas:
   comprobar al vincular, servir la descarga).
 - `formatos`: qué se puede subir (lista cerrada de §E), detectado por el contenido.
 - `nombres`: el saneado del nombre de un fichero que viene de fuera (§C).
+- `manifiestos`: un manifiesto por expediente para reconstruir sus carpetas sin
+  BDDAT (§H, N009). Lo lee el exportador (`exportador/`, en la raíz del repositorio).
 
 Este `__init__` no importa nada a propósito: `nombres` y `formatos` no necesitan
 la aplicación, y `rutas_esftt` los usa mientras viva (hasta el PR 5).
