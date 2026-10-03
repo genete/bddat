@@ -312,7 +312,10 @@ def _mensaje_denegacion(payload: dict):
 
 def main():
     try:
-        payload = json.load(sys.stdin)
+        # Claude Code manda el JSON en UTF-8, pero `sys.stdin` lo decodificaría con la
+        # codificación de la consola (cp1252 en Windows): «Decisión» llegaría como
+        # «DecisiÃ³n» y un byte como el de «Á» (C3 81) ni se decodificaría. Se lee en bytes.
+        payload = json.loads(sys.stdin.buffer.read().decode('utf-8', errors='replace'))
     except Exception:
         return 0  # entrada ilegible: no bloquear nunca por un fallo del guard
 
@@ -322,13 +325,17 @@ def main():
         return 0  # un fallo interno tampoco bloquea
 
     if razon:
+        # Con `ensure_ascii` (por defecto) la salida es ASCII puro, valga la consola que
+        # valga: la razón lleva «→», que cp1252 no puede escribir. Con `ensure_ascii=False`
+        # el hook moría con UnicodeEncodeError (código 1 = error NO bloqueante) y la
+        # denegación se perdía. Los `\uXXXX` los lee igual cualquier parser JSON.
         json.dump({
             'hookSpecificOutput': {
                 'hookEventName': 'PreToolUse',
                 'permissionDecision': 'deny',
                 'permissionDecisionReason': razon,
             }
-        }, sys.stdout, ensure_ascii=False)
+        }, sys.stdout)
     return 0
 
 
