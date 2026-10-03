@@ -74,6 +74,13 @@
             "command": "python \"${CLAUDE_PROJECT_DIR:-/d/BDDAT}/.claude/hooks/reglas_bash_guard.py\"",
             "timeout": 10,
             "statusMessage": "Verificando REGLAS_BASH"
+          },
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-/d/BDDAT}/.claude/hooks/reglas_asserts_guard.py\"",
+            "timeout": 15,
+            "statusMessage": "Verificando asserts de tests de otro issue (tests/README.md §3)"
           }
         ]
       },
