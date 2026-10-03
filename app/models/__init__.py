@@ -56,6 +56,9 @@ from app.models.direccion_notificacion import DireccionNotificacion
 # Relaciones N:N Entidades (issue #63)
 from app.models.autorizados_titular import AutorizadoTitular
 
+# Contenidos del almacén (#1007, ADR-050 — sin FKs; Documento apunta aquí)
+from app.models.ficheros import Fichero
+
 # Modelos operacionales sin dependencias operacionales
 from app.models.proyectos import Proyecto
 
@@ -181,6 +184,8 @@ __all__ = [
     'DireccionNotificacion',
     # Relaciones N:N Entidades
     'AutorizadoTitular',
+    # Contenidos del almacén (#1007)
+    'Fichero',
     # Operacionales
     'Proyecto',
     'Expediente',
