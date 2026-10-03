@@ -90,8 +90,8 @@ REGLAS_COMPUESTAS = [
 def main():
     try:
         # Claude Code manda UTF-8; `sys.stdin` lo decodificaría con la consola (cp1252 en
-        # Windows) y un comando con «Á», «Í», «Ï» o «Ý» (bytes que cp1252 no define) dejaba
-        # al hook sin payload, o sea, sin vigilar. Se lee en bytes.
+        # Windows) y un comando con un carácter cuyo UTF-8 lleva un byte que cp1252 no
+        # define («Á», «Í», «”»…) dejaba al hook sin payload, o sea, sin vigilar. Se lee en bytes.
         payload = json.loads(sys.stdin.buffer.read().decode('utf-8', errors='replace'))
     except Exception:
         return 0  # entrada ilegible: no bloquear nunca por un fallo del guard

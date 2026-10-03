@@ -314,7 +314,8 @@ def main():
     try:
         # Claude Code manda el JSON en UTF-8, pero `sys.stdin` lo decodificaría con la
         # codificación de la consola (cp1252 en Windows): «Decisión» llegaría como
-        # «DecisiÃ³n» y un byte como el de «Á» (C3 81) ni se decodificaría. Se lee en bytes.
+        # «DecisiÃ³n», y un carácter cuyo UTF-8 lleva un byte que cp1252 no define («Á»,
+        # «Í», «”»…) ni se decodificaría. Se lee en bytes.
         payload = json.loads(sys.stdin.buffer.read().decode('utf-8', errors='replace'))
     except Exception:
         return 0  # entrada ilegible: no bloquear nunca por un fallo del guard
