@@ -12,6 +12,7 @@ del comando, deja pasar todo; los asserts vuelven a adaptarse sin decir qué
 decisión cambió y nadie se entera de que el hook ya no vigila.
 """
 import json
+import os
 import shlex
 import subprocess
 import sys
@@ -66,13 +67,22 @@ def _preparar(repo, cambios):
 
 
 def _guard(repo, comando):
-    """Razón de la denegación, o None si el hook deja pasar."""
+    """Razón de la denegación, o None si el hook deja pasar.
+
+    Lo lanza como Claude Code en Windows: JSON en UTF-8 sin escapar por stdin y el
+    stdin/stdout del hook en cp1252 (la codificación de una consola de Windows). Se
+    fuerza con PYTHONIOENCODING —que gana al modo UTF-8 de Python— para que el
+    entorno sea el mismo en Linux y en el PC.
+    """
     payload = {'tool_name': 'Bash', 'tool_input': {'command': comando}, 'cwd': str(repo)}
-    r = subprocess.run([sys.executable, str(GUARD)], input=json.dumps(payload),
-                       capture_output=True, text=True, encoding='utf-8', check=True)
-    if not r.stdout.strip():
+    entorno = {**os.environ, 'PYTHONIOENCODING': 'cp1252'}
+    r = subprocess.run([sys.executable, str(GUARD)], env=entorno, check=True,
+                       input=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+                       capture_output=True)
+    salida = r.stdout.decode('utf-8')
+    if not salida.strip():
         return None
-    return json.loads(r.stdout)['hookSpecificOutput']['permissionDecisionReason']
+    return json.loads(salida)['hookSpecificOutput']['permissionDecisionReason']
 
 
 def _commit(repo, mensaje, opciones=''):
@@ -87,6 +97,9 @@ def _commit(repo, mensaje, opciones=''):
     ('[TEST] #100 Ajusta la suma', False),
     # citar el issue del fichero solo en el cuerpo no lo hace suyo (bc301dca y test_885)
     ('[MODELO] #200 Generaliza la guarda\n\nAntes solo la tenía #100.', True),
+    # «Á» en UTF-8 (C3 81) lleva un byte que cp1252 no define: leído con la consola, el
+    # hook no podía ni decodificar la entrada y dejaba pasar el commit sin mirarlo
+    ('[TEST] #200 Ángel ajusta la suma', True),
 ])
 def test_assert_cambiado_exige_nombrar_la_decision(repo, mensaje, deniega):
     _preparar(repo, {'tests/test_100_suma.py': TEST_100.replace('== 2', '== 3')})
