@@ -48,7 +48,8 @@ Esta ruta está en la allowlist del proyecto (`always allow access`).
 
 ## Patrones concretos obligatorios
 
-- **Activar venv:** NUNCA `source venv/Scripts/activate` (el evaluador lo rechaza). Usar directamente el Python del venv, **escrito como `D:/BDDAT/venv/Scripts/python.exe …`** (scripts, `-m pytest`, `-m flask`): es la única forma que casa con la allowlist (`Bash(D:/BDDAT/venv/Scripts/python.exe *)`). Con `venv/Scripts/python.exe` o `/d/BDDAT/venv/Scripts/python.exe`, aunque haya regla escrita, pide permiso en cada comando: comprobado el 2026-10-03 con `--version` (#1007), y ya pasaba desde julio. En la nube no aplica: allí `pytest` y `python` están en el `PATH`
+- **Activar venv:** NUNCA `source venv/Scripts/activate` (el evaluador lo rechaza). Usar directamente el Python del venv, **escrito como `D:/BDDAT/venv/Scripts/python.exe …`** (scripts, `-m pytest`, `-m flask`): es la forma que cubre la allowlist del proyecto (`Bash(D:/BDDAT/venv/Scripts/python.exe *)`). En la nube no aplica: allí `pytest` y `python` están en el `PATH`
+- **Si todas las reglas de `.claude/settings.json` piden permiso a la vez** (y las de `settings.local.json` o las de la configuración general no): la carpeta no es de confianza. Claude Code solo aplica las reglas `allow` del proyecto con la carpeta aceptada, y la app de escritorio guarda esa confianza aparte de la del terminal (`~/.claude.json`, clave `"D:/BDDAT"`, con barras normales), sin enseñar nunca el diálogo. Se arregla poniendo `hasTrustDialogAccepted` a `true` en esa clave y surte efecto en la sesión siguiente. Los hooks corren igual, con o sin confianza (2026-10-03, #1007)
 - **cd + git:** usar SIEMPRE `git -C /ruta`. No basta con evitar `cd /ruta && git`: el
   evaluador marca la **mera convivencia** de un `cd` y un `git` en el mismo comando, en
   cualquier orden y con cualquier separador — `git -C ... ; cd ...` también salta. Si hace
