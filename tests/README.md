@@ -6,7 +6,7 @@ donde nacieron —aquí se resumen y se enlazan—:
 | Qué | Fuente de verdad |
 |---|---|
 | Dónde busca `pytest` a secas (`testpaths`) | [`pytest.ini`](../pytest.ini) |
-| Fixtures, aislamiento por SAVEPOINT, `fs_tmp`, `ArbolESFTT` | docstrings de [`conftest.py`](conftest.py) |
+| Fixtures, aislamiento por SAVEPOINT, `fs_tmp`, `almacen_tmp`, `ArbolESFTT` | docstrings de [`conftest.py`](conftest.py) |
 | Construcción y semilla de la BD de tests | [`scripts/preparar_bd_test.py`](../scripts/preparar_bd_test.py), [`scripts/semilla_test.py`](../scripts/semilla_test.py) |
 | Variables de entorno | [`.env.example`](../.env.example) |
 | Convención de smoke tests | [`REGLAS_DESARROLLO.md` §Tests](../docs/guias/REGLAS_DESARROLLO.md) · [ADR-019](../docs/decisiones/ADR-019-tests-ui-estrategia-fases.md) |
@@ -20,7 +20,8 @@ donde nacieron —aquí se resumen y se enlazan—:
 La suite corre contra **su propia base de datos**, nunca la de desarrollo (#849):
 
 ```bash
-# .env: TEST_DATABASE_URL, TEST_FILESYSTEM_BASE, TEST_PLANTILLAS_BASE (ver .env.example)
+# .env: TEST_DATABASE_URL, TEST_FILESYSTEM_BASE, TEST_PLANTILLAS_BASE,
+#       TEST_ALMACEN_BASE, TEST_MANIFIESTOS_BASE (ver .env.example)
 python scripts/preparar_bd_test.py --recrear   # migraciones + semilla; repetir tras cada migración nueva
 pytest                                         # suite completa (~30 s)
 pytest tests/smoke                             # solo smoke
@@ -59,7 +60,7 @@ Qué hace, por si hay que tocarlo (cada paso comprueba antes si ya está hecho):
 | Python 3.14.7 | venv en `~/.venvs/bddat` con `uv` de PyPI, `requirements.txt` y `pytest-cov` | el código usa `uuid.uuid7`; el `uv` del contenedor solo conoce 3.14.0rc2 |
 | PostgreSQL 16 | arranca el cluster Debian si existe; si no, crea uno propio con `initdb` | los contenedores no son todos iguales |
 | Roles | `bddat_admin` con `CREATEDB`, `claude_desktop` `NOLOGIN`, base `bddat` | `--recrear` necesita `CREATEDB`; 32 migraciones hacen `GRANT … TO claude_desktop` |
-| `.env` | lo genera **solo si no existe**, con las rutas en `docs_prueba/` y `docs_prueba_test/` | está en `.gitignore` |
+| `.env` | lo genera **solo si no existe**, con las rutas en `docs_prueba/` y `docs_prueba_test/`, y el almacén y los manifiestos (`almacen_dev/`, `manifiestos_dev/` en la raíz del repo; el almacén de desarrollo se inicializa con su marca de raíz) | está en `.gitignore` |
 | BD de tests | `preparar_bd_test.py` sin `--recrear` (~1 s) | aplica las migraciones pendientes |
 | LibreOffice Writer | `apt-get install libreoffice-writer` si falta | el contenedor trae solo `libreoffice-core`: sin Writer, `soffice` no abre un `.odt` y aun así devuelve 0 (`test_182`, `test_732`) |
 
@@ -238,6 +239,17 @@ cambio de firma), antes de repararlo se le pasa este criterio:
      revierte al acabar, aunque la aplicación haga `commit()`.
    - Disco: `fs_tmp` en cuanto el código escriba ficheros (alta, escritos,
      certificados, pool). El SAVEPOINT no revierte el disco.
+   - Almacén de documentos (ADR-050): `almacen_tmp` en cuanto el código suba un
+     documento (`contenido.subir`) o escriba un manifiesto. Redirige `ALMACEN_BASE` y
+     `MANIFIESTOS_BASE` a un temporal ya inicializado. Además del disco, el módulo de
+     contenido escribe la fila de `ficheros` **en su propia conexión**, que también
+     escapa al SAVEPOINT: la borra una fixture de uso automático
+     (`_limpieza_ficheros`) al terminar, después del rollback de `app_ctx`; si el
+     orden fuera el contrario, el DELETE esperaría el bloqueo de la FK y el test se
+     colgaría. Un test que cree filas sin pasar por `almacen_tmp` las deja puestas.
+   - No abras un `with app.app_context()` anidado dentro de un test con `app_ctx`:
+     al salir, el teardown de Flask-SQLAlchemy cierra la sesión del SAVEPOINT y los
+     objetos del test quedan desligados.
    - `client` y las fixtures `usuario_*` **no** pasan por `app_ctx` (#836): lo que
      muten por HTTP queda escrito; limpiar o apuntar a nodos inexistentes.
 5. **Fechas con `reloj_simulado.hoy()`**, nunca `date.today()`: el validador de

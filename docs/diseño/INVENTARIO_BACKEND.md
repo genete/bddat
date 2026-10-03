@@ -1,7 +1,7 @@
 # Inventario de backend — Fase 2.5
 
 > Insumo neutro para la fase 3 del revamping de UI. Datos objetivos sobre modelos, motor, servicios, ADRs e issues abiertos. Sin propuestas de cambio.
-> Fecha del corte: 2026-05-28.
+> Fecha del corte: 2026-05-28. Actualizado el 2026-10-03 (#1007, ADR-050 fase 1) solo en §1.3, §8 y §10.6.4; el resto sigue siendo el corte de mayo.
 
 ---
 
@@ -39,7 +39,8 @@
 
 | Modelo | Tabla | Propósito |
 |---|---|---|
-| Documento | `documentos` | Pool puro de archivos del expediente. URL puede ser ruta local, http(s) o `bddat://` (ADR-006). Único FK = `expediente_id`. `tipo_doc_id`, `fecha_administrativa` (nullable), `prioridad` |
+| Documento | `documentos` | Pool puro de archivos del expediente. URL puede ser ruta local, http(s) o `bddat://` (ADR-006); desde #1007 es nullable (NULL = contenido propio en el almacén, tras el corte del PR 4). Único FK de dominio = `expediente_id`. `tipo_doc_id`, `fecha_administrativa` (nullable), `prioridad`. Desde #1007 también `nombre_fichero`, `fichero_ref` (FK a `ficheros`, §10.6.4) y `fecha_modificacion_fichero`; el nombre que se enseña sale de `nombre_visible()` |
+| Fichero | `ficheros` | Una fila por contenido distinto guardado en el almacén (ADR-050 §B, §C; #1007): `ref` (PK, opaca), `contenido_sha256` (único), `tamano`, `formato` (MIME detectado por el contenido), `estado` (OK / CORRUPTO / AUSENTE), `fecha_creacion`, `fecha_verificacion`, `fecha_sin_referencias`. Solo la lee y la escribe el subsistema de almacenamiento |
 | ReformadoProyecto | `reformados_proyecto` | El corte que parte el proyecto en versiones: `documento_id` (UNIQUE, el ancla) + `origen` VOLUNTARIO/REQUERIDO. Una versión es el tramo entre cortes (ADR-044 §C) |
 | DocumentoTarea | `documentos_tarea` | Vínculo N:M con rol (ver §1.1) |
 | Notificacion | `notificaciones` | "Documento vitaminado" para tarea NOTIFICAR (ADR-008): `resultado` (CORRECTA/INCORRECTA/INDIFERENTE), `numero_intento`, `fecha_intento` |
@@ -388,6 +389,7 @@ TRAMITADOR puede editar cualquier expediente, no solo el asignado. La traza qued
 | Compatibilidad tipos sol. (#410) | `410_compatibilidad_tipos_solicitud` |
 | Requisitos documentales (#192) | `6a2e29774f16_192_requisitos_documentales` |
 | Configuración | `323_configuracion_sistema` |
+| Almacén documental (#1007, ADR-050) | `1007_almacen_ficheros` |
 | Seeds varios | `348_seed_catalogo_base`, `348_seed_normas_base`, `451_seed_normas_ampliacion`, `477_fix_norma_origen_cierre`, `merge_heads_seed_catalogo_base` |
 | Misceláneos | `4a972bf8399a` (alegantes), `bf66f512eaf4` (histórico titular), `0d6742443660` (fechas), `0869cda75380` (abrev), `45b0d1302dd4` (url_text), `39fccabb9426_296_senal_resultado`, `350_variable_tipo_tramite`, `388_tipo_sujeto_solicitado`, `393_alegantes`, `8deef1de808e_302_fase_finalizadora`, `90655e484fb2_341_seed_art131_informe_aapp`, `342a6f032b38_466_direccion_notificacion`, `fd2bc02d2474_revision_modelo_documento` |
 
@@ -561,6 +563,18 @@ Dependencias principales (de `package.json`): React 18, `@xyflow/react`, `d3-dis
 **Estado**: POC con datos mockeados (`mockData.js`). El issue **#320** ("UI/BE Integrar diagrama ReactFlow en vista de tramitación — datos reales y comportamiento completo") es el que cierra el gap entre POC y producción. Solo aparece en `demo/diagrama.html`.
 
 **Implicación para el revamping**: la decisión de subir React de "POC en una vista" a "componente productivo en tramitación" debe tomarse en fase 4 — define si el stack JS de BDDAT pasa a ser híbrido (Jinja + React por componente) o si el revamping consolida en uno solo.
+
+### 10.6.4 `almacen/` y `app/services/almacenamiento/` — el almacén documental (#1007, ADR-050)
+
+| Pieza | Rol |
+|---|---|
+| `almacen/` (raíz del repo) | Librería del almacén: ficheros en disco con el SHA-256 por nombre. Solo biblioteca estándar; no sabe nada de BDDAT. API: `escribir`, `leer`, `existe`, `borrar`, `listar`, `comprobaciones_admitidas`; `inicializar(raiz)` crea la marca de raíz `ALMACEN.txt`, sin la cual todo responde «no disponible». Escrita como si fuera de terceros |
+| `app/services/almacenamiento/adaptador.py` | Traduce lo que BDDAT necesita a la API del almacén. Único módulo de `app/` que importa `almacen`. Tiempo límite por petición (hilo con espera limitada) y semáforo de transferencias simultáneas |
+| `app/services/almacenamiento/contenido.py` | Módulo de contenido: `subir`, `leer`, `comprobar_para_vincular`, `servir_descarga`. Con el adaptador, lo único que lee o escribe `ficheros` y `fichero_ref` |
+| `app/services/almacenamiento/formatos.py` | Lista cerrada de formatos admitidos (ADR-050 §E), detectados por el contenido; sin ZIP; 300 MB por fichero |
+| `app/services/almacenamiento/nombres.py` | Saneado del nombre de un fichero que viene de fuera (reglas de Windows y caracteres de control) |
+
+Configuración: `ALMACEN_BASE` y `MANIFIESTOS_BASE` (y sus `TEST_*`), en `app/config.py` y `.env.example`. Tests: `tests/test_1007_*.py`, con la fixture `almacen_tmp` y el test permanente `test_1007_subsistema_almacenamiento.py` (solo este subsistema ve `ficheros` y la `ref`). Hasta el corte del PR 4 ningún escritor de documentos usa el módulo de contenido; el modelo de rutas sigue vivo hasta el PR 5.
 
 ---
 

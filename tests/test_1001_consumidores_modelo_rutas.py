@@ -4,7 +4,7 @@ Mientras llega el almacén de ADR-050, nada nuevo lee ni escribe ficheros por su
 ruta en disco: lo que necesite un fichero lo pide por el documento. El desarrollo
 sigue en paralelo, y cada consumidor nuevo del modelo de rutas es deuda que la
 fase 1 tendría que deshacer (ADR-050 §I). La regla está en `REGLAS_DESARROLLO.md`
-(«Documentos: la ficha, no el fichero»); esto es lo que impide olvidarla.
+(«Documentos: el contenido es del almacén»); esto es lo que impide olvidarla.
 
 Fallo silencioso que evita: que un consumidor nuevo del disco entre durante el
 desarrollo en paralelo sin pasar por §M, y la fase 1 lo deje roto o apuntando a
@@ -26,8 +26,9 @@ carta blanca: los grandes (`expedientes/routes.py`, `mutaciones_arbol.py`,
 
 `resolver_url()` no está en la lista: sobrevive y pasa a leer del almacén (§M).
 La otra mitad de la regla de ADR-050 §B —solo el subsistema de almacenamiento ve
-`ficheros` y la `ref`— es permanente y llega con la fase 1, cuando esos símbolos
-existan. Cuando `PERMITIDOS` quede vacío, este test ya no puede fallar: se borra.
+`ficheros` y la `ref`— es permanente y vive en
+`test_1007_subsistema_almacenamiento.py` (llegó con la fase 1). Cuando `PERMITIDOS`
+quede vacío, este test ya no puede fallar: se borra.
 
 PUNTO CIEGO CONOCIDO
 --------------------
@@ -85,7 +86,7 @@ _AYUDA = (
     "`documento.resolver_url()`, que sobrevive a ADR-050 y pasará a leer del "
     "almacén. No subas el número ni añadas el fichero a PERMITIDOS: cada "
     "consumidor nuevo es deuda que la fase 1 tendría que deshacer. Ver "
-    "REGLAS_DESARROLLO.md, «Documentos: la ficha, no el fichero»."
+    "REGLAS_DESARROLLO.md, «Documentos: el contenido es del almacén»."
 )
 
 _RE_HTML = re.compile(
