@@ -109,8 +109,13 @@ def _imports(fichero):
             yield nodo.module.split('.')[0]
 
 
-@pytest.mark.parametrize('paquete', ['almacen'])
-def test_solo_importa_la_biblioteca_estandar(paquete):
+@pytest.mark.parametrize('paquete, ademas', [
+    ('almacen', set()),
+    # El exportador lee el almacén con su librería (ADR-050 §H), que a su vez solo usa
+    # la biblioteca estándar: la reconstrucción sigue sin necesitar nada de BDDAT.
+    ('exportador', {'almacen', 'exportador'}),
+])
+def test_solo_importa_la_biblioteca_estandar(paquete, ademas):
     """Fallo silencioso que evita: la reconstrucción de los expedientes sin BDDAT
     deja de funcionar, y solo se descubre el día que hace falta; o el contrato del
     almacén se acopla a BDDAT sin que se vea."""
@@ -118,6 +123,6 @@ def test_solo_importa_la_biblioteca_estandar(paquete):
         f'{fichero.relative_to(RAIZ_REPO).as_posix()}: {modulo}'
         for fichero in (RAIZ_REPO / paquete).rglob('*.py')
         for modulo in _imports(fichero)
-        if modulo not in sys.stdlib_module_names and modulo != '__future__'
+        if modulo not in sys.stdlib_module_names and modulo != '__future__' and modulo not in ademas
     }
     assert not ajenos, f'Imports fuera de la biblioteca estándar: {sorted(ajenos)}'
