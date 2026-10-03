@@ -12,7 +12,7 @@
      candidatas  — lista de {tarea_id, tramite_nombre, tarea_nombre, rol, coincidencia}
 #}
 {% set arbol_url = url_for('expedientes.arbol', id=expediente.id) %}
-{% set nombre_doc = (documento.url or '').replace('\\', '/').rsplit('/', 1)[-1].split('?')[0].split('#')[0] or ('Documento ' ~ documento.id) %}
+{% set nombre_doc = documento.nombre_visible() %}
 
 <div class="p-3 huerfano-inspector">
 

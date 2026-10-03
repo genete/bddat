@@ -338,13 +338,38 @@ class Documento(db.Model):
             }
         raise NotImplementedError(f'Recurso bddat:// no implementado: {recurso!r}')
 
+    def nombre_visible(self) -> str:
+        """Nombre con el que se presenta el documento en toda la interfaz (ADR-050 §C).
+
+        Un único sitio para lo que antes calculaban nueve (listados, JSON, inspector,
+        huérfanos…), cada uno con su variante. Orden:
+
+        1. `nombre_fichero`, si lo tiene (el original saneado, sin el prefijo MD5 del
+           pool).
+        2. `bddat://`: no hay fichero al que dar nombre (el último tramo sería solo
+           el id, «16»): el nombre del tipo de documento.
+        3. El último tramo de la url, sin `?` ni `#`.
+        4. `Documento <id>`.
+
+        Es método del modelo, y no una función suelta, para usarlo también desde
+        Jinja: `documento.nombre_visible()`.
+        """
+        if self.nombre_fichero:
+            return self.nombre_fichero
+        url = self.url or ''
+        if url.startswith('bddat://'):
+            return self.tipo_doc.nombre if self.tipo_doc else f'Documento {self.id}'
+        filename = url.replace('\\', '/').rsplit('/', 1)[-1]
+        filename = filename.split('?')[0].split('#')[0]
+        return filename or f'Documento {self.id}'
+
     def __repr__(self):
         """Representación técnica para debugging."""
         return f'<Documento id={self.id} expediente={self.expediente_id}>'
-    
+
     def __str__(self):
         """Representación legible para interfaz."""
-        return (self.url or '').rsplit('/', 1)[-1] or f'Documento {self.id}'
+        return self.nombre_visible()
 
 
 @event.listens_for(Documento, 'before_insert')

@@ -1451,17 +1451,6 @@ def get_esquema_editable(expediente_id, tipo, nodo_id):
 # ENDPOINT 10: Pool de documentos del expediente (despensa de tarea, ADR-016 §S3b-3)
 # =============================================================================
 
-def _nombre_documento(doc) -> str:
-    """Nombre de presentación de un Documento: tipo (interno bddat://) o filename (real)."""
-    url = doc.url or ''
-    if url.startswith('bddat://'):
-        # Sin fichero real — el "segmento final" sería solo el id numérico.
-        return doc.tipo_doc.nombre if doc.tipo_doc else f'Documento {doc.id}'
-    filename = url.replace('\\', '/').rsplit('/', 1)[-1]
-    filename = filename.split('?')[0].split('#')[0]
-    return filename or f'Documento {doc.id}'
-
-
 @api_bp.route('/expedientes/<int:expediente_id>/pool', methods=['GET'])
 @login_required
 def pool_documentos(expediente_id):
@@ -1487,7 +1476,7 @@ def pool_documentos(expediente_id):
 
     result = [{
         'id': doc.id,
-        'nombre': _nombre_documento(doc),
+        'nombre': doc.nombre_visible(),
         'tipo_doc': doc.tipo_doc.nombre if doc.tipo_doc else None,
         'tipo_doc_codigo': doc.tipo_doc.codigo if doc.tipo_doc else None,
         'fecha': doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else None,
@@ -1598,7 +1587,7 @@ def _checklist_documental_json(tarea) -> list:
             'norma': req.norma.titulo if req.norma else None,
             'articulo': req.articulo,
             'cubierto': it['cubierto'],
-            'documento': {'id': doc.id, 'nombre': _nombre_documento(doc)} if doc else None,
+            'documento': {'id': doc.id, 'nombre': doc.nombre_visible()} if doc else None,
         }
         es_requisito_proyecto = (req.tipo_documento
                                  and req.tipo_documento.codigo == CODIGO_DOC_PROYECTO)
@@ -1606,7 +1595,7 @@ def _checklist_documental_json(tarea) -> list:
                 anclado is None or anclado.id != doc.id):
             item['divergencia_ancla'] = {
                 'documento_anclado': (
-                    {'id': anclado.id, 'nombre': _nombre_documento(anclado)}
+                    {'id': anclado.id, 'nombre': anclado.nombre_visible()}
                     if anclado is not None else None
                 ),
             }
@@ -2422,11 +2411,11 @@ def _notificar_payload(tarea) -> dict:
             'bloquea': notif_svc.falta_destinatario(tarea),
             'fuentes_del_tramite': list(dest_svc.fuentes_del_tramite(tarea.tramite) or []),
         },
-        'documento_producido': {'id': doc.id, 'nombre': _nombre_documento(doc)} if doc else None,
+        'documento_producido': {'id': doc.id, 'nombre': doc.nombre_visible()} if doc else None,
         'justificantes_previos': [
             {
                 'id': d.id,
-                'nombre': _nombre_documento(d),
+                'nombre': d.nombre_visible(),
                 'tipo_doc_codigo': d.tipo_doc.codigo if d.tipo_doc else None,
                 'fecha_administrativa': d.fecha_administrativa.isoformat()
                     if d.fecha_administrativa else None,
@@ -2780,7 +2769,7 @@ def edicto_aplicar_anuncio(expediente_id, tramite_id):
     anuncio = svc.anuncio_publicado_edicto(tramite)
     return jsonify({
         'anuncio': {
-            'id': anuncio.id, 'nombre': _nombre_documento(anuncio),
+            'id': anuncio.id, 'nombre': anuncio.nombre_visible(),
             'fecha_administrativa': anuncio.fecha_administrativa.isoformat()
                 if anuncio.fecha_administrativa else None,
         } if anuncio else None,

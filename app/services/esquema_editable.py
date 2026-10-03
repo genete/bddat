@@ -67,17 +67,10 @@ def esquema_de_nodo(expediente, tipo_nodo: str, nodo_id: int) -> dict:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _nombre_doc(doc) -> str:
-    """Nombre legible: último segmento de la URL, o 'Documento <id>'."""
-    filename = (doc.url or '').replace('\\', '/').rsplit('/', 1)[-1]
-    filename = filename.split('?')[0].split('#')[0]
-    return filename or f'Documento {doc.id}'
-
-
 def _pool_docs(expediente) -> list[dict]:
     """Pool completo de documentos del expediente como opciones de select."""
     docs = Documento.query.filter_by(expediente_id=expediente.id).all()
-    return [{'valor': d.id, 'texto': _nombre_doc(d)} for d in docs]
+    return [{'valor': d.id, 'texto': d.nombre_visible()} for d in docs]
 
 
 def _campo_textarea(campo: str, etiqueta: str, valor) -> dict:

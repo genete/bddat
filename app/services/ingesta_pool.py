@@ -30,7 +30,7 @@ from flask import current_app
 from app import db
 from app.models.documentos import Documento
 from app.services.reformados import exigir_fecha_administrativa
-from app.services.rutas_esftt import ruta_pool_documento, nombre_pool_unico
+from app.services.rutas_esftt import ruta_pool_documento, nombre_pool_unico, _saneado_nombre_pool
 
 
 @dataclass(frozen=True)
@@ -99,6 +99,9 @@ def ingestar_en_pool(
     documento = Documento(
         expediente_id=expediente.id,
         url=ruta_relativa,
+        # El original saneado, sin el prefijo del hash que lleva el fichero en el pool
+        # (ADR-050 §C): es el que se enseña. El nombre sin sanear solo se conoce aquí.
+        nombre_fichero=_saneado_nombre_pool(nombre_original),
         hash_md5=hash_md5,
         tipo_doc_id=tipo_doc_id,
         fecha_administrativa=fecha_administrativa,

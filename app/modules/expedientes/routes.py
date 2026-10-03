@@ -632,12 +632,12 @@ def pool_documentos(id):
 
     docs_lista = []
     for doc in documentos_raw:
-        filename = doc.url.replace('\\', '/').rsplit('/', 1)[-1] if doc.url else ''
-        # Eliminar fragment (#...) y query string (?...) para nombre y extensión limpios
-        filename_limpio = filename.split('?')[0].split('#')[0]
-        nombre = filename_limpio or f'Documento {doc.id}'
-        partes = filename_limpio.rsplit('.', 1)
-        extension = partes[1].lower() if len(partes) == 2 and partes[1] else ''
+        nombre = doc.nombre_visible()
+        # La extensión sale del nombre, salvo en los bddat://: su nombre es el del
+        # tipo («Informe n.º 2») y lo que haya tras el último punto no es una extensión.
+        partes = nombre.rsplit('.', 1)
+        extension = ('' if (doc.url or '').startswith('bddat://')
+                     else partes[1].lower() if len(partes) == 2 and partes[1] else '')
         es_url_externa = (doc.url or '').startswith(('http://', 'https://'))
         corte = doc.reformado_proyecto
         docs_lista.append({
@@ -683,9 +683,7 @@ def pool_documentos_json(id):
 
     docs = []
     for doc in documentos:
-        filename = doc.url.replace('\\', '/').rsplit('/', 1)[-1] if doc.url else ''
-        filename_limpio = filename.split('?')[0].split('#')[0]
-        nombre = filename_limpio or f'Documento {doc.id}'
+        nombre = doc.nombre_visible()
         tipo_nombre = doc.tipo_doc.nombre if doc.tipo_doc else 'Sin tipo'
         if doc.fecha_administrativa:
             fecha_str = doc.fecha_administrativa.strftime('%d/%m/%Y')
@@ -908,7 +906,7 @@ def pool_subir_documento(id):
         'documentos': [
             {
                 'id':              d.id,
-                'nombre':          (d.url or '').replace('\\', '/').rsplit('/', 1)[-1],
+                'nombre':          d.nombre_visible(),
                 'tipo_doc':        d.tipo_doc.nombre if d.tipo_doc else None,
                 'tipo_doc_codigo': d.tipo_doc.codigo if d.tipo_doc else None,
                 'fecha':           d.fecha_administrativa.isoformat() if d.fecha_administrativa else None,
@@ -1229,6 +1227,10 @@ def pool_editar_documento(id, doc_id):
     try:
         url_nueva = (datos.get('url') or '').strip()
         if url_nueva:
+            if url_nueva != doc.url:
+                # El nombre del fichero anterior no describe al nuevo: sin esto,
+                # nombre_visible() seguiría enseñando el de antes (ADR-050 §C).
+                doc.nombre_fichero = None
             doc.url = url_nueva
 
         if 'tipo_doc_id' in datos:

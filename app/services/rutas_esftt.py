@@ -15,8 +15,11 @@ from app import db
 from app.models.documentos import Documento
 from app.models.tareas import Tarea
 
-# Caracteres no válidos en nombres de carpeta Windows (mismo patrón que generador_escritos.py)
-_CARACTERES_INVALIDOS = re.compile(r'[\\/:*?"<>|]')
+# Caracteres no válidos en nombres de fichero o carpeta Windows, incluidos los de control
+# (0-31: salto de línea, tabulador, NUL…). Estos últimos entraron con ADR-050 §C: el
+# nombre saneado se guarda ahora en `documentos.nombre_fichero` y de ahí pasa a la
+# interfaz y a la cabecera de descarga, donde un salto de línea no es inocuo.
+_CARACTERES_INVALIDOS = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
 _LONGITUD_MAX_FALLBACK_ORGANISMO = 30
 
 # Nombres de dispositivo reservados en Windows (con o sin extensión): CON.txt también es inválido.
