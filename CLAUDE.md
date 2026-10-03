@@ -18,6 +18,11 @@ Desarrollado para la Consejería de Industria, Energía y Minas (Junta de Andalu
   `Fallo silencioso que evita: …` la exige un hook (`.claude/hooks/reglas_tests_guard.py`,
   PreToolUse sobre Write y Edit): si deniega, escribir la línea o, si no se sabe nombrar
   el fallo, no escribir el test y decírselo al usuario; nunca rellenarla por salir del paso.
+  Si un commit modifica o borra un `assert` de un test de otro issue, el mensaje lleva
+  `Decisión que cambia: <ADR-NNN §… o #NNN>` o `Test retirado: <por qué>`; lo exige
+  `.claude/hooks/reglas_asserts_guard.py` al hacer `git commit`. Si no se sabe qué
+  decisión cambia, el test no se adapta: o es forma (helper de `conftest.py`) o el
+  código se desvía (se corrige el código). Ver `tests/README.md` §3.
 - Ante refactorizaciones o cambios de diseño: seguir §"Análisis de impacto previo" de `REGLAS_DESARROLLO.md` — presentar tabla de consumidores al usuario antes de escribir código
 - Comandos Bash: las reglas de `docs/guias/REGLAS_BASH.md` **las aplica un hook**, no la
   buena memoria. `.claude/hooks/reglas_bash_guard.py` (PreToolUse sobre Bash) deniega los

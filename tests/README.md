@@ -193,6 +193,12 @@ de algunos quede como hueco documentado en la matriz. Priorizar y diferir la
 implementación es lícito; recortar el análisis oculta huecos que costarán más al
 descubrirlos después.
 
+**Decisiones recién estrenadas.** En el issue que estrena un ADR, o mientras su
+diseño se sigue enmendando, se testea el invariante que sobrevivirá (p. ej. «toda
+NOTIFICAR tiene destinatario»), no cada rama del payload. El detalle se añade cuando
+la decisión ha sobrevivido al siguiente issue que la toca. Mientras ADR-051 y ADR-052
+se escribían, `test_928_api_notificar` se adaptó 5 veces en 7 días (#1014).
+
 **Tamaño.** Un issue no necesita un fichero de 600 líneas. Si las líneas de
 test de un cambio superan a las de `app/` que cambia, repasar cuáles de la
 lista «No» se han colado. Es una señal, no un tope.
@@ -216,6 +222,32 @@ cambio de firma), antes de repararlo se le pasa este criterio:
 - **Lo supera, pero se rompió por su forma** (firma de un helper, una fixture)
   → el arreglo va a un helper de `conftest.py`, para que el próximo cambio se
   corrija en un solo sitio y no en diez ficheros.
+
+**Cuando cambia un `assert` de un test de otro issue** (#1014). Un test rojo admite
+tres lecturas, y solo una justifica tocar lo que espera:
+
+1. **Cambió la decisión que fijaba** → se actualiza, diciendo cuál.
+2. **Se rompió por su forma** → helper de `conftest.py` (arriba); el `assert` no se toca.
+3. **El código se desvía de una decisión estable** → se corrige el código. Es para lo
+   que existe el test.
+
+Para que no se pierda cuál fue, el commit que modifica o borra un `assert` (o un
+`pytest.raises`, o un `.assert_*(` de mock) de un test que ya existía lleva una de
+estas líneas en el mensaje:
+
+    Decisión que cambia: <ADR-NNN §… o #NNN>
+    Test retirado: <por qué, mín. 40 caracteres>
+
+No hace falta si el número del fichero (`test_<N>_…`) está en el asunto del commit
+(es el mismo issue), si la línea solo se mueve o se reformatea, ni al cerrar un
+merge. Smoke incluidos. Lo aplica `.claude/hooks/reglas_asserts_guard.py`
+(PreToolUse sobre Bash, al hacer `git commit`). Si no se sabe qué decisión cambia,
+el test no se adapta: se pregunta. Límites: no ve un valor esperado dentro de un
+`parametrize` ni las líneas de continuación de un `assert` partido.
+
+Por qué: en septiembre de 2026, 128 retoques adaptaron el test de un issue al
+código de otro. Cerca de la mitad, porque cambió la decisión; un tercio, por forma;
+y ninguno decía cuál, así que el test no podía cumplir su papel de aviso.
 
 ---
 
