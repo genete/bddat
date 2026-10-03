@@ -97,9 +97,11 @@ def _commit(repo, mensaje, opciones=''):
     ('[TEST] #100 Ajusta la suma', False),
     # citar el issue del fichero solo en el cuerpo no lo hace suyo (bc301dca y test_885)
     ('[MODELO] #200 Generaliza la guarda\n\nAntes solo la tenía #100.', True),
-    # «Á» en UTF-8 (C3 81) lleva un byte que cp1252 no define: leído con la consola, el
-    # hook no podía ni decodificar la entrada y dejaba pasar el commit sin mirarlo
+    # Caracteres cuyo UTF-8 lleva un byte que cp1252 no define («Á» = C3 81, «”» = E2 80 9D):
+    # leído con la consola, el hook no podía ni decodificar la entrada y dejaba pasar el
+    # commit sin mirarlo. Con «É» o «ó» solo llegaría deformado (los casos de «Decisión»).
     ('[TEST] #200 Ángel ajusta la suma', True),
+    ('[TEST] #200 Ajusta la suma “tal cual”', True),
 ])
 def test_assert_cambiado_exige_nombrar_la_decision(repo, mensaje, deniega):
     _preparar(repo, {'tests/test_100_suma.py': TEST_100.replace('== 2', '== 3')})
