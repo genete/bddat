@@ -121,8 +121,10 @@ existe "SELECT 1 FROM pg_database WHERE datname='bddat'" \
     || fallo "crear la base bddat"
 
 # ── 4. .env ───────────────────────────────────────────────────────────────────
-# Las cuatro rutas dentro del repo, las mismas carpetas que el PC; están en
-# .gitignore. Un .env que ya exista no se toca.
+# Las ocho rutas dentro del repo, las mismas carpetas que el PC; están en
+# .gitignore. Un .env que ya exista no se toca. El almacén y los manifiestos
+# (ADR-050) van aparte de docs_prueba/, como en el PC. Sin las cuatro variables nuevas
+# la semilla de tests no arranca.
 paso "4. .env"
 if [ -f "$REPO/.env" ]; then
     nota ".env ya existía: no se toca"
@@ -134,6 +136,10 @@ else
         echo "PLANTILLAS_BASE=$REPO/docs_prueba/plantillas_escritos"
         echo "TEST_FILESYSTEM_BASE=$REPO/docs_prueba_test/expedientes"
         echo "TEST_PLANTILLAS_BASE=$REPO/docs_prueba_test/plantillas_escritos"
+        echo "ALMACEN_BASE=$REPO/almacen_dev"
+        echo "MANIFIESTOS_BASE=$REPO/manifiestos_dev"
+        echo "TEST_ALMACEN_BASE=$REPO/docs_prueba_test/almacen"
+        echo "TEST_MANIFIESTOS_BASE=$REPO/docs_prueba_test/manifiestos"
         echo "SOFFICE=/usr/bin/soffice"
         echo "SECRET_KEY=nube-$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
         echo "DEBUG=True"
@@ -142,7 +148,13 @@ else
     nota ".env de la nube generado"
 fi
 mkdir -p "$REPO/docs_prueba/expedientes" "$REPO/docs_prueba/plantillas_escritos" \
-         "$REPO/docs_prueba_test/expedientes" "$REPO/docs_prueba_test/plantillas_escritos"
+         "$REPO/docs_prueba_test/expedientes" "$REPO/docs_prueba_test/plantillas_escritos" \
+         "$REPO/manifiestos_dev"
+# El almacén de desarrollo necesita su marca de raíz (sin ella responde «no
+# disponible»). En el PC se inicializa a mano una vez; aquí, el entorno. Idempotente.
+# El de tests lo inicializa la semilla.
+(cd "$REPO" && "$VENV/bin/python" -c "import almacen; almacen.inicializar('$REPO/almacen_dev')") \
+    >> "$LOG" 2>&1 || fallo "inicializar el almacén de desarrollo"
 
 # ── 5. BD de tests ────────────────────────────────────────────────────────────
 # Sin --recrear: la crea si falta, aplica las migraciones pendientes y la

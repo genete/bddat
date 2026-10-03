@@ -246,15 +246,23 @@ def _expediente_sin_asignar(app):
 
 
 def _arbol_ficheros(app):
-    """Crea la raíz de ficheros de tests si no existe."""
+    """Crea las raíces de ficheros de tests si no existen.
+
+    El almacén (ADR-050) además se inicializa: sin su marca de raíz responde «no
+    disponible» en vez de crear carpetas, y en tests el inicializador es el código
+    (`almacen.inicializar` es idempotente, así que se repite sin daño)."""
+    import almacen
+
     creados = []
-    for clave in ('FILESYSTEM_BASE', 'PLANTILLAS_BASE'):
+    for clave in ('FILESYSTEM_BASE', 'PLANTILLAS_BASE', 'ALMACEN_BASE', 'MANIFIESTOS_BASE'):
         ruta = app.config.get(clave)
         if not ruta:
             raise RuntimeError(f'{clave} sin configurar en la config de tests')
         if not os.path.isdir(ruta):
             os.makedirs(ruta, exist_ok=True)
             creados.append(ruta)
+        if clave == 'ALMACEN_BASE':
+            almacen.inicializar(ruta)
     return creados
 
 
