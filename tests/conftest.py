@@ -1,6 +1,8 @@
+import contextlib
 import itertools
 
 import pytest
+from flask import has_app_context
 from sqlalchemy.orm import scoped_session, sessionmaker
 from app import create_app, db as _db
 
@@ -278,6 +280,90 @@ def fs_tmp(app, tmp_path):
     app.config['FILESYSTEM_BASE'] = str(tmp_path)
     yield tmp_path
     app.config['FILESYSTEM_BASE'] = base_original
+
+
+@contextlib.contextmanager
+def _contexto_de_app(app):
+    """El contexto de la app, sin empujar otro si ya hay uno.
+
+    Un `with app.app_context()` anidado, al salir, dispara el teardown de
+    Flask-SQLAlchemy (`session.remove()`): cerraría la sesión de `app_ctx` y se llevaría
+    por delante lo que el test tenga en su SAVEPOINT (los objetos quedan desligados).
+    """
+    if has_app_context():
+        yield
+    else:
+        with app.app_context():
+            yield
+
+
+@pytest.fixture(autouse=True)
+def _limpieza_ficheros():
+    """Borra al terminar el test las filas de `ficheros` que haya creado (ADR-050, #1007).
+
+    Es de uso automático solo por el ORDEN, no para hacer algo en todos los tests: un
+    fixture de uso automático se prepara antes que los demás, así que se deshace DESPUÉS
+    que ellos, y en particular después del rollback de `app_ctx`. Ese orden importa: el
+    módulo de contenido escribe `ficheros` en una conexión propia, que escapa al
+    SAVEPOINT; mientras la transacción de `app_ctx` tenga un `documentos` que apunte a
+    una fila, el DELETE se queda esperando su bloqueo (la FK) y el test se cuelga. Por
+    eso `almacen_tmp` no puede hacerlo ella misma.
+
+    No hace nada, ni toca la BD, si el test no usó `almacen_tmp`.
+    """
+    registro = {}
+    yield registro
+    app = registro.get('app')
+    if app is None:
+        return
+    from sqlalchemy import text
+    with app.app_context():
+        with _db.engine.begin() as conexion:
+            conexion.execute(
+                text('DELETE FROM public.ficheros WHERE NOT (ref = ANY(CAST(:previas AS text[])))'),
+                {'previas': sorted(registro['previas'])},
+            )
+
+
+@pytest.fixture
+def almacen_tmp(app, tmp_path_factory, _limpieza_ficheros):
+    """Almacén y manifiestos en un temporal, inicializados (ADR-050, #1007).
+
+    Redirige `ALMACEN_BASE` y `MANIFIESTOS_BASE`, y devuelve un objeto con sus rutas
+    (`.almacen`, `.manifiestos`). Úsalo en cuanto el código suba un documento o escriba
+    un manifiesto: el disco no es transaccional y el contenido quedaría puesto aunque
+    la transacción se deshaga. Es la base del helper de documentos con contenido de
+    #1014.
+
+    Lo que no revierte el SAVEPOINT de `app_ctx` es la fila de `ficheros`, que el módulo
+    de contenido escribe en su propia transacción: la borra `_limpieza_ficheros` al
+    terminar. Se borran las que no estaban al empezar el test (la semilla puede traer
+    alguna), así que un test que cree filas y no pase por aquí las deja puestas.
+    """
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    import almacen
+    from sqlalchemy import text
+
+    raiz = Path(tmp_path_factory.mktemp('almacen_tmp'))
+    rutas = SimpleNamespace(almacen=raiz / 'almacen', manifiestos=raiz / 'manifiestos')
+    almacen.inicializar(str(rutas.almacen))
+    rutas.manifiestos.mkdir()
+
+    originales = (app.config.get('ALMACEN_BASE'), app.config.get('MANIFIESTOS_BASE'))
+    app.config['ALMACEN_BASE'] = str(rutas.almacen)
+    app.config['MANIFIESTOS_BASE'] = str(rutas.manifiestos)
+
+    with _contexto_de_app(app):
+        with _db.engine.connect() as conexion:
+            previas = {fila[0] for fila in conexion.execute(text('SELECT ref FROM public.ficheros'))}
+    _limpieza_ficheros['app'] = app
+    _limpieza_ficheros['previas'] = previas
+
+    yield rutas
+
+    app.config['ALMACEN_BASE'], app.config['MANIFIESTOS_BASE'] = originales
 
 
 # ---------------------------------------------------------------------------

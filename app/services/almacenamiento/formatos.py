@@ -120,7 +120,7 @@ def validar_fichero(nombre: str, flujo: BinaryIO) -> str:
     extension = os.path.splitext(sanear_nombre(nombre))[1].lower()
     if extension not in detectado.extensiones:
         raise FormatoNoAdmitido(
-            f'El contenido de «{nombre}» no es lo que dice su extensión '
+            f'El contenido no es lo que dice su extensión '
             f'({extension or "sin extensión"}): ¿se ha renombrado el fichero?')
     return detectado.mime
 
