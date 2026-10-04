@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha mapa · Las piezas de un vistazo</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* petición: lo que va */
+  --vuelta:#3B6D11;   /* respuesta: lo que vuelve */
+  --plan:#854F0B;     /* reservado: lo marcado ⚠️ (plan, aún no construido) */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+/* Iconos de línea (el sprite está al principio del body) */
+.ico{fill:none;stroke:currentColor;stroke-width:var(--s,1.5);stroke-linecap:round;stroke-linejoin:round}
+
+/* Tarjeta: la forma común de todo "equipo" o "pieza" */
+.tarjeta{background:var(--tarjeta);border:2px solid var(--borde);border-radius:18px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center}
+.tarjeta.fuerte{border-color:var(--borde-fuerte)}
+.tarjeta.punteada{background:transparent;border-style:dashed;border-color:var(--borde-fuerte);border-radius:12px}
+.nombre{font-size:30px;font-weight:600}
+.sub{font-size:20px;color:var(--texto-2)}
+
+/* Conexión: línea que se dibuja + punta + rótulo + cita */
+.flecha{width:100%;text-align:center}
+.flecha.ida{color:var(--ida)}
+.flecha.vuelta{color:var(--vuelta)}
+.flecha .et{font-size:24px;font-weight:600;padding:4px 0}
+.flecha .cita{font-size:19px;color:var(--texto-2)}
+.tubo{display:flex;align-items:center}
+.linea{flex:1;height:5px;border-radius:3px;background:currentColor;transform:scaleX(0);transition:transform .6s ease .1s}
+.ida .linea{transform-origin:left center}
+.vuelta .linea{transform-origin:right center}
+.flecha.on .linea{transform:scaleX(1)}
+.punta{width:30px;height:30px;fill:currentColor;flex:none;opacity:0;transition:opacity .2s ease .6s}
+.ida .punta{margin-left:-8px}
+.vuelta .punta{margin-right:-8px}
+.flecha.on .punta{opacity:1}
+
+/* Frase de cierre al pie */
+.cierre{position:absolute;left:80px;right:80px;bottom:62px;text-align:center;font-size:32px;
+  font-weight:600;border-top:2px solid var(--borde);padding-top:22px}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,.linea,.punta,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.lienzo{position:absolute;left:80px;right:80px;top:40px;bottom:40px;
+  display:grid;grid-template-columns:290px 110px 340px 120px 260px;grid-template-rows:auto auto;
+  row-gap:16px;align-content:center}
+.titulo{grid-column:1 / -1;text-align:center;font-size:30px;font-weight:600}
+
+/* Una columna por capa; las piezas se apilan dentro */
+.col{padding:16px 16px 18px;gap:6px;align-items:stretch;justify-content:flex-start;color:var(--texto)}
+.cab-c{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.cab-c .nombre{font-size:26px;line-height:1.1}
+.cab-c .sub{font-size:17px;line-height:1.2}
+
+/* Cada pieza: la misma de las fichas 2, 3 y 6, con el mismo icono */
+.pieza{display:flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--borde-fuerte);
+  border-radius:12px;padding:4px 10px;color:var(--texto);text-align:left}
+.pieza .t{font-size:19px;font-weight:600;line-height:1.15}
+.pieza .s{font-size:17px;color:var(--texto-2);line-height:1.2}
+
+/* Conectores entre capas */
+.con{display:flex;flex-direction:column;justify-content:center;gap:14px;padding:0 6px}
+.con .rot{font-size:17px;font-weight:600;text-align:center;line-height:1.1}
+.con .rot.ida{color:var(--ida)}
+.con .rot.vuelta{color:var(--vuelta)}
+.con .etq{text-align:center;font-size:18px;font-weight:600;line-height:1.15;margin-bottom:2px}
+.con .etq span{display:block;font-size:16px;font-weight:400;color:var(--texto-2)}
+.carril{display:flex;flex-direction:column;gap:2px}
+.con .flecha{width:100%}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-pc" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M3 8h18M7 20h10M9 16v4M15 16v4"/></symbol>
+  <symbol id="i-servidor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5v.01M7 16.5v.01M11 7.5h6M11 16.5h6"/></symbol>
+  <symbol id="i-memoria" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></symbol>
+  <symbol id="i-codigo" viewBox="0 0 24 24"><path d="M7 8l-4 4 4 4M17 8l4 4-4 4M14 4l-4 16"/></symbol>
+  <symbol id="i-gota" viewBox="0 0 24 24"><path d="M12 3s-6 7-6 11a6 6 0 0 0 12 0c0-4-6-11-6-11z"/></symbol>
+  <symbol id="i-rayo" viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></symbol>
+  <symbol id="i-rejilla" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></symbol>
+  <symbol id="i-bandera" viewBox="0 0 24 24"><path d="M5 21V4M5 4h13l-3 4 3 4H5"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M6 3l13 9-6 1.5L10.5 20z"/></symbol>
+  <symbol id="i-matraz" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-9V3M8 15h8"/></symbol>
+  <symbol id="i-llave" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/></symbol>
+  <symbol id="i-plantilla" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 9v11"/></symbol>
+  <symbol id="i-datos" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></symbol>
+  <symbol id="i-sello" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 14L7 21l5-2.5L17 21l-1.5-7"/></symbol>
+</svg>
+
+<div id="escenario">
+  <div class="lienzo">
+    <div class="titulo">Las piezas, de un vistazo</div>
+
+    <div class="tarjeta fuerte col paso" data-paso="1">
+      <div class="cab-c">
+        <svg class="ico" width="42" height="42" style="--s:1.3"><use href="#i-pc"/></svg>
+        <div><div class="nombre">Navegador</div><div class="sub">frontend: lo que se ve</div></div>
+      </div>
+      <div class="pieza paso" data-paso="3"><svg class="ico" width="26" height="26" style="--s:1.8"><use href="#i-codigo"/></svg><div><div class="t">HTML</div><div class="s">la estructura</div></div></div>
+      <div class="pieza paso" data-paso="3"><svg class="ico" width="26" height="26" style="--s:1.8"><use href="#i-gota"/></svg><div><div class="t">CSS</div><div class="s">el aspecto</div></div></div>
+      <div class="pieza paso" data-paso="3"><svg class="ico" width="26" height="26" style="--s:1.8"><use href="#i-rayo"/></svg><div><div class="t">JavaScript</div><div class="s">el comportamiento</div></div></div>
+      <div class="pieza paso" data-paso="4"><svg class="ico" width="26" height="26" style="--s:1.8"><use href="#i-rejilla"/></svg><div><div class="t">Bootstrap 5.3</div><div class="s">piezas ya hechas</div></div></div>
+      <div class="pieza paso" data-paso="4"><svg class="ico" width="26" height="26" style="--s:1.8"><use href="#i-bandera"/></svg><div><div class="t">Tema de la Junta</div><div class="s">imagen corporativa</div></div></div>
+      <div class="pieza paso" data-paso="4"><svg class="ico" width="26" height="26" style="--s:1.8"><use href="#i-cursor"/></svg><div><div class="t">React</div><div class="s">zonas interactivas</div></div></div>
+    </div>
+
+    <div class="con">
+      <div class="flecha ida carril paso" data-paso="2">
+        <div class="rot ida">petición</div>
+        <div class="tubo"><span class="linea"></span><svg class="punta" viewBox="0 0 24 24"><path d="M4 3l17 9-17 9z"/></svg></div>
+      </div>
+      <div class="flecha vuelta carril paso" data-paso="2">
+        <div class="tubo"><svg class="punta" viewBox="0 0 24 24"><path d="M20 3L3 12l17 9z"/></svg><span class="linea"></span></div>
+        <div class="rot vuelta">respuesta</div>
+      </div>
+    </div>
+
+    <div class="tarjeta fuerte col paso" data-paso="1">
+      <div class="cab-c">
+        <svg class="ico" width="42" height="42" style="--s:1.3"><use href="#i-servidor"/></svg>
+        <div><div class="nombre">Servidor</div><div class="sub">backend: donde se decide</div></div>
+      </div>
+      <div class="pieza paso" data-paso="5"><svg class="ico" width="26" height="26" style="--s:1.8"><use href="#i-matraz"/></svg><div><div class="t">Python + Flask</div><div class="s">lenguaje y estructura ya hecha</div></div></div>
+      <div class="pieza paso" data-paso="5"><svg class="ico" width="26" height="26" style="--s:1.8"><use href="#i-llave"/></svg><div><div class="t">Flask-Login</div><div class="s">inicio de sesión</div></div></div>
+      <div class="pieza paso" data-paso="5"><svg class="ico" width="26" height="26" style="--s:1.8"><use href="#i-plantilla"/></svg><div><div class="t">Jinja</div><div class="s">monta las páginas</div></div></div>
+    </div>
+
+    <div class="con">
+      <div class="etq paso" data-paso="6">SQLAlchemy<span>el traductor</span></div>
+      <div class="flecha ida carril paso" data-paso="6">
+        <div class="tubo"><span class="linea"></span><svg class="punta" viewBox="0 0 24 24"><path d="M4 3l17 9-17 9z"/></svg></div>
+      </div>
+      <div class="flecha vuelta carril paso" data-paso="6">
+        <div class="tubo"><svg class="punta" viewBox="0 0 24 24"><path d="M20 3L3 12l17 9z"/></svg><span class="linea"></span></div>
+      </div>
+    </div>
+
+    <div class="tarjeta fuerte col paso" data-paso="1">
+      <div class="cab-c">
+        <svg class="ico" width="42" height="42" style="--s:1.3"><use href="#i-memoria"/></svg>
+        <div><div class="nombre">Base de datos</div><div class="sub">la memoria</div></div>
+      </div>
+      <div class="pieza paso" data-paso="7"><svg class="ico" width="26" height="26" style="--s:1.8"><use href="#i-datos"/></svg><div><div class="t">PostgreSQL</div><div class="s">memoria compartida</div></div></div>
+      <div class="pieza paso" data-paso="7"><svg class="ico" width="26" height="26" style="--s:1.8"><use href="#i-sello"/></svg><div><div class="t">Alembic</div><div class="s">el notario</div></div></div>
+    </div>
+
+  </div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var MAX = 7, paso = 1;
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var h = location.hash, m = h.match(/paso=(\d+)/);
+  if (h === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (m) paso = Math.max(1, Math.min(MAX, +m[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>
