@@ -9,6 +9,13 @@ Sistema de tramitación de expedientes de autorizaciones de instalaciones de alt
 - **Frontend**: Bootstrap 5 + Jinja2 templates
 - **Autenticación**: Flask-Login
 
+## 🎬 Presentaciones
+
+Publicadas en GitHub Pages: <https://genete.github.io/bddat/>
+
+- [Presentación del proyecto](https://genete.github.io/bddat/poc/): fuente en [`presentaciones/poc/`](presentaciones/poc/).
+- [Fundamentos tecnológicos](https://genete.github.io/bddat/fundamentos/): fuente en [`presentaciones/fundamentos/`](presentaciones/fundamentos/); el README de esa carpeta explica el manejo y cómo se edita.
+
 ## 📋 Información Legal
 
 **Desarrollado para**: Consejería de Industria, Energía y Minas, Junta de Andalucía  
