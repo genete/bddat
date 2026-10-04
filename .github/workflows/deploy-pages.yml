@@ -1,12 +1,11 @@
-name: Deploy Presentación a GitHub Pages
+name: Deploy Presentaciones a GitHub Pages
 
 on:
   push:
     branches:
       - develop
-      - feature/292-reveal-presentacion
     paths:
-      - presentacion/**
+      - presentaciones/**
 
 permissions:
   contents: read
@@ -30,10 +29,10 @@ jobs:
       - name: Configurar Pages
         uses: actions/configure-pages@v4
 
-      - name: Subir artefacto (carpeta presentacion/)
+      - name: Subir artefacto (carpeta presentaciones/)
         uses: actions/upload-pages-artifact@v3
         with:
-          path: presentacion/
+          path: presentaciones/
 
       - name: Desplegar en GitHub Pages
         id: deployment
