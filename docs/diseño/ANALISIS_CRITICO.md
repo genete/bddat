@@ -56,7 +56,7 @@ Cierra con **§5 Decisiones pendientes** (preguntas que esta fase **no** contest
 - **UI**: 5 capas conviven en producción — v0 (login), v1 (dashboard), v2 (listados), v3/BC (tramitación), React POC (demo). Más una "capa base" sin sufijo para detalles, formularios, wizard. 13 CSS y 16 JS reflejan la misma estratificación.
 - **Backend**: indiferente — los servicios son agnósticos al template que los consume.
 - **Usuario**: no percibe las capas directamente, pero sufre la **inconsistencia visual** que generan (citado indirectamente en fase 2 al hablar de "interfaz limpia y organizada").
-- **Presentación POC**: S04 vende "imagen corporativa coherente". Las capturas en `presentacion/assets/` muestran principalmente v2 y v3 — v0 y v1 quedan fuera del relato comercial.
+- **Presentación POC**: S04 vende "imagen corporativa coherente". Las capturas en `presentaciones/poc/assets/` muestran principalmente v2 y v3 — v0 y v1 quedan fuera del relato comercial.
 
 **Lectura crítica:** No todas las capas tienen el mismo destino:
 - **v0 (login) y v1 (dashboard):** intencionales y aislados — pantallas singulares con su propio CSS. **Pueden quedarse** como están con un refresh visual ligero.

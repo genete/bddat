@@ -480,7 +480,7 @@ TRAMITADOR puede editar cualquier expediente, no solo el asignado. La traza qued
 | `docs/diagramas_flujo/` | Diagramas del flujo (vacío o pendiente) |
 | `docs/implementaciones/` | (vacío o pendiente) |
 
-### 10.5 Presentación POC (`presentacion/` en la raíz, fuera de `docs/`)
+### 10.5 Presentación POC (`presentaciones/poc/` en la raíz, fuera de `docs/`)
 
 Sistema Reveal.js con tema CSS propio de la Junta de Andalucía. **16 slides** organizadas en bloques (problema → qué es → roles → características implementadas → demo → roadmap → feedback) más 2 apéndices técnicos.
 
