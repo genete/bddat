@@ -573,8 +573,10 @@ Dependencias principales (de `package.json`): React 18, `@xyflow/react`, `d3-dis
 | `app/services/almacenamiento/contenido.py` | Módulo de contenido: `subir`, `leer`, `comprobar_para_vincular`, `servir_descarga`. Con el adaptador, lo único que lee o escribe `ficheros` y `fichero_ref` |
 | `app/services/almacenamiento/formatos.py` | Lista cerrada de formatos admitidos (ADR-050 §E), detectados por el contenido; sin ZIP; 300 MB por fichero |
 | `app/services/almacenamiento/nombres.py` | Saneado del nombre de un fichero que viene de fuera (reglas de Windows y caracteres de control) |
+| `app/services/almacenamiento/manifiestos.py` | Manifiesto por expediente (ADR-050 §H, N009) en `MANIFIESTOS_BASE/<número entre mil>/AT-N.json`: de cada documento, id, nombre, carpeta ESFTT, `ref` y hash. Solo se reescribe si cambia. `inicializar(raiz)` crea la marca `MANIFIESTOS.txt`, sin la cual no escribe nada. Lo lanza `flask manifiestos [AT-N]` (`app/cli/manifiestos.py`); la programación llega en la fase 2b (#1008) |
+| `exportador/` (raíz del repo) | Reconstruye el árbol de carpetas legible a partir de los manifiestos, sin BDDAT: biblioteca estándar y la librería del almacén, nada de `app/`. Recibe de quien lo llama cómo leer el almacén. Comprueba el hash al copiar, sanea nombres, resuelve choques y longitud de ruta. Línea de órdenes: `python -m exportador --almacen … --destino … MANIFIESTO…` |
 
-Configuración: `ALMACEN_BASE` y `MANIFIESTOS_BASE` (y sus `TEST_*`), en `app/config.py` y `.env.example`. Tests: `tests/test_1007_*.py`, con la fixture `almacen_tmp` y el test permanente `test_1007_subsistema_almacenamiento.py` (solo este subsistema ve `ficheros` y la `ref`). Hasta el corte del PR 4 ningún escritor de documentos usa el módulo de contenido; el modelo de rutas sigue vivo hasta el PR 5.
+Configuración: `ALMACEN_BASE` y `MANIFIESTOS_BASE` (y sus `TEST_*`), en `app/config.py` y `.env.example`. Tests: `tests/test_1007_*.py`, con la fixture `almacen_tmp` y el test permanente `test_1007_subsistema_almacenamiento.py` (solo este subsistema ve `ficheros` y la `ref`). Hasta el corte del PR 4 ningún escritor de documentos usa el módulo de contenido, así que los manifiestos listan los documentos de ruta local sin `ref` y el exportador los informa como «sin contenido en el almacén»; el modelo de rutas sigue vivo hasta el PR 5.
 
 ---
 

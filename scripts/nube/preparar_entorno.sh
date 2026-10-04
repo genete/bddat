@@ -150,11 +150,13 @@ fi
 mkdir -p "$REPO/docs_prueba/expedientes" "$REPO/docs_prueba/plantillas_escritos" \
          "$REPO/docs_prueba_test/expedientes" "$REPO/docs_prueba_test/plantillas_escritos" \
          "$REPO/manifiestos_dev"
-# El almacén de desarrollo necesita su marca de raíz (sin ella responde «no
-# disponible»). En el PC se inicializa a mano una vez; aquí, el entorno. Idempotente.
-# El de tests lo inicializa la semilla.
+# El almacén de desarrollo y la carpeta de manifiestos necesitan su marca de raíz
+# (sin ella no escriben nada). En el PC se inicializan a mano una vez; aquí, el
+# entorno. Idempotente. Las de tests las inicializa la semilla.
 (cd "$REPO" && "$VENV/bin/python" -c "import almacen; almacen.inicializar('$REPO/almacen_dev')") \
     >> "$LOG" 2>&1 || fallo "inicializar el almacén de desarrollo"
+(cd "$REPO" && "$VENV/bin/python" -c "from app.services.almacenamiento.manifiestos import inicializar; inicializar('$REPO/manifiestos_dev')") \
+    >> "$LOG" 2>&1 || fallo "inicializar la carpeta de manifiestos de desarrollo"
 
 # ── 5. BD de tests ────────────────────────────────────────────────────────────
 # Sin --recrear: la crea si falta, aplica las migraciones pendientes y la

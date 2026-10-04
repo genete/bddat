@@ -273,7 +273,8 @@ y ninguno decía cuál, así que el test no podía cumplir su papel de aviso.
      certificados, pool). El SAVEPOINT no revierte el disco.
    - Almacén de documentos (ADR-050): `almacen_tmp` en cuanto el código suba un
      documento (`contenido.subir`) o escriba un manifiesto. Redirige `ALMACEN_BASE` y
-     `MANIFIESTOS_BASE` a un temporal ya inicializado. Además del disco, el módulo de
+     `MANIFIESTOS_BASE` a un temporal ya inicializado (los dos con su marca de raíz:
+     sin ella no escriben nada). Además del disco, el módulo de
      contenido escribe la fila de `ficheros` **en su propia conexión**, que también
      escapa al SAVEPOINT: la borra una fixture de uso automático
      (`_limpieza_ficheros`) al terminar, después del rollback de `app_ctx`; si el
