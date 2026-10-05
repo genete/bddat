@@ -57,15 +57,11 @@ def _crear_expediente(db, tipo_exp):
 
 
 def _crear_solicitud(db, expediente, tipo_solicitud):
-    from app.models import Solicitud, Entidad
+    from app.models import Entidad
     entidad = Entidad.query.first()
     assert entidad is not None, 'Tabla entidades vacía — seed necesario'
-    from tests.conftest import documento_ancla_de_prueba
-    sol = Solicitud(expediente=expediente, tipo_solicitud=tipo_solicitud, entidad=entidad,
-                    documento_solicitud_id=documento_ancla_de_prueba(expediente.id).id)
-    db.session.add(sol)
-    db.session.flush()
-    return sol
+    from tests.conftest import ArbolESFTT
+    return ArbolESFTT(db).solicitud(expediente, tipo_solicitud, entidad)
 
 
 def _crear_fase_doc(db, solicitud, tipo_fase, resultado=None):

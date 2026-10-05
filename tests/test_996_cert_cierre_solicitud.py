@@ -265,17 +265,11 @@ def test_retirar_borra_vacia_el_ancla_y_el_siguiente_lo_relata(app_ctx, arbol_ai
 
 
 def test_retirar_bloqueado_si_una_tarea_lo_usa(app_ctx, arbol_aislado):
-    from app.models.solicitudes import Solicitud
-    from tests.conftest import documento_ancla_de_prueba
     solicitud = _resuelta(app_ctx, arbol_aislado, 'AAP')
     emision = _emitir(app_ctx, solicitud)
     # Otra solicitud del expediente lo usa como entrada (#997, hoy a mano).
-    otra = Solicitud(expediente_id=solicitud.expediente_id, entidad_id=solicitud.entidad_id,
-                     tipo_solicitud_id=solicitud.tipo_solicitud_id,
-                     documento_solicitud_id=documento_ancla_de_prueba(
-                         solicitud.expediente_id).id)
-    arbol_aislado.db.session.add(otra)
-    arbol_aislado.db.session.flush()
+    otra = arbol_aislado.solicitud(solicitud.expediente, solicitud.tipo_solicitud,
+                                   solicitud.entidad)
     tarea = arbol_aislado.tarea(arbol_aislado.tramite(
         arbol_aislado.fase('ANALISIS_SOLICITUD', solicitud=otra), 'ANALISIS_DOCUMENTAL'),
         'ANALIZAR')

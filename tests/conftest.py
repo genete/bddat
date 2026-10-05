@@ -591,7 +591,6 @@ class ArbolESFTT:
     def solicitud_nueva(self):
         """Solicitud aislada, sin fases: para el caso 'sin hijos' de _check_borrar,
         donde reutilizar `solicitud_existente()` arriesga hijos previos ajenos al test."""
-        from app.models.solicitudes import Solicitud
         from app.models.expedientes import Expediente
         from app.models.entidad import Entidad
         from app.models.tipos_solicitudes import TipoSolicitud
@@ -600,11 +599,7 @@ class ArbolESFTT:
         tipo = TipoSolicitud.query.first()
         if exp is None or ent is None or tipo is None:
             pytest.skip('Faltan expediente/entidad/tipo_solicitud base en la BD de desarrollo')
-        s = Solicitud(expediente_id=exp.id, entidad_id=ent.id, tipo_solicitud_id=tipo.id,
-                      documento_solicitud_id=documento_ancla_de_prueba(exp.id).id)
-        self.db.session.add(s)
-        self.db.session.flush()
-        return s
+        return self.solicitud(exp, tipo, ent)
 
     def solicitud_propia(self):
         """Solicitud de un expediente que fabrica este mismo builder (#428).
@@ -618,6 +613,27 @@ class ArbolESFTT:
         solicitud a disco. Usar la fixture `arbol_aislado`, que ya lo trae.
         """
         return crear_expediente_de_prueba().solicitud
+
+    def solicitud(self, expediente, tipo_solicitud, entidad):
+        """Solicitud de `tipo_solicitud` en un expediente que ya existe, con su
+        escrito de ancla (`documento_ancla_de_prueba`) y sin hijos.
+
+        Para el test que necesita un tipo concreto o una solicitud más en el mismo
+        expediente; la de `solicitud_propia()` nace por el alta real. Es el único
+        sitio de la suite que monta una `Solicitud` a mano (#1014), salvo el test
+        que la monta mal a propósito (`test_428`).
+
+        El expediente va por la relación, como la solicitud en `fase()`: si el test
+        ya leyó `expediente.solicitudes`, la lista incluye la nueva. El tipo y la
+        entidad van por el id: un test que los cambie después por el id
+        (`test_887` cambia el tipo) no se queda con el anterior en memoria."""
+        from app.models.solicitudes import Solicitud
+        s = Solicitud(expediente=expediente, tipo_solicitud_id=tipo_solicitud.id,
+                      entidad_id=entidad.id,
+                      documento_solicitud_id=documento_ancla_de_prueba(expediente.id).id)
+        self.db.session.add(s)
+        self.db.session.flush()
+        return s
 
     def tarea_propia(self, codigo_tarea, *, codigo_fase='ANALISIS_SOLICITUD',
                      codigo_tramite='ANALISIS_DOCUMENTAL'):

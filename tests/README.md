@@ -262,7 +262,8 @@ y ninguno decía cuál, así que el test no podía cumplir su papel de aviso.
    - `crear_expediente_de_prueba()` / fixture `alta_propia` — alta por la vía real.
    - `arbol_aislado` → `ArbolESFTT` con `solicitud_propia()`, `tarea_propia()`,
      `fase()`, `tramite()`, `documento()`, `diagnostico()`, `notificacion()`…
-   - `documento_ancla_de_prueba()` — si solo hace falta que la `Solicitud` exista.
+   - `ArbolESFTT.solicitud()` — una solicitud de un tipo concreto, o una más en el
+     mismo expediente, con su escrito de ancla (`documento_ancla_de_prueba()`).
    - `documento_con_contenido_de_prueba()` — un documento con fichero. Nunca escribir
      el fichero a mano: el corte de ADR-050 cambia este helper, no los tests (#1014).
 3. **Prefiere BD real a mocks.** Con `arbol_aislado` montar un árbol cuesta

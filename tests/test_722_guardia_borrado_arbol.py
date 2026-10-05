@@ -71,13 +71,8 @@ def _solicitud_vacia():
 
     # Ancla propia y no la de `base` (#428): son dos solicitudes distintas y el
     # documento de una no acredita a la otra.
-    from tests.conftest import documento_ancla_de_prueba
-    nueva = Solicitud(expediente_id=base.expediente_id, entidad_id=base.entidad_id,
-                      tipo_solicitud_id=base.tipo_solicitud_id,
-                      documento_solicitud_id=documento_ancla_de_prueba(base.expediente_id).id)
-    db.session.add(nueva)
-    db.session.flush()
-    return nueva
+    from tests.conftest import ArbolESFTT
+    return ArbolESFTT(db).solicitud(base.expediente, base.tipo_solicitud, base.entidad)
 
 
 # ---------------------------------------------------------------------------

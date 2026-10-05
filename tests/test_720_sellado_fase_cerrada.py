@@ -253,13 +253,7 @@ class TestReabrirFase:
         assert tipo_aap is not None, "la semilla debe traer el TipoSolicitud 'AAP'"
         tipo_fase_fin = _tipo(TipoFase, 'RESOLUCION')
 
-        from tests.conftest import documento_ancla_de_prueba
-        solicitud = Solicitud(
-            expediente_id=base.expediente_id, entidad_id=base.entidad_id,
-            tipo_solicitud_id=tipo_aap.id,
-            documento_solicitud_id=documento_ancla_de_prueba(base.expediente_id).id)
-        db.session.add(solicitud)
-        db.session.flush()
+        solicitud = ArbolESFTT(db).solicitud(base.expediente, tipo_aap, base.entidad)
 
         fase_simple = Fase(solicitud_id=solicitud.id,
                             tipo_fase_id=_tipo(TipoFase, 'ANALISIS_SOLICITUD').id)
