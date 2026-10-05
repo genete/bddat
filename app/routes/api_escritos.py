@@ -17,15 +17,9 @@ from flask_login import login_required
 from app import db
 from app.models.plantillas import Plantilla
 from app.models.tareas import Tarea
-from app.models.documentos import Documento
 from app.services.codigo_seguimiento import componer_codigo
 from app.services.escritos import ContextoBaseExpediente, solicitud_de, variables_destinatario
-from app.services.generador_escritos import (
-    generar_escrito,
-    componer_nombre_documento,
-    guardar_documento,
-    tipo_contenido_documento,
-)
+from app.services.generador_escritos import generar_escrito, componer_nombre_documento
 from app.services.regeneracion_escritos import evaluar_regeneracion, ejecutar_regeneracion
 from app.services.rutas_esftt import ruta_destino_esftt_fichero
 from app.utils.permisos import puede_editar_expediente
@@ -124,7 +118,7 @@ def listar_plantillas():
 @api_escritos_bp.route('/preview')
 @login_required
 def preview():
-    """Devuelve campos del contexto base, nombre propuesto y ruta destino."""
+    """Devuelve campos del contexto base y nombre propuesto."""
     plantilla_id = request.args.get('plantilla_id', type=int)
     tarea_id = request.args.get('tarea_id', type=int)
     if not plantilla_id or not tarea_id:
@@ -142,15 +136,8 @@ def preview():
     ctx = ContextoBaseExpediente(expediente, solicitud_de(tarea)).get_contexto()
     ctx.update(variables_destinatario(tarea))
 
-    # Nombre propuesto y ruta destino (ESFTT definitiva, #730 — ya no un
-    # intermedio en AT-N raíz que había que mover después)
     nombre = componer_nombre_documento(tarea, plantilla)
-    try:
-        ruta = ruta_destino_esftt_fichero(tarea, nombre)
-    except RuntimeError as e:
-        return jsonify(ok=False, error=str(e)), 503
-
-    return jsonify(ok=True, campos=ctx, nombre_propuesto=nombre, ruta_destino=ruta)
+    return jsonify(ok=True, campos=ctx, nombre_propuesto=nombre)
 
 
 # ------------------------------------------------------------------
@@ -281,10 +268,6 @@ def _asunto_escrito(plantilla):
     return asunto
 
 
-def _uri_explorador(ruta_abs):
-    return 'file:///' + os.path.dirname(ruta_abs).replace('\\', '/')
-
-
 def _respuesta_generado(documento, caso):
     ruta_abs = documento.ruta_absoluta()
     return jsonify(
@@ -293,76 +276,19 @@ def _respuesta_generado(documento, caso):
         nombre_fichero=os.path.basename(ruta_abs),
         ruta=ruta_abs,
         doc_id=documento.id,
-        uri_explorador=_uri_explorador(ruta_abs),
     )
-
-
-def _generar_producido(tarea, expediente, plantilla, doc_bytes, nombre_fichero, ruta):
-    """Circuito PRODUCIDO histórico (#167 B6), sin tocar su lógica de
-    identidad — fuera de alcance de #730 (reasignar un documento PRODUCIDO ya
-    firmado es un problema propio, ligado a automatizar firma+asignación sin
-    intervención del usuario; tendrá su propio issue). Solo cambia de dónde
-    sale `ruta` (ESFTT definitiva en vez del intermedio en AT-N raíz)."""
-    from app.models.documentos_tarea import DocumentoTarea
-    from app.services.mutaciones_arbol import _hook_717_elaborar_consumido_diagnostico
-
-    fs_base = current_app.config.get('FILESYSTEM_BASE', '')
-    guardar_documento(doc_bytes, ruta)
-    ruta_relativa = os.path.relpath(ruta, fs_base).replace(os.sep, '/')
-
-    doc_existente = Documento.query.filter_by(
-        expediente_id=expediente.id, url=ruta_relativa,
-    ).first()
-
-    if doc_existente:
-        doc = doc_existente
-        doc.tipo_doc_id = plantilla.tipo_documento_id
-    else:
-        doc = Documento(
-            expediente_id=expediente.id,
-            url=ruta_relativa,
-            tipo_doc_id=plantilla.tipo_documento_id,
-            tipo_contenido=tipo_contenido_documento(nombre_fichero),
-            fecha_administrativa=None,
-            prioridad=0,
-            asunto=_asunto_escrito(plantilla),
-        )
-        db.session.add(doc)
-
-    db.session.flush()
-    doc_id = doc.id
-
-    existente = next((v for v in tarea.vinculos_documento if v.rol == 'PRODUCIDO'), None)
-    id_producido_previo = existente.documento_id if existente else None
-    if existente:
-        existente.documento_id = doc_id
-    else:
-        tarea.vinculos_documento.append(DocumentoTarea(documento_id=doc_id, rol='PRODUCIDO'))
-
-    if doc_id != id_producido_previo:
-        db.session.flush()
-        _hook_717_elaborar_consumido_diagnostico(tarea, doc_id)
-
-    db.session.commit()
-    return jsonify(ok=True, nombre_fichero=nombre_fichero, ruta=ruta, doc_id=doc_id,
-                   uri_explorador=_uri_explorador(ruta))
 
 
 @api_escritos_bp.route('/generar', methods=['POST'])
 @login_required
 def generar():
-    """Genera el escrito.
-
-    - registrar_pool=False: comportamiento histórico, solo disco, sin BD.
-    - asignar_doc_producido=True: circuito PRODUCIDO, ver _generar_producido.
-    - Caso real (CONSUMIDO, #608 — único caller: ElaborarEditor.jsx): pasa por
-      la matriz de #730. Si hace falta decisión del usuario (colisión de
-      nombre o sustitución de contenido) no escribe nada y devuelve el caso
-      para que el frontend pida confirmación vía /generar/confirmar.
+    """Genera el escrito, lo registra en el pool y lo vincula como CONSUMIDO
+    de la tarea (#608 — único caller: ElaborarEditor.jsx), por la matriz de
+    #730. Si hace falta decisión del usuario (colisión de nombre o
+    sustitución de contenido) no escribe nada y devuelve el caso para que el
+    frontend pida confirmación vía /generar/confirmar.
     """
     data = request.get_json(silent=True) or {}
-    registrar_pool = data.get('registrar_pool', True)
-    asignar_doc_producido = data.get('asignar_doc_producido', True)
 
     try:
         tarea, expediente, plantilla, nombre_fichero, doc_bytes, fs_base = _preparar_generacion(data)
@@ -370,14 +296,6 @@ def generar():
         return e.respuesta()
 
     ruta = ruta_destino_esftt_fichero(tarea, nombre_fichero)
-
-    if not registrar_pool:
-        guardar_documento(doc_bytes, ruta)
-        return jsonify(ok=True, nombre_fichero=os.path.basename(ruta), ruta=ruta,
-                       doc_id=None, uri_explorador=_uri_explorador(ruta))
-
-    if asignar_doc_producido:
-        return _generar_producido(tarea, expediente, plantilla, doc_bytes, nombre_fichero, ruta)
 
     evaluacion = evaluar_regeneracion(
         tarea=tarea, rol='CONSUMIDO', tipo_doc_id=plantilla.tipo_documento_id,

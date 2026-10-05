@@ -71,6 +71,8 @@ _RE_PRIMER_ELEMENTO = re.compile(rb'<(?![?!])\s*([A-Za-z_][\w.:-]*)')
 # Prefijo del OID 1.2.840.113549.1.7 (PKCS#7 / CMS) en DER.
 _OID_PKCS7 = b'\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x07'
 
+# GEMELO EN JS: `MENSAJE` en app/static/js/subida-comprimidos.js, el aviso del
+# navegador al elegir un comprimido. Si cambia uno, cambiar el otro.
 _MENSAJE_COMPRIMIDO = (
     'Los ficheros comprimidos (ZIP, RAR, 7z) no se admiten: descomprímelo y sube cada '
     'documento por separado, con su fecha administrativa.')

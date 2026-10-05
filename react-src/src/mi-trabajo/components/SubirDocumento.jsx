@@ -1,7 +1,7 @@
 // SubirDocumento.jsx — alta de documentos al pool del expediente (#501, ADR-017 §4).
 //
 // La subida multipart (#666) vive en el gestor de documentos del pool
-// (pool_documentos.html), junto a "elegir del servidor" y "URL externa". Esta
+// (pool_documentos.html), junto a "URL externa". Esta
 // pestaña solo aporta lo que faltaba: ELEGIR el expediente (reutiliza /api/search,
 // el de Ctrl+K) y entrar a su gestor — un único método, un único sitio (feedback #4).
 import React, { useRef, useState } from 'react'
@@ -67,8 +67,8 @@ export default function SubirDocumento() {
             <div>
               <h6 className="mb-1"><i className="fas fa-folder-open me-1" /> {exp.label}</h6>
               <p className="text-secondary small mb-0">
-                Gestor de documentos del expediente: subir ficheros del servidor corporativo
-                (descargas de BandeJA, carpetas…) y registrar URLs externas (BOE, BOJA, Notifica…).
+                Gestor de documentos del expediente: subir ficheros desde tu equipo
+                (descargas de BandeJA, carpetas de red…) y registrar URLs externas (BOE, BOJA, Notifica…).
               </p>
             </div>
             <a className="btn btn-primary flex-shrink-0" href={`/expedientes/${exp.id}/documentos`}>

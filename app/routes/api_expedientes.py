@@ -1458,9 +1458,9 @@ def pool_documentos(expediente_id):
     GET /api/expedientes/<id>/pool — pool estructurado para la despensa de tareas (S3b-3).
 
     Devuelve: {documentos: [{id, nombre, tipo_doc, tipo_doc_codigo, fecha, enlace,
-    externo, puede_abrir_carpeta}]}, orden id DESC. enlace/puede_abrir_carpeta
-    permiten previsualizar cualquier documento del pool antes de decidir
-    enlazarlo, no solo los ya consumidos/producidos de la tarea (#609).
+    externo, puede_abrir, abrir_en}]}, orden id DESC. El enlace permite
+    previsualizar cualquier documento del pool antes de decidir enlazarlo, no
+    solo los ya consumidos/producidos de la tarea (#609).
     `tipo_doc_codigo` (#712): permite filtrar client-side (p.ej. los 4
     JUSTIFICANTE_* en el desplegable de NotificarEditor) sin endpoint aparte,
     reutilizando el pool que la Despensa ya carga una vez por sesión de la isla.

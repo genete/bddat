@@ -32,6 +32,7 @@ react-src/                         ← código fuente (NO se versiona node_modul
       mountIsland.js               ← auto-montaje en [data-react-island]
       auth.js                      ← getUser / tienePermiso / getRolActivo
       api.js                       ← wrapper fetch (401/403/CSRF)
+      subida.js                    ← quita los comprimidos al elegir ficheros (wrapper de subida-comprimidos.js)
       ui/
         toast.js                   ← toast Bootstrap imperativo
         Toast.jsx                  ← wrapper React del toast

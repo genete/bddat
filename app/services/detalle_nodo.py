@@ -12,7 +12,7 @@ Contrato del payload (acordado en implementación de #500, cierra deuda §15
       "nodo": {"tipo": str, "id": int},
       "campos": [{"etiqueta": str, "valor": str}, ...],   # adaptativo por nivel
       "documentos": [{"id","rol","nombre","tipo_doc","fecha","enlace","externo",
-                      "puede_abrir","puede_abrir_carpeta","abrir_en"}, ...],
+                      "puede_abrir","abrir_en"}, ...],
       "plazo": {"estado","fecha_limite","dias_restantes"} | null,  # solo ESPERAR_PLAZO
       "referencia": str,                                  # cadena de ancestros (§8)
     }
@@ -146,7 +146,6 @@ def info_apertura_documento(exp_id: int, doc, *, estricto: bool = True) -> dict:
                                       id=exp_id, fase_id=cert.fase_id),
                     'externo': False,
                     'puede_abrir': True,
-                    'puede_abrir_carpeta': False,
                     'abrir_en': 'modal',
                 }
             if cert is not None and cert.tipo == CERT_CIERRE_SOLICITUD:
@@ -157,14 +156,12 @@ def info_apertura_documento(exp_id: int, doc, *, estricto: bool = True) -> dict:
                                if solicitudes else None),
                     'externo': False,
                     'puede_abrir': bool(solicitudes),
-                    'puede_abrir_carpeta': False,
                     'abrir_en': 'modal' if solicitudes else None,
                 }
             return {
                 'enlace': url_for('expedientes.cert_pdf', cert_id=int(partes[1])),
                 'externo': False,
                 'puede_abrir': True,
-                'puede_abrir_carpeta': False,
                 'abrir_en': 'enlace',
             }
         if recurso == 'diagnosticos':
@@ -172,7 +169,6 @@ def info_apertura_documento(exp_id: int, doc, *, estricto: bool = True) -> dict:
                 'enlace': url_for('expedientes.diagnostico_modal', id=exp_id, doc_id=doc.id),
                 'externo': False,
                 'puede_abrir': True,
-                'puede_abrir_carpeta': False,
                 'abrir_en': 'modal',
             }
         if estricto:
@@ -181,16 +177,12 @@ def info_apertura_documento(exp_id: int, doc, *, estricto: bool = True) -> dict:
             'enlace': None,
             'externo': False,
             'puede_abrir': False,
-            'puede_abrir_carpeta': False,
             'abrir_en': None,
         }
-    externo = url.startswith(('http://', 'https://'))
     return {
         'enlace': url_for('expedientes.pool_descargar_documento', id=exp_id, doc_id=doc.id),
-        'externo': externo,
+        'externo': url.startswith(('http://', 'https://')),
         'puede_abrir': True,
-        # "Abrir carpeta del documento" solo aplica a ficheros locales (§8).
-        'puede_abrir_carpeta': not externo,
         'abrir_en': 'enlace',
     }
 

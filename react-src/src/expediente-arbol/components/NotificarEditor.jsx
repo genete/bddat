@@ -116,7 +116,7 @@ function BloqueRegistrarPuestaDisposicion({ expedienteId, tareaId, notificacion,
             <label className="form-label small text-muted mb-1">
               Justificante de puesta a disposición (opcional — solo para autorrellenar, no se guarda)
             </label>
-            <input type="file" accept=".pdf,.zip" className="form-control form-control-sm"
+            <input type="file" accept=".pdf" className="form-control form-control-sm"
                    disabled={parseando || enviando} onChange={adjuntar} />
             {parseando && <div className="text-muted small mt-1">Parseando…</div>}
             {notaParseo && (

@@ -586,6 +586,8 @@
     const tiposSelect  = document.getElementById('tipo-solicitud-select');
     const tiposError   = document.getElementById('tipos-error');
 
+    fichero.addEventListener('change', function () { quitar_comprimidos(fichero); });
+
     document.getElementById('form-alta').addEventListener('submit', function (e) {
         let ok = true;
 

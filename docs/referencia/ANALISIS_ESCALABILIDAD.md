@@ -220,6 +220,10 @@ No: circuit breaker. No: cola de tareas. No: almacén de objetos.
 
 ### 3.6 `explorer /select` en el servidor — dos necesidades distintas, una ya resuelta
 
+> **Superado (2026-10-05):** ADR-050 retira las dos funciones sin sustituto (#1007, PR 3,
+> que absorbe #853): con el almacén no queda carpeta legible que abrir. Lo que sigue es el
+> análisis anterior.
+
 **Diagnóstico (código verificado 2026-09-17):** `pool_abrir_en_carpeta`
 (`app/modules/expedientes/routes.py:1189-1226`) y `abrir_carpeta_expediente`
 (`:1229-1257`) ejecutan `subprocess.Popen('explorer /select,"<ruta>"',

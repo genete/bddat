@@ -3,6 +3,7 @@
 > **Issue principal:** #167
 > **Fecha análisis:** 2026-03-15 (3 sesiones)
 > **Estado:** Análisis completo. Cabos 1-5 cerrados. Implementación pendiente → #277 (M2).
+> **Actualizado:** 2026-10-05 (#1007, PR 3) — B4 y B5: fuera las casillas de «generar» y `asignar_doc_producido`.
 > **Actualizado:** 2026-07-30 (#726) — motor ODT implementado y elección por extensión; ver §"Formato de plantilla".
 > **Actualizado:** 2026-07-30 (#182) — **R10 resuelto**: los metadatos no sobreviven al pipeline; sólo el texto renderizado. Las plantillas pasan a `.odt` por **ADR-035**. Ver §"Trazabilidad — códigos embebidos" y §"Formato de plantilla".
 > **Actualizado:** 2026-07-31 (#182) — **Composición, inyección real y extracción implementadas**. Las tres decisiones que quedaban abiertas (colocación, alcance de páginas, dígito de control) están cerradas. Ver §"Trazabilidad — códigos embebidos".
@@ -246,8 +247,7 @@ el documento se fotocopia o se separan páginas sueltas).
 
 **#717 implementado (2026-08-01):** consumo de `extraer_tarea_id()` para el
 vínculo `CONSUMIDO` sobre el diagnóstico. Al vincular el documento producido
-de un ELABORAR de REQUERIMIENTO_SUBSANACION (`editar_tarea` o
-`POST /api/escritos/generar` con `asignar_doc_producido=true`), se extrae el
+de un ELABORAR de REQUERIMIENTO_SUBSANACION (`editar_tarea`), se extrae el
 texto del fichero local (`app/services/extraccion_texto_documento.py` — pypdf
 para `.pdf`, zipfile+lxml para `.odt`) y, si el código embebido acredita que
 salió de *esta* tarea, se deriva el `CONSUMIDO` sobre el diagnóstico del
@@ -371,8 +371,8 @@ la base canónica correspondiente.
 | B1 | Botón "Generar escrito" en tarea REDACTAR | Botón en la card de tarea (Fase 5) |
 | B2 | Selección de plantilla filtrada por contexto ESFTT | Lista con NULLs como comodines (Fase 5) |
 | B3 | Preview de campos antes de generar | Valores del expediente + alerta si vacío (Fase 5) |
-| B4 | Guardado con nombre sistematizado + checkboxes | Checkboxes: registrar pool + asignar doc_producido (Fase 5) |
-| B5 | Abrir carpeta contenedora tras generar | Checkbox → protocolo `bddat-explorador://` (Fase 5) |
+| B4 | Guardado con nombre sistematizado | Siempre al pool y vinculado como CONSUMIDO (#608); sin casillas (#1007) |
+| B5 | Abrir carpeta contenedora tras generar | Retirada (ADR-050, #1007): con el almacén no hay carpeta que abrir |
 | B6 | Regeneración: sobrescritura transparente | Aviso + reemplazo binario en disco (Fase 5) |
 | B8 | Generar = iniciar tarea | Si `fecha_inicio is None` → asignar `date.today()` (Fase 5) |
 

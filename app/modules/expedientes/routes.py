@@ -42,9 +42,7 @@ from app.models.tipos_documentos import TipoDocumento
 from app.services.ingesta_pool import ingestar_en_pool
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
 from app.services.detalle_nodo import info_apertura_documento
-from app.services.parser_justificante_notifica import (
-    parsear_justificante_notifica, parsear_justificante_notifica_zip,
-)
+from app.services.parser_justificante_notifica import parsear_justificante_notifica
 from app.services.notificaciones import fecha_sugerida
 from app.services.assembler import build_sujeto
 from app.services.reformados import (
@@ -695,123 +693,6 @@ def pool_documentos_json(id):
     return jsonify({'ok': True, 'docs': docs})
 
 
-def _path_seguro(ruta_relativa, base):
-    """
-    Devuelve ruta absoluta si está dentro de base; None si intenta path traversal.
-    ruta_relativa usa '/' como separador (enviado por JS).
-    """
-    base_norm = os.path.normpath(os.path.abspath(base))
-    if ruta_relativa:
-        ruta_full = os.path.normpath(os.path.join(base, ruta_relativa.replace('/', os.sep)))
-    else:
-        ruta_full = base_norm
-    if ruta_full != base_norm and not ruta_full.startswith(base_norm + os.sep):
-        return None
-    return ruta_full
-
-
-@bp.route('/<int:id>/documentos/explorador-fs')
-@login_required
-def pool_explorador_fs(id):
-    """Explorador de carpetas del servidor de ficheros — devuelve JSON."""
-    expediente = Expediente.query.get_or_404(id)
-    resultado = verificar_acceso_expediente(expediente, 'ver')
-    if resultado:
-        return resultado
-
-    base = current_app.config.get('FILESYSTEM_BASE', '')
-    if not base or not os.path.isdir(base):
-        return jsonify({'ok': False, 'error': 'Servidor de ficheros no accesible'}), 503
-
-    ruta_rel = request.args.get('ruta', '').strip('/\\ ')
-    ruta_abs = _path_seguro(ruta_rel, base)
-    if not ruta_abs or not os.path.isdir(ruta_abs):
-        return jsonify({'ok': False, 'error': 'Ruta no válida'}), 400
-
-    try:
-        dirs, files = [], []
-        for e in sorted(os.scandir(ruta_abs), key=lambda x: (not x.is_dir(), x.name.lower())):
-            rel = os.path.relpath(e.path, base).replace(os.sep, '/')
-            if e.is_dir(follow_symlinks=False):
-                dirs.append({'nombre': e.name, 'ruta': rel})
-            elif e.is_file(follow_symlinks=False):
-                ext = e.name.rsplit('.', 1)[-1].lower() if '.' in e.name else ''
-                files.append({'nombre': e.name, 'ruta': rel,
-                              'tamano': e.stat().st_size, 'ext': ext})
-    except PermissionError:
-        return jsonify({'ok': False, 'error': 'Sin permisos en esta carpeta'}), 403
-
-    partes = ruta_rel.split('/') if ruta_rel else []
-    return jsonify({'ok': True, 'partes': partes, 'directorios': dirs, 'ficheros': files})
-
-
-@bp.route('/<int:id>/documentos/registrar-rutas', methods=['POST'])
-@login_required
-def pool_registrar_rutas(id):
-    """
-    Registra ficheros del servidor de ficheros en el pool del expediente.
-
-    Recibe JSON: [{ruta, tipo_doc_id, fecha_administrativa, asunto, prioridad}, ...]
-    donde ruta es relativa a FILESYSTEM_BASE (con '/' como separador).
-    Almacena la ruta relativa a FILESYSTEM_BASE en Documento.url (ADR-032).
-
-    Permiso 'subir_documento' (ADR-027 / #501): aportar al pool no edita el
-    expediente — el documento nace sin vínculo (huérfano) y es el técnico quien
-    decide si lo encaja. Sin limitación de rol.
-    """
-    expediente = Expediente.query.get_or_404(id)
-    resultado = verificar_acceso_expediente(expediente, 'subir_documento')
-    if resultado:
-        return resultado
-
-    base = current_app.config.get('FILESYSTEM_BASE', '')
-    if not base or not os.path.isdir(base):
-        return jsonify({'ok': False, 'error': 'Servidor de ficheros no accesible'}), 503
-
-    items = request.get_json(silent=True)
-    if not isinstance(items, list) or not items:
-        return jsonify({'ok': False, 'error': 'Payload inválido'}), 400
-
-    creados = 0
-    try:
-        for item in items:
-            ruta_rel = (item.get('ruta') or '').strip()
-            if not ruta_rel:
-                continue
-            ruta_abs = _path_seguro(ruta_rel, base)
-            if not ruta_abs or not os.path.isfile(ruta_abs):
-                continue
-            ruta_rel_norm = os.path.relpath(ruta_abs, base).replace(os.sep, '/')
-
-            fecha_admin = None
-            fecha_raw = item.get('fecha_administrativa') or None
-            if fecha_raw:
-                try:
-                    fecha_admin = date.fromisoformat(fecha_raw)
-                except ValueError:
-                    pass
-
-            doc = Documento(
-                expediente_id=id,
-                url=ruta_rel_norm,
-                tipo_doc_id=int(item.get('tipo_doc_id') or 1),
-                fecha_administrativa=fecha_admin,
-                asunto=(item.get('asunto') or '').strip() or None,
-                prioridad=1 if item.get('prioridad') else 0,
-            )
-            db.session.add(doc)
-            db.session.flush()   # el corte necesita el id del documento
-            declarar_desde_metadatos(doc, item, usuario_id=current_user.id)
-            creados += 1
-
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'ok': False, 'error': str(e)}), 500
-
-    return jsonify({'ok': True, 'creados': creados})
-
-
 @bp.route('/<int:id>/documentos/subir', methods=['POST'])
 @login_required
 def pool_subir_documento(id):
@@ -835,7 +716,9 @@ def pool_subir_documento(id):
     permiso, el 503, el parseo del JSON de metadatos, el commit del lote y la
     traducción del error a código de estado.
 
-    Permiso 'subir_documento' (ADR-027 / #501): igual que pool_registrar_rutas.
+    Permiso 'subir_documento' (ADR-027 / #501): aportar al pool no edita el
+    expediente — el documento nace sin vínculo (huérfano) y es el técnico quien
+    decide si lo encaja. Sin limitación de rol.
     """
     expediente = Expediente.query.get_or_404(id)
     resultado = verificar_acceso_expediente(expediente, 'subir_documento')
@@ -943,11 +826,7 @@ def pool_parsear_justificante(id):
     if not fichero or not fichero.filename:
         return jsonify({'error': 'Ningún fichero recibido'}), 400
 
-    nombre = fichero.filename.lower()
-    if nombre.endswith('.zip'):
-        parseo = parsear_justificante_notifica_zip(fichero.stream)
-    else:
-        parseo = parsear_justificante_notifica(fichero.stream)
+    parseo = parsear_justificante_notifica(fichero.stream)
 
     payload = parseo.to_dict()
     sugerida = fecha_sugerida(request.form.get('tipo_doc_codigo'), parseo)
@@ -1124,7 +1003,7 @@ def pool_registrar_url_externa(id):
     sin subir ningún fichero. Recibe JSON, devuelve JSON.
 
     Permiso 'subir_documento' (ADR-027 / #501): aportar al pool no edita el
-    expediente; sin limitación de rol (igual que pool_registrar_rutas).
+    expediente; sin limitación de rol (igual que pool_subir_documento).
     """
     expediente = Expediente.query.get_or_404(id)
     resultado = verificar_acceso_expediente(expediente, 'subir_documento')
@@ -1364,76 +1243,5 @@ def pool_borrar_documento(id, doc_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
     return jsonify({'ok': True})
-
-
-@bp.route('/<int:id>/documentos/<int:doc_id>/abrir-en-carpeta', methods=['POST'])
-@login_required
-def pool_abrir_en_carpeta(id, doc_id):
-    """
-    Abre el Explorador de Windows enfocando el archivo.
-
-    Requiere que Flask corra en el mismo PC que el navegador (despliegue local).
-    No funciona con URLs externas ni si el fichero no existe en disco.
-    """
-    import subprocess
-
-    expediente = Expediente.query.get_or_404(id)
-    resultado = verificar_acceso_expediente(expediente, 'ver')
-    if resultado:
-        return resultado
-
-    doc = Documento.query.get_or_404(doc_id)
-    if doc.expediente_id != id:
-        abort(404)
-
-    url = doc.url or ''
-    if url.startswith(('http://', 'https://')):
-        return jsonify({'ok': False, 'error': 'No aplicable a URLs externas'}), 400
-
-    try:
-        ruta_abs = doc.ruta_absoluta()
-    except (RuntimeError, ValueError) as e:
-        return jsonify({'ok': False, 'error': str(e)}), 404
-    if not os.path.isfile(ruta_abs):
-        return jsonify({'ok': False, 'error': 'Fichero no encontrado en disco'}), 404
-
-    try:
-        # shell=True necesario: explorer.exe no parsea /select,ruta como argumento de lista.
-        # La ruta viene de BD (ya validada), no de input directo del usuario.
-        subprocess.Popen(f'explorer /select,"{ruta_abs}"', shell=True)
-        return jsonify({'ok': True})
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-@bp.route('/<int:id>/abrir-carpeta', methods=['POST'])
-@login_required
-def abrir_carpeta_expediente(id):
-    """
-    Abre el Explorador de Windows en la carpeta del expediente (FILESYSTEM_BASE/AT-N).
-
-    Acción rápida del inspector de la vista de árbol (#500, ADR-016 §5). Misma
-    limitación que pool_abrir_en_carpeta: Flask debe correr en el PC del navegador.
-    """
-    import subprocess
-
-    expediente = Expediente.query.get_or_404(id)
-    resultado = verificar_acceso_expediente(expediente, 'ver')
-    if resultado:
-        return resultado
-
-    base = current_app.config.get('FILESYSTEM_BASE', '')
-    if not base or not os.path.isdir(base):
-        return jsonify({'ok': False, 'error': 'Servidor de ficheros no accesible'}), 503
-
-    carpeta = os.path.normpath(os.path.join(os.path.abspath(base), f'AT-{expediente.numero_at}'))
-    if not os.path.isdir(carpeta):
-        return jsonify({'ok': False, 'error': 'La carpeta del expediente aún no existe'}), 404
-
-    try:
-        subprocess.Popen(f'explorer "{carpeta}"', shell=True)
-        return jsonify({'ok': True})
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
 
 

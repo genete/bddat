@@ -24,7 +24,7 @@ ENDPOINT:
                 "id": 1, "expediente_id": 5, "num_at": 1234,
                 "responsable": {"id": 3, "siglas": "CLG"} | null,
                 "tipo_doc": "Alegación", "asunto": "...", "nombre": "fichero.pdf",
-                "enlace": "...", "externo": false, "puede_abrir_carpeta": true, "abrir_en": "enlace"
+                "enlace": "...", "externo": false, "puede_abrir": true, "abrir_en": "enlace"
             }, ...],
             "next_cursor": 5, "has_more": true
         }

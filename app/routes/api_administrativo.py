@@ -16,7 +16,7 @@ ENDPOINT:
         Respuesta: {'data': [...], 'next_cursor': int, 'has_more': bool}
 
 La SUBIDA de documentos NO tiene endpoint propio: reutiliza el flujo del pool ya
-existente (expedientes.pool_registrar_rutas / pool_registrar_url_externa), abierto
+existente (expedientes.pool_subir_documento / pool_registrar_url_externa), abierto
 a todos los roles vía permiso 'subir_documento' (ADR-027 / #501).
 
 La cola es visible para todos los roles (ADR-013): solo requiere sesión.

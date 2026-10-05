@@ -27,20 +27,6 @@
     box-shadow: 0 0 0 3px var(--bs-primary-bg-subtle);
   }
   /* .asunto-celda: estructura definida en la regla td:nth-child(3) de #pool-tabla */
-  /* Panel de seleccionados (explorador) */
-  .panel-seleccionados {
-    max-height: 110px;
-    overflow-y: auto;
-    background: var(--bs-light);
-    border: 1px solid var(--bs-border-color);
-    border-radius: 0.375rem;
-    padding: 0.4rem 0.6rem;
-  }
-  /* Explorador de carpetas */
-  .fs-item { cursor: pointer; }
-  .fs-item:hover { background-color: var(--bs-primary-bg-subtle); }
-  .fs-breadcrumb a { cursor: pointer; text-decoration: none; }
-  .fs-breadcrumb a:hover { text-decoration: underline; }
   /* Línea separadora pertenece a C.1 (borde inferior), no al inicio de C.2 */
   .lista-cabecera { border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
   /* border-collapse:separate permite sticky thead sin artefactos de subpixel.
@@ -161,18 +147,9 @@
   </div>
 
   <div class="content-constrained">
-  <!-- Tres fichas de entrada -->
+  <!-- Dos fichas de entrada -->
   <div class="row g-2 mb-2 mt-2">
-    <div class="col-4">
-      <div class="card ficha-entrada h-100" onclick="abrir_explorador()">
-        <div class="card-body text-center py-3">
-          <i class="fas fa-server fa-2x mb-2 text-primary"></i>
-          <div class="fw-semibold">Seleccionar del servidor</div>
-          <div class="small text-secondary">Archivos del servidor corporativo</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-4">
+    <div class="col-6">
       <div class="card ficha-entrada h-100" onclick="abrir_modal_subir()">
         <div class="card-body text-center py-3">
           <i class="fas fa-upload fa-2x mb-2 text-primary"></i>
@@ -181,7 +158,7 @@
         </div>
       </div>
     </div>
-    <div class="col-4">
+    <div class="col-6">
       <div class="card ficha-entrada h-100" onclick="abrir_modal_url_externa()">
         <div class="card-body text-center py-3">
           <i class="fas fa-link fa-2x mb-2 text-primary"></i>
@@ -366,14 +343,6 @@
           {% endif %}
         </td>
         <td class="text-end text-nowrap">
-          {% if item.apertura.puede_abrir_carpeta %}
-          <button type="button" class="btn btn-sm btn-outline-primary"
-                  title="Abrir ubicación en el Explorador de Windows"
-                  data-bs-toggle="tooltip" data-bs-placement="top"
-                  onclick="abrir_en_carpeta('{{ url_for('expedientes.pool_abrir_en_carpeta', id=expediente.id, doc_id=doc.id) }}')">
-            <i class="fas fa-folder-open"></i>
-          </button>
-          {% endif %}
           <button type="button" class="btn btn-sm btn-outline-primary"
                   title="Editar metadatos"
                   onclick="abrir_modal_editar(this)"
@@ -417,108 +386,6 @@
   </div>
   {% endif %}
 
-</div>
-
-
-<!-- ============================================================ -->
-<!-- Modal: Explorador de servidor de ficheros (dos pasos)        -->
-<!-- ============================================================ -->
-<div class="modal fade" id="modal-explorador" tabindex="-1" aria-labelledby="modal-explorador-label">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modal-explorador-label">
-          <i class="fas fa-server me-1"></i> Seleccionar ficheros del servidor
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-
-        <!-- Paso 1: Explorador de carpetas -->
-        <div id="paso-explorador">
-          <nav class="fs-breadcrumb mb-2 small" id="fs-breadcrumb">
-            <span class="text-secondary">Cargando…</span>
-          </nav>
-          <div id="fs-error" class="alert alert-danger d-none"></div>
-
-          <div class="table-responsive" style="max-height:35vh; overflow-y:auto;">
-            <table class="table table-sm table-hover align-middle mb-0">
-              <thead class="table-light sticky-top">
-                <tr>
-                  <th style="width:2rem">
-                    <input type="checkbox" class="form-check-input" id="fs-check-todos"
-                           onchange="toggle_todos_fs(this.checked)"
-                           title="Seleccionar todos los ficheros de esta carpeta">
-                  </th>
-                  <th>Nombre</th>
-                  <th>Tamaño</th>
-                  <th>Ext.</th>
-                </tr>
-              </thead>
-              <tbody id="fs-tbody">
-                <tr><td colspan="4" class="text-center text-secondary py-3">
-                  <i class="fas fa-spinner fa-spin me-1"></i> Cargando…
-                </td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Panel de seleccionados -->
-          <div id="panel-sel-wrap" class="mt-2 d-none">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <span class="small fw-semibold" id="fs-contador">0 fichero(s) seleccionado(s)</span>
-              <button type="button" class="btn btn-link btn-sm p-0 text-secondary"
-                      onclick="limpiar_seleccion_fs()">Limpiar</button>
-            </div>
-            <div class="panel-seleccionados" id="lista-seleccionados"></div>
-          </div>
-          <div class="mt-1 small text-secondary" id="fs-contador-vacio">
-            0 fichero(s) seleccionado(s) — puedes seleccionar de varias carpetas
-          </div>
-        </div>
-
-        <!-- Paso 2: Metadatos -->
-        <div id="paso-metadatos" class="d-none">
-          <p class="text-secondary small mb-2" id="meta-contador"></p>
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle">
-              <thead class="table-light">
-                <tr>
-                  <th>Nombre</th>
-                  <th>Tamaño</th>
-                  <th style="min-width:180px">Tipo de documento</th>
-                  <th style="min-width:155px">Fecha adm.</th>
-                  <th class="text-center">Prioritario</th>
-                  <th style="min-width:190px">Reformado de proyecto</th>
-                </tr>
-              </thead>
-              <tbody id="meta-tbody"></tbody>
-            </table>
-          </div>
-          <div id="meta-error" class="alert alert-danger d-none"></div>
-        </div>
-
-      </div>
-      <div class="modal-footer">
-        {# Paso 1 #}
-        <button type="button" class="btn btn-secondary" id="btn-exp-cancelar"
-                data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="btn-exp-siguiente"
-                onclick="ir_a_metadatos()" disabled>
-          Siguiente <i class="fas fa-arrow-right ms-1"></i>
-        </button>
-        {# Paso 2 — ocultos al inicio #}
-        <button type="button" class="btn btn-outline-secondary d-none" id="btn-meta-volver"
-                onclick="volver_a_explorador()">
-          <i class="fas fa-arrow-left me-1"></i> Volver
-        </button>
-        <button type="button" class="btn btn-primary d-none" id="btn-meta-registrar"
-                onclick="registrar_rutas('{{ url_for('expedientes.pool_registrar_rutas', id=expediente.id) }}')">
-          <i class="fas fa-save me-1"></i> <span id="btn-meta-texto">Registrar</span>
-        </button>
-      </div>
-    </div>
-  </div>
 </div>
 
 
@@ -765,7 +632,6 @@
   'use strict';
 
   var URL_BASE_DOCS  = '{{ url_for('expedientes.pool_documentos', id=expediente.id) }}';
-  var URL_EXPLORADOR = '{{ url_for('expedientes.pool_explorador_fs', id=expediente.id) }}';
   var URL_PARSEAR_JUSTIFICANTE = '{{ url_for('expedientes.pool_parsear_justificante', id=expediente.id) }}';
 
   // Qué se le pregunta a un DOC_PROYECTO que entre ahora (ADR-044 §C): el
@@ -776,7 +642,6 @@
   // ----------------------------------------------------------------
   // Modales Bootstrap
   // ----------------------------------------------------------------
-  var _modal_exp_bs     = null;
   var _modal_url_ext_bs = null;
   var _modal_editar_bs  = null;
   var _modal_editar_el  = document.getElementById('modal-editar-doc');
@@ -791,23 +656,11 @@
   var _ef_editar  = null;
   var _ef_url_ext = null;
   var _ef_masivo  = null;
-  var _ef_metas   = [];   // una por fila en paso 2
-
-  // ----------------------------------------------------------------
-  // Estado explorador
-  // ----------------------------------------------------------------
-  var _ruta_actual   = '';
-  var _seleccionados = [];   // [{ruta, nombre, ext, tamano}]
 
   // ----------------------------------------------------------------
   // Estado edición masiva (tabla)
   // ----------------------------------------------------------------
   var _masivo_ids = new Set();
-
-  // ----------------------------------------------------------------
-  // Docs registrados en sesión (para toast al cerrar)
-  // ----------------------------------------------------------------
-  var _registrados_sesion = 0;
 
   // ================================================================
   // INIT
@@ -843,23 +696,6 @@
       if (el) el.addEventListener('input', aplicar_filtro);
     });
 
-    var el_modal = document.getElementById('modal-explorador');
-    _modal_exp_bs = new bootstrap.Modal(el_modal);
-
-    el_modal.addEventListener('show.bs.modal', function () {
-      _ruta_actual        = '';
-      _seleccionados      = [];
-      _registrados_sesion = 0;
-      mostrar_paso_explorador();
-      cargar_carpeta('');
-    });
-    el_modal.addEventListener('hidden.bs.modal', function () {
-      resetear_explorador();
-      if (_registrados_sesion === 0) {
-        mostrar_toast('info', 'Carga cancelada — se han registrado 0 documentos.');
-      }
-    });
-
     // EntradaFecha — al abrir modales que los contienen
     document.getElementById('modal-url-externa').addEventListener('show.bs.modal', function () {
       if (!_ef_url_ext) _ef_url_ext = new EntradaFecha('#ef-url-ext-fecha', { name: '_f_url_ext', maxHoy: EF_MAX_HOY });
@@ -876,171 +712,7 @@
   });
 
   // ================================================================
-  // EXPLORADOR — navegación
-  // ================================================================
-  window.abrir_explorador = function () {
-    _modal_exp_bs.show();
-  };
-
-  function cargar_carpeta(ruta) {
-    _ruta_actual = ruta;
-    document.getElementById('fs-error').classList.add('d-none');
-    document.getElementById('fs-check-todos').checked = false;
-    document.getElementById('fs-tbody').innerHTML =
-      '<tr><td colspan="4" class="text-center text-secondary py-3">' +
-      '<i class="fas fa-spinner fa-spin me-1"></i> Cargando…</td></tr>';
-
-    fetch(URL_EXPLORADOR + '?ruta=' + encodeURIComponent(ruta))
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      if (!data.ok) {
-        mostrar_error_exp(data.error || 'Error al cargar carpeta.');
-        return;
-      }
-      renderizar_breadcrumb(data.partes);
-      renderizar_contenido(data.directorios, data.ficheros);
-    })
-    .catch(function () {
-      mostrar_error_exp('Error de red al acceder al servidor de ficheros.');
-    });
-  }
-
-  function renderizar_breadcrumb(partes) {
-    var bc   = document.getElementById('fs-breadcrumb');
-    var html = '<a onclick="cargar_carpeta(\'\')" class="text-primary">Raíz</a>';
-    var acum = [];
-    partes.forEach(function (p, i) {
-      acum.push(p);
-      var ruta = acum.join('/');
-      if (i < partes.length - 1) {
-        html += ' <span class="text-secondary">›</span> <a onclick="cargar_carpeta(\'' +
-                escapar_attr(ruta) + '\')" class="text-primary">' + escapar_html(p) + '</a>';
-      } else {
-        html += ' <span class="text-secondary">›</span> <span class="fw-semibold">' +
-                escapar_html(p) + '</span>';
-      }
-    });
-    bc.innerHTML = html;
-  }
-
-  function renderizar_contenido(dirs, files) {
-    var tbody = document.getElementById('fs-tbody');
-    tbody.innerHTML = '';
-
-    // Subir un nivel
-    if (_ruta_actual) {
-      var partes = _ruta_actual.split('/');
-      partes.pop();
-      var padre = partes.join('/');
-      var tr_up = document.createElement('tr');
-      tr_up.className = 'fs-item';
-      tr_up.innerHTML =
-        '<td></td>' +
-        '<td colspan="3"><i class="fas fa-level-up-alt text-secondary me-1"></i>' +
-        '<em class="text-secondary">← Subir un nivel</em></td>';
-      tr_up.onclick = function () { cargar_carpeta(padre); };
-      tbody.appendChild(tr_up);
-    }
-
-    dirs.forEach(function (d) {
-      var tr = document.createElement('tr');
-      tr.className = 'fs-item';
-      tr.innerHTML =
-        '<td></td>' +
-        '<td colspan="3"><i class="fas fa-folder text-warning me-1"></i>' +
-        '<strong>' + escapar_html(d.nombre) + '</strong></td>';
-      tr.onclick = function () { cargar_carpeta(d.ruta); };
-      tbody.appendChild(tr);
-    });
-
-    files.forEach(function (f) {
-      var tr = document.createElement('tr');
-      tr._fs_item = f;
-      var checked = _seleccionados.some(function (s) { return s.ruta === f.ruta; });
-      tr.innerHTML =
-        '<td><input type="checkbox" class="form-check-input fs-check"' +
-        (checked ? ' checked' : '') + '></td>' +
-        '<td class="small">' + escapar_html(f.nombre) + '</td>' +
-        '<td class="small text-secondary text-nowrap">' + formatear_bytes(f.tamano) + '</td>' +
-        '<td class="small text-secondary">' + escapar_html(f.ext) + '</td>';
-      tr.querySelector('.fs-check').addEventListener('change', function (e) {
-        if (e.target.checked) {
-          if (!_seleccionados.some(function (s) { return s.ruta === f.ruta; })) {
-            _seleccionados.push(f);
-          }
-        } else {
-          _seleccionados = _seleccionados.filter(function (s) { return s.ruta !== f.ruta; });
-        }
-        actualizar_panel_seleccionados();
-      });
-      tbody.appendChild(tr);
-    });
-
-    if (dirs.length === 0 && files.length === 0) {
-      var tr_vac = document.createElement('tr');
-      tr_vac.innerHTML = '<td colspan="4" class="text-center text-secondary py-3">Carpeta vacía</td>';
-      tbody.appendChild(tr_vac);
-    }
-
-    actualizar_panel_seleccionados();
-  }
-
-  window.toggle_todos_fs = function (checked) {
-    document.querySelectorAll('#fs-tbody .fs-check').forEach(function (chk) {
-      var tr = chk.closest('tr');
-      if (!tr || !tr._fs_item) return;
-      var f = tr._fs_item;
-      chk.checked = checked;
-      if (checked) {
-        if (!_seleccionados.some(function (s) { return s.ruta === f.ruta; })) {
-          _seleccionados.push(f);
-        }
-      } else {
-        _seleccionados = _seleccionados.filter(function (s) { return s.ruta !== f.ruta; });
-      }
-    });
-    actualizar_panel_seleccionados();
-  };
-
-  window.limpiar_seleccion_fs = function () {
-    _seleccionados = [];
-    document.querySelectorAll('#fs-tbody .fs-check').forEach(function (c) { c.checked = false; });
-    document.getElementById('fs-check-todos').checked = false;
-    actualizar_panel_seleccionados();
-  };
-
-  function actualizar_panel_seleccionados() {
-    var n     = _seleccionados.length;
-    var wrap  = document.getElementById('panel-sel-wrap');
-    var vacio = document.getElementById('fs-contador-vacio');
-    document.getElementById('btn-exp-siguiente').disabled = (n === 0);
-
-    if (n === 0) {
-      wrap.classList.add('d-none');
-      vacio.classList.remove('d-none');
-    } else {
-      wrap.classList.remove('d-none');
-      vacio.classList.add('d-none');
-      document.getElementById('fs-contador').textContent = n + ' fichero(s) seleccionado(s)';
-      document.getElementById('lista-seleccionados').innerHTML =
-        _seleccionados.map(function (f) {
-          return '<div class="small"><i class="fas fa-file fa-xs me-1 text-secondary"></i>' +
-                 escapar_html(f.nombre) +
-                 ' <span class="text-secondary" style="font-size:0.78em">' +
-                 escapar_html(f.ruta) + '</span></div>';
-        }).join('');
-    }
-  }
-
-  function mostrar_error_exp(msg) {
-    var el = document.getElementById('fs-error');
-    el.textContent = msg;
-    el.classList.remove('d-none');
-    document.getElementById('fs-tbody').innerHTML = '';
-  }
-
-  // ================================================================
-  // PASO 2 — metadatos
+  // METADATOS DE LA SUBIDA
   // ================================================================
   // ----------------------------------------------------------------
   // Los dos controles del proyecto en el paso de metadatos (ADR-044 §C)
@@ -1146,123 +818,6 @@
       abre_reformado:   !control.classList.contains('d-none') && check.checked,
       origen_reformado: tr.querySelector('.reformado-origen').value,
     };
-  }
-
-  window.ir_a_metadatos = function () {
-    if (_seleccionados.length === 0) return;
-    mostrar_paso_metadatos();
-
-    var tmpl_tipos = document.getElementById('tmpl-tipos-doc').innerHTML;
-    var tbody = document.getElementById('meta-tbody');
-    tbody.innerHTML = '';
-    _ef_metas = [];
-
-    _seleccionados.forEach(function (f, i) {
-      var tr    = document.createElement('tr');
-      tr._ruta  = f.ruta;
-      var ef_id = 'ef-meta-fecha-' + i;
-      tr.innerHTML =
-        '<td class="small">' + escapar_html(f.nombre) + '</td>' +
-        '<td class="small text-secondary text-nowrap">' + formatear_bytes(f.tamano) + '</td>' +
-        '<td><select class="form-select form-select-sm tipo-doc-select">' + tmpl_tipos + '</select></td>' +
-        '<td><div id="' + ef_id + '"></div></td>' +
-        '<td class="text-center"><input type="checkbox" class="form-check-input prioridad-check"></td>' +
-        celda_reformado('meta', i);
-      tbody.appendChild(tr);
-      _ef_metas.push(new EntradaFecha('#' + ef_id, { name: '_ef_meta_' + i, maxHoy: EF_MAX_HOY }));
-      enganchar_reformado(tr);
-    });
-
-    var n = _seleccionados.length;
-    document.getElementById('meta-contador').textContent =
-      n + ' fichero(s) listos para registrar';
-    document.getElementById('btn-meta-texto').textContent =
-      'Registrar ' + n + ' fichero(s)';
-    document.getElementById('meta-error').classList.add('d-none');
-  };
-
-  window.volver_a_explorador = function () {
-    mostrar_paso_explorador();
-  };
-
-  function mostrar_paso_explorador() {
-    document.getElementById('paso-explorador').classList.remove('d-none');
-    document.getElementById('paso-metadatos').classList.add('d-none');
-    document.getElementById('btn-exp-cancelar').classList.remove('d-none');
-    document.getElementById('btn-exp-siguiente').classList.remove('d-none');
-    document.getElementById('btn-meta-volver').classList.add('d-none');
-    document.getElementById('btn-meta-registrar').classList.add('d-none');
-  }
-
-  function mostrar_paso_metadatos() {
-    document.getElementById('paso-explorador').classList.add('d-none');
-    document.getElementById('paso-metadatos').classList.remove('d-none');
-    document.getElementById('btn-exp-cancelar').classList.add('d-none');
-    document.getElementById('btn-exp-siguiente').classList.add('d-none');
-    document.getElementById('btn-meta-volver').classList.remove('d-none');
-    document.getElementById('btn-meta-registrar').classList.remove('d-none');
-  }
-
-  window.registrar_rutas = function (url_registrar) {
-    var payload = [];
-    document.querySelectorAll('#meta-tbody tr').forEach(function (tr, i) {
-      payload.push(Object.assign({
-        ruta:                 tr._ruta,
-        tipo_doc_id:          tr.querySelector('.tipo-doc-select').value || '1',
-        fecha_administrativa: _ef_metas[i] ? _ef_metas[i].getValue() : null,
-        prioridad:            tr.querySelector('.prioridad-check').checked,
-      }, datos_reformado(tr)));
-    });
-    if (payload.length === 0) return;
-
-    var btn = document.getElementById('btn-meta-registrar');
-    btn.disabled = true;
-
-    fetch(url_registrar, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      if (data.ok) {
-        _registrados_sesion = data.creados || payload.length;
-        // Cerrar modal → el evento hidden.bs.modal ve _registrados_sesion > 0 y NO muestra
-        // el toast de cancelación. Mostramos el toast de éxito con un delay.
-        bootstrap.Modal.getInstance(
-          document.getElementById('modal-explorador')
-        ).hide();
-        setTimeout(function () {
-          mostrar_toast('success',
-            'Se han registrado ' + _registrados_sesion + ' documento(s) en el pool.');
-          setTimeout(function () { window.location.reload(); }, 1800);
-        }, 350);
-      } else {
-        document.getElementById('meta-error').textContent = data.error || 'Error al registrar.';
-        document.getElementById('meta-error').classList.remove('d-none');
-        btn.disabled = false;
-      }
-    })
-    .catch(function () {
-      document.getElementById('meta-error').textContent = 'Error de red.';
-      document.getElementById('meta-error').classList.remove('d-none');
-      btn.disabled = false;
-    });
-  };
-
-  function resetear_explorador() {
-    _ruta_actual = '';
-    _seleccionados = [];
-    _ef_metas = [];
-    mostrar_paso_explorador();
-    document.getElementById('fs-tbody').innerHTML      = '';
-    document.getElementById('fs-breadcrumb').innerHTML = '';
-    document.getElementById('fs-error').classList.add('d-none');
-    document.getElementById('meta-tbody').innerHTML    = '';
-    document.getElementById('meta-error').classList.add('d-none');
-    document.getElementById('btn-exp-siguiente').disabled = true;
-    document.getElementById('fs-check-todos').checked     = false;
-    actualizar_panel_seleccionados();
   }
 
   // ================================================================
@@ -1472,7 +1027,7 @@
       _modal_subir_bs = new bootstrap.Modal(document.getElementById('modal-subir'));
       document.getElementById('modal-subir').addEventListener('hidden.bs.modal', resetear_modal_subir);
       document.getElementById('subir-input-ficheros').addEventListener('change', function (e) {
-        _archivos_subir = Array.from(e.target.files || []);
+        _archivos_subir = quitar_comprimidos(e.target);
         document.getElementById('btn-subir-siguiente').disabled = (_archivos_subir.length === 0);
       });
     }
@@ -1803,32 +1358,12 @@
   };
 
   // ================================================================
-  // ABRIR EN EXPLORADOR DE WINDOWS
-  // ================================================================
-  window.abrir_en_carpeta = function (url_abrir) {
-    fetch(url_abrir, { method: 'POST' })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      if (!data.ok) {
-        mostrar_toast('warning', data.error || 'No se pudo abrir el Explorador.');
-      }
-    })
-    .catch(function () {
-      mostrar_toast('danger', 'Error de red al abrir en carpeta.');
-    });
-  };
-
-  // ================================================================
   // UTILIDADES
   // ================================================================
   function escapar_html(str) {
     return String(str)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  function escapar_attr(str) {
-    return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   }
 
   function formatear_bytes(bytes) {
