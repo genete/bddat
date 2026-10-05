@@ -16,8 +16,8 @@
 // (un PDF), no la mera presencia de otros consumidos — sigue en PENDIENTE_
 // REDACTAR. El resto del ciclo (PDF corregido con tipo BORRADOR_FIRMA como
 // consumido → PENDIENTE_FIRMA; PDF firmado como producido → FIN) ya funciona
-// con el mecanismo genérico de la Despensa (+Consumido/+Producido) y con el
-// alta de documentos vía explorador de servidor — no se toca aquí. Por eso la
+// con el mecanismo genérico de la Despensa (+Consumido/+Producido) y con la
+// subida de documentos al pool — no se toca aquí. Por eso la
 // Despensa NO se deshabilita para ELABORAR (a diferencia de ANALIZAR): sigue
 // siendo el único punto donde se vinculan el borrador de firma y el documento
 // firmado.

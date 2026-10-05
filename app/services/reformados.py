@@ -124,8 +124,8 @@ def exigir_fecha_administrativa(tipo_doc_id, fecha) -> None:
 def declarar_desde_metadatos(documento, metadatos: dict, *, usuario_id: int):
     """Aplica a un documento recién ingestado la respuesta del paso de metadatos.
 
-    Punto único de las tres puertas de alta del pool —multipart, rutas del servidor
-    y URL externa—, y donde vive la bifurcación de §C: **la rama la decide el estado
+    Punto único de las dos puertas de alta del pool —subida multipart y URL
+    externa—, y donde vive la bifurcación de §C: **la rama la decide el estado
     del ancla, no el cliente**. Así, en un lote de varios DOC_PROYECTO el primero
     puede anclar el proyecto y el siguiente ya se encuentra la otra pregunta, sin que
     quepan dos principales.
