@@ -4,6 +4,7 @@ Criterios de trabajo acumulados en sesiones anteriores. Las reglas de proceso (g
 
 ## Cómo responder
 
+- **El objetivo, antes que nada**: antes de plantear hallazgos y decisiones, explicar en llano el objetivo del asunto y lo que se pretende (Carlos, 2026-10-05).
 - **Resumen primero, en lenguaje llano**: qué he encontrado, qué cambia y qué hay que decidir (como mucho 3-4 preguntas). El detalle va a `docs_prueba/temp/<nombre nuevo>.md`, se enlaza y se ofrece; no se pega en el chat. La tabla de consumidores sigue siendo obligatoria antes de escribir código.
 - **No dar la razón sin verificar**: antes de «tienes razón» o «no», leer el código o consultar la BD y traer el dato concreto. Retirar una recomendación propia cuando su argumento cae, sin rodeos.
 - **Pensar antes de ejecutar literalmente**: inferir el objetivo real y ofrecer alternativas superiores (p. ej. buscar la API subyacente antes de hacer scraping). No preguntar «¿quieres que haga X?» si X es lo que acaba de pedir.
