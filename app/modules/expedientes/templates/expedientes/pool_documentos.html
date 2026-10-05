@@ -366,14 +366,6 @@
           {% endif %}
         </td>
         <td class="text-end text-nowrap">
-          {% if item.apertura.puede_abrir_carpeta %}
-          <button type="button" class="btn btn-sm btn-outline-primary"
-                  title="Abrir ubicación en el Explorador de Windows"
-                  data-bs-toggle="tooltip" data-bs-placement="top"
-                  onclick="abrir_en_carpeta('{{ url_for('expedientes.pool_abrir_en_carpeta', id=expediente.id, doc_id=doc.id) }}')">
-            <i class="fas fa-folder-open"></i>
-          </button>
-          {% endif %}
           <button type="button" class="btn btn-sm btn-outline-primary"
                   title="Editar metadatos"
                   onclick="abrir_modal_editar(this)"
@@ -1799,22 +1791,6 @@
     })
     .catch(function () {
       mostrar_toast('danger', 'Error de red al borrar.');
-    });
-  };
-
-  // ================================================================
-  // ABRIR EN EXPLORADOR DE WINDOWS
-  // ================================================================
-  window.abrir_en_carpeta = function (url_abrir) {
-    fetch(url_abrir, { method: 'POST' })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      if (!data.ok) {
-        mostrar_toast('warning', data.error || 'No se pudo abrir el Explorador.');
-      }
-    })
-    .catch(function () {
-      mostrar_toast('danger', 'Error de red al abrir en carpeta.');
     });
   };
 

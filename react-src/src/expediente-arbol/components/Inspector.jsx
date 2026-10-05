@@ -2,12 +2,11 @@
 //
 // S3a (lectura): cabecera (tipo+nombre+estado+semáforo, tomada del árbol del store)
 // + datos finos y documentos del detalle lazy (§16) + plazo + agregados del subárbol
-// + acciones rápidas no destructivas (abrir doc, abrir carpeta, copiar referencia).
+// + acciones rápidas no destructivas (abrir doc, copiar referencia).
 // Edición / despensa → S3b.
 import React from 'react'
 import { createPortal } from 'react-dom'
 import { useArbolStore, selectHayCambios } from '../store.js'
-import { api } from '../../shared/api.js'
 import { showToast } from '../../shared/ui/toast.js'
 import { puedeEditarNodo } from '../../shared/auth.js'
 import { estaSellado } from '../sellado.js'
@@ -111,15 +110,6 @@ async function copiarReferencia(ref) {
     showToast('Referencia copiada al portapapeles', 'success')
   } catch {
     showToast('No se pudo copiar la referencia', 'danger')
-  }
-}
-
-async function postAccion(url, okMsg) {
-  try {
-    await api.post(url)
-    if (okMsg) showToast(okMsg, 'success')
-  } catch (e) {
-    showToast((e && e.message) || 'No se pudo completar la acción', 'danger')
   }
 }
 
@@ -231,7 +221,7 @@ function Organismos({ organismos, seleccionar }) {
   )
 }
 
-function Documentos({ documentos, expedienteId }) {
+function Documentos({ documentos }) {
   if (!documentos || documentos.length === 0) return null
   return (
     <div className="mb-3">
@@ -263,17 +253,6 @@ function Documentos({ documentos, expedienteId }) {
                   {d.nombre}
                 </span>
               )}
-              {d.puede_abrir_carpeta && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-link p-0 text-secondary"
-                  title="Abrir carpeta del documento"
-                  onClick={() => postAccion(
-                    `/expedientes/${expedienteId}/documentos/${d.id}/abrir-en-carpeta`)}
-                >
-                  <i className="bi bi-folder2-open" />
-                </button>
-              )}
             </div>
             <div className="small text-muted ms-4">
               {ROL_DOC[d.rol] || d.rol}
@@ -287,25 +266,17 @@ function Documentos({ documentos, expedienteId }) {
   )
 }
 
-function Acciones({ referencia, expedienteId }) {
+function Acciones({ referencia }) {
+  if (!referencia) return null
   return (
     <div className="d-flex flex-wrap gap-2 border-top pt-3 mt-auto">
       <button
         type="button"
         className="btn btn-sm btn-outline-secondary"
-        onClick={() => postAccion(`/expedientes/${expedienteId}/abrir-carpeta`)}
+        onClick={() => copiarReferencia(referencia)}
       >
-        <i className="bi bi-folder2 me-1" />Abrir carpeta
+        <i className="bi bi-clipboard me-1" />Copiar referencia
       </button>
-      {referencia && (
-        <button
-          type="button"
-          className="btn btn-sm btn-outline-secondary"
-          onClick={() => copiarReferencia(referencia)}
-        >
-          <i className="bi bi-clipboard me-1" />Copiar referencia
-        </button>
-      )}
     </div>
   )
 }
@@ -1244,7 +1215,6 @@ export default function Inspector() {
   const detalle = useArbolStore((s) => s.detalle)
   const cargando = useArbolStore((s) => s.detalleCargando)
   const error = useArbolStore((s) => s.detalleError)
-  const expedienteId = useArbolStore((s) => s.expedienteId)
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
   const entrarEdicion = useArbolStore((s) => s.entrarEdicion)
 
@@ -1300,12 +1270,12 @@ export default function Inspector() {
           {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
           <Plazo plazo={detalle.plazo} />
           <Organismos organismos={detalle.organismos} seleccionar={seleccionar} />
-          <Documentos documentos={detalle.documentos} expedienteId={expedienteId} />
+          <Documentos documentos={detalle.documentos} />
         </>
       )}
 
       {detalle && !cargando && (
-        <Acciones referencia={detalle.referencia} expedienteId={expedienteId} />
+        <Acciones referencia={detalle.referencia} />
       )}
     </div>
   )

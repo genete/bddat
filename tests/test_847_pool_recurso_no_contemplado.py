@@ -39,7 +39,6 @@ class TestInfoAperturaDocumento:
             'enlace': None,
             'externo': False,
             'puede_abrir': False,
-            'puede_abrir_carpeta': False,
             'abrir_en': None,
         }
 

@@ -620,7 +620,7 @@ export const useArbolStore = create((set, get) => ({
   // derecho es una acción puntual sobre el nodo, no un cambio de foco: no debe
   // tocar `seleccion` ni el `detalle` del inspector abierto para otro nodo.
   // Carga tipos-creables (submenú) y, en menuDetalle, lo que necesitan
-  // "Copiar referencia"/"Abrir documento"/"Abrir carpeta" del propio menú.
+  // "Copiar referencia"/"Abrir documento" del propio menú.
   abrirMenu: async (x, y, sel) => {
     set({ menuCtx: { x, y, sel }, menuDetalle: null })
     if (sel.tipo !== 'tarea') get().cargarTiposCreables(sel)

@@ -281,10 +281,6 @@ def _asunto_escrito(plantilla):
     return asunto
 
 
-def _uri_explorador(ruta_abs):
-    return 'file:///' + os.path.dirname(ruta_abs).replace('\\', '/')
-
-
 def _respuesta_generado(documento, caso):
     ruta_abs = documento.ruta_absoluta()
     return jsonify(
@@ -293,7 +289,6 @@ def _respuesta_generado(documento, caso):
         nombre_fichero=os.path.basename(ruta_abs),
         ruta=ruta_abs,
         doc_id=documento.id,
-        uri_explorador=_uri_explorador(ruta_abs),
     )
 
 
@@ -344,8 +339,7 @@ def _generar_producido(tarea, expediente, plantilla, doc_bytes, nombre_fichero, 
         _hook_717_elaborar_consumido_diagnostico(tarea, doc_id)
 
     db.session.commit()
-    return jsonify(ok=True, nombre_fichero=nombre_fichero, ruta=ruta, doc_id=doc_id,
-                   uri_explorador=_uri_explorador(ruta))
+    return jsonify(ok=True, nombre_fichero=nombre_fichero, ruta=ruta, doc_id=doc_id)
 
 
 @api_escritos_bp.route('/generar', methods=['POST'])
@@ -373,8 +367,7 @@ def generar():
 
     if not registrar_pool:
         guardar_documento(doc_bytes, ruta)
-        return jsonify(ok=True, nombre_fichero=os.path.basename(ruta), ruta=ruta,
-                       doc_id=None, uri_explorador=_uri_explorador(ruta))
+        return jsonify(ok=True, nombre_fichero=os.path.basename(ruta), ruta=ruta, doc_id=None)
 
     if asignar_doc_producido:
         return _generar_producido(tarea, expediente, plantilla, doc_bytes, nombre_fichero, ruta)

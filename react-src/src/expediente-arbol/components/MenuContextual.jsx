@@ -3,7 +3,6 @@
 // Estado de posición/visibilidad en el store (menuCtx) para que NodoTareas pueda abrirlo.
 import React, { useState, useEffect, useRef } from 'react'
 import { useArbolStore } from '../store.js'
-import { api } from '../../shared/api.js'
 import { showToast } from '../../shared/ui/toast.js'
 import { puedeEditarNodo, puedeCrearHijoDe } from '../../shared/auth.js'
 import { estaSellado } from '../sellado.js'
@@ -18,11 +17,6 @@ async function copiarReferencia(ref) {
   }
 }
 
-async function postAccion(url) {
-  try { await api.post(url) }
-  catch (e) { showToast((e && e.message) || 'No se pudo completar la acción', 'danger') }
-}
-
 const MENU_W = 220
 const MENU_H = 220
 
@@ -33,7 +27,6 @@ export default function MenuContextual() {
   const tiposCreablesCargando = useArbolStore((s) => s.tiposCreablesCargando)
   const menuDetalle           = useArbolStore((s) => s.menuDetalle)
   const arbol                 = useArbolStore((s) => s.arbol)
-  const expedienteId          = useArbolStore((s) => s.expedienteId)
   const entrarEdicion         = useArbolStore((s) => s.entrarEdicion)
   const tipoCreacionPendiente = useArbolStore((s) => s.tipoCreacionPendiente)
   const bloqueoActual         = useArbolStore((s) => s.bloqueoActual)
@@ -100,10 +93,6 @@ export default function MenuContextual() {
   const consumidos = menuDetalle?.documentos?.filter((d) => d.rol === 'CONSUMIDO') || []
   // Consumidos con enlace de apertura (bddat:// sin representación, p.ej. diagnósticos, no lo tienen — #610)
   const consumidosAbribles = consumidos.filter((d) => d.puede_abrir)
-  // Carpeta del documento: producido con carpeta > primer consumido con carpeta > expediente
-  const docParaCarpeta = producido?.puede_abrir_carpeta
-    ? producido
-    : consumidos.find((d) => d.puede_abrir_carpeta) || null
 
   const handleEditar = () => { entrarEdicion(sel); cerrarMenu() }
 
@@ -115,16 +104,6 @@ export default function MenuContextual() {
     seleccionarTipoCrear({ tipo_id: tipo.tipo_id, codigo: tipo.codigo, nombre: tipo.nombre }, sel)
     await crearHijo()
     if (!useArbolStore.getState().bloqueoActual) cerrarMenu()
-  }
-
-  const handleCarpetaDoc = (doc) => {
-    postAccion(`/expedientes/${expedienteId}/documentos/${doc.id}/abrir-en-carpeta`)
-    cerrarMenu()
-  }
-
-  const handleCarpetaExp = () => {
-    postAccion(`/expedientes/${expedienteId}/abrir-carpeta`)
-    cerrarMenu()
   }
 
   const handleCopiarRef = () => {
@@ -251,17 +230,6 @@ export default function MenuContextual() {
       )}
 
       <div className="arbol-menu__sep" />
-
-      {/* ── Carpeta ── */}
-      {esTarea && docParaCarpeta ? (
-        <div className="arbol-menu__item" onClick={() => handleCarpetaDoc(docParaCarpeta)}>
-          📂 Abrir carpeta del documento
-        </div>
-      ) : (
-        <div className="arbol-menu__item" onClick={handleCarpetaExp}>
-          📂 Abrir carpeta del expediente
-        </div>
-      )}
 
       <div className="arbol-menu__item" onClick={handleCopiarRef}>
         📋 Copiar referencia

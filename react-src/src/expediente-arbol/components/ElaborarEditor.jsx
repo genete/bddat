@@ -27,7 +27,6 @@
 import React from 'react'
 import { useArbolStore } from '../store.js'
 import { getEscritosPlantillas, getEscritosPreview, postEscritosGenerar, postEscritosGenerarConfirmar } from '../api.js'
-import { api } from '../../shared/api.js'
 import { showToast } from '../../shared/ui/toast.js'
 import BloqueNotas from './BloqueNotas.jsx'
 
@@ -93,16 +92,6 @@ function ConfirmarRegeneracion({ caso, colisionNombre, confirmando, onDecidir })
   )
 }
 
-// Abre el Explorador de Windows enfocando el fichero, ejecutado en el SERVIDOR
-// (subprocess.Popen, requiere Flask en el mismo PC — despliegue local). Mismo
-// endpoint que el icono "abrir carpeta" del bloque Documentos en modo lectura
-// (Inspector.jsx). uri_explorador (file://) NO sirve: el navegador bloquea
-// window.open a file:// desde una página http.
-function abrirEnCarpeta(expedienteId, docId) {
-  api.post(`/expedientes/${expedienteId}/documentos/${docId}/abrir-en-carpeta`)
-    .catch((e) => showToast((e && e.message) || 'No se pudo abrir la carpeta', 'danger'))
-}
-
 // Campos de contexto a mostrar en el preview (mismo subconjunto que el modal legacy).
 const CAMPOS_PREVIEW = [
   ['numero_at', 'N.º AT'],
@@ -128,14 +117,13 @@ function PreviewCampos({ campos }) {
 // Núcleo: generar un escrito desde plantilla. Vive siempre en el Inspector de
 // edición de una tarea ELABORAR no ejecutada — no hay lista, es una acción
 // única por tarea (una tarea produce a lo sumo un documento).
-function GenerarEscrito({ tareaId, expedienteId, onGenerado }) {
+function GenerarEscrito({ tareaId, onGenerado }) {
   const [plantillas, setPlantillas] = React.useState([])
   const [cargandoPlantillas, setCargandoPlantillas] = React.useState(true)
   const [plantillaId, setPlantillaId] = React.useState('')
   const [preview, setPreview] = React.useState(null)
   const [cargandoPreview, setCargandoPreview] = React.useState(false)
   const [nombreFichero, setNombreFichero] = React.useState('')
-  const [abrirCarpeta, setAbrirCarpeta] = React.useState(false)
   const [generando, setGenerando] = React.useState(false)
   const [resultado, setResultado] = React.useState(null)
   // Caso de la matriz #730 que requiere decisión del usuario antes de escribir
@@ -175,10 +163,6 @@ function GenerarEscrito({ tareaId, expedienteId, onGenerado }) {
     if (CASOS_CON_PANEL.has(data.caso)) setResultado(data)
     showToast(_mensajeCaso(data), data.caso === 3 ? 'info' : 'success')
     await onGenerado(data.doc_id)
-    // Abrir después de onGenerado (#729): mover_a_esftt ya ha reubicado el
-    // fichero para cuando el Explorador resuelve la ruta — antes había una
-    // carrera con el fichero todavía en AT-N/.
-    if (abrirCarpeta && data.doc_id) abrirEnCarpeta(expedienteId, data.doc_id)
   }
 
   const generar = async () => {
@@ -248,7 +232,7 @@ function GenerarEscrito({ tareaId, expedienteId, onGenerado }) {
             {preview && !cargandoPreview && (
               <>
                 <PreviewCampos campos={preview.campos || {}} />
-                <div className="mb-2">
+                <div className="mb-3">
                   <label className="form-label small text-muted mb-1">Nombre de fichero</label>
                   <input
                     type="text"
@@ -257,19 +241,6 @@ function GenerarEscrito({ tareaId, expedienteId, onGenerado }) {
                     disabled={generando}
                     onChange={(e) => setNombreFichero(e.target.value)}
                   />
-                </div>
-                <div className="form-check mb-3">
-                  <input
-                    type="checkbox"
-                    className="form-check-input"
-                    id="ge-abrir-carpeta"
-                    checked={abrirCarpeta}
-                    disabled={generando}
-                    onChange={(e) => setAbrirCarpeta(e.target.checked)}
-                  />
-                  <label className="form-check-label small" htmlFor="ge-abrir-carpeta">
-                    Abrir carpeta al generar
-                  </label>
                 </div>
                 {confirmacionPendiente ? (
                   <ConfirmarRegeneracion
@@ -313,8 +284,6 @@ function GenerarEscrito({ tareaId, expedienteId, onGenerado }) {
 }
 
 export default function ElaborarEditor({ tareaId, nodo }) {
-  const expedienteId = useArbolStore((s) => s.expedienteId)
-
   const ejecutada = !!(nodo && nodo.doc_producido && nodo.doc_producido.presente)
 
   // Vincula el .docx recién generado como CONSUMIDO y persiste de inmediato —
@@ -344,7 +313,7 @@ export default function ElaborarEditor({ tareaId, nodo }) {
           </div>
         </div>
       ) : (
-        <GenerarEscrito tareaId={tareaId} expedienteId={expedienteId} onGenerado={onGenerado} />
+        <GenerarEscrito tareaId={tareaId} onGenerado={onGenerado} />
       )}
 
       <BloqueNotas />

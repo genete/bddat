@@ -332,7 +332,7 @@ export function postNotificarParsearDocumento(expedienteId, tareaId, documentoId
 // usuario (colisión de nombre o sustitución de contenido) no escribe nada y
 // devuelve {ok, requiere_confirmacion:true, caso, colision_nombre,
 // documento_existente_id} — ver postEscritosGenerarConfirmar. Si no hace
-// falta decisión: {ok, caso, nombre_fichero, ruta, doc_id, uri_explorador}.
+// falta decisión: {ok, caso, nombre_fichero, ruta, doc_id}.
 export function postEscritosGenerar(plantillaId, tareaId, nombreFichero) {
   return api.post('/api/escritos/generar', {
     plantilla_id: plantillaId,
