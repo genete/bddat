@@ -275,8 +275,8 @@ export function getEscritosPlantillas(tareaId) {
   return api.get(`/api/escritos/plantillas?tarea_id=${tareaId}`)
 }
 
-// Preview de campos + nombre/ruta propuestos antes de generar.
-// Respuesta: {ok, campos, nombre_propuesto, ruta_destino}.
+// Preview de campos + nombre propuesto antes de generar.
+// Respuesta: {ok, campos, nombre_propuesto}.
 export function getEscritosPreview(plantillaId, tareaId) {
   return api.get(`/api/escritos/preview?plantilla_id=${plantillaId}&tarea_id=${tareaId}`)
 }
@@ -325,9 +325,9 @@ export function postNotificarParsearDocumento(expedienteId, tareaId, documentoId
   )
 }
 
-// Genera el .docx y lo guarda en disco + pool (#608: asignar_doc_producido siempre
-// false — el .docx es un auxiliar de trabajo, no dispara cambio de estado de la
-// tarea; el ciclo BORRADOR_FIRMA/firmado se gestiona aparte vía Despensa).
+// Genera el escrito y lo guarda en disco + pool (#608: el escrito es un auxiliar
+// de trabajo, no dispara cambio de estado de la tarea; el ciclo
+// BORRADOR_FIRMA/firmado se gestiona aparte vía Despensa).
 // El draft de la tarea es único (#730): si ya existe y hace falta decisión del
 // usuario (colisión de nombre o sustitución de contenido) no escribe nada y
 // devuelve {ok, requiere_confirmacion:true, caso, colision_nombre,
@@ -338,8 +338,6 @@ export function postEscritosGenerar(plantillaId, tareaId, nombreFichero) {
     plantilla_id: plantillaId,
     tarea_id: tareaId,
     nombre_fichero: nombreFichero,
-    registrar_pool: true,
-    asignar_doc_producido: false,
   })
 }
 

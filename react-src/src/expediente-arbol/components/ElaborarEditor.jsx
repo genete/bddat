@@ -6,9 +6,9 @@
 // el sistema Jinja "BC" que lo alojaba se eliminó en #500.
 //
 // Alcance acordado (#608): el .docx generado es un auxiliar de trabajo, no un
-// documento de expediente — se genera, se registra en el pool (asignar_doc_
-// producido:false, ver api.js) y se vincula como CONSUMIDO de inmediato
-// (onGenerado, más abajo) para que la tarea deje rastro de que ya existe un
+// documento de expediente — se genera, se registra en el pool y se vincula
+// como CONSUMIDO de inmediato (onGenerado, más abajo) para que la tarea deje
+// rastro de que ya existe un
 // borrador en curso — sin esto, volver a editar la tarea mostraba otra vez el
 // formulario vacío, como si no se hubiera hecho nada. Vincularlo como
 // CONSUMIDO (nunca PRODUCIDO) es inocuo para el semáforo: MODELO_ESTADOS_
