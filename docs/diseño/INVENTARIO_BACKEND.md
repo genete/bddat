@@ -1,7 +1,7 @@
 # Inventario de backend — Fase 2.5
 
 > Insumo neutro para la fase 3 del revamping de UI. Datos objetivos sobre modelos, motor, servicios, ADRs e issues abiertos. Sin propuestas de cambio.
-> Fecha del corte: 2026-05-28. Actualizado el 2026-10-03 (#1007, ADR-050 fase 1) solo en §1.3, §8 y §10.6.4; el resto sigue siendo el corte de mayo.
+> Fecha del corte: 2026-05-28. Actualizado el 2026-10-03 (#1007, ADR-050 fase 1) solo en §1.3, §8 y §10.6.4, y el 2026-10-05 (#1007, PR 3) en §6.2; el resto sigue siendo el corte de mayo.
 
 ---
 
@@ -319,7 +319,7 @@ Selección (#785): de las entradas activas del nivel, se descartan las cuyo `cam
 ### 6.2 APIs en `app/modules/*/routes.py`
 
 - `admin_plantillas`: 5 endpoints JSON (`/api/admin_plantillas/tipos-solicitud`, `/tipos-fase`, `/tipos-tramite`, `/fs`, `/tokens`).
-- `expedientes` (pool documentos): `/expedientes/<id>/documentos/json`, `/explorador-fs`, `/registrar-rutas`, `/url-externa`, `/editar`, `/borrar`, `/abrir-en-carpeta`.
+- `expedientes` (pool documentos): `/expedientes/<id>/documentos/json`, `/subir`, `/url-externa`, `/editar`, `/borrar`. El registro in situ (`/explorador-fs`, `/registrar-rutas`) y «abrir carpeta» (`/abrir-en-carpeta`, `/expedientes/<id>/abrir-carpeta`) se retiraron en #1007 (ADR-050).
 
 ---
 

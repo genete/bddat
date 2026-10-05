@@ -1,6 +1,6 @@
 # ARQUITECTURA — Subsistema Documental
 
-> **Sesión de diseño:** 2026-03-04 | **Actualizado:** 2026-03-18
+> **Sesión de diseño:** 2026-03-04 | **Actualizado:** 2026-03-18; el ZIP, 2026-10-05 (#1007)
 > Decisiones tomadas antes de entrar en M1 sistema documental (#166) y M2 generación escritos (#167).
 > Documentos relacionados: `DISEÑO_MOTOR_REGLAS.md`, `GUIA_CONTEXT_BUILDERS.md`, `PLAN_ROADMAP.md`
 
@@ -106,8 +106,9 @@ las fases `ADMISIBILIDAD` y `ANALISIS_TECNICO`.
 
 Un ZIP no permite verificar la presencia de tipos específicos exigidos por la legislación.
 Los documentos deben incorporarse individualmente con su `tipo_doc_id`.
-El ZIP puede conservarse como referencia histórica del paquete original de registro,
-pero no como sustituto de los documentos individuales clasificados.
+El ZIP no se admite, tampoco como referencia histórica (ADR-050 §E, 2026-10-02): los
+ficheros de dentro pueden tener fechas administrativas distintas, y es el usuario quien
+lo descomprime y da a cada documento su fecha.
 
 ---
 
@@ -249,5 +250,5 @@ API REST: `app/routes/api_escritos.py` — endpoints `/api/escritos/plantillas`,
 | `fecha_administrativa` | Nullable (dos semánticas de NULL documentadas) | NOT NULL con fecha placeholder |
 | `prioridad` | Mantener, pseudo-bool, validación solo frontend | Eliminar / CHECK constraint BD |
 | Carga inicial al pool | Pantalla de gestión (#180), sin tarea ESFTT | Tarea INCORPORAR (eliminada ADR-004) |
-| ZIP como documento | Solo referencia histórica, no unidad de trabajo | Documento clasificable |
+| ZIP como documento | No se admite (ADR-050 §E) | Documento clasificable; referencia histórica |
 | Requisitos documentales legales | Issue #192 (M5, futuro) | Sin soporte |
