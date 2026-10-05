@@ -47,7 +47,7 @@ def _odt_bytes(texto: str) -> bytes:
     return buffer.getvalue()
 
 
-def _doc_producido_elaborar(tarea_elaborar, tmp_path, texto: str):
+def _doc_producido_elaborar(tarea_elaborar, texto: str):
     """Crea en BD y en disco el documento PRODUCIDO de `tarea_elaborar`.
 
     `texto` es el contenido íntegro del .odt — normalmente el código de
@@ -55,18 +55,14 @@ def _doc_producido_elaborar(tarea_elaborar, tmp_path, texto: str):
     probar las guardas de "sin token" / "token ajeno".
     """
     from app import db
-    from app.models.documentos import Documento
     from app.models.documentos_tarea import DocumentoTarea
     from app.models.tipos_documentos import TipoDocumento
-
-    expediente_id = tarea_elaborar.tramite.fase.solicitud.expediente_id
-    nombre = f'escrito_{tarea_elaborar.id}.odt'
-    (tmp_path / nombre).write_bytes(_odt_bytes(texto))
+    from tests.conftest import documento_con_contenido_de_prueba
 
     tipo_doc = TipoDocumento.query.first()
-    doc = Documento(expediente_id=expediente_id, tipo_doc_id=tipo_doc.id, url=nombre)
-    db.session.add(doc)
-    db.session.flush()
+    doc = documento_con_contenido_de_prueba(
+        f'escrito_{tarea_elaborar.id}.odt', _odt_bytes(texto),
+        expediente_id=tarea_elaborar.tramite.fase.solicitud.expediente_id, tipo_doc_id=tipo_doc.id)
     db.session.add(DocumentoTarea(tarea_id=tarea_elaborar.id, documento_id=doc.id, rol='PRODUCIDO'))
     db.session.flush()
     return doc
@@ -110,7 +106,7 @@ class TestHook717Derivacion:
 
         _, tarea_elaborar, diagnostico = _montar_cadena('desfavorable')
         codigo = componer_codigo(tarea_elaborar.id)
-        doc = _doc_producido_elaborar(tarea_elaborar, fs_tmp, f'Cabecera\n{codigo}\nPie de página.')
+        doc = _doc_producido_elaborar(tarea_elaborar, f'Cabecera\n{codigo}\nPie de página.')
 
         advertencia = _hook_717_elaborar_consumido_diagnostico(tarea_elaborar, doc.id)
 
@@ -126,7 +122,7 @@ class TestHook717Derivacion:
         from app.services.mutaciones_arbol import _hook_717_elaborar_consumido_diagnostico
 
         _, tarea_elaborar, _ = _montar_cadena('desfavorable')
-        doc = _doc_producido_elaborar(tarea_elaborar, fs_tmp, 'Un escrito cualquiera sin código.')
+        doc = _doc_producido_elaborar(tarea_elaborar, 'Un escrito cualquiera sin código.')
 
         advertencia = _hook_717_elaborar_consumido_diagnostico(tarea_elaborar, doc.id)
 
@@ -140,7 +136,7 @@ class TestHook717Derivacion:
 
         _, tarea_elaborar, _ = _montar_cadena('desfavorable')
         codigo_ajeno = componer_codigo(tarea_elaborar.id + 999)
-        doc = _doc_producido_elaborar(tarea_elaborar, fs_tmp, codigo_ajeno)
+        doc = _doc_producido_elaborar(tarea_elaborar, codigo_ajeno)
 
         advertencia = _hook_717_elaborar_consumido_diagnostico(tarea_elaborar, doc.id)
 
@@ -155,7 +151,7 @@ class TestHook717Derivacion:
         from app.services.codigo_seguimiento import componer_codigo
 
         _, tarea_elaborar, _ = _montar_cadena('favorable')
-        doc = _doc_producido_elaborar(tarea_elaborar, fs_tmp, componer_codigo(tarea_elaborar.id))
+        doc = _doc_producido_elaborar(tarea_elaborar, componer_codigo(tarea_elaborar.id))
 
         advertencia = _hook_717_elaborar_consumido_diagnostico(tarea_elaborar, doc.id)
 
@@ -186,7 +182,7 @@ class TestHook717Derivacion:
         tramite_2 = arbol.tramite(fase, 'REQUERIMIENTO_SUBSANACION')
         tarea_elaborar_2 = arbol.tarea(tramite_2, 'ELABORAR')
 
-        doc = _doc_producido_elaborar(tarea_elaborar_2, fs_tmp, componer_codigo(tarea_elaborar_2.id))
+        doc = _doc_producido_elaborar(tarea_elaborar_2, componer_codigo(tarea_elaborar_2.id))
         _hook_717_elaborar_consumido_diagnostico(tarea_elaborar_2, doc.id)
 
         vinculos = [v for v in tarea_elaborar_2.vinculos_documento if v.rol == 'CONSUMIDO']
@@ -198,7 +194,7 @@ class TestHook717Derivacion:
         from app.services.codigo_seguimiento import componer_codigo
 
         _, tarea_elaborar, diagnostico = _montar_cadena('desfavorable')
-        doc = _doc_producido_elaborar(tarea_elaborar, fs_tmp, componer_codigo(tarea_elaborar.id))
+        doc = _doc_producido_elaborar(tarea_elaborar, componer_codigo(tarea_elaborar.id))
 
         primera = _hook_717_elaborar_consumido_diagnostico(tarea_elaborar, doc.id)
         segunda = _hook_717_elaborar_consumido_diagnostico(tarea_elaborar, doc.id)  # no debe lanzar IntegrityError
@@ -238,7 +234,7 @@ class TestIntegracionEditarTarea:
         from app.services.codigo_seguimiento import componer_codigo
 
         _, tarea_elaborar, diagnostico = _montar_cadena('desfavorable')
-        doc = _doc_producido_elaborar_sin_vinculo(tarea_elaborar, fs_tmp, componer_codigo(tarea_elaborar.id))
+        doc = _doc_producido_elaborar_sin_vinculo(tarea_elaborar, componer_codigo(tarea_elaborar.id))
 
         resultado = svc.editar_tarea(tarea_elaborar, documentos_consumidos_ids=[],
                                      documento_producido_id=doc.id, notas=None)
@@ -261,7 +257,7 @@ class TestIntegracionEditarTarea:
         from app.services.codigo_seguimiento import componer_codigo
 
         _, tarea_elaborar, diagnostico = _montar_cadena('desfavorable')
-        doc = _doc_producido_elaborar_sin_vinculo(tarea_elaborar, fs_tmp, componer_codigo(tarea_elaborar.id))
+        doc = _doc_producido_elaborar_sin_vinculo(tarea_elaborar, componer_codigo(tarea_elaborar.id))
 
         svc.editar_tarea(tarea_elaborar, documentos_consumidos_ids=[],
                          documento_producido_id=doc.id, notas=None)
@@ -276,22 +272,16 @@ class TestIntegracionEditarTarea:
         assert not [v for v in tarea_elaborar.vinculos_documento if v.rol == 'CONSUMIDO']
 
 
-def _doc_producido_elaborar_sin_vinculo(tarea_elaborar, tmp_path, texto: str):
+def _doc_producido_elaborar_sin_vinculo(tarea_elaborar, texto: str):
     """Como _doc_producido_elaborar pero sin crear el DocumentoTarea PRODUCIDO
     — para los tests de editar_tarea(), que es quien debe crearlo."""
-    from app import db
-    from app.models.documentos import Documento
     from app.models.tipos_documentos import TipoDocumento
-
-    expediente_id = tarea_elaborar.tramite.fase.solicitud.expediente_id
-    nombre = f'escrito_{tarea_elaborar.id}.odt'
-    (tmp_path / nombre).write_bytes(_odt_bytes(texto))
+    from tests.conftest import documento_con_contenido_de_prueba
 
     tipo_doc = TipoDocumento.query.first()
-    doc = Documento(expediente_id=expediente_id, tipo_doc_id=tipo_doc.id, url=nombre)
-    db.session.add(doc)
-    db.session.flush()
-    return doc
+    return documento_con_contenido_de_prueba(
+        f'escrito_{tarea_elaborar.id}.odt', _odt_bytes(texto),
+        expediente_id=tarea_elaborar.tramite.fase.solicitud.expediente_id, tipo_doc_id=tipo_doc.id)
 
 
 # ---------------------------------------------------------------------------
@@ -306,7 +296,7 @@ class TestCierraPeldano3ADR033:
         from app.services.codigo_seguimiento import componer_codigo
 
         tarea_analizar, tarea_elaborar, _ = _montar_cadena('desfavorable')
-        doc = _doc_producido_elaborar(tarea_elaborar, fs_tmp, componer_codigo(tarea_elaborar.id))
+        doc = _doc_producido_elaborar(tarea_elaborar, componer_codigo(tarea_elaborar.id))
         _hook_717_elaborar_consumido_diagnostico(tarea_elaborar, doc.id)
 
         with pytest.raises(DiagnosticoConsumidoError) as exc:

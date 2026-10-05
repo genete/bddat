@@ -71,13 +71,8 @@ def _solicitud_vacia():
 
     # Ancla propia y no la de `base` (#428): son dos solicitudes distintas y el
     # documento de una no acredita a la otra.
-    from tests.conftest import documento_ancla_de_prueba
-    nueva = Solicitud(expediente_id=base.expediente_id, entidad_id=base.entidad_id,
-                      tipo_solicitud_id=base.tipo_solicitud_id,
-                      documento_solicitud_id=documento_ancla_de_prueba(base.expediente_id).id)
-    db.session.add(nueva)
-    db.session.flush()
-    return nueva
+    from tests.conftest import ArbolESFTT
+    return ArbolESFTT(db).solicitud(base.expediente, base.tipo_solicitud, base.entidad)
 
 
 # ---------------------------------------------------------------------------
@@ -88,12 +83,11 @@ class TestBorrarTarea:
 
     def test_con_notificacion_bloqueado_y_no_escapable(self, app_ctx):
         from app.services import mutaciones_arbol as svc
-        from app.models.notificaciones import Notificacion
         from app import db
+        from tests.conftest import ArbolESFTT
 
         _, _, _, tarea = _fase_con_tramite_y_tarea('REQUERIMIENTO_SUBSANACION', 'NOTIFICAR')
-        db.session.add(Notificacion(fuente='SOLICITANTE', tarea_id=tarea.id, canal='NOTIFICA'))
-        db.session.flush()
+        ArbolESFTT(db).notificacion(tarea, canal='NOTIFICA')
 
         res = svc.borrar_tarea(tarea)
         assert not res.ok

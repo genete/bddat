@@ -23,10 +23,10 @@ import pytest
 from reportlab.pdfgen import canvas
 
 from app import db
-from app.models.documentos import Documento
 from app.models.notificaciones import Notificacion
 from app.models.tipos_documentos import TipoDocumento
 from app.services import mutaciones_arbol as svc
+from tests.conftest import documento_con_contenido_de_prueba
 
 # Mismo texto de muestra que test_655 (datos ficticios, remesa 82541676, Leída).
 TEXTO_JUSTIFICANTE = """\
@@ -82,16 +82,11 @@ def _tipo_doc(codigo):
     return t
 
 
-def _documento_con_fichero(expediente_id, codigo_tipo, fs_tmp, contenido,
-                           nombre='justificante.pdf'):
+def _documento_con_fichero(expediente_id, codigo_tipo, contenido, nombre='justificante.pdf'):
     from app.services.reloj_simulado import hoy
-    (fs_tmp / nombre).write_bytes(contenido)
-    doc = Documento(expediente_id=expediente_id, url=nombre,
-                    tipo_doc_id=_tipo_doc(codigo_tipo).id,
-                    asunto='#657 test', fecha_administrativa=hoy())
-    db.session.add(doc)
-    db.session.flush()
-    return doc
+    return documento_con_contenido_de_prueba(
+        nombre, contenido, expediente_id=expediente_id, tipo_doc_id=_tipo_doc(codigo_tipo).id,
+        asunto='#657 test', fecha_administrativa=hoy())
 
 
 def _fila_previa(tarea, canal, identificador_envio=None, resultado=None):
@@ -114,7 +109,7 @@ class TestHookNotificarProducido:
         """El parseo solo aporta la remesa: el resultado lo fija el usuario (D2)."""
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
-        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA', fs_tmp,
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA',
                                      _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
         resultado = _producir(tarea, doc)
@@ -133,7 +128,7 @@ class TestHookNotificarProducido:
         justificante con canal (#928)."""
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
-        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA', fs_tmp,
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA',
                                      _pdf_sintetico('Esto no es un justificante.'))
 
         assert _producir(tarea, doc).ok is True
@@ -146,7 +141,7 @@ class TestHookNotificarProducido:
         """Antes (#657) SIR no podía crear la fila: faltaba la fecha NOT NULL."""
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
-        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_SIR', fs_tmp, b'captura')
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_SIR', b'%PDF-1.4 captura')
 
         assert _producir(tarea, doc).ok is True
         notif = Notificacion.query.filter_by(tarea_id=tarea.id).first()
@@ -159,7 +154,7 @@ class TestHookNotificarProducido:
         registra nada (la fila sigue sin canal), ni siquiera intenta parsear."""
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
-        doc = _documento_con_fichero(exp_id, 'RESOLUCION', fs_tmp,
+        doc = _documento_con_fichero(exp_id, 'RESOLUCION',
                                      _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
         assert _producir(tarea, doc).ok is True
@@ -172,7 +167,7 @@ class TestHookNotificarProducido:
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
         notif = _fila_previa(tarea, 'SIR', identificador_envio='SIR-001', resultado='CORRECTA')
-        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_SIR', fs_tmp, b'captura')
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_SIR', b'%PDF-1.4 captura')
 
         resultado = _producir(tarea, doc)
 
@@ -190,7 +185,7 @@ class TestHookNotificarCotejo:
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
         notif = _fila_previa(tarea, 'NOTIFICA', identificador_envio='82541676')
-        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA', fs_tmp,
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA',
                                      _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
         resultado = _producir(tarea, doc)
@@ -207,7 +202,7 @@ class TestHookNotificarCotejo:
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
         notif = _fila_previa(tarea, 'NOTIFICA', identificador_envio='REMESA-DISTINTA')
-        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA', fs_tmp,
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA',
                                      _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
         resultado = _producir(tarea, doc)
@@ -225,7 +220,7 @@ class TestHookNotificarCotejo:
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
         notif = _fila_previa(tarea, 'SIR')
-        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA', fs_tmp,
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA',
                                      _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
         resultado = _producir(tarea, doc)
@@ -242,7 +237,7 @@ class TestHookNotificarCotejo:
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
         notif = _fila_previa(tarea, 'BANDEJA', identificador_envio='X-1')
-        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_SIR', fs_tmp, b'captura')
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_SIR', b'%PDF-1.4 captura')
 
         resultado = _producir(tarea, doc)
 
@@ -257,7 +252,7 @@ class TestHookNotificarCotejo:
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
         notif = _fila_previa(tarea, 'NOTIFICA', identificador_envio='82541676')
-        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA', fs_tmp,
+        doc = _documento_con_fichero(exp_id, 'JUSTIFICANTE_NOTIFICA',
                                      _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
         resultado = _producir(tarea, doc)

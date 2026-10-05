@@ -131,9 +131,7 @@ def _tipo_tramite(codigo):
 
 
 def _solicitud_de_tipo(arbol, siglas, *, expediente_id=None):
-    from app.models.solicitudes import Solicitud
     from app.models.tipos_solicitudes import TipoSolicitud
-    from tests.conftest import documento_ancla_de_prueba
     from app.models.expedientes import Expediente
     from app.models.entidad import Entidad
     tipo = TipoSolicitud.query.filter_by(siglas=siglas).first()
@@ -144,12 +142,7 @@ def _solicitud_de_tipo(arbol, siglas, *, expediente_id=None):
         expediente_id = exp.id
     ent = Entidad.query.first()
     assert ent is not None, 'la semilla debe traer una Entidad'
-    sol = Solicitud(
-        expediente_id=expediente_id, entidad_id=ent.id, tipo_solicitud_id=tipo.id,
-        documento_solicitud_id=documento_ancla_de_prueba(expediente_id).id)
-    arbol.db.session.add(sol)
-    arbol.db.session.flush()
-    return sol
+    return arbol.solicitud(arbol.db.session.get(Expediente, expediente_id), tipo, ent)
 
 
 def _finalizar_favorable(arbol, fase):

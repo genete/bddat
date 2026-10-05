@@ -332,8 +332,8 @@ def almacen_tmp(app, tmp_path_factory, _limpieza_ficheros):
     Redirige `ALMACEN_BASE` y `MANIFIESTOS_BASE`, y devuelve un objeto con sus rutas
     (`.almacen`, `.manifiestos`). Úsalo en cuanto el código suba un documento o escriba
     un manifiesto: el disco no es transaccional y el contenido quedaría puesto aunque
-    la transacción se deshaga. Es la base del helper de documentos con contenido de
-    #1014.
+    la transacción se deshaga. En el corte (PR 4 de #1007) será la base de
+    `documento_con_contenido_de_prueba` (#1014).
 
     Lo que no revierte el SAVEPOINT de `app_ctx` es la fila de `ficheros`, que el módulo
     de contenido escribe en su propia transacción: la borra `_limpieza_ficheros` al
@@ -500,6 +500,39 @@ def documento_ancla_de_prueba(expediente_id, *, fecha=None):
     return doc
 
 
+def documento_con_contenido_de_prueba(nombre, contenido, **datos_documento):
+    """Documento con contenido propio, como el que deja una subida (#1014).
+
+    El único sitio de la suite que monta un documento con fichero: los tests lo piden
+    aquí en vez de escribir el fichero a mano, y así el corte de ADR-050 (PR 4 de #1007)
+    cambia este helper por dentro y no los tests que lo usan.
+
+    Recibe lo mismo que `contenido.subir` (`EntradaSubida`): el nombre que traería el
+    navegador, los bytes y los datos del documento (`expediente_id`, `tipo_doc_id`,
+    `fecha_administrativa`, `asunto`…). Devuelve el `Documento` ya añadido a la sesión.
+
+    Hasta el corte escribe el fichero en FILESYSTEM_BASE y pone `url` con su nombre, como
+    hacían los helpers que sustituye; en el corte pasará por `subir`, sobre `almacen_tmp`.
+    No comprueba el formato por su cuenta: desde el corte lo hace `subir`, la misma puerta
+    que usa la aplicación (ADR-050 §E). Un test que quiera probar un fichero engañoso llama
+    a esa puerta, no a este helper.
+
+    Requiere `app_ctx` y `fs_tmp`.
+    """
+    from pathlib import Path
+
+    from flask import current_app
+
+    from app import db as _db_app
+    from app.models.documentos import Documento
+
+    (Path(current_app.config['FILESYSTEM_BASE']) / nombre).write_bytes(contenido)
+    doc = Documento(url=nombre, **datos_documento)
+    _db_app.session.add(doc)
+    _db_app.session.flush()
+    return doc
+
+
 @pytest.fixture
 def alta_propia(app_ctx, fs_tmp):
     """Un expediente recién fabricado, con su solicitud anclada. Se revierte al salir."""
@@ -558,7 +591,6 @@ class ArbolESFTT:
     def solicitud_nueva(self):
         """Solicitud aislada, sin fases: para el caso 'sin hijos' de _check_borrar,
         donde reutilizar `solicitud_existente()` arriesga hijos previos ajenos al test."""
-        from app.models.solicitudes import Solicitud
         from app.models.expedientes import Expediente
         from app.models.entidad import Entidad
         from app.models.tipos_solicitudes import TipoSolicitud
@@ -567,11 +599,7 @@ class ArbolESFTT:
         tipo = TipoSolicitud.query.first()
         if exp is None or ent is None or tipo is None:
             pytest.skip('Faltan expediente/entidad/tipo_solicitud base en la BD de desarrollo')
-        s = Solicitud(expediente_id=exp.id, entidad_id=ent.id, tipo_solicitud_id=tipo.id,
-                      documento_solicitud_id=documento_ancla_de_prueba(exp.id).id)
-        self.db.session.add(s)
-        self.db.session.flush()
-        return s
+        return self.solicitud(exp, tipo, ent)
 
     def solicitud_propia(self):
         """Solicitud de un expediente que fabrica este mismo builder (#428).
@@ -585,6 +613,27 @@ class ArbolESFTT:
         solicitud a disco. Usar la fixture `arbol_aislado`, que ya lo trae.
         """
         return crear_expediente_de_prueba().solicitud
+
+    def solicitud(self, expediente, tipo_solicitud, entidad):
+        """Solicitud de `tipo_solicitud` en un expediente que ya existe, con su
+        escrito de ancla (`documento_ancla_de_prueba`) y sin hijos.
+
+        Para el test que necesita un tipo concreto o una solicitud más en el mismo
+        expediente; la de `solicitud_propia()` nace por el alta real. Es el único
+        sitio de la suite que monta una `Solicitud` a mano (#1014), salvo el test
+        que la monta mal a propósito (`test_428`).
+
+        El expediente va por la relación, como la solicitud en `fase()`: si el test
+        ya leyó `expediente.solicitudes`, la lista incluye la nueva. El tipo y la
+        entidad van por el id: un test que los cambie después por el id
+        (`test_887` cambia el tipo) no se queda con el anterior en memoria."""
+        from app.models.solicitudes import Solicitud
+        s = Solicitud(expediente=expediente, tipo_solicitud_id=tipo_solicitud.id,
+                      entidad_id=entidad.id,
+                      documento_solicitud_id=documento_ancla_de_prueba(expediente.id).id)
+        self.db.session.add(s)
+        self.db.session.flush()
+        return s
 
     def tarea_propia(self, codigo_tarea, *, codigo_fase='ANALISIS_SOLICITUD',
                      codigo_tramite='ANALISIS_DOCUMENTAL'):
@@ -699,13 +748,18 @@ class ArbolESFTT:
         return v
 
     def notificacion(self, tarea, resultado=None, canal='NOTIFICA',
-                     sede_justificacion=None):
+                     sede_justificacion=None, *, documento=None, identificador_envio=None):
         """Rellena la fila de `notificaciones` de la tarea directamente, sin
         pasar por el hook de `editar_tarea`. La fila ya existe desde que nace
         la tarea (#967); si no, se crea con fuente SOLICITANTE. Sin fechas
         (#928): las da la `fecha_administrativa` de los justificantes que
         vincule el test; tampoco número de intento (#568): lo dan los
-        `JUSTIFICANTE_POSTAL_1ER`/`_2DO` vinculados."""
+        `JUSTIFICANTE_POSTAL_1ER`/`_2DO` vinculados.
+
+        Con `tarea()`, lo único de la suite que monta una `Notificacion`
+        (#1014): su forma ha cambiado varias veces y así se arregla en un
+        sitio. `documento` e `identificador_envio` solo se escriben si se
+        pasan, para no pisar lo que haya puesto el hook."""
         from app.models.notificaciones import Notificacion
         n = Notificacion.query.filter_by(tarea_id=tarea.id).first()
         if n is None:
@@ -714,6 +768,10 @@ class ArbolESFTT:
         n.resultado = resultado
         n.canal = canal
         n.sede_justificacion = sede_justificacion
+        if documento is not None:
+            n.documento_id = documento.id
+        if identificador_envio is not None:
+            n.identificador_envio = identificador_envio
         self.db.session.flush()
         return n
 

@@ -28,7 +28,6 @@ from flask_login import login_user
 from app import db
 from app.models.bitacora import Bitacora
 from app.models.direccion_notificacion import DireccionNotificacion
-from app.models.documentos import Documento
 from app.models.entidad import Entidad
 from app.models.notificaciones import Notificacion
 from app.models.tareas import Tarea
@@ -36,6 +35,7 @@ from app.models.tipos_documentos import TipoDocumento
 from app.models.tipos_tareas import TipoTarea
 from app.services import mutaciones_arbol as svc
 from app.services import notificaciones as notif_svc
+from tests.conftest import documento_con_contenido_de_prueba
 from tests.test_657_658_notificar import TEXTO_JUSTIFICANTE, _pdf_sintetico
 
 
@@ -100,17 +100,14 @@ def _direccion(entidad, *, titular=False, consultado=False, direccion='Calle May
     return d
 
 
-def _doc(tarea, codigo, fs_tmp, contenido=b'%PDF-1.4 justificante'):
+def _doc(tarea, codigo, contenido=b'%PDF-1.4 justificante'):
     from app.services.reloj_simulado import hoy
     tipo = TipoDocumento.query.filter_by(codigo=codigo).first()
     assert tipo is not None, f'la semilla debe traer el tipo de documento {codigo}'
-    nombre = f'967-{codigo.lower()}-{tarea.id}.pdf'
-    (fs_tmp / nombre).write_bytes(contenido)
-    doc = Documento(expediente_id=tarea.tramite.fase.solicitud.expediente_id, url=nombre,
-                    tipo_doc_id=tipo.id, asunto='#967 test', fecha_administrativa=hoy())
-    db.session.add(doc)
-    db.session.flush()
-    return doc
+    return documento_con_contenido_de_prueba(
+        f'967-{codigo.lower()}-{tarea.id}.pdf', contenido,
+        expediente_id=tarea.tramite.fase.solicitud.expediente_id, tipo_doc_id=tipo.id,
+        asunto='#967 test', fecha_administrativa=hoy())
 
 
 def _vincular(tarea, consumidos=(), producido=None, justificacion=None):
@@ -183,7 +180,7 @@ def test_la_ficha_se_borra_con_la_tarea(con_usuario, arbol_aislado):
 
 def test_vincular_sin_destinatario_se_bloquea_con_escape(con_usuario, arbol_aislado, fs_tmp):
     tarea = _crear_notificar(arbol_aislado.tramite_sin_destinatario())
-    doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', fs_tmp)
+    doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA')
 
     res = _vincular(tarea, producido=doc)
 
@@ -198,7 +195,7 @@ def test_vincular_sin_destinatario_se_bloquea_con_escape(con_usuario, arbol_aisl
 def test_escape_sin_destinatario_queda_en_bitacora_y_es_para_siempre(
         con_usuario, arbol_aislado, fs_tmp):
     tarea = _crear_notificar(arbol_aislado.tramite_sin_destinatario())
-    doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', fs_tmp)
+    doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA')
 
     res = _vincular(tarea, producido=doc, justificacion='Se notificó en papel en ventanilla')
 
@@ -221,7 +218,7 @@ def test_escape_sin_destinatario_queda_en_bitacora_y_es_para_siempre(
 def test_escape_sin_destinatario_se_relata(con_usuario, arbol_aislado, fs_tmp):
     from app.services.informe_instruccion import escapes_de_fase, relato_escapes
     tarea = _crear_notificar(arbol_aislado.tramite_sin_destinatario())
-    doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', fs_tmp)
+    doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA')
     assert _vincular(tarea, producido=doc, justificacion='Motivo del escape').ok
 
     frases = relato_escapes(escapes_de_fase(tarea.tramite.fase), 'tareas', tarea.id,
@@ -236,7 +233,7 @@ def test_desvincular_no_se_bloquea(con_usuario, arbol_aislado, fs_tmp):
     """Solo añadir vínculos exige destinatario; quitar sigue libre."""
     tarea = _crear_notificar(_tramite(arbol_aislado))
     assert svc.fijar_destinatario(tarea).ok
-    doc = _doc(tarea, 'RESOLUCION', fs_tmp)
+    doc = _doc(tarea, 'RESOLUCION')
     assert _vincular(tarea, consumidos=[doc]).ok
     # Quitar el destinatario a mano no es un camino de la aplicación; simula
     # una ficha anterior al destinatario para ver que desvincular no pregunta.
@@ -349,12 +346,12 @@ def test_destinatario_se_refresca_hasta_el_primer_justificante(con_usuario, arbo
     assert tarea.notificacion.dest_direccion == 'Dirección nueva'
 
     # Un documento que no es justificante no congela.
-    resolucion = _doc(tarea, 'RESOLUCION', fs_tmp)
+    resolucion = _doc(tarea, 'RESOLUCION')
     assert _vincular(tarea, consumidos=[resolucion]).ok
     assert svc.fijar_destinatario(tarea).ok
 
     # El primer justificante, aunque sea previo, sí.
-    disposicion = _doc(tarea, 'JUSTIFICANTE_NOTIFICA_DISPOSICION', fs_tmp)
+    disposicion = _doc(tarea, 'JUSTIFICANTE_NOTIFICA_DISPOSICION')
     assert _vincular(tarea, consumidos=[resolucion, disposicion]).ok
     res = svc.fijar_destinatario(tarea)
     assert not res.ok and 'justificante' in res.error
@@ -386,7 +383,7 @@ def test_cotejo_del_nif(con_usuario, arbol_aislado, fs_tmp, nif_ficha, nif_repre
     assert svc.fijar_destinatario(
         tarea, entidad_id=receptor.id,
         en_nombre_de_entidad_id=representado.id if representado else None).ok
-    doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', fs_tmp, _pdf_sintetico(TEXTO_JUSTIFICANTE))
+    doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
     res = _vincular(tarea, producido=doc)
 
@@ -428,7 +425,7 @@ def test_cambiar_representante_refresca_lo_que_no_ha_salido(con_usuario, arbol_a
     enviada = _crear_notificar(arbol_aislado.tramite(fase, 'REQUERIMIENTO_SUBSANACION'))
     pendiente = _crear_notificar(arbol_aislado.tramite(fase, 'COMUNICACION_INICIO_ADMISION'))
     assert _vincular(enviada, consumidos=[
-        _doc(enviada, 'JUSTIFICANTE_NOTIFICA_DISPOSICION', fs_tmp)]).ok
+        _doc(enviada, 'JUSTIFICANTE_NOTIFICA_DISPOSICION')]).ok
     gestora = _entidad('Ingeniería de Prueba S.L.', nif='B98765432')
     _autorizar(solicitud.entidad_id, gestora)
 

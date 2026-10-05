@@ -80,19 +80,15 @@ def _crear_expediente(db):
 
 
 def _crear_solicitud(db, expediente):
-    from app.models import Solicitud, Entidad, TipoSolicitud
+    from app.models import Entidad, TipoSolicitud
 
     entidad = Entidad.query.first()
     assert entidad is not None, 'Tabla entidades vacía — seed necesario'
     tipo_sol = TipoSolicitud.query.first()
     assert tipo_sol is not None, 'Catálogo TipoSolicitud vacío — seed necesario'
 
-    from tests.conftest import documento_ancla_de_prueba
-    sol = Solicitud(expediente=expediente, tipo_solicitud=tipo_sol, entidad=entidad,
-                    documento_solicitud_id=documento_ancla_de_prueba(expediente.id).id)
-    db.session.add(sol)
-    db.session.flush()
-    return sol
+    from tests.conftest import ArbolESFTT
+    return ArbolESFTT(db).solicitud(expediente, tipo_sol, entidad)
 
 
 def _crear_fase_finalizada(db, solicitud, codigo_fase, fecha_fin):

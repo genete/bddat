@@ -237,8 +237,8 @@ class TestReabrirFase:
         from app.models.tipos_fases import TipoFase
         from app.models.tipos_tramites import TipoTramite
         from app.models.tipos_tareas import TipoTarea
-        from app.models.notificaciones import Notificacion
         from app.services import mutaciones_arbol as svc
+        from tests.conftest import ArbolESFTT
 
         from app.models.tipos_solicitudes import TipoSolicitud
 
@@ -253,13 +253,7 @@ class TestReabrirFase:
         assert tipo_aap is not None, "la semilla debe traer el TipoSolicitud 'AAP'"
         tipo_fase_fin = _tipo(TipoFase, 'RESOLUCION')
 
-        from tests.conftest import documento_ancla_de_prueba
-        solicitud = Solicitud(
-            expediente_id=base.expediente_id, entidad_id=base.entidad_id,
-            tipo_solicitud_id=tipo_aap.id,
-            documento_solicitud_id=documento_ancla_de_prueba(base.expediente_id).id)
-        db.session.add(solicitud)
-        db.session.flush()
+        solicitud = ArbolESFTT(db).solicitud(base.expediente, tipo_aap, base.entidad)
 
         fase_simple = Fase(solicitud_id=solicitud.id,
                             tipo_fase_id=_tipo(TipoFase, 'ANALISIS_SOLICITUD').id)
@@ -282,8 +276,7 @@ class TestReabrirFase:
                              tipo_tarea_id=_tipo(TipoTarea, 'NOTIFICAR').id)
         db.session.add(tarea_notif)
         db.session.flush()
-        db.session.add(Notificacion(fuente='SOLICITANTE', tarea_id=tarea_notif.id, canal='NOTIFICA'))
-        db.session.flush()
+        ArbolESFTT(db).notificacion(tarea_notif, canal='NOTIFICA')
 
         _cerrar_fase(fase_fin)
 

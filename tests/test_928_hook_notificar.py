@@ -20,11 +20,10 @@ import pytest
 from sqlalchemy import text
 
 from app import db
-from app.models.documentos import Documento
 from app.models.notificaciones import Notificacion
 from app.models.tipos_documentos import TipoDocumento
 from app.services import mutaciones_arbol as svc
-from tests.conftest import contar_consultas
+from tests.conftest import contar_consultas, documento_con_contenido_de_prueba
 
 
 @pytest.fixture
@@ -51,17 +50,14 @@ def _tarea_notificar(arbol, codigo_tramite='NOTIFICACION'):
     return arbol.tarea(tramite, 'NOTIFICAR')
 
 
-def _doc(tarea, codigo, fs_tmp, nombre=None, contenido=b'%PDF-1.4 justificante'):
+def _doc(tarea, codigo, nombre=None, contenido=b'%PDF-1.4 justificante'):
     """Documento del pool con fichero real (mover_a_esftt lo mueve al vincular)."""
     tipo = TipoDocumento.query.filter_by(codigo=codigo).first()
     assert tipo is not None, f'la semilla debe traer el tipo de documento {codigo}'
-    nombre = nombre or f'{codigo.lower()}-{tarea.id}.pdf'
-    (fs_tmp / nombre).write_bytes(contenido)
-    doc = Documento(expediente_id=tarea.tramite.fase.solicitud.expediente_id, url=nombre,
-                    tipo_doc_id=tipo.id, asunto='#928c test', fecha_administrativa=_hoy())
-    db.session.add(doc)
-    db.session.flush()
-    return doc
+    return documento_con_contenido_de_prueba(
+        nombre or f'{codigo.lower()}-{tarea.id}.pdf', contenido,
+        expediente_id=tarea.tramite.fase.solicitud.expediente_id, tipo_doc_id=tipo.id,
+        asunto='#928c test', fecha_administrativa=_hoy())
 
 
 def _guardar(tarea, consumidos=(), producido=None):
@@ -92,7 +88,7 @@ def _fila(tarea):
 def test_hook_registra_sin_resultado_con_cada_tipo_con_canal(
         con_usuario, arbol_aislado, fs_tmp, codigo, rol, canal):
     tarea = _tarea_notificar(arbol_aislado)
-    doc = _doc(tarea, codigo, fs_tmp)
+    doc = _doc(tarea, codigo)
     assert not _fila(tarea).registrada
 
     res = _guardar(tarea, consumidos=[doc] if rol == 'CONSUMIDO' else [],
@@ -112,7 +108,7 @@ def test_hook_sede_no_registra(con_usuario, arbol_aislado, fs_tmp):
     """La sede no es una notificación (ADR-052 §E): no fija el canal; lo fija
     el primer acuse postal."""
     tarea = _tarea_notificar(arbol_aislado)
-    doc = _doc(tarea, 'JUSTIFICANTE_SEDE', fs_tmp)
+    doc = _doc(tarea, 'JUSTIFICANTE_SEDE')
 
     res = _guardar(tarea, consumidos=[doc])
 
@@ -128,14 +124,14 @@ def test_hook_anuncio_solo_es_edicto_directo(con_usuario, arbol_aislado, fs_tmp)
     Fallo silencioso que evita: el edicto directo sin canal queda «no
     registrado» para siempre, en azul, sin poder poner resultado."""
     directo = _tarea_notificar(arbol_aislado)
-    anuncio = _doc(directo, 'ANUNCIO_PUBLICADO', fs_tmp)
+    anuncio = _doc(directo, 'ANUNCIO_PUBLICADO')
     assert _guardar(directo, producido=anuncio).ok
     assert _fila(directo).canal == 'EDICTO'
 
     tras_intentos = _tarea_notificar(arbol_aislado)
-    primero = _doc(tras_intentos, 'JUSTIFICANTE_POSTAL_1ER', fs_tmp)
-    segundo = _doc(tras_intentos, 'JUSTIFICANTE_POSTAL_2DO', fs_tmp)
-    copia = _doc(tras_intentos, 'ANUNCIO_PUBLICADO', fs_tmp)
+    primero = _doc(tras_intentos, 'JUSTIFICANTE_POSTAL_1ER')
+    segundo = _doc(tras_intentos, 'JUSTIFICANTE_POSTAL_2DO')
+    copia = _doc(tras_intentos, 'ANUNCIO_PUBLICADO')
     assert _guardar(tras_intentos, consumidos=[primero, segundo], producido=copia).ok
     assert _fila(tras_intentos).canal == 'POSTAL'
 
@@ -144,9 +140,9 @@ def test_hook_previo_y_final_mismo_canal_una_sola_fila(con_usuario, arbol_aislad
     """Disposición (consumido) y justificante final (producido): el canal lo da
     el producido; la fila, una, con documento_id del producido."""
     tarea = _tarea_notificar(arbol_aislado)
-    disposicion = _doc(tarea, 'JUSTIFICANTE_NOTIFICA_DISPOSICION', fs_tmp)
+    disposicion = _doc(tarea, 'JUSTIFICANTE_NOTIFICA_DISPOSICION')
     assert _guardar(tarea, consumidos=[disposicion]).ok
-    final = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', fs_tmp)
+    final = _doc(tarea, 'JUSTIFICANTE_NOTIFICA')
 
     res = _guardar(tarea, consumidos=[disposicion], producido=final)
 
@@ -165,7 +161,7 @@ def test_desvincular_ultimo_justificante_sin_resultado_vacia_la_fila(
     """D16, desde #967: la fila no se borra —nace y muere con la tarea—, pero
     vuelve a estar como sin justificante: sin canal, documento ni remesa."""
     tarea = _tarea_notificar(arbol_aislado)
-    doc = _doc(tarea, 'JUSTIFICANTE_POSTAL_1ER', fs_tmp)
+    doc = _doc(tarea, 'JUSTIFICANTE_POSTAL_1ER')
     assert _guardar(tarea, consumidos=[doc]).ok
     assert _fila(tarea).registrada
 
@@ -181,7 +177,7 @@ def test_desvincular_ultimo_justificante_sin_resultado_vacia_la_fila(
 def test_desvincular_ultimo_justificante_con_resultado_conserva_la_fila(
         con_usuario, arbol_aislado, fs_tmp):
     tarea = _tarea_notificar(arbol_aislado)
-    doc = _doc(tarea, 'JUSTIFICANTE_POSTAL_1ER', fs_tmp)
+    doc = _doc(tarea, 'JUSTIFICANTE_POSTAL_1ER')
     assert _guardar(tarea, consumidos=[doc]).ok
     notif = _fila(tarea)
     notif.resultado = 'INCORRECTA'
@@ -197,8 +193,8 @@ def test_desvincular_ultimo_justificante_con_resultado_conserva_la_fila(
 
 def test_desvincular_uno_de_dos_justificantes_conserva_la_fila(con_usuario, arbol_aislado, fs_tmp):
     tarea = _tarea_notificar(arbol_aislado)
-    disposicion = _doc(tarea, 'JUSTIFICANTE_NOTIFICA_DISPOSICION', fs_tmp)
-    final = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', fs_tmp)
+    disposicion = _doc(tarea, 'JUSTIFICANTE_NOTIFICA_DISPOSICION')
+    final = _doc(tarea, 'JUSTIFICANTE_NOTIFICA')
     assert _guardar(tarea, consumidos=[disposicion], producido=final).ok
 
     res = _guardar(tarea, consumidos=[disposicion])
@@ -222,7 +218,7 @@ def _ultima_advertencia_bitacora(tarea_id):
 
 def test_previo_vinculado_como_producido_avisa_y_deja_bitacora(con_usuario, arbol_aislado, fs_tmp):
     tarea = _tarea_notificar(arbol_aislado)
-    doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA_DISPOSICION', fs_tmp)
+    doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA_DISPOSICION')
 
     res = _guardar(tarea, producido=doc)
 
@@ -238,7 +234,7 @@ def test_previo_vinculado_como_producido_avisa_y_deja_bitacora(con_usuario, arbo
 
 def test_final_vinculado_como_consumido_avisa(con_usuario, arbol_aislado, fs_tmp):
     tarea = _tarea_notificar(arbol_aislado)
-    doc = _doc(tarea, 'JUSTIFICANTE_SIR', fs_tmp)
+    doc = _doc(tarea, 'JUSTIFICANTE_SIR')
 
     res = _guardar(tarea, consumidos=[doc])
 
@@ -250,7 +246,7 @@ def test_final_vinculado_como_consumido_avisa(con_usuario, arbol_aislado, fs_tmp
 def test_anuncio_consumido_no_avisa(con_usuario, arbol_aislado, fs_tmp):
     """El anuncio publicado lo consumen las esperas de IP: no es rol incoherente."""
     tarea = _tarea_notificar(arbol_aislado)
-    doc = _doc(tarea, 'ANUNCIO_PUBLICADO', fs_tmp)
+    doc = _doc(tarea, 'ANUNCIO_PUBLICADO')
 
     res = _guardar(tarea, consumidos=[doc])
 
@@ -260,8 +256,8 @@ def test_anuncio_consumido_no_avisa(con_usuario, arbol_aislado, fs_tmp):
 
 def test_canales_distintos_entre_previos_avisa(con_usuario, arbol_aislado, fs_tmp):
     tarea = _tarea_notificar(arbol_aislado)
-    disposicion = _doc(tarea, 'JUSTIFICANTE_NOTIFICA_DISPOSICION', fs_tmp)
-    primer_intento = _doc(tarea, 'JUSTIFICANTE_POSTAL_1ER', fs_tmp)
+    disposicion = _doc(tarea, 'JUSTIFICANTE_NOTIFICA_DISPOSICION')
+    primer_intento = _doc(tarea, 'JUSTIFICANTE_POSTAL_1ER')
 
     res = _guardar(tarea, consumidos=[disposicion, primer_intento])
 
@@ -391,18 +387,15 @@ def test_pdf_polivalente_ambos_ficheros_validos_y_cada_fecha_la_suya(
 
     tarea = _tarea_notificar(arbol_aislado)
     exp_id = tarea.tramite.fase.solicitud.expediente_id
-    (fs_tmp / 'polivalente.pdf').write_bytes(b'%PDF-1.4 polivalente')
     f_disp, f_efectos = _hoy() - timedelta(days=9), _hoy() - timedelta(days=2)
     tipos = {t.codigo: t.id for t in TipoDocumento.query.filter(TipoDocumento.codigo.in_(
         ['JUSTIFICANTE_NOTIFICA_DISPOSICION', 'JUSTIFICANTE_NOTIFICA'])).all()}
-    disposicion = Documento(expediente_id=exp_id, url='polivalente.pdf', asunto='#928c test',
-                            tipo_doc_id=tipos['JUSTIFICANTE_NOTIFICA_DISPOSICION'],
-                            fecha_administrativa=f_disp)
-    notifica = Documento(expediente_id=exp_id, url='polivalente.pdf', asunto='#928c test',
-                         tipo_doc_id=tipos['JUSTIFICANTE_NOTIFICA'],
-                         fecha_administrativa=f_efectos)
-    db.session.add_all([disposicion, notifica])
-    db.session.flush()
+    disposicion = documento_con_contenido_de_prueba(
+        'polivalente.pdf', b'%PDF-1.4 polivalente', expediente_id=exp_id, asunto='#928c test',
+        tipo_doc_id=tipos['JUSTIFICANTE_NOTIFICA_DISPOSICION'], fecha_administrativa=f_disp)
+    notifica = documento_con_contenido_de_prueba(
+        'polivalente.pdf', b'%PDF-1.4 polivalente', expediente_id=exp_id, asunto='#928c test',
+        tipo_doc_id=tipos['JUSTIFICANTE_NOTIFICA'], fecha_administrativa=f_efectos)
 
     assert _guardar(tarea, consumidos=[disposicion]).ok
     res = _guardar(tarea, consumidos=[disposicion], producido=notifica)
