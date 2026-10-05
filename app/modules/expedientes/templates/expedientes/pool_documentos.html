@@ -1027,7 +1027,7 @@
       _modal_subir_bs = new bootstrap.Modal(document.getElementById('modal-subir'));
       document.getElementById('modal-subir').addEventListener('hidden.bs.modal', resetear_modal_subir);
       document.getElementById('subir-input-ficheros').addEventListener('change', function (e) {
-        _archivos_subir = Array.from(e.target.files || []);
+        _archivos_subir = quitar_comprimidos(e.target);
         document.getElementById('btn-subir-siguiente').disabled = (_archivos_subir.length === 0);
       });
     }

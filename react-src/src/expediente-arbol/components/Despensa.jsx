@@ -6,6 +6,7 @@
 import React from 'react'
 import { useArbolStore } from '../store.js'
 import { getTiposDocumento } from '../api.js'
+import { quitarComprimidos } from '../../shared/subida.js'
 import { estaSellado } from '../sellado.js'
 import { FilaTipoCreable, BloqueoForzar } from './TiposCreablesCompartido.jsx'
 
@@ -391,7 +392,7 @@ function SubidaAncla({ onHecho }) {
           type="file"
           id="ancla-solicitud-file"
           className="visually-hidden"
-          onChange={(e) => setFichero(e.target.files?.[0] || null)}
+          onChange={(e) => setFichero(quitarComprimidos(e.target)[0] || null)}
         />
         <span className="small text-truncate text-muted">
           {fichero ? fichero.name : 'Ningún archivo seleccionado'}
@@ -501,7 +502,7 @@ function SubidaInline({ tareaId }) {
           type="file"
           id={`despensa-subida-file-${tareaId}`}
           className="visually-hidden"
-          onChange={(e) => setFichero(e.target.files?.[0] || null)}
+          onChange={(e) => setFichero(quitarComprimidos(e.target)[0] || null)}
         />
         <span className="small text-truncate text-muted">
           {fichero ? fichero.name : 'Ningún archivo seleccionado'}
