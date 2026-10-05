@@ -19,10 +19,10 @@ físico de `mover_a_esftt`.
 import pytest
 
 from app import db
-from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
 from app.services import mutaciones_arbol as svc
 from app.services.notificaciones import fecha_efectos
+from tests.conftest import documento_con_contenido_de_prueba
 
 
 @pytest.fixture
@@ -37,15 +37,12 @@ def con_usuario(app_ctx):
         yield usuario
 
 
-def _doc(expediente_id, codigo, fs_tmp, nombre, fecha):
+def _doc(expediente_id, codigo, nombre, fecha):
     tipo = TipoDocumento.query.filter_by(codigo=codigo).first()
     assert tipo is not None, f'la semilla debe traer el tipo de documento {codigo}'
-    (fs_tmp / nombre).write_bytes(b'%PDF-1.4 ' + nombre.encode())
-    doc = Documento(expediente_id=expediente_id, url=nombre, tipo_doc_id=tipo.id,
-                    asunto='#568 test', fecha_administrativa=fecha)
-    db.session.add(doc)
-    db.session.flush()
-    return doc
+    return documento_con_contenido_de_prueba(
+        nombre, b'%PDF-1.4 ' + nombre.encode(), expediente_id=expediente_id,
+        tipo_doc_id=tipo.id, asunto='#568 test', fecha_administrativa=fecha)
 
 
 def _guardar(tarea, consumidos=(), producido=None):
@@ -70,24 +67,24 @@ def test_el_anuncio_se_aplica_con_su_fecha_a_cada_notificacion(con_usuario, arbo
     fase = arbol.fase('RESOLUCION_DUP', solicitud=arbol.solicitud_propia())
     exp_id = fase.solicitud.expediente_id
     notificacion = arbol.tramite(fase, 'NOTIFICACION')
-    resolucion = _doc(exp_id, 'RESOLUCION', fs_tmp, 'resolucion.pdf', hace(40))
+    resolucion = _doc(exp_id, 'RESOLUCION', 'resolucion.pdf', hace(40))
 
     agotada = arbol.tarea(notificacion, 'NOTIFICAR')
     _guardar(agotada, consumidos=[
         resolucion,
-        _doc(exp_id, 'JUSTIFICANTE_POSTAL_1ER', fs_tmp, '1er.pdf', hace(35)),
-        _doc(exp_id, 'JUSTIFICANTE_POSTAL_2DO', fs_tmp, '2do.pdf', hace(33)),
+        _doc(exp_id, 'JUSTIFICANTE_POSTAL_1ER', '1er.pdf', hace(35)),
+        _doc(exp_id, 'JUSTIFICANTE_POSTAL_2DO', '2do.pdf', hace(33)),
     ])
     directa = arbol.tarea(notificacion, 'NOTIFICAR')
     _guardar(directa, consumidos=[resolucion])
     un_intento = arbol.tarea(notificacion, 'NOTIFICAR')
     _guardar(un_intento, consumidos=[
-        resolucion, _doc(exp_id, 'JUSTIFICANTE_POSTAL_1ER', fs_tmp, '1er-b.pdf', hace(35))])
+        resolucion, _doc(exp_id, 'JUSTIFICANTE_POSTAL_1ER', '1er-b.pdf', hace(35))])
 
     edicto = arbol.tramite(fase, 'NOTIFICACION_EDICTAL')
     espera = arbol.tarea(edicto, 'ESPERAR_PLAZO')
     publicacion = hace(5)
-    _guardar(espera, producido=_doc(exp_id, 'ANUNCIO_PUBLICADO', fs_tmp, 'boe.pdf', publicacion))
+    _guardar(espera, producido=_doc(exp_id, 'ANUNCIO_PUBLICADO', 'boe.pdf', publicacion))
 
     assert {t.id for t in svc.notificaciones_edictables(edicto)} == {agotada.id, directa.id}
     assert not svc.aplicar_anuncio_edicto(edicto, [un_intento.id]).ok

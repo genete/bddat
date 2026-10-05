@@ -332,8 +332,8 @@ def almacen_tmp(app, tmp_path_factory, _limpieza_ficheros):
     Redirige `ALMACEN_BASE` y `MANIFIESTOS_BASE`, y devuelve un objeto con sus rutas
     (`.almacen`, `.manifiestos`). Úsalo en cuanto el código suba un documento o escriba
     un manifiesto: el disco no es transaccional y el contenido quedaría puesto aunque
-    la transacción se deshaga. Es la base del helper de documentos con contenido de
-    #1014.
+    la transacción se deshaga. En el corte (PR 4 de #1007) será la base de
+    `documento_con_contenido_de_prueba` (#1014).
 
     Lo que no revierte el SAVEPOINT de `app_ctx` es la fila de `ficheros`, que el módulo
     de contenido escribe en su propia transacción: la borra `_limpieza_ficheros` al
@@ -495,6 +495,39 @@ def documento_ancla_de_prueba(expediente_id, *, fecha=None):
         fecha_administrativa=fecha or hoy(),
         asunto='Escrito de solicitud (test)',
     )
+    _db_app.session.add(doc)
+    _db_app.session.flush()
+    return doc
+
+
+def documento_con_contenido_de_prueba(nombre, contenido, **datos_documento):
+    """Documento con contenido propio, como el que deja una subida (#1014).
+
+    El único sitio de la suite que monta un documento con fichero: los tests lo piden
+    aquí en vez de escribir el fichero a mano, y así el corte de ADR-050 (PR 4 de #1007)
+    cambia este helper por dentro y no los tests que lo usan.
+
+    Recibe lo mismo que `contenido.subir` (`EntradaSubida`): el nombre que traería el
+    navegador, los bytes y los datos del documento (`expediente_id`, `tipo_doc_id`,
+    `fecha_administrativa`, `asunto`…). Devuelve el `Documento` ya añadido a la sesión.
+
+    Hasta el corte escribe el fichero en FILESYSTEM_BASE y pone `url` con su nombre, como
+    hacían los helpers que sustituye; en el corte pasará por `subir`, sobre `almacen_tmp`.
+    No comprueba el formato por su cuenta: desde el corte lo hace `subir`, la misma puerta
+    que usa la aplicación (ADR-050 §E). Un test que quiera probar un fichero engañoso llama
+    a esa puerta, no a este helper.
+
+    Requiere `app_ctx` y `fs_tmp`.
+    """
+    from pathlib import Path
+
+    from flask import current_app
+
+    from app import db as _db_app
+    from app.models.documentos import Documento
+
+    (Path(current_app.config['FILESYSTEM_BASE']) / nombre).write_bytes(contenido)
+    doc = Documento(url=nombre, **datos_documento)
     _db_app.session.add(doc)
     _db_app.session.flush()
     return doc
