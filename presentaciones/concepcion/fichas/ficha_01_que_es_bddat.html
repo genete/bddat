@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 1 · Qué es BDDAT</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* petición: lo que va */
+  --vuelta:#3B6D11;   /* respuesta: lo que vuelve */
+  --plan:#854F0B;     /* reservado: lo marcado ⚠️ (plan, aún no construido) */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+/* Iconos de línea (el sprite está al principio del body) */
+.ico{fill:none;stroke:currentColor;stroke-width:var(--s,1.5);stroke-linecap:round;stroke-linejoin:round}
+
+/* Tarjeta: la forma común de todo "equipo" o "pieza" */
+.tarjeta{background:var(--tarjeta);border:2px solid var(--borde);border-radius:18px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center}
+.tarjeta.fuerte{border-color:var(--borde-fuerte)}
+.tarjeta.punteada{background:transparent;border-style:dashed;border-color:var(--borde-fuerte);border-radius:12px}
+.nombre{font-size:30px;font-weight:600}
+.sub{font-size:20px;color:var(--texto-2)}
+
+/* Conexión: línea que se dibuja + punta + rótulo + cita */
+.flecha{width:100%;text-align:center}
+.flecha.ida{color:var(--ida)}
+.flecha.vuelta{color:var(--vuelta)}
+.flecha .et{font-size:24px;font-weight:600;padding:4px 0}
+.flecha .cita{font-size:19px;color:var(--texto-2)}
+.tubo{display:flex;align-items:center}
+.linea{flex:1;height:5px;border-radius:3px;background:currentColor;transform:scaleX(0);transition:transform .6s ease .1s}
+.ida .linea{transform-origin:left center}
+.vuelta .linea{transform-origin:right center}
+.flecha.on .linea{transform:scaleX(1)}
+.punta{width:30px;height:30px;fill:currentColor;flex:none;opacity:0;transition:opacity .2s ease .6s}
+.ida .punta{margin-left:-8px}
+.vuelta .punta{margin-right:-8px}
+.flecha.on .punta{opacity:1}
+
+/* Frase de cierre al pie */
+.cierre{position:absolute;left:80px;right:80px;bottom:62px;text-align:center;font-size:32px;
+  font-weight:600;border-top:2px solid var(--borde);padding-top:22px}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,.linea,.punta,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.lienzo{position:absolute;left:80px;right:80px;top:26px;bottom:150px;display:flex;flex-direction:column;
+  justify-content:center;gap:14px}
+.arriba{display:grid;grid-template-columns:420px 80px 1fr;align-items:stretch}
+
+/* Las dos tarjetas de arriba: el punto de partida y BDDAT */
+.lado{padding:18px 22px 20px;gap:10px;align-items:stretch;justify-content:flex-start;text-align:left;color:var(--texto)}
+.cab-c{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.cab-c .nombre{font-size:27px;line-height:1.1}
+.cab-c .sub{font-size:19px;line-height:1.2}
+.item{display:flex;align-items:center;gap:12px;font-size:21px;line-height:1.2}
+.item .ico{flex:none;color:var(--texto-2)}
+
+/* Flecha gris: «se pasa de lo uno a lo otro» (no es petición ni respuesta) */
+.pasa{display:flex;align-items:center;justify-content:center;color:var(--borde-fuerte)}
+
+/* Los cuatro perfiles, dentro de la tarjeta de BDDAT */
+.usan{margin-top:auto;padding-top:12px;border-top:2px solid var(--borde)}
+.usan .cap{font-size:19px;color:var(--texto-2);margin-bottom:8px}
+.perfiles{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+.perfil{display:flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--borde-fuerte);
+  border-radius:10px;padding:5px 12px;color:var(--texto)}
+.perfil .ico{flex:none;color:var(--texto-2)}
+.perfil .t{font-size:20px;font-weight:600;line-height:1.1}
+.perfil .s{font-size:16px;color:var(--texto-2);line-height:1.15}
+
+/* Lo que hace: cuatro verbos */
+.verbos{display:flex;gap:14px}
+.verbo{flex:1;background:#fff;border:2px solid var(--borde-fuerte);border-radius:12px;padding:12px 16px;color:var(--texto);text-align:left}
+.verbo .cab{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.verbo .cab .ico{flex:none}
+.verbo .t{font-size:28px;font-weight:600;line-height:1.1}
+.verbo .s{font-size:19px;color:var(--texto-2);line-height:1.25}
+
+/* Lo que hoy queda fuera */
+.fuera{align-items:stretch;justify-content:center;text-align:left;padding:12px 22px;gap:8px;color:var(--texto)}
+.fuera .fila{display:flex;align-items:center;gap:14px}
+.fuera .et{font-size:20px;font-weight:600;color:var(--texto-2);margin-right:4px}
+.chip{display:inline-flex;align-items:center;gap:8px;background:#fff;border:2px solid var(--borde-fuerte);
+  border-radius:10px;padding:3px 14px;font-size:21px;font-weight:600}
+.chip .ico{color:var(--texto-2)}
+.fuera .nota{font-size:19px;color:var(--texto-2)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-pc" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M3 8h18M7 20h10M9 16v4M15 16v4"/></symbol>
+  <symbol id="i-hoja" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></symbol>
+  <symbol id="i-datos" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></symbol>
+  <symbol id="i-carpeta" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-persona" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></symbol>
+  <symbol id="i-ruta" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M8.2 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.8"/></symbol>
+  <symbol id="i-reloj" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-escrito" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-rastro" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8L4 8.5M4 4v4.5h4.5M12 8v4.5l3 2"/></symbol>
+  <symbol id="i-pluma" viewBox="0 0 24 24"><path d="M4 20l1-4L17 4l3 3L8 19zM14 7l3 3M4 20h6"/></symbol>
+  <symbol id="i-sobre" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-periodico" viewBox="0 0 24 24"><path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2zM18 9h2v9a2 2 0 0 1-2 2M8 8h7M8 12h7M8 16h4"/></symbol>
+</svg>
+
+<div id="escenario">
+  <div class="lienzo">
+
+    <div class="arriba">
+
+      <div class="tarjeta lado paso" data-paso="1">
+        <div class="cab-c">
+          <div><div class="nombre">Punto de partida</div><div class="sub">el estado se reconstruye a mano</div></div>
+        </div>
+        <div class="item"><svg class="ico" width="30" height="30" style="--s:1.6"><use href="#i-hoja"/></svg>hojas de cálculo</div>
+        <div class="item"><svg class="ico" width="30" height="30" style="--s:1.6"><use href="#i-datos"/></svg>una base de datos Access</div>
+        <div class="item"><svg class="ico" width="30" height="30" style="--s:1.6"><use href="#i-carpeta"/></svg>carpetas del servidor</div>
+      </div>
+
+      <div class="pasa paso" data-paso="2">
+        <svg width="56" height="56" viewBox="0 0 24 24" class="ico" style="--s:1.6"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+      </div>
+
+      <div class="tarjeta fuerte lado paso" data-paso="2">
+        <div class="cab-c">
+          <svg class="ico" width="48" height="48" style="--s:1.3"><use href="#i-pc"/></svg>
+          <div><div class="nombre">BDDAT</div><div class="sub">tramitador de expedientes de alta tensión, en el navegador</div></div>
+        </div>
+        <div class="usan paso" data-paso="3">
+          <div class="cap">La usan cuatro perfiles</div>
+          <div class="perfiles">
+            <div class="perfil"><svg class="ico" width="26" height="26" style="--s:1.7"><use href="#i-persona"/></svg><div><div class="t">Tramitador</div><div class="s">lleva el expediente</div></div></div>
+            <div class="perfil"><svg class="ico" width="26" height="26" style="--s:1.7"><use href="#i-persona"/></svg><div><div class="t">Administrativo</div><div class="s">apoya al equipo</div></div></div>
+            <div class="perfil"><svg class="ico" width="26" height="26" style="--s:1.7"><use href="#i-persona"/></svg><div><div class="t">Supervisor</div><div class="s">jefatura de servicio</div></div></div>
+            <div class="perfil"><svg class="ico" width="26" height="26" style="--s:1.7"><use href="#i-persona"/></svg><div><div class="t">Administrador</div><div class="s">del sistema</div></div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="verbos">
+      <div class="verbo paso" data-paso="4">
+        <div class="cab"><svg class="ico" width="36" height="36" style="--s:1.5"><use href="#i-ruta"/></svg><div class="t">Guía</div></div>
+        <div class="s">el procedimiento: qué toca hacer y qué falta</div>
+      </div>
+      <div class="verbo paso" data-paso="5">
+        <div class="cab"><svg class="ico" width="36" height="36" style="--s:1.5"><use href="#i-reloj"/></svg><div class="t">Calcula</div></div>
+        <div class="s">los plazos, y avisa si algo no encaja con la norma</div>
+      </div>
+      <div class="verbo paso" data-paso="6">
+        <div class="cab"><svg class="ico" width="36" height="36" style="--s:1.5"><use href="#i-escrito"/></svg><div class="t">Genera</div></div>
+        <div class="s">los escritos, desde plantillas con los datos del expediente</div>
+      </div>
+      <div class="verbo paso" data-paso="7">
+        <div class="cab"><svg class="ico" width="36" height="36" style="--s:1.5"><use href="#i-rastro"/></svg><div class="t">Deja rastro</div></div>
+        <div class="s">qué se hizo, quién y cuándo</div>
+      </div>
+    </div>
+
+    <div class="tarjeta punteada fuera paso" data-paso="8">
+      <div class="fila">
+        <span class="et">Hoy queda fuera</span>
+        <span class="chip"><svg class="ico" width="26" height="26" style="--s:1.7"><use href="#i-pluma"/></svg>firmar</span>
+        <span class="chip"><svg class="ico" width="26" height="26" style="--s:1.7"><use href="#i-sobre"/></svg>notificar</span>
+        <span class="chip"><svg class="ico" width="26" height="26" style="--s:1.7"><use href="#i-periodico"/></svg>consultar el BOJA</span>
+      </div>
+      <div class="nota">se hace en las plataformas corporativas; BDDAT registra el resultado</div>
+    </div>
+
+  </div>
+  <div class="cierre paso" data-paso="9">El expediente, paso a paso, con el procedimiento delante</div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var MAX = 9, paso = 1;
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var h = location.hash, m = h.match(/paso=(\d+)/);
+  if (h === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (m) paso = Math.max(1, Math.min(MAX, +m[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>

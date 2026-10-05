@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 2h · Que otro pueda heredarlo</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* petición: lo que va */
+  --vuelta:#3B6D11;   /* respuesta: lo que vuelve */
+  --plan:#854F0B;     /* reservado: lo marcado ⚠️ (plan, aún no construido) */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+/* Iconos de línea (el sprite está al principio del body) */
+.ico{fill:none;stroke:currentColor;stroke-width:var(--s,1.5);stroke-linecap:round;stroke-linejoin:round}
+
+/* Tarjeta: la forma común de todo "equipo" o "pieza" */
+.tarjeta{background:var(--tarjeta);border:2px solid var(--borde);border-radius:18px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center}
+.tarjeta.fuerte{border-color:var(--borde-fuerte)}
+.tarjeta.punteada{background:transparent;border-style:dashed;border-color:var(--borde-fuerte);border-radius:12px}
+.nombre{font-size:30px;font-weight:600}
+.sub{font-size:20px;color:var(--texto-2)}
+
+/* Conexión: línea que se dibuja + punta + rótulo + cita */
+.flecha{width:100%;text-align:center}
+.flecha.ida{color:var(--ida)}
+.flecha.vuelta{color:var(--vuelta)}
+.flecha .et{font-size:24px;font-weight:600;padding:4px 0}
+.flecha .cita{font-size:19px;color:var(--texto-2)}
+.tubo{display:flex;align-items:center}
+.linea{flex:1;height:5px;border-radius:3px;background:currentColor;transform:scaleX(0);transition:transform .6s ease .1s}
+.ida .linea{transform-origin:left center}
+.vuelta .linea{transform-origin:right center}
+.flecha.on .linea{transform:scaleX(1)}
+.punta{width:30px;height:30px;fill:currentColor;flex:none;opacity:0;transition:opacity .2s ease .6s}
+.ida .punta{margin-left:-8px}
+.vuelta .punta{margin-right:-8px}
+.flecha.on .punta{opacity:1}
+
+/* Frase de cierre al pie */
+.cierre{position:absolute;left:80px;right:80px;bottom:62px;text-align:center;font-size:32px;
+  font-weight:600;border-top:2px solid var(--borde);padding-top:22px}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,.linea,.punta,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.lienzo{position:absolute;left:80px;right:80px;top:26px;bottom:150px;display:flex;flex-direction:column;
+  justify-content:center;gap:16px}
+
+/* La cadena, con un caso real: cinco eslabones */
+.cap{font-size:20px;font-weight:600;color:var(--texto-2);margin-bottom:8px}
+.cap small{font-size:16px;font-weight:400}
+.cadena{display:grid;grid-template-columns:1fr 26px 1fr 26px 1fr 26px 1fr 26px 1fr;align-items:stretch}
+.eslabon{padding:10px 12px;gap:4px;align-items:stretch;justify-content:flex-start;text-align:left;color:var(--texto)}
+.eslabon .et{font-size:15px;font-weight:600;color:var(--texto-2);text-transform:uppercase;letter-spacing:.04em}
+.eslabon .t{font-size:19px;font-weight:600;line-height:1.2}
+.eslabon .s{font-size:15px;color:var(--texto-2);line-height:1.25;margin-top:auto}
+.sig{display:flex;align-items:center;justify-content:center;color:var(--borde-fuerte)}
+
+/* El porqué: las decisiones escritas, bajo toda la cadena */
+.porque{flex-direction:row;justify-content:flex-start;gap:16px;padding:10px 18px;text-align:left;color:var(--texto);margin-top:8px}
+.porque .ico{flex:none;color:var(--texto-2)}
+.porque .t{font-size:21px;font-weight:600;line-height:1.15}
+.porque .s{font-size:17px;color:var(--texto-2);line-height:1.25}
+
+/* Abajo: lo que mantiene la cadena en pie */
+.abajo{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:14px}
+.caja{padding:12px 16px;gap:4px;align-items:stretch;justify-content:flex-start;text-align:left;color:var(--texto)}
+.caja .tit{display:flex;align-items:center;gap:12px}
+.caja .tit .ico{flex:none;color:var(--texto-2)}
+.caja .t{font-size:21px;font-weight:600;line-height:1.15}
+.caja .s{font-size:17px;color:var(--texto-2);line-height:1.3}
+.caja .cifras{display:flex;gap:18px;margin-top:2px}
+.caja .cifras div{font-size:16px;color:var(--texto-2);line-height:1.15}
+.caja .cifras b{display:block;font-size:26px;font-weight:600;color:var(--texto)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-flecha" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-libro" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19a2 2 0 0 0 2 2h13M8 7h7"/></symbol>
+  <symbol id="i-matraz" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-9V3M8 15h8"/></symbol>
+  <symbol id="i-guia" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></symbol>
+  <symbol id="i-candado-abierto" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></symbol>
+</svg>
+
+<div id="escenario">
+  <div class="lienzo">
+
+    <div>
+      <div class="cap paso" data-paso="1">La cadena, con un caso real <small>· un bloqueo y su porqué</small></div>
+      <div class="cadena">
+
+        <div class="tarjeta fuerte eslabon paso" data-paso="1">
+          <div class="et">Ley</div>
+          <div class="t">RD-ley 23/2020</div>
+          <div class="s">artículo 1, el texto oficial</div>
+        </div>
+        <div class="sig paso" data-paso="2"><svg class="ico" width="24" height="24" style="--s:1.8"><use href="#i-flecha"/></svg></div>
+
+        <div class="tarjeta fuerte eslabon paso" data-paso="2">
+          <div class="et">Extracción</div>
+          <div class="t">Mapa procedimental, §2.7</div>
+          <div class="s">qué exige y a quién</div>
+        </div>
+        <div class="sig paso" data-paso="3"><svg class="ico" width="24" height="24" style="--s:1.8"><use href="#i-flecha"/></svg></div>
+
+        <div class="tarjeta fuerte eslabon paso" data-paso="3">
+          <div class="et">Variable</div>
+          <div class="t">¿Está acreditado el permiso de acceso y conexión?</div>
+          <div class="s">37 variables, a la vista en pantalla</div>
+        </div>
+        <div class="sig paso" data-paso="4"><svg class="ico" width="24" height="24" style="--s:1.8"><use href="#i-flecha"/></svg></div>
+
+        <div class="tarjeta fuerte eslabon paso" data-paso="4">
+          <div class="et">Regla</div>
+          <div class="t">Una AAP renovable no se admite sin él</div>
+          <div class="s">con su artículo</div>
+        </div>
+        <div class="sig paso" data-paso="5"><svg class="ico" width="24" height="24" style="--s:1.8"><use href="#i-flecha"/></svg></div>
+
+        <div class="tarjeta fuerte eslabon paso" data-paso="5">
+          <div class="et">Tramitación</div>
+          <div class="t">El bloqueo, con su motivo y su norma</div>
+          <div class="s">al intentarlo</div>
+        </div>
+
+      </div>
+
+      <div class="tarjeta fuerte porque paso" data-paso="6">
+        <svg class="ico" width="36" height="36" style="--s:1.4"><use href="#i-libro"/></svg>
+        <div>
+          <div class="t">52 decisiones escritas</div>
+          <div class="s">cada una con su fecha y su contexto, y la mayoría con las alternativas que se descartaron</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="abajo">
+
+      <div class="tarjeta caja paso" data-paso="7">
+        <div class="tit">
+          <svg class="ico" width="32" height="32" style="--s:1.5"><use href="#i-matraz"/></svg>
+          <div class="t">Pruebas que fijan el comportamiento</div>
+        </div>
+        <div class="cifras">
+          <div><b>184</b>ficheros</div>
+          <div><b>2.222</b>pruebas, 29/09/2026</div>
+          <div><b>71 %</b>cubierto, 24/09/2026</div>
+        </div>
+      </div>
+
+      <div class="tarjeta caja paso" data-paso="8">
+        <div class="tit">
+          <svg class="ico" width="32" height="32" style="--s:1.5"><use href="#i-guia"/></svg>
+          <div class="t">Guías escritas</div>
+        </div>
+        <div class="s">de uso, de administración y de desarrollo</div>
+      </div>
+
+      <div class="tarjeta caja paso" data-paso="9">
+        <div class="tit">
+          <svg class="ico" width="32" height="32" style="--s:1.5"><use href="#i-candado-abierto"/></svg>
+          <div class="t">Software libre</div>
+        </div>
+        <div class="s">Licencia europea EUPL v1.2</div>
+      </div>
+
+    </div>
+
+  </div>
+  <div class="cierre paso" data-paso="10">Lo más duradero no es el código: es la cadena que explica por qué</div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var MAX = 10, paso = 1;
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var h = location.hash, m = h.match(/paso=(\d+)/);
+  if (h === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (m) paso = Math.max(1, Math.min(MAX, +m[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 2c · La norma vive en datos</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* petición: lo que va */
+  --vuelta:#3B6D11;   /* respuesta: lo que vuelve */
+  --plan:#854F0B;     /* reservado: lo marcado ⚠️ (plan, aún no construido) */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+/* Iconos de línea (el sprite está al principio del body) */
+.ico{fill:none;stroke:currentColor;stroke-width:var(--s,1.5);stroke-linecap:round;stroke-linejoin:round}
+
+/* Tarjeta: la forma común de todo "equipo" o "pieza" */
+.tarjeta{background:var(--tarjeta);border:2px solid var(--borde);border-radius:18px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center}
+.tarjeta.fuerte{border-color:var(--borde-fuerte)}
+.tarjeta.punteada{background:transparent;border-style:dashed;border-color:var(--borde-fuerte);border-radius:12px}
+.nombre{font-size:30px;font-weight:600}
+.sub{font-size:20px;color:var(--texto-2)}
+
+/* Conexión: línea que se dibuja + punta + rótulo + cita */
+.flecha{width:100%;text-align:center}
+.flecha.ida{color:var(--ida)}
+.flecha.vuelta{color:var(--vuelta)}
+.flecha .et{font-size:24px;font-weight:600;padding:4px 0}
+.flecha .cita{font-size:19px;color:var(--texto-2)}
+.tubo{display:flex;align-items:center}
+.linea{flex:1;height:5px;border-radius:3px;background:currentColor;transform:scaleX(0);transition:transform .6s ease .1s}
+.ida .linea{transform-origin:left center}
+.vuelta .linea{transform-origin:right center}
+.flecha.on .linea{transform:scaleX(1)}
+.punta{width:30px;height:30px;fill:currentColor;flex:none;opacity:0;transition:opacity .2s ease .6s}
+.ida .punta{margin-left:-8px}
+.vuelta .punta{margin-right:-8px}
+.flecha.on .punta{opacity:1}
+
+/* Frase de cierre al pie */
+.cierre{position:absolute;left:80px;right:80px;bottom:62px;text-align:center;font-size:32px;
+  font-weight:600;border-top:2px solid var(--borde);padding-top:22px}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,.linea,.punta,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.lienzo{position:absolute;left:80px;right:80px;top:20px;bottom:150px;display:flex;flex-direction:column;
+  justify-content:center;gap:20px}
+
+/* Fila 1: ensamblador → motor → respuesta */
+.motor{display:grid;grid-template-columns:1.2fr 100px .9fr 100px .9fr;align-items:stretch}
+.pieza{padding:12px 16px;gap:6px;align-items:stretch;justify-content:flex-start;text-align:left;color:var(--texto)}
+.cab-c{display:flex;align-items:center;gap:12px}
+.cab-c .ico{flex:none;color:var(--texto-2)}
+.cab-c .nombre{font-size:25px;line-height:1.1}
+.cab-c .sub{font-size:17px;line-height:1.2}
+.entra{font-size:17px;font-style:italic;color:var(--ida);line-height:1.2}
+.chip{background:#fff;border:2px solid var(--borde-fuerte);border-radius:10px;padding:2px 10px;font-size:16px;line-height:1.25}
+.nota{font-size:18px;color:var(--texto);line-height:1.25}
+.conecta{display:flex;flex-direction:column;justify-content:center;padding:0 6px}
+.rot{font-size:16px;text-align:center;line-height:1.1;margin-bottom:6px;color:var(--texto-2)}
+.rot.verde{color:var(--vuelta);font-weight:600}
+.flecha.neutra{color:var(--borde-fuerte)}
+.flecha.verde{color:var(--vuelta)}
+.resp{display:flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--borde-fuerte);border-radius:10px;
+  padding:3px 12px;font-size:20px;font-weight:600}
+.resp .ico{flex:none}
+
+/* Fila 2: la cadena de conocimiento */
+.cadena{display:flex;align-items:center;gap:8px}
+.cadena .et{font-size:18px;font-weight:600;color:var(--texto-2);margin-right:6px}
+.eslabon{background:#fff;border:2px solid var(--borde-fuerte);border-radius:10px;padding:4px 14px;font-size:19px;font-weight:600}
+.cadena .sig{color:var(--borde-fuerte);flex:none}
+
+/* Fila 3: dónde vive cada hecho + los números de hoy */
+.abajo{display:grid;grid-template-columns:660px 1fr;gap:16px}
+.caja{padding:12px 16px;gap:6px;align-items:stretch;justify-content:flex-start;text-align:left;color:var(--texto)}
+.caja .t{font-size:21px;font-weight:600;line-height:1.15}
+.caja .t small{font-size:16px;font-weight:400;color:var(--texto-2)}
+.vive{display:grid;grid-template-columns:215px 20px 180px 1fr;column-gap:10px;align-items:center;min-height:58px;
+  border-top:1px dashed var(--borde)}
+.vive .quien{font-size:18px;font-weight:600;line-height:1.15}
+.vive .donde{background:#fff;border:2px solid var(--borde-fuerte);border-radius:10px;padding:2px 10px;font-size:18px;font-weight:600;
+  text-align:center;line-height:1.2}
+.vive .ej{font-size:15px;color:var(--texto-2);line-height:1.2;font-style:italic}
+.vive .ico{color:var(--borde-fuerte)}
+
+.gran{display:flex;align-items:baseline;gap:12px;padding-top:4px}
+.gran b{font-size:32px;font-weight:600;line-height:1.1}
+.gran span{font-size:17px;color:var(--texto-2);line-height:1.2}
+.mini{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;border-top:1px dashed var(--borde);padding-top:8px;margin-top:4px}
+.mini div{font-size:17px;color:var(--texto-2);line-height:1.2}
+.mini b{font-size:26px;font-weight:600;color:var(--texto);margin-right:8px}
+.por-completar{display:flex;align-items:center;gap:10px;font-size:17px;color:var(--texto-2);
+  border-top:1px dashed var(--borde);padding-top:8px;margin-top:4px}
+.por-completar .e{border:1.5px solid var(--plan);color:var(--plan);border-radius:8px;padding:0 8px;font-size:15px;
+  font-weight:600;line-height:1.35;background:#fff;flex:none}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-embudo" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></symbol>
+  <symbol id="i-balanza" viewBox="0 0 24 24"><path d="M12 4v16M6 20h12M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0zM19 8l-2.5 6a3 3 0 0 0 5 0z"/></symbol>
+  <symbol id="i-adelante" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></symbol>
+  <symbol id="i-aviso" viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4M12 17v.01"/></symbol>
+  <symbol id="i-bloqueo" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></symbol>
+  <symbol id="i-flecha" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></symbol>
+</svg>
+
+<div id="escenario">
+  <div class="lienzo">
+
+    <div class="motor">
+
+      <div class="tarjeta fuerte pieza paso" data-paso="1">
+        <div class="cab-c">
+          <svg class="ico" width="38" height="38" style="--s:1.4"><use href="#i-embudo"/></svg>
+          <div><div class="nombre">Ensamblador</div><div class="sub">traduce el expediente a variables</div></div>
+        </div>
+        <div class="entra">recibe «quiero hacer X, en este caso»</div>
+        <div class="chip">¿Ha concluido la Información Pública?</div>
+        <div class="chip">¿Han respondido todos los organismos?</div>
+      </div>
+
+      <div class="conecta paso" data-paso="2">
+        <div class="rot">variables</div>
+        <div class="flecha neutra ida paso" data-paso="2"><div class="tubo"><span class="linea"></span><svg class="punta" viewBox="0 0 24 24"><path d="M4 3l17 9-17 9z"/></svg></div></div>
+      </div>
+
+      <div class="tarjeta fuerte pieza paso" data-paso="2">
+        <div class="cab-c">
+          <svg class="ico" width="38" height="38" style="--s:1.4"><use href="#i-balanza"/></svg>
+          <div><div class="nombre">Motor de reglas</div><div class="sub">no sabe nada del dominio</div></div>
+        </div>
+        <div class="nota">Las reglas están en tablas de la base de datos, no en el código</div>
+      </div>
+
+      <div class="conecta paso" data-paso="3">
+        <div class="rot verde">respuesta</div>
+        <div class="flecha verde ida paso" data-paso="3"><div class="tubo"><span class="linea"></span><svg class="punta" viewBox="0 0 24 24"><path d="M4 3l17 9-17 9z"/></svg></div></div>
+      </div>
+
+      <div class="tarjeta fuerte pieza paso" data-paso="3">
+        <div class="cab-c"><div class="nombre" style="font-size:25px">Contesta</div></div>
+        <div class="resp"><svg class="ico" width="26" height="26" style="--s:1.7"><use href="#i-adelante"/></svg>adelante</div>
+        <div class="resp"><svg class="ico" width="26" height="26" style="--s:1.7"><use href="#i-aviso"/></svg>advierto</div>
+        <div class="resp"><svg class="ico" width="26" height="26" style="--s:1.7"><use href="#i-bloqueo"/></svg>bloqueo, y por qué</div>
+      </div>
+
+    </div>
+
+    <div class="cadena paso" data-paso="4">
+      <span class="et">La cadena</span>
+      <span class="eslabon">Ley</span>
+      <svg class="ico sig" width="26" height="26" style="--s:1.8"><use href="#i-flecha"/></svg>
+      <span class="eslabon">Extracción de la norma</span>
+      <svg class="ico sig" width="26" height="26" style="--s:1.8"><use href="#i-flecha"/></svg>
+      <span class="eslabon">Variable documentada</span>
+      <svg class="ico sig" width="26" height="26" style="--s:1.8"><use href="#i-flecha"/></svg>
+      <span class="eslabon">Regla</span>
+      <svg class="ico sig" width="26" height="26" style="--s:1.8"><use href="#i-flecha"/></svg>
+      <span class="eslabon">Tramitación real</span>
+    </div>
+
+    <div class="abajo">
+
+      <div class="tarjeta caja">
+        <div class="t paso" data-paso="5">¿Dónde vive cada hecho? <small>Si mañana cambiara, ¿por qué sería?</small></div>
+        <div class="vive paso" data-paso="5">
+          <div class="quien">Cambia una norma</div>
+          <svg class="ico" width="24" height="24" style="--s:1.8"><use href="#i-flecha"/></svg>
+          <div class="donde">Reglas (datos)</div>
+          <div class="ej">RAIPEE, solo para producción</div>
+        </div>
+        <div class="vive paso" data-paso="6">
+          <div class="quien">Cambia cómo organizamos el procedimiento</div>
+          <svg class="ico" width="24" height="24" style="--s:1.8"><use href="#i-flecha"/></svg>
+          <div class="donde">Catálogo (datos)</div>
+          <div class="ej">qué trámites lleva cada fase</div>
+        </div>
+        <div class="vive paso" data-paso="7">
+          <div class="quien">Es una imposibilidad lógica del sistema</div>
+          <svg class="ico" width="24" height="24" style="--s:1.8"><use href="#i-flecha"/></svg>
+          <div class="donde">Código</div>
+          <div class="ej">no se notifica un documento inexistente; el ensamblador, también</div>
+        </div>
+      </div>
+
+      <div class="tarjeta caja paso" data-paso="8">
+        <div class="t">Hoy, en números <small>· a 4/10/2026</small></div>
+        <div class="gran"><b>38</b><span>reglas activas: 36 bloquean, 2 advierten</span></div>
+        <div class="mini">
+          <div><b>53</b>condiciones</div>
+          <div><b>37</b>variables</div>
+          <div><b>11</b>normas indexadas</div>
+          <div><b>21</b>plazos</div>
+        </div>
+        <div class="por-completar paso" data-paso="9"><span class="e">por completar</span>15 de 38 enlazadas a su norma</div>
+      </div>
+
+    </div>
+
+  </div>
+  <div class="cierre paso" data-paso="10">Cuando cambia la ley no se reprograma: se cambia una regla</div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var MAX = 10, paso = 1;
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var h = location.hash, m = h.match(/paso=(\d+)/);
+  if (h === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (m) paso = Math.max(1, Math.min(MAX, +m[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>

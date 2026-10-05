@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 2d · Permisivo, con salida y con rastro</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* petición: lo que va */
+  --vuelta:#3B6D11;   /* respuesta: lo que vuelve */
+  --plan:#854F0B;     /* reservado: lo marcado ⚠️ (plan, aún no construido) */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+/* Iconos de línea (el sprite está al principio del body) */
+.ico{fill:none;stroke:currentColor;stroke-width:var(--s,1.5);stroke-linecap:round;stroke-linejoin:round}
+
+/* Tarjeta: la forma común de todo "equipo" o "pieza" */
+.tarjeta{background:var(--tarjeta);border:2px solid var(--borde);border-radius:18px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center}
+.tarjeta.fuerte{border-color:var(--borde-fuerte)}
+.tarjeta.punteada{background:transparent;border-style:dashed;border-color:var(--borde-fuerte);border-radius:12px}
+.nombre{font-size:30px;font-weight:600}
+.sub{font-size:20px;color:var(--texto-2)}
+
+/* Conexión: línea que se dibuja + punta + rótulo + cita */
+.flecha{width:100%;text-align:center}
+.flecha.ida{color:var(--ida)}
+.flecha.vuelta{color:var(--vuelta)}
+.flecha .et{font-size:24px;font-weight:600;padding:4px 0}
+.flecha .cita{font-size:19px;color:var(--texto-2)}
+.tubo{display:flex;align-items:center}
+.linea{flex:1;height:5px;border-radius:3px;background:currentColor;transform:scaleX(0);transition:transform .6s ease .1s}
+.ida .linea{transform-origin:left center}
+.vuelta .linea{transform-origin:right center}
+.flecha.on .linea{transform:scaleX(1)}
+.punta{width:30px;height:30px;fill:currentColor;flex:none;opacity:0;transition:opacity .2s ease .6s}
+.ida .punta{margin-left:-8px}
+.vuelta .punta{margin-right:-8px}
+.flecha.on .punta{opacity:1}
+
+/* Frase de cierre al pie */
+.cierre{position:absolute;left:80px;right:80px;bottom:62px;text-align:center;font-size:32px;
+  font-weight:600;border-top:2px solid var(--borde);padding-top:22px}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,.linea,.punta,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.lienzo{position:absolute;left:80px;right:80px;top:26px;bottom:150px;display:flex;flex-direction:column;
+  justify-content:center}
+.arriba{display:grid;grid-template-columns:500px 1fr;column-gap:44px;align-items:stretch}
+
+/* Izquierda: los tres grados, de menos a más fricción */
+.grados{display:flex;flex-direction:column;gap:14px}
+.grado{flex-direction:row;align-items:flex-start;justify-content:flex-start;gap:14px;padding:14px 18px;text-align:left;color:var(--texto)}
+.grado .ico{flex:none;color:var(--texto-2);margin-top:2px}
+.grado .t{font-size:26px;font-weight:600;line-height:1.1}
+.grado .s{font-size:19px;color:var(--texto-2);line-height:1.3;margin-top:3px}
+.grado .ej{font-size:17px;color:var(--texto-2);line-height:1.25;font-style:italic;margin-top:6px}
+.grado .ej + .ej{margin-top:3px}
+
+/* Derecha: cómo se ve el bloqueo con salida y qué queda anotado */
+.derecha{display:flex;flex-direction:column;gap:8px}
+.cap{font-size:20px;font-weight:600;color:var(--texto-2)}
+.mock{background:#fff;border:2px solid var(--borde-fuerte);border-radius:12px;padding:14px 18px;display:flex;flex-direction:column;gap:8px}
+.m-t{font-size:22px;font-weight:600}
+.m-s{font-size:18px;color:var(--texto-2);line-height:1.3}
+.m-s u{color:var(--texto);font-weight:600}
+.m-j{border:2px solid var(--borde);border-radius:8px;padding:6px 12px;font-size:17px;color:#9a9890;font-style:italic;line-height:1.25;min-height:60px}
+.m-b{display:flex;gap:10px}
+.boton{border:2px solid var(--borde-fuerte);border-radius:8px;background:var(--tarjeta);padding:4px 14px;font-size:19px;font-weight:600}
+.boton.mini{padding:4px 12px;color:var(--texto-2)}
+.baja{display:flex;align-items:center;gap:12px;color:var(--borde-fuerte);padding-left:24px}
+.baja span{font-size:18px;font-weight:600;color:var(--texto-2)}
+.bita{padding:12px 18px;gap:8px;align-items:stretch;justify-content:flex-start;text-align:left;color:var(--texto)}
+.bita .tit{display:flex;align-items:center;gap:12px}
+.bita .tit .ico{color:var(--texto-2);flex:none}
+.bita .tit .t{font-size:22px;font-weight:600}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+.chip{background:#fff;border:2px solid var(--borde-fuerte);border-radius:10px;padding:2px 14px;font-size:19px;font-weight:600}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-aviso" viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4M12 17v.01"/></symbol>
+  <symbol id="i-candado-abierto" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></symbol>
+  <symbol id="i-candado" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-bitacora" viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-baja" viewBox="0 0 24 24"><path d="M12 4v14M6 12l6 6 6-6"/></symbol>
+</svg>
+
+<div id="escenario">
+  <div class="lienzo">
+
+    <div class="arriba">
+
+      <div class="grados">
+
+        <div class="tarjeta fuerte grado paso" data-paso="1">
+          <svg class="ico" width="40" height="40" style="--s:1.4"><use href="#i-aviso"/></svg>
+          <div>
+            <div class="t">Avisa</div>
+            <div class="s">Se puede seguir; el motivo, a la vista</div>
+          </div>
+        </div>
+
+        <div class="tarjeta fuerte grado paso" data-paso="2">
+          <svg class="ico" width="40" height="40" style="--s:1.4"><use href="#i-candado-abierto"/></svg>
+          <div>
+            <div class="t">Bloquea, con salida</div>
+            <div class="s">Muestra el motivo y la norma; se fuerza escribiendo una justificación</div>
+          </div>
+        </div>
+
+        <div class="tarjeta fuerte grado paso" data-paso="6">
+          <svg class="ico" width="40" height="40" style="--s:1.4"><use href="#i-candado"/></svg>
+          <div>
+            <div class="t">Puerta cerrada</div>
+            <div class="s">Lo estructural y lo ya irreversible</div>
+            <div class="ej">Una fase cerrada: antes, se reabre, con justificación</div>
+            <div class="ej">Una resolución notificada es firme: solo un acto administrativo expreso, fuera del flujo</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="derecha">
+        <div class="cap paso" data-paso="3">Así se ve el bloqueo con salida</div>
+        <div class="mock paso" data-paso="3">
+          <div class="m-t">Resolución — bloqueado</div>
+          <div class="m-s">No se puede abrir la fase de resolución mientras no conste emitido el certificado de fin de instrucción de la solicitud. <u>Ver norma</u></div>
+          <div class="m-j paso" data-paso="4">Justificación obligatoria para forzar la creación (queda en bitácora)</div>
+          <div class="m-b paso" data-paso="4"><span class="boton">Forzar creación</span><span class="boton mini">✕</span></div>
+        </div>
+        <div class="baja paso" data-paso="5">
+          <svg class="ico" width="32" height="32" style="--s:1.8"><use href="#i-baja"/></svg><span>queda anotado</span>
+        </div>
+        <div class="tarjeta fuerte bita paso" data-paso="5">
+          <div class="tit">
+            <svg class="ico" width="34" height="34" style="--s:1.5"><use href="#i-bitacora"/></svg>
+            <div class="t">Bitácora</div>
+          </div>
+          <div class="chips">
+            <span class="chip">quién</span><span class="chip">cuándo</span><span class="chip">qué se hizo</span><span class="chip">su justificación</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+  <div class="cierre paso" data-paso="7">Avisa y razona, no estorba; salirse queda registrado</div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var MAX = 7, paso = 1;
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var h = location.hash, m = h.match(/paso=(\d+)/);
+  if (h === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (m) paso = Math.max(1, Math.min(MAX, +m[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>
