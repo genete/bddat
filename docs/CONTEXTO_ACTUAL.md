@@ -7,6 +7,6 @@
 
 ---
 
-**Hecho:** **ADR-050, fase 0** (2026-10-02): §M revalidada y los issues de las fases creados (#1007-#1012). La fase 1 absorbe la 2 y la 3, la papelera pasa a la 7 y el motor de Word se retira en la 4 (enmienda en el ADR). #193 y #444, cerrados.
+**Hecho:** **#1014** (2026-10-05): un solo sitio de `conftest.py` monta los documentos con contenido, las notificaciones y las solicitudes de los tests, y el guard de asserts exige nombrar la decisión que cambia un `assert` ajeno. En el corte de #1007 cambia el helper, no los tests.
 
-**Próximo:** **#1007** (ADR-050, fase 1). El frontend de notificaciones (#929) solo espera ya a ella.
+**Próximo:** **#1007** (ADR-050, fase 1), PR 4: el corte. El frontend de notificaciones (#929) solo espera ya a ella.
