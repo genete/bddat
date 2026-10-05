@@ -237,8 +237,8 @@ class TestReabrirFase:
         from app.models.tipos_fases import TipoFase
         from app.models.tipos_tramites import TipoTramite
         from app.models.tipos_tareas import TipoTarea
-        from app.models.notificaciones import Notificacion
         from app.services import mutaciones_arbol as svc
+        from tests.conftest import ArbolESFTT
 
         from app.models.tipos_solicitudes import TipoSolicitud
 
@@ -282,8 +282,7 @@ class TestReabrirFase:
                              tipo_tarea_id=_tipo(TipoTarea, 'NOTIFICAR').id)
         db.session.add(tarea_notif)
         db.session.flush()
-        db.session.add(Notificacion(fuente='SOLICITANTE', tarea_id=tarea_notif.id, canal='NOTIFICA'))
-        db.session.flush()
+        ArbolESFTT(db).notificacion(tarea_notif, canal='NOTIFICA')
 
         _cerrar_fase(fase_fin)
 

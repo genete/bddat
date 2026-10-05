@@ -67,11 +67,11 @@ def _montar_cadena_subsanacion(specs):
     from app.models.documentos import Documento
     from app.models.documentos_tarea import DocumentoTarea
     from app.models.diagnosticos import Diagnostico
-    from app.models.notificaciones import Notificacion
     from app.models.tipos_fases import TipoFase
     from app.models.tipos_tramites import TipoTramite
     from app.models.tipos_tareas import TipoTarea
     from app.models.tipos_documentos import TipoDocumento
+    from tests.conftest import ArbolESFTT
 
     solicitud = Solicitud.query.first()
     if solicitud is None:
@@ -95,10 +95,7 @@ def _montar_cadena_subsanacion(specs):
             notificar = Tarea(tramite_id=tramite.id, tipo_tarea_id=tipo_notificar.id)
             db.session.add(notificar)
             db.session.flush()
-            db.session.add(Notificacion(
-                fuente='SOLICITANTE', tarea_id=notificar.id, canal='NOTIFICA',
-            ))
-            db.session.flush()
+            ArbolESFTT(db).notificacion(notificar, canal='NOTIFICA')
 
         tarea = Tarea(tramite_id=tramite.id, tipo_tarea_id=tipo_analizar.id)
         db.session.add(tarea)

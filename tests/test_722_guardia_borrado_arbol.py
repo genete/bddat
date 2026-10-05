@@ -88,12 +88,11 @@ class TestBorrarTarea:
 
     def test_con_notificacion_bloqueado_y_no_escapable(self, app_ctx):
         from app.services import mutaciones_arbol as svc
-        from app.models.notificaciones import Notificacion
         from app import db
+        from tests.conftest import ArbolESFTT
 
         _, _, _, tarea = _fase_con_tramite_y_tarea('REQUERIMIENTO_SUBSANACION', 'NOTIFICAR')
-        db.session.add(Notificacion(fuente='SOLICITANTE', tarea_id=tarea.id, canal='NOTIFICA'))
-        db.session.flush()
+        ArbolESFTT(db).notificacion(tarea, canal='NOTIFICA')
 
         res = svc.borrar_tarea(tarea)
         assert not res.ok

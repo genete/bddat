@@ -100,6 +100,7 @@ class TestBitacoraDesvincularDocumentoCritico:
         from app.models.notificaciones import Notificacion
         from app.services import mutaciones_arbol as svc
         from sqlalchemy import text
+        from tests.conftest import ArbolESFTT
 
         usuario = Usuario.query.first()
         if usuario is None:
@@ -112,12 +113,8 @@ class TestBitacoraDesvincularDocumentoCritico:
         doc = _documento(expediente_id, tipo_doc.id)
 
         db.session.add(DocumentoTarea(tarea_id=tarea.id, documento_id=doc.id, rol='PRODUCIDO'))
-        db.session.add(Notificacion(
-            fuente='SOLICITANTE', tarea_id=tarea.id, documento_id=doc.id, canal='NOTIFICA',
-            identificador_envio='82541676',
-            resultado='CORRECTA',
-        ))
-        db.session.flush()
+        ArbolESFTT(db).notificacion(tarea, resultado='CORRECTA', canal='NOTIFICA',
+                                    documento=doc, identificador_envio='82541676')
         tarea_id, doc_id = tarea.id, doc.id
 
         with app_ctx.test_request_context():
@@ -201,19 +198,15 @@ class TestDocumentoEsReferenciadoNotificacion:
         documento que ya no tiene ningún DocumentoTarea (desvinculado, punto 1).
         Antes del fix esto pasaba desapercibido y el borrado se permitía."""
         from app import db
-        from app.models.notificaciones import Notificacion
         from app.modules.expedientes.routes import _documento_es_referenciado
+        from tests.conftest import ArbolESFTT
 
         _, _, _, tarea = _fase_con_tramite_y_tarea(_primer_tipo_tramite_codigo(), 'NOTIFICAR')
         expediente_id = tarea.tramite.fase.solicitud.expediente_id
         tipo_doc = _tipo_doc_critico('JUSTIFICANTE_NOTIFICA')
         doc = _documento(expediente_id, tipo_doc.id)
 
-        db.session.add(Notificacion(
-            fuente='SOLICITANTE', tarea_id=tarea.id, documento_id=doc.id, canal='NOTIFICA',
-            resultado='CORRECTA',
-        ))
-        db.session.flush()
+        ArbolESFTT(db).notificacion(tarea, resultado='CORRECTA', canal='NOTIFICA', documento=doc)
 
         assert doc.vinculos_tarea == []  # sin vínculo estructural — el estado del bug
         assert _documento_es_referenciado(doc) is True

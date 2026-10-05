@@ -732,13 +732,18 @@ class ArbolESFTT:
         return v
 
     def notificacion(self, tarea, resultado=None, canal='NOTIFICA',
-                     sede_justificacion=None):
+                     sede_justificacion=None, *, documento=None, identificador_envio=None):
         """Rellena la fila de `notificaciones` de la tarea directamente, sin
         pasar por el hook de `editar_tarea`. La fila ya existe desde que nace
         la tarea (#967); si no, se crea con fuente SOLICITANTE. Sin fechas
         (#928): las da la `fecha_administrativa` de los justificantes que
         vincule el test; tampoco número de intento (#568): lo dan los
-        `JUSTIFICANTE_POSTAL_1ER`/`_2DO` vinculados."""
+        `JUSTIFICANTE_POSTAL_1ER`/`_2DO` vinculados.
+
+        Con `tarea()`, lo único de la suite que monta una `Notificacion`
+        (#1014): su forma ha cambiado varias veces y así se arregla en un
+        sitio. `documento` e `identificador_envio` solo se escriben si se
+        pasan, para no pisar lo que haya puesto el hook."""
         from app.models.notificaciones import Notificacion
         n = Notificacion.query.filter_by(tarea_id=tarea.id).first()
         if n is None:
@@ -747,6 +752,10 @@ class ArbolESFTT:
         n.resultado = resultado
         n.canal = canal
         n.sede_justificacion = sede_justificacion
+        if documento is not None:
+            n.documento_id = documento.id
+        if identificador_envio is not None:
+            n.identificador_envio = identificador_envio
         self.db.session.flush()
         return n
 
