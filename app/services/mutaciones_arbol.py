@@ -46,9 +46,7 @@ from app.services.invariantes_esftt import (
 from app.services.vocabulario_esftt import check_orden_tarea, check_vocabulario_tramite
 from app.services.requisitos import evaluar_requisitos
 from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
-from app.services.parser_justificante_notifica import (
-    parsear_justificante_notifica, parsear_justificante_notifica_zip,
-)
+from app.services.parser_justificante_notifica import parsear_justificante_notifica
 from app.services.codigo_seguimiento import extraer_tarea_id
 from app.services.extraccion_texto_documento import extraer_texto
 from app.services.reformados import ultimo_reformado
@@ -123,9 +121,9 @@ MAPA_CANAL_POR_TIPO_DOC = notif_svc.CANAL_POR_TIPO_DOC
 def parsear_documento_notifica(doc: Documento):
     """Parsea en disco el justificante NOTIFICA ya vinculado como producido.
 
-    None si el documento no tiene fichero local (URL externa), la extensión
-    no es .pdf/.zip, o el parser no reconoce el contenido — nunca lanza
-    (mismo contrato que parsear_justificante_notifica*, #655).
+    None si el documento no tiene fichero local (URL externa), no es un .pdf
+    o el parser no reconoce el contenido — nunca lanza (mismo contrato que
+    parsear_justificante_notifica, #655).
     """
     if '://' in (doc.url or ''):
         return None
@@ -134,14 +132,10 @@ def parsear_documento_notifica(doc: Documento):
     except ValueError:
         return None
 
-    ruta_lower = ruta.lower()
-    if ruta_lower.endswith('.zip'):
-        resultado = parsear_justificante_notifica_zip(ruta)
-    elif ruta_lower.endswith('.pdf'):
-        resultado = parsear_justificante_notifica(ruta)
-    else:
+    if not ruta.lower().endswith('.pdf'):
         return None
 
+    resultado = parsear_justificante_notifica(ruta)
     return resultado if resultado.reconocido else None
 
 

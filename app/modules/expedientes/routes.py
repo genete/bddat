@@ -42,9 +42,7 @@ from app.models.tipos_documentos import TipoDocumento
 from app.services.ingesta_pool import ingestar_en_pool
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
 from app.services.detalle_nodo import info_apertura_documento
-from app.services.parser_justificante_notifica import (
-    parsear_justificante_notifica, parsear_justificante_notifica_zip,
-)
+from app.services.parser_justificante_notifica import parsear_justificante_notifica
 from app.services.notificaciones import fecha_sugerida
 from app.services.assembler import build_sujeto
 from app.services.reformados import (
@@ -828,11 +826,7 @@ def pool_parsear_justificante(id):
     if not fichero or not fichero.filename:
         return jsonify({'error': 'Ningún fichero recibido'}), 400
 
-    nombre = fichero.filename.lower()
-    if nombre.endswith('.zip'):
-        parseo = parsear_justificante_notifica_zip(fichero.stream)
-    else:
-        parseo = parsear_justificante_notifica(fichero.stream)
+    parseo = parsear_justificante_notifica(fichero.stream)
 
     payload = parseo.to_dict()
     sugerida = fecha_sugerida(request.form.get('tipo_doc_codigo'), parseo)
