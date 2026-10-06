@@ -269,7 +269,7 @@ El registro de `vnd.libreoffice.command:` solo se ha comprobado en ese puesto. *
 
 | Formato | Se reconoce por | Admitido |
 |---|---|---|
-| PDF, PDF/A | `%PDF-` | sí; si está cifrado se avisa (no se podrá extraer su texto, #181, #717) |
+| PDF, PDF/A | `%PDF-` | sí, también cifrado y sin aviso: con clave para abrir lo rechaza la administración, no BDDAT; pypdf necesita `cryptography` para leer los de AES, y se añade si un parser lo pide (enmienda del 2026-10-06) |
 | ODT, ODS, ODG | ZIP con `mimetype` ODF | sí |
 | DOCX, XLSX | ZIP con `[Content_Types].xml` | sí; se guardan, no se editan en BDDAT |
 | DOCM, XLSM | ídem con `vbaProject.bin` | no: se piden sin macros |
