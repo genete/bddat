@@ -526,11 +526,16 @@ def _escribir_odt(partes: dict, infos: dict) -> bytes:
 
     'mimetype' va primero y sin comprimir: lo exige ODF y es como los
     programas reconocen el formato sin descomprimir el fichero.
+
+    Todas las entradas, 'mimetype' incluida, llevan el `ZipInfo` de la plantilla: si
+    alguna se escribe por su nombre, el ZIP lleva la hora a la que se generó, y regenerar
+    con los mismos datos nunca daría los mismos bytes (ADR-050 §C: «mismo contenido,
+    nada»).
     """
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zout:
         if 'mimetype' in partes:
-            zout.writestr('mimetype', partes.pop('mimetype'),
+            zout.writestr(infos.get('mimetype', 'mimetype'), partes.pop('mimetype'),
                           compress_type=zipfile.ZIP_STORED)
         for nombre, datos in partes.items():
             zout.writestr(infos.get(nombre, nombre), datos)
