@@ -6,8 +6,7 @@ no deben dejar al otro sin fichero cuando `mover_a_esftt`/`mover_a_pool`
 Documento real y persistido (a diferencia de test_667 Parte 1, que usa objetos
 transitorios): el arreglo comprueba en BD si OTRO `Documento` sigue apuntando al
 mismo origen antes de borrarlo, así que hace falta que esa fila exista de verdad.
-Mismo patrón que test_667 Parte 2 (app_ctx + fs_tmp, ArbolESFTT, tarea/documento
-reales).
+Con app_ctx + fs_tmp, ArbolESFTT y tarea/documento reales.
 """
 import hashlib
 import os
@@ -18,7 +17,14 @@ from app import db
 from app.models.documentos import Documento
 from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
 from tests.conftest import ArbolESFTT
-from tests.test_667_mover_documento_esftt import _tarea_real
+
+
+def _tarea_real():
+    """Tarea ANALIZAR sin vínculos documentales previos, fabricada por el test (#428).
+
+    El test que la llame debe traer `app_ctx` y `fs_tmp`: el expediente nace por la vía
+    real, que guarda el documento de solicitud en el almacén."""
+    return ArbolESFTT(db).tarea_propia('ANALIZAR')
 
 
 def _pool_duplicado(expediente, fs_tmp, contenido=b'contenido #926 compartido'):

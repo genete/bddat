@@ -73,7 +73,7 @@ PERMITIDOS = {
     'app/services/generador_escritos.py': 7,
     'app/services/generador_escritos_docx.py': 2,
     'app/services/generador_escritos_odt.py': 1,
-    'app/services/mutaciones_arbol.py': 9,
+    'app/services/mutaciones_arbol.py': 3,
     'app/services/regeneracion_escritos.py': 7,
     'app/services/rutas_esftt.py': 22,
 }

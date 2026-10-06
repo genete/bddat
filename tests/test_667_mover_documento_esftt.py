@@ -8,23 +8,17 @@ para el cálculo de rutas) y Tarea stubeada, reutilizando los helpers de
 test_665_ruta_esftt.py. FILESYSTEM_BASE apunta a tmp_path — nunca toca el
 servidor de ficheros real.
 
-Parte 2: editar_tarea() — verifica que el diff (no clear()+recrear, #667)
-dispara mover_a_esftt()/mover_a_pool() en el momento correcto (primera
-vinculación de un documento / última desvinculación) y NO en un re-guardado
-que no cambia los documentos. Contra la BD real de desarrollo (mismo patrón
-que el resto de la suite — app_ctx con rollback por SAVEPOINT), pero
-monkeypatcheando las funciones de movimiento para observar las llamadas sin
-depender de tener una jerarquía completa de catálogo con ficheros reales.
+La parte 2 —que `editar_tarea()` llamaba a estas funciones al vincular y al
+desvincular— se retiró en el corte de ADR-050 (#1007): vincular es solo una fila y
+no mueve ningún fichero. Estas funciones y sus tests salen en el PR 5.
 """
 import hashlib
-import os
 
 import pytest
 
 from app import db
 from app.models.documentos import Documento
 from app.models.expedientes import Expediente
-from app.services import mutaciones_arbol as svc
 from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
 from tests.test_665_ruta_esftt import _tarea_stub, _sin_organismo
 
@@ -209,119 +203,3 @@ class TestMoverAPool:
         assert not origen.exists()
         assert (_fs_tmp / 'AT-5' / 'pool' / 'informe.pdf').read_bytes() == b'contenido huerfano de nuevo'
 
-
-# ---------------------------------------------------------------------------
-# editar_tarea() — el diff dispara mover_a_esftt/mover_a_pool en el momento
-# correcto (contra la BD real de desarrollo, con rollback por SAVEPOINT).
-# ---------------------------------------------------------------------------
-
-def _tarea_real():
-    """Tarea sin vínculos documentales previos, fabricada por el test (#428).
-
-    Antes pescaba la primera tarea libre de la base y saltaba si no había ninguna
-    —que es lo que pasó en cuanto la base dejó de tener expedientes a medias—.
-    Fabricarla, además de no saltar nunca, garantiza lo que el test necesita de
-    verdad: que el diff de `editar_tarea()` no pise ni libere documentos ajenos,
-    cosa que la tarea encontrada solo cumplía mientras nadie tramitara por ahí.
-
-    El test que la llame debe traer `app_ctx` y `fs_tmp`: el expediente nace por
-    la vía real, que escribe el documento de solicitud a disco. La usa también
-    `test_677_consumido_derivado`, que la importa de aquí.
-    """
-    from app import db as _db
-    from tests.conftest import ArbolESFTT
-
-    return ArbolESFTT(_db).tarea_propia('ANALIZAR')
-
-
-def _documento_prueba(expediente_id, asunto):
-    doc = Documento(
-        expediente_id=expediente_id,
-        url='no-relevante-para-este-test.pdf',  # mover_a_* va monkeypatcheado
-        asunto=asunto,
-    )
-    db.session.add(doc)
-    db.session.flush()
-    return doc
-
-
-class TestEditarTareaEngancheMovimiento:
-
-    def test_primera_vinculacion_llama_mover_a_esftt(self, app_ctx, fs_tmp, monkeypatch):
-        tarea = _tarea_real()
-        expediente = tarea.tramite.fase.solicitud.expediente
-        doc = _documento_prueba(expediente.id, '#667 test — primera vinculación')
-
-        llamadas = []
-        monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: llamadas.append((d.id, t.id)))
-        monkeypatch.setattr(svc, 'mover_a_pool', lambda d: pytest.fail('no debería llamarse'))
-
-        resultado = svc.editar_tarea(
-            tarea, documentos_consumidos_ids=[doc.id],
-            documento_producido_id=None, notas=None,
-        )
-
-        assert resultado.ok is True
-        assert llamadas == [(doc.id, tarea.id)]
-
-    def test_reguardado_sin_cambios_no_repite_movimiento(self, app_ctx, fs_tmp, monkeypatch):
-        tarea = _tarea_real()
-        expediente = tarea.tramite.fase.solicitud.expediente
-        doc = _documento_prueba(expediente.id, '#667 test — re-guardado')
-
-        llamadas = []
-        monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: llamadas.append(d.id))
-        monkeypatch.setattr(svc, 'mover_a_pool', lambda d: llamadas.append(('pool', d.id)))
-
-        svc.editar_tarea(tarea, documentos_consumidos_ids=[doc.id],
-                         documento_producido_id=None, notas='primera vez')
-        assert llamadas == [doc.id]
-
-        # Segundo guardado: mismo documento consumido, solo cambian las notas.
-        # El diff (#667) no debe borrar/recrear el vínculo -> no debe repetir el movimiento.
-        resultado = svc.editar_tarea(
-            tarea, documentos_consumidos_ids=[doc.id],
-            documento_producido_id=None, notas='notas actualizadas',
-        )
-
-        assert resultado.ok is True
-        assert llamadas == [doc.id]  # sin segunda entrada
-        assert tarea.notas == 'notas actualizadas'
-
-    def test_desvinculacion_total_llama_mover_a_pool(self, app_ctx, fs_tmp, monkeypatch):
-        tarea = _tarea_real()
-        expediente = tarea.tramite.fase.solicitud.expediente
-        doc = _documento_prueba(expediente.id, '#667 test — desvinculación')
-
-        monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: None)
-        svc.editar_tarea(tarea, documentos_consumidos_ids=[doc.id],
-                         documento_producido_id=None, notas=None)
-
-        llamadas_pool = []
-        monkeypatch.setattr(svc, 'mover_a_pool', lambda d, e: llamadas_pool.append(d.id))
-        monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: pytest.fail('no debería llamarse'))
-
-        resultado = svc.editar_tarea(tarea, documentos_consumidos_ids=[],
-                                     documento_producido_id=None, notas=None)
-
-        assert resultado.ok is True
-        assert llamadas_pool == [doc.id]
-
-    def test_documento_bddat_nunca_dispara_movimiento_fisico(self, app_ctx, fs_tmp):
-        """mover_a_esftt real (sin monkeypatch) es no-op para esquema bddat:// —
-        verifica el filtro de esquema de extremo a extremo vía editar_tarea()."""
-        tarea = _tarea_real()
-        expediente = tarea.tramite.fase.solicitud.expediente
-        doc = Documento(
-            expediente_id=expediente.id,
-            url='bddat://diagnosticos/999999',
-            asunto='#667 test — bddat sin fichero físico',
-        )
-        db.session.add(doc)
-        db.session.flush()
-
-        resultado = svc.editar_tarea(tarea, documentos_consumidos_ids=[doc.id],
-                                     documento_producido_id=None, notas=None)
-
-        assert resultado.ok is True
-        assert doc.url == 'bddat://diagnosticos/999999'  # sin tocar

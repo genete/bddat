@@ -45,7 +45,8 @@ from app.services.invariantes_esftt import (
 )
 from app.services.vocabulario_esftt import check_orden_tarea, check_vocabulario_tramite
 from app.services.requisitos import evaluar_requisitos
-from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
+from app.services.almacenamiento.adaptador import AlmacenNoDisponible, MENSAJE_ALMACEN_NO_DISPONIBLE
+from app.services.almacenamiento.contenido import comprobar_para_vincular
 from app.services.parser_justificante_notifica import parsear_justificante_notifica
 from app.services.codigo_seguimiento import extraer_tarea_id
 from app.services.extraccion_texto_documento import extraer_texto
@@ -1610,10 +1611,13 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
     libre. `justificacion` no fuerza nada más.
 
     Vínculos por diff, no clear()+recrear (#667): un guardado que no cambia
-    los documentos no debe tocar sus filas DOCUMENTOS_TAREA — eso es lo que
-    permite detectar de forma fiable "primera vinculación" (documento sin
-    ningún vínculo previo) para disparar el movimiento físico a la carpeta
-    ESFTT (ADR-032 §3), y "última desvinculación" para la vuelta a pool/.
+    los documentos no debe tocar sus filas DOCUMENTOS_TAREA. Vincular es solo
+    una fila: no mueve ningún fichero (ADR-050 §C).
+
+    Antes de añadir un vínculo se comprueba el contenido (`comprobar_para_vincular`,
+    ADR-050 §G): uno ausente o dañado no se vincula y se devuelve el error sin
+    tocar nada. El texto de `ContenidoNoUtilizable` es para el usuario; el de
+    `AlmacenNoDisponible` se sustituye por el mensaje de siempre.
     """
     res_inv = check_invariante('MUTAR', 'TAREA', ta.id)
     if res_inv:
@@ -1656,6 +1660,10 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
         escape_sin_destinatario = True
 
     try:
+        # Un contenido ausente o dañado no sostiene ningún acto: antes de tocar nada.
+        for doc_id, _rol in deseados - set(actuales):
+            comprobar_para_vincular(Documento.query.get(doc_id))
+
         if escape_sin_destinatario:
             bitacora_svc.registrar(
                 current_user.id, 'ALTERAR', 'tareas', ta.id,
@@ -1666,7 +1674,6 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
                     'sujeto': build_sujeto(expediente, ta.tramite),
                 },
             )
-        docs_a_liberar = []
         for clave, vinculo in actuales.items():
             if clave not in deseados:
                 doc = vinculo.documento
@@ -1687,35 +1694,21 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
                             'sujeto': build_sujeto(expediente, ta.tramite),
                         },
                     )
-                if not doc.vinculos_tarea:
-                    docs_a_liberar.append(doc)
         db.session.flush()
 
-        docs_a_encajar = []
         for doc_id, rol in deseados:
             if (doc_id, rol) not in actuales:
-                doc = Documento.query.get(doc_id)
-                if not doc.vinculos_tarea:
-                    docs_a_encajar.append(doc)
                 ta.vinculos_documento.append(DocumentoTarea(documento_id=doc_id, rol=rol))
 
         ta.notas = notas or None
         db.session.flush()
 
-        for doc in docs_a_encajar:
-            mover_a_esftt(doc, ta)
-        for doc in docs_a_liberar:
-            mover_a_pool(doc, expediente)
-
-        # Tras mover_a_esftt (documento ya en su ubicación final) — el hook solo
-        # lee el fichero, no depende de dónde esté, pero mantiene el orden lógico
-        # "vínculos resueltos → efectos derivados" del resto de la función. En
-        # cada guardado de una NOTIFICAR, no solo si cambia el producido (#928):
-        # los consumidos (justificantes previos) también crean o borran la fila.
+        # Vínculos resueltos → efectos derivados. En cada guardado de una NOTIFICAR,
+        # no solo si cambia el producido (#928): los consumidos (justificantes
+        # previos) también crean o borran la fila.
         advertencia = _hook_notificar(ta)
 
-        # #717: solo en la transición a un producido NUEVO — mover_a_esftt ya
-        # dejó el fichero en su ubicación final, necesaria para leer su texto.
+        # #717: solo en la transición a un producido NUEVO.
         if documento_producido_id and documento_producido_id != id_producido_previo:
             advertencia = _hook_717_elaborar_consumido_diagnostico(ta, documento_producido_id) or advertencia
 
@@ -1727,6 +1720,9 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
         db.session.rollback()
         return ResultadoMutacion(
             ok=False, error='Este documento ya está asignado como producido a otra tarea')
+    except AlmacenNoDisponible:
+        db.session.rollback()
+        return ResultadoMutacion(ok=False, error=MENSAJE_ALMACEN_NO_DISPONIBLE)
     except Exception as e:
         db.session.rollback()
         return ResultadoMutacion(ok=False, error=str(e))
@@ -1739,10 +1735,13 @@ def sincronizar_consumido_documental(tarea: Tarea) -> None:
     #677): casar un requisito ⇒ consumido derivado, sin gesto manual en la
     Despensa (oculta para ANALIZAR extendido, ver Inspector.jsx).
 
-    Se llama tras vincular/desvincular_requisito_documental. Mismo patrón
-    diff + movimiento físico que editar_tarea (ADR-032 §3): solo toca lo que
-    cambia, nunca clear()+recrear — evita disparar mover_a_esftt/mover_a_pool
-    en documentos que ya estaban en su sitio.
+    Se llama tras vincular/desvincular_requisito_documental. Mismo patrón diff
+    que editar_tarea: solo toca lo que cambia, nunca clear()+recrear. Vincular
+    es solo una fila: no mueve ningún fichero (ADR-050 §C).
+
+    Un contenido ausente o dañado no se vincula (ADR-050 §G): lanza
+    `ContenidoNoUtilizable` o `AlmacenNoDisponible` antes de tocar nada, y es la
+    ruta quien lo cuenta.
 
     `evaluar_requisitos` casa por solicitud, no por vuelta: en la cadena de
     subsanación se descarta lo que ya conste CONSUMIDO en otra tarea ANALIZAR
@@ -1759,28 +1758,18 @@ def sincronizar_consumido_documental(tarea: Tarea) -> None:
     deseados_ids -= documentos_consumidos_otras_tareas_cadena(tarea)
     actuales = {v.documento_id: v for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO'}
 
-    docs_a_liberar = []
+    for doc_id in deseados_ids - set(actuales):
+        comprobar_para_vincular(Documento.query.get(doc_id))
+
     for doc_id, vinculo in actuales.items():
         if doc_id not in deseados_ids:
-            doc = vinculo.documento
             tarea.vinculos_documento.remove(vinculo)
-            if not doc.vinculos_tarea:
-                docs_a_liberar.append(doc)
     db.session.flush()
 
-    docs_a_encajar = []
     for doc_id in deseados_ids:
         if doc_id not in actuales:
-            doc = Documento.query.get(doc_id)
-            if not doc.vinculos_tarea:
-                docs_a_encajar.append(doc)
             tarea.vinculos_documento.append(DocumentoTarea(documento_id=doc_id, rol='CONSUMIDO'))
     db.session.flush()
-
-    for doc in docs_a_encajar:
-        mover_a_esftt(doc, tarea)
-    for doc in docs_a_liberar:
-        mover_a_pool(doc, solicitud.expediente)
 
     db.session.commit()
 

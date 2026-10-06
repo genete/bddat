@@ -38,6 +38,8 @@ from app.services.tipos_creables import tipos_creables_de_nodo
 from app.services.detalle_nodo import detalle_de_nodo, info_apertura_documento
 from app.services.esquema_editable import esquema_de_nodo
 from app.services import mutaciones_arbol as svc
+from app.services.almacenamiento.adaptador import AlmacenNoDisponible, MENSAJE_ALMACEN_NO_DISPONIBLE
+from app.services.almacenamiento.contenido import ContenidoNoUtilizable, comprobar_para_vincular
 from app.services import consultas_organismos as svc_consultas
 from app.utils.api_respuestas import leer_bypass
 from app.utils.formularios import leer_json
@@ -1498,6 +1500,14 @@ def _resolver_tarea_analizar(expediente, tarea_id):
     return tarea
 
 
+def _error_de_contenido(exc):
+    """Respuesta JSON de un contenido que no se puede usar (ADR-050 §G): 503 si el almacén
+    no contesta, 409 con el mensaje para el usuario si está ausente o dañado."""
+    if isinstance(exc, AlmacenNoDisponible):
+        return jsonify({'error': MENSAJE_ALMACEN_NO_DISPONIBLE}), 503
+    return jsonify({'error': str(exc)}), 409
+
+
 def _candado_diagnostico_producido(tarea):
     """422 si la tarea ya tiene diagnóstico producido, o None si puede mutar.
 
@@ -1878,6 +1888,12 @@ def vincular_requisito_documental(expediente_id, tarea_id, requisito_id):
     if documento is None:
         return jsonify({'error': 'Documento no encontrado en este expediente'}), 422
 
+    # Un contenido ausente o dañado no se vincula (ADR-050 §G): antes de tocar nada.
+    try:
+        comprobar_para_vincular(documento)
+    except (ContenidoNoUtilizable, AlmacenNoDisponible) as exc:
+        return _error_de_contenido(exc)
+
     solicitud = tarea.tramite.fase.solicitud
     reformado_id_vinculo = None
     if requisito.afectado_por_reformado:
@@ -1897,7 +1913,10 @@ def vincular_requisito_documental(expediente_id, tarea_id, requisito_id):
         vinculo.documento_id = documento.id
     db.session.commit()
 
-    svc.sincronizar_consumido_documental(tarea)
+    try:
+        svc.sincronizar_consumido_documental(tarea)
+    except (ContenidoNoUtilizable, AlmacenNoDisponible) as exc:
+        return _error_de_contenido(exc)
 
     return jsonify({'ok': True, 'checklist_documental': _checklist_documental_json(tarea)}), 200
 
@@ -1971,7 +1990,10 @@ def desvincular_requisito_documental(expediente_id, tarea_id, requisito_id):
                 },
             )
 
-    svc.sincronizar_consumido_documental(tarea)
+    try:
+        svc.sincronizar_consumido_documental(tarea)
+    except (ContenidoNoUtilizable, AlmacenNoDisponible) as exc:
+        return _error_de_contenido(exc)
 
     return jsonify({'ok': True, 'checklist_documental': _checklist_documental_json(tarea)}), 200
 
