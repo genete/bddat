@@ -265,7 +265,7 @@ def diagnostico_seed(app):
 
 
 @pytest.fixture
-def fs_tmp(app, tmp_path):
+def fs_tmp(app, tmp_path, almacen_tmp):
     """Redirige FILESYSTEM_BASE a un directorio temporal (#674).
 
     app_ctx revierte la BD por SAVEPOINT, pero el filesystem no es
@@ -275,6 +275,11 @@ def fs_tmp(app, tmp_path):
     (FILESYSTEM_BASE=D:/BDDAT/docs_prueba en .env). Usar en cualquier test
     que cree un Expediente/Documento con esquema local y pueda disparar
     escritura a disco (certificados, escritos, pool).
+
+    Pide también `almacen_tmp` (#1007, corte): lo que se sube, se genera o se da de alta
+    ya va al almacén, y los tests que piden esta fixture por el alta, los certificados o
+    los escritos no se tocan. En el PR 5 de #1007 sale esta fixture y quien la pida pasa
+    a `almacen_tmp`.
     """
     base_original = app.config.get('FILESYSTEM_BASE')
     app.config['FILESYSTEM_BASE'] = str(tmp_path)
@@ -356,6 +361,7 @@ def almacen_tmp(app, tmp_path_factory, _limpieza_ficheros):
     originales = (app.config.get('ALMACEN_BASE'), app.config.get('MANIFIESTOS_BASE'))
     app.config['ALMACEN_BASE'] = str(rutas.almacen)
     app.config['MANIFIESTOS_BASE'] = str(rutas.manifiestos)
+    app.config['ALMACEN_DE_PRUEBA'] = True      # lo comprueba `crear_expediente_de_prueba`
 
     with _contexto_de_app(app):
         with _db.engine.connect() as conexion:
@@ -366,6 +372,7 @@ def almacen_tmp(app, tmp_path_factory, _limpieza_ficheros):
     yield rutas
 
     app.config['ALMACEN_BASE'], app.config['MANIFIESTOS_BASE'] = originales
+    app.config['ALMACEN_DE_PRUEBA'] = False
 
 
 # ---------------------------------------------------------------------------
@@ -409,8 +416,11 @@ def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None):
     monte el árbol a mano se queda probando contra un estado que el sistema ya no
     sabe producir.
 
-    Requiere `app_ctx` (la transacción que lo revierte) y `fs_tmp` (el alta escribe
-    un fichero real; el disco no revierte solo).
+    Requiere `app_ctx` (la transacción que lo revierte) y `fs_tmp` (el alta guarda el
+    escrito en el almacén; ni el disco ni la fila de `ficheros` revierten solos). Sin
+    `almacen_tmp` falla en vez de dejar el contenido y su fila en el almacén compartido
+    de tests: una fila suelta hace que `subir` dé por «ya guardado» un contenido que el
+    almacén temporal de otro test no tiene, y ese test falla lejos de la causa (#1007).
 
     `documento=None` o un `DocumentoSolicitud` propio permiten ejercitar el rechazo
     y los casos de fecha. Las fechas salen de `reloj_simulado.hoy()` y nunca de
@@ -420,6 +430,8 @@ def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None):
     """
     from datetime import timedelta
 
+    from flask import current_app
+
     from app import db as _db_app
     from app.models.entidad import Entidad
     from app.services.alta_expediente import (
@@ -427,6 +439,9 @@ def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None):
     )
     from app.services.reloj_simulado import hoy
 
+    assert current_app.config.get('ALMACEN_DE_PRUEBA'), (
+        'El alta guarda el escrito en el almacén: pide `fs_tmp`, `almacen_tmp` o `arbol_aislado` '
+        'en el test (con `arbol_esftt` a secas el contenido y su fila quedan en el almacén de tests).')
     n = next(_SECUENCIA_PRUEBA)
     tipo_exp, tipo_sol, municipio = _catalogo_para_alta()
 

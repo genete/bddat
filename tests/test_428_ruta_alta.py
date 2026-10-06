@@ -268,8 +268,6 @@ def test_alta_completa_crea_el_expediente_anclado(usuario_supervisor, app, fs_tm
     basta para ver la fila, el ancla, el acreditativo, el plazo, el fichero y el
     representante.
     """
-    import os
-
     from app import db
 
     cat = _catalogo(app)
@@ -286,19 +284,18 @@ def test_alta_completa_crea_el_expediente_anclado(usuario_supervisor, app, fs_tm
         assert r.status_code == 302
         assert '/expedientes/' in r.headers['Location']
 
-        # El escrito acaba en AT-N/pool/, y en ningún otro sitio.
-        pool = os.path.join(str(fs_tmp), f'AT-{siguiente}', 'pool')
-        assert os.path.isdir(pool)
-        assert len(os.listdir(pool)) == 1
-        assert os.listdir(str(fs_tmp)) == [f'AT-{siguiente}']
-
         with app.app_context():
             from app.models.expedientes import Expediente
             from app.models.interesados_expediente import InteresadoExpediente
+            from app.services.almacenamiento.contenido import leer
             from app.services.plazos import plazos_de_la_solicitud
 
             exp = Expediente.query.filter_by(numero_at=siguiente).one()
             solicitud = exp.solicitudes[0]
+
+            # El escrito está en el almacén, y no en una carpeta del expediente.
+            assert solicitud.documento_solicitud.url is None
+            assert leer(solicitud.documento_solicitud).datos
 
             # El solicitante es el titular y quien actúa por él va aparte (#989):
             # si no, se notificaría al representante como si fuera el solicitante.

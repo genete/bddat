@@ -12,7 +12,6 @@ limpieza más abajo.
 import hashlib
 import io
 import json
-import os
 
 import pytest
 
@@ -114,9 +113,9 @@ class TestNombrePoolUnico:
 #
 # Contra la BD real de desarrollo (mismo patrón que el resto de la suite,
 # ver conftest._login_as). Los Documento de prueba se marcan con '#666 test'
-# en el asunto y se borran en el fixture autouse de abajo. FILESYSTEM_BASE se
-# redirige a un directorio temporal (_pool_tmp) para no escribir en el
-# servidor de ficheros real de desarrollo.
+# en el asunto y se borran en el fixture autouse de abajo. El almacén se
+# redirige a un directorio temporal (`almacen_tmp`) para no escribir en el
+# almacén real de desarrollo.
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(autouse=True)
@@ -131,22 +130,15 @@ def _limpiar_documentos_prueba(app):
         db.session.commit()
 
 
-@pytest.fixture
-def _pool_tmp(app, tmp_path):
-    base_original = app.config.get('FILESYSTEM_BASE')
-    app.config['FILESYSTEM_BASE'] = str(tmp_path)
-    yield tmp_path
-    app.config['FILESYSTEM_BASE'] = base_original
-
-
 class TestEndpointSubirDocumento:
 
-    def test_sube_un_fichero_y_crea_documento(self, usuario_supervisor, expediente_seed, _pool_tmp, app):
+    def test_sube_un_fichero_y_crea_documento(self, usuario_supervisor, expediente_seed, almacen_tmp, app):
+        contenido = b'%PDF-1.4 contenido de prueba #666'
         metadatos = [{'tipo_doc_id': 1, 'asunto': '#666 test — sube un fichero', 'prioridad': True}]
         r = usuario_supervisor.post(
             f'/expedientes/{expediente_seed}/documentos/subir',
             data={
-                'ficheros': (io.BytesIO(b'contenido de prueba'), 'informe_666.pdf'),
+                'ficheros': (io.BytesIO(contenido), 'informe_666.pdf'),
                 'metadatos': json.dumps(metadatos),
             },
             content_type='multipart/form-data',
@@ -158,19 +150,17 @@ class TestEndpointSubirDocumento:
 
         with app.app_context():
             from app.models.documentos import Documento
+            from app.services.almacenamiento.contenido import leer
             doc = Documento.query.filter_by(
                 expediente_id=expediente_seed,
                 asunto='#666 test — sube un fichero',
             ).first()
             assert doc is not None
-            assert doc.hash_md5 == hashlib.md5(b'contenido de prueba').hexdigest()
             assert doc.prioridad == 1
-            ruta_fisica = doc.ruta_absoluta()
+            assert doc.nombre_fichero == 'informe_666.pdf'
+            assert leer(doc).datos == contenido
 
-        assert os.path.isfile(ruta_fisica)
-        assert ruta_fisica.endswith('informe_666.pdf')
-
-    def test_sin_ficheros_devuelve_400(self, usuario_supervisor, expediente_seed, _pool_tmp):
+    def test_sin_ficheros_devuelve_400(self, usuario_supervisor, expediente_seed, almacen_tmp):
         r = usuario_supervisor.post(
             f'/expedientes/{expediente_seed}/documentos/subir',
             data={'metadatos': '[]'},
@@ -180,9 +170,9 @@ class TestEndpointSubirDocumento:
         assert r.get_json()['ok'] is False
 
     def test_duplicado_exacto_no_reescribe_pero_crea_documento(
-        self, usuario_supervisor, expediente_seed, _pool_tmp, app,
+        self, usuario_supervisor, expediente_seed, almacen_tmp, app,
     ):
-        contenido = b'contenido duplicado #666'
+        contenido = b'%PDF-1.4 contenido duplicado #666'
         for i in range(2):
             metadatos = [{'tipo_doc_id': 1, 'asunto': f'#666 test — duplicado {i}'}]
             r = usuario_supervisor.post(
@@ -202,6 +192,5 @@ class TestEndpointSubirDocumento:
                 Documento.asunto.like('#666 test — duplicado%'),
             ).order_by(Documento.id).all()
             assert len(docs) == 2
-            # Mismo hash, mismo fichero físico — dos registros distintos, sin bloquear.
-            assert docs[0].hash_md5 == docs[1].hash_md5
-            assert docs[0].url == docs[1].url
+            # Mismo contenido guardado una sola vez — dos documentos distintos, sin bloquear.
+            assert docs[0].fichero_ref == docs[1].fichero_ref

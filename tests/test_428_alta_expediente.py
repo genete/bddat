@@ -8,12 +8,10 @@ siembran las migraciones— pero con `assert`, no con `pytest.skip`: en una base
 sembrada por nosotros, que falte un tipo de expediente es un defecto de la
 semilla, no una razón para no probar.
 
-`fs_tmp` no es opcional aquí: el alta escribe un fichero real en `AT-N/pool/` y el
-sistema de ficheros no revierte con el SAVEPOINT de `app_ctx`. Sin él, cada pasada
-dejaría basura en el servidor de ficheros de desarrollo — y el test de limpieza no
-podría comprobar nada.
+`fs_tmp` (que pide también `almacen_tmp`) no es opcional aquí: el alta guarda el escrito
+de solicitud en el almacén, y ni el disco ni la fila de `ficheros` se revierten con el
+SAVEPOINT de `app_ctx`. Sin ella, cada pasada dejaría basura en el almacén de desarrollo.
 """
-import os
 from datetime import timedelta
 
 import pytest
@@ -54,13 +52,11 @@ class TestAltaCompleta:
         assert alta.documento.tipo_doc.codigo == 'MODELO_SOLICITUD'
         assert alta.documento.fecha_administrativa is not None
 
-    def test_el_fichero_existe_en_el_pool_del_expediente(self, alta, fs_tmp):
-        ruta = alta.documento.ruta_absoluta()
-        assert os.path.isfile(ruta)
-        assert os.path.basename(os.path.dirname(ruta)) == 'pool'
-        assert f'AT-{alta.numero_at}' in ruta
-        with open(ruta, 'rb') as f:
-            assert f.read() == CONTENIDO
+    def test_el_contenido_del_escrito_esta_en_el_almacen(self, alta):
+        from app.services.almacenamiento.contenido import leer
+
+        assert alta.documento.url is None
+        assert leer(alta.documento).datos == CONTENIDO
 
     def test_el_titular_queda_acreditado_por_ese_documento(self, alta):
         """El signal deja la fila TITULAR sin acreditativo porque el documento aún
@@ -131,18 +127,6 @@ class TestFechaFutura:
             crear_expediente_de_prueba(fecha_registro=hoy() + timedelta(days=1))
         assert 'no puede ser futura' in str(exc.value)
 
-    def test_el_alta_rechazada_por_fecha_no_deja_fichero(self, app_ctx, fs_tmp):
-        """La fecha se valida al construir el Documento, y eso ocurre después de
-        crear `AT-N/pool/`: el caso real que ejercita la limpieza del `except`."""
-        from app.services.reloj_simulado import hoy
-
-        with pytest.raises(ValueError):
-            crear_expediente_de_prueba(fecha_registro=hoy() + timedelta(days=1))
-
-        # Ni el fichero ni la carpeta del expediente que no llegó a existir.
-        restos = [d for d in os.listdir(str(fs_tmp)) if d.startswith('AT-')]
-        assert restos == [], f'el alta fallida dejó {restos} en el disco'
-
 
 # ---------------------------------------------------------------------------
 # 2ª vía: solicitud adicional sobre un expediente que ya existe
@@ -150,17 +134,20 @@ class TestFechaFutura:
 
 def _documento_en_pool(expediente, *, fecha, nombre='escrito.pdf'):
     """Deja un documento en el pool del expediente por la vía real."""
-    from app.services.ingesta_pool import ingestar_en_pool
+    import io
+
+    from app.services.ingesta_pool import FicheroAIngestar, ingestar_en_pool
     from app.models.tipos_documentos import TipoDocumento
 
     tipo = TipoDocumento.query.filter_by(codigo='MODELO_SOLICITUD').first()
     assert tipo is not None, "la semilla debe traer el TipoDocumento 'MODELO_SOLICITUD'"
 
-    resultado = ingestar_en_pool(
-        expediente, b'%PDF-1.4 escrito adicional', nombre,
-        tipo_doc_id=tipo.id, fecha_administrativa=fecha, asunto='Escrito de prueba')
+    [documento] = ingestar_en_pool(expediente, [FicheroAIngestar(
+        io.BytesIO(b'%PDF-1.4 escrito adicional'), nombre,
+        tipo_doc_id=tipo.id, fecha_administrativa=fecha, asunto='Escrito de prueba')])
+    db.session.add(documento)
     db.session.flush()
-    return resultado.documento
+    return documento
 
 
 class TestSolicitudAdicional:

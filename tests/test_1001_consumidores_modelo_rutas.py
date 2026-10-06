@@ -50,7 +50,7 @@ SIMBOLOS = {
     'nombre_pool_unico', 'ruta_pool_documento', 'ruta_destino_esftt_fichero',
 }
 # Como variable local, `ruta_absoluta` es un nombre genérico y no el método de
-# `Documento`: en `admin_plantillas/routes.py` y `alta_expediente.py` lo es.
+# `Documento`: en `admin_plantillas/routes.py` lo es.
 SOLO_COMO_METODO = {'ruta_absoluta'}
 
 # Apariciones por fichero el 2026-10-02 (develop en c7d4a49). Solo bajan.
@@ -66,16 +66,14 @@ PERMITIDOS = {
     'app/modules/admin_plantillas/templates/admin_plantillas/_editar_fragmento.html': 2,
     'app/modules/admin_plantillas/templates/admin_plantillas/_panel_tokens.html': 1,
     'app/modules/admin_plantillas/templates/admin_plantillas/form.html': 5,
-    'app/modules/expedientes/routes.py': 2,
+    'app/modules/expedientes/routes.py': 1,
     'app/routes/api_escritos.py': 5,
-    'app/services/alta_expediente.py': 3,
     'app/services/cert_fin_instruccion.py': 3,
     'app/services/extraccion_texto_documento.py': 1,
     'app/services/generador_cert.py': 7,
     'app/services/generador_escritos.py': 7,
     'app/services/generador_escritos_docx.py': 2,
     'app/services/generador_escritos_odt.py': 1,
-    'app/services/ingesta_pool.py': 9,
     'app/services/mutaciones_arbol.py': 9,
     'app/services/regeneracion_escritos.py': 7,
     'app/services/rutas_esftt.py': 22,

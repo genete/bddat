@@ -39,7 +39,9 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
-from app.services.ingesta_pool import ingestar_en_pool
+from app.services.almacenamiento.adaptador import AlmacenNoDisponible
+from app.services.almacenamiento.formatos import FormatoNoAdmitido
+from app.services.ingesta_pool import FicheroAIngestar, ingestar_en_pool
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
 from app.services.detalle_nodo import info_apertura_documento
 from app.services.parser_justificante_notifica import parsear_justificante_notifica
@@ -697,24 +699,25 @@ def pool_documentos_json(id):
 @login_required
 def pool_subir_documento(id):
     """
-    Ingesta multipart al pool (#666, ADR-032 §1/§4): sube ficheros reales
-    (diálogo nativo del navegador), indiferente a si el origen navegado por
-    el usuario era una carpeta del servidor o su disco local. Siempre copia
-    al punto de entrada fijo AT-N/pool/<prefijo-hash>_<nombre-original>.
+    Ingesta multipart al pool (#666, ADR-032 §1/§4, ADR-050 §B): sube ficheros reales
+    (diálogo nativo del navegador) al almacén y crea un documento por cada uno. La
+    Despensa usa esta misma ruta.
 
     Recibe multipart: 'ficheros' (N ficheros) + 'metadatos' (JSON, array
     paralelo por índice a 'ficheros'): [{tipo_doc_id, fecha_administrativa,
     asunto, prioridad}, ...].
 
-    Duplicado exacto (mismo MD5 completo ya presente en el pool): no se
-    reescribe el fichero físico, pero sí se crea el Documento — el usuario
-    ha pedido explícitamente añadirlo (ADR-032 §4, sin bloquear ni avisar).
+    Todo o nada: se validan todos los ficheros antes de enviar el primero al almacén
+    (un formato no admitido, 422; un fichero vacío cuenta como tal). Duplicado exacto
+    (mismo contenido ya en el almacén): no se vuelve a guardar, pero sí se crea el
+    Documento — el usuario ha pedido explícitamente añadirlo (ADR-032 §4, sin bloquear
+    ni avisar).
 
-    La copia y el alta del Documento viven en `app/services/ingesta_pool.py`
-    desde #428, porque el alta de expediente hace lo mismo y no puede llamarse a
-    sí misma por HTTP. Aquí queda lo que solo tiene sentido hablando HTTP: el
-    permiso, el 503, el parseo del JSON de metadatos, el commit del lote y la
-    traducción del error a código de estado.
+    El envío al almacén y el armado de los Documento viven en
+    `app/services/ingesta_pool.py`, porque el alta de expediente hace lo mismo y no
+    puede llamarse a sí misma por HTTP. Aquí queda lo que solo tiene sentido hablando
+    HTTP: el permiso, el parseo del JSON de metadatos, el commit del lote y la
+    traducción del error a código de estado (422 formato, 503 almacén sin contestar).
 
     Permiso 'subir_documento' (ADR-027 / #501): aportar al pool no edita el
     expediente — el documento nace sin vínculo (huérfano) y es el técnico quien
@@ -724,10 +727,6 @@ def pool_subir_documento(id):
     resultado = verificar_acceso_expediente(expediente, 'subir_documento')
     if resultado:
         return resultado
-
-    base = current_app.config.get('FILESYSTEM_BASE', '')
-    if not base or not os.path.isdir(base):
-        return jsonify({'ok': False, 'error': 'Servidor de ficheros no accesible'}), 503
 
     ficheros = request.files.getlist('ficheros')
     if not ficheros:
@@ -740,16 +739,11 @@ def pool_subir_documento(id):
     if not isinstance(metadatos, list):
         return jsonify({'ok': False, 'error': 'Metadatos inválidos'}), 400
 
-    creados = 0
-    creados_docs = []
     try:
+        entrantes, items = [], []
         for i, fichero in enumerate(ficheros):
             if not fichero.filename:
                 continue
-            contenido = fichero.read()
-            if not contenido:
-                continue
-
             item = metadatos[i] if i < len(metadatos) else {}
 
             fecha_admin = None
@@ -760,32 +754,40 @@ def pool_subir_documento(id):
                 except ValueError:
                     pass
 
-            ingestado = ingestar_en_pool(
-                expediente, contenido, fichero.filename,
+            entrantes.append(FicheroAIngestar(
+                fichero.stream, fichero.filename,
                 tipo_doc_id=int(item.get('tipo_doc_id') or 1),
                 fecha_administrativa=fecha_admin,
                 asunto=(item.get('asunto') or '').strip() or None,
                 prioridad=bool(item.get('prioridad')),
-            )
+            ))
+            items.append(item)
+
+        creados_docs = ingestar_en_pool(expediente, entrantes)
+        # De uno en uno y en orden: la bifurcación de un lote de DOC_PROYECTO la decide el
+        # estado del ancla tras el documento anterior (§C de ADR-044).
+        for documento, item in zip(creados_docs, items):
+            db.session.add(documento)
             db.session.flush()   # el corte necesita el id del documento
-            declarar_desde_metadatos(ingestado.documento, item, usuario_id=current_user.id)
-            creados += 1
-            creados_docs.append(ingestado.documento)
+            declarar_desde_metadatos(documento, item, usuario_id=current_user.id)
 
         db.session.commit()
-    except OSError as e:
+    except FormatoNoAdmitido as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 422
+    except AlmacenNoDisponible:
         db.session.rollback()
         return jsonify({
             'ok': False,
-            'error': f'No se pudo escribir a disco (¿ruta demasiado larga?): {e}',
-        }), 500
+            'error': 'El almacén de documentos no está disponible: inténtalo en unos minutos.',
+        }), 503
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
 
     return jsonify({
         'ok': True,
-        'creados': creados,
+        'creados': len(creados_docs),
         'documentos': [
             {
                 'id':              d.id,
