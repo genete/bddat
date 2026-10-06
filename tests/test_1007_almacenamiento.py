@@ -20,9 +20,11 @@ import pytest
 from sqlalchemy import text
 
 from app import db
+from app.models.bitacora import Bitacora
 from app.services.almacenamiento.adaptador import AdaptadorAlmacen, AlmacenNoDisponible
 from app.services.almacenamiento.contenido import (
-    ContenidoNoUtilizable, EntradaSubida, comprobar_para_vincular, leer, servir_descarga, subir,
+    VIA_REGENERACION, ContenidoNoUtilizable, EntradaSubida, cambiar_contenido,
+    comprobar_para_vincular, leer, servir_descarga, subir,
 )
 from app.services.almacenamiento.formatos import FormatoNoAdmitido
 
@@ -255,6 +257,43 @@ def test_la_descarga_lleva_las_cabeceras_de_seguridad_y_marca_el_contenido_danad
     with app.test_request_context():
         servir_descarga(pdf).get_data()
     assert _estado(contenido) == 'CORRUPTO'
+
+
+# --- cambiar el contenido de un documento y copiarlo ---------------------------------------
+
+def _documento(expediente_id, contenido, nombre='informe.pdf'):
+    """Un documento de verdad en la sesión: la bitácora y la copia necesitan su `id`."""
+    entrada = EntradaSubida(io.BytesIO(contenido), nombre, {'expediente_id': expediente_id, 'tipo_doc_id': 1})
+    documento = subir([entrada])[0]
+    db.session.add(documento)
+    db.session.flush()
+    return documento
+
+
+def _cambios_en_bitacora(documento):
+    return (Bitacora.query
+            .filter_by(tabla='documentos', registro_id=documento.id, columna='fichero_ref')
+            .order_by(Bitacora.id).all())
+
+
+def test_cambiar_el_contenido_anota_en_la_bitacora_los_dos_hashes(
+        app_ctx, almacen_tmp, expediente_seed, primer_usuario_id):
+    """Fallo silencioso que evita: un documento que citan vínculos y certificados cambia de
+    contenido y nada deja rastro de cuál era. Vale para todos los llamadores: la bitácora
+    la escribe la función, no quien la llama."""
+    antes, despues = _pdf('borrador generado'), _pdf('borrador regenerado')
+    documento = _documento(expediente_seed, antes)
+
+    cambiado = cambiar_contenido(
+        documento, io.BytesIO(despues), via=VIA_REGENERACION, usuario_id=primer_usuario_id)
+
+    assert cambiado is True
+    assert leer(documento).datos == despues
+    entradas = _cambios_en_bitacora(documento)
+    assert len(entradas) == 1
+    assert (entradas[0].usuario_id, entradas[0].operacion) == (primer_usuario_id, 'ALTERAR')
+    assert entradas[0].detalle == {
+        'via': 'REGENERACION', 'sha256_anterior': _sha(antes), 'sha256_nuevo': _sha(despues)}
 
 
 # --- el adaptador ----------------------------------------------------------------------
