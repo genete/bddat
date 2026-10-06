@@ -30,7 +30,7 @@ from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_ia import TipoIA
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.usuarios import Usuario
-from app.services.almacenamiento.adaptador import AlmacenNoDisponible
+from app.services.almacenamiento.adaptador import AlmacenNoDisponible, MENSAJE_ALMACEN_NO_DISPONIBLE
 from app.services.alta_expediente import (
     DatosAlta, DocumentoSolicitud, alta_expediente,
 )
@@ -192,9 +192,7 @@ def nuevo():
         # (#989), formato del escrito no admitido (ADR-050 §E). Se repinta junto al resto.
         return _repintar([str(exc)], municipios_ids)
     except AlmacenNoDisponible:
-        return _repintar(
-            ['El almacén de documentos no está disponible: inténtalo en unos minutos.'],
-            municipios_ids)
+        return _repintar([MENSAJE_ALMACEN_NO_DISPONIBLE], municipios_ids)
     except Exception as exc:
         return _repintar([f'Error al crear el expediente: {exc}'], municipios_ids)
 

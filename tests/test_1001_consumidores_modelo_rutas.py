@@ -66,7 +66,6 @@ PERMITIDOS = {
     'app/modules/admin_plantillas/templates/admin_plantillas/_editar_fragmento.html': 2,
     'app/modules/admin_plantillas/templates/admin_plantillas/_panel_tokens.html': 1,
     'app/modules/admin_plantillas/templates/admin_plantillas/form.html': 5,
-    'app/modules/expedientes/routes.py': 1,
     'app/routes/api_escritos.py': 5,
     'app/services/cert_fin_instruccion.py': 3,
     'app/services/extraccion_texto_documento.py': 1,

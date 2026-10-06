@@ -6,6 +6,8 @@ resto trabaja con `documentos.id` y pide el contenido por aquí:
 - `subir`: el flujo de §B (validar todo, hash a trozos, reutilizar o escribir, la fila
   de `ficheros` en su propia transacción, los documentos todo o nada).
 - `leer`: el contenido entero con su formato, comprobando el hash.
+- `tiene_contenido_propio`: si el documento guarda su contenido en el almacén (y no es un enlace
+  externo ni un documento virtual).
 - `comprobar_para_vincular`: un contenido ausente o corrupto no sostiene ningún acto.
 - `servir_descarga`: la respuesta HTTP con las cabeceras de §E.
 - `cambiar_contenido`: el documento se conserva (mismo `id`, mismos vínculos) y apunta a otro
@@ -186,6 +188,15 @@ def leer(documento: Documento) -> ContenidoLeido:
         _marcar_estado(fila.ref, CORRUPTO)
         raise ContenidoNoUtilizable(_mensaje_no_utilizable(CORRUPTO, documento))
     return ContenidoLeido(datos=datos, formato=fila.formato, nombre_fichero=documento.nombre_visible())
+
+
+def tiene_contenido_propio(documento: Documento) -> bool:
+    """El documento guarda su contenido en el almacén, a diferencia de un enlace externo
+    (`http(s)://`) o un documento virtual (`bddat://`), que no tienen nada que leer ni servir.
+
+    Es la pregunta que se le hace al módulo en vez de mirar `fichero_ref` desde fuera: la `ref`
+    solo la ve el subsistema de almacenamiento (ADR-050 §B)."""
+    return documento.fichero_ref is not None
 
 
 def comprobar_para_vincular(documento: Documento) -> None:

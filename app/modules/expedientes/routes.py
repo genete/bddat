@@ -20,9 +20,8 @@ FECHA: 2026-06-11
 ISSUE: #543
 """
 import json
-import os
 from datetime import date
-from flask import current_app, send_file, g
+from flask import g
 from flask import Blueprint, render_template, request, flash, redirect, url_for, abort, jsonify
 from flask_login import login_required, current_user
 from app import db
@@ -39,7 +38,10 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
-from app.services.almacenamiento.adaptador import AlmacenNoDisponible
+from app.services.almacenamiento.adaptador import AlmacenNoDisponible, MENSAJE_ALMACEN_NO_DISPONIBLE
+from app.services.almacenamiento.contenido import (
+    ContenidoNoUtilizable, servir_descarga, tiene_contenido_propio,
+)
 from app.services.almacenamiento.formatos import FormatoNoAdmitido
 from app.services.ingesta_pool import FicheroAIngestar, ingestar_en_pool
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
@@ -777,10 +779,7 @@ def pool_subir_documento(id):
         return jsonify({'ok': False, 'error': str(e)}), 422
     except AlmacenNoDisponible:
         db.session.rollback()
-        return jsonify({
-            'ok': False,
-            'error': 'El almacén de documentos no está disponible: inténtalo en unos minutos.',
-        }), 503
+        return jsonify({'ok': False, 'error': MENSAJE_ALMACEN_NO_DISPONIBLE}), 503
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
@@ -839,13 +838,19 @@ def pool_parsear_justificante(id):
 @bp.route('/<int:id>/documentos/<int:doc_id>/fichero')
 @login_required
 def pool_descargar_documento(id, doc_id):
-    """Sirve un fichero del servidor de ficheros. Para URLs externas, redirige.
+    """Sirve el contenido de un documento desde el almacén. Para URLs externas, redirige.
 
     bddat:// (ADR-006, #610): certificados redirige a su PDF; diagnósticos no
     tiene descarga posible (400 explícito, no 404 silencioso) — desde #629 la
     apertura real de un diagnóstico pasa por diagnostico_modal(), esta rama
     queda como defensa ante un acceso directo a esta URL; recurso no
     contemplado falla alto, igual que en info_apertura_documento().
+
+    Contenido propio (`fichero_ref`, ADR-050 §E): lo sirve el módulo de contenido, con sus
+    cabeceras de seguridad. Si el contenido está ausente o dañado, 409 con el mensaje para
+    el usuario; si el almacén no contesta, 503 «inténtalo en unos minutos». No valen 404 ni
+    500 para esos dos mensajes: sus manejadores pintan una plantilla fija y esconderían el
+    texto. Un documento sin contenido ni enlace es 404.
     """
     expediente = Expediente.query.get_or_404(id)
     resultado = verificar_acceso_expediente(expediente, 'ver')
@@ -876,15 +881,14 @@ def pool_descargar_documento(id, doc_id):
             abort(400, description='Este documento no tiene representación descargable.')
         raise NotImplementedError(f'Apertura no definida para recurso bddat://: {recurso!r}')
 
+    if not tiene_contenido_propio(doc):
+        abort(404)
     try:
-        ruta_abs = doc.ruta_absoluta()
-    except (RuntimeError, ValueError):
-        abort(404)
-    if not os.path.isfile(ruta_abs):
-        abort(404)
-
-    return send_file(ruta_abs, as_attachment=False,
-                     download_name=os.path.basename(ruta_abs))
+        return servir_descarga(doc)
+    except ContenidoNoUtilizable as exc:
+        abort(409, description=str(exc))
+    except AlmacenNoDisponible:
+        abort(503, description=MENSAJE_ALMACEN_NO_DISPONIBLE)
 
 
 @bp.route('/<int:id>/documentos/<int:doc_id>/diagnostico-modal')
