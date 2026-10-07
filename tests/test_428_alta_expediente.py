@@ -8,7 +8,7 @@ siembran las migraciones— pero con `assert`, no con `pytest.skip`: en una base
 sembrada por nosotros, que falte un tipo de expediente es un defecto de la
 semilla, no una razón para no probar.
 
-`fs_tmp` (que pide también `almacen_tmp`) no es opcional aquí: el alta guarda el escrito
+`almacen_tmp` no es opcional aquí: el alta guarda el escrito
 de solicitud en el almacén, y ni el disco ni la fila de `ficheros` se revierten con el
 SAVEPOINT de `app_ctx`. Sin ella, cada pasada dejaría basura en el almacén de desarrollo.
 """
@@ -86,12 +86,12 @@ class TestAltaCompleta:
 
 class TestSinAncla:
 
-    def test_sin_documento_no_hay_alta(self, app_ctx, fs_tmp):
+    def test_sin_documento_no_hay_alta(self, app_ctx, almacen_tmp):
         with pytest.raises(ValueError) as exc:
             crear_expediente_de_prueba(documento=None)
         assert str(exc.value) == MENSAJE_SIN_ANCLA
 
-    def test_con_fichero_vacio_tampoco(self, app_ctx, fs_tmp):
+    def test_con_fichero_vacio_tampoco(self, app_ctx, almacen_tmp):
         from app.services.reloj_simulado import hoy
 
         vacio = DocumentoSolicitud(
@@ -101,7 +101,7 @@ class TestSinAncla:
             crear_expediente_de_prueba(documento=vacio)
         assert str(exc.value) == MENSAJE_SIN_ANCLA
 
-    def test_el_rechazo_no_consume_numero_de_expediente(self, app_ctx, fs_tmp):
+    def test_el_rechazo_no_consume_numero_de_expediente(self, app_ctx, almacen_tmp):
         """El contador es gapless: un alta rechazada no puede gastar un AT."""
         antes = db.session.execute(
             db.text('SELECT valor FROM public.contador_numero_at')).scalar()
@@ -120,7 +120,7 @@ class TestSinAncla:
 
 class TestFechaFutura:
 
-    def test_fecha_de_registro_futura_rechaza_el_alta(self, app_ctx, fs_tmp):
+    def test_fecha_de_registro_futura_rechaza_el_alta(self, app_ctx, almacen_tmp):
         from app.services.reloj_simulado import hoy
 
         with pytest.raises(ValueError) as exc:
@@ -204,7 +204,7 @@ class TestSolicitudAdicional:
         (aap,) = plazos_de_la_solicitud(Solicitud.query.get(res.ids[0]))
         assert aap.estado != 'SIN_PLAZO'
 
-    def test_documento_de_otro_expediente_rechazado(self, app_ctx, fs_tmp):
+    def test_documento_de_otro_expediente_rechazado(self, app_ctx, almacen_tmp):
         """La FK sola no lo impediría: `Documento` solo conoce su expediente, y
         nada ata ese expediente al de la solicitud."""
         import app.services.mutaciones_arbol as svc

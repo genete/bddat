@@ -25,7 +25,7 @@ def _tarea_real():
     documentos ajenos, cosa que la tarea encontrada solo cumplía mientras nadie
     tramitara por ahí.
 
-    El test que la llame debe traer `app_ctx` y `fs_tmp`: el expediente nace por
+    El test que la llame debe traer `app_ctx` y `almacen_tmp`: el expediente nace por
     la vía real, que guarda el documento de solicitud en el almacén.
     """
     from tests.conftest import ArbolESFTT
@@ -92,7 +92,7 @@ def _dos_tareas_analizar_cadena(app_ctx):
 
 class TestSincronizarConsumidoDocumental:
 
-    def test_casar_requisito_deriva_el_consumido(self, app_ctx, fs_tmp):
+    def test_casar_requisito_deriva_el_consumido(self, app_ctx, almacen_tmp):
         tarea = _tarea_real()
         expediente = tarea.tramite.fase.solicitud.expediente
         doc = _documento_prueba(expediente.id, '#677 test — casar requisito')
@@ -105,7 +105,7 @@ class TestSincronizarConsumidoDocumental:
         consumidos = {v.documento_id for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO'}
         assert consumidos == {doc.id}
 
-    def test_descasar_ultimo_quita_el_consumido(self, app_ctx, fs_tmp):
+    def test_descasar_ultimo_quita_el_consumido(self, app_ctx, almacen_tmp):
         tarea = _tarea_real()
         expediente = tarea.tramite.fase.solicitud.expediente
         doc = _documento_prueba(expediente.id, '#677 test — descasar')
@@ -122,7 +122,7 @@ class TestSincronizarConsumidoDocumental:
 
         assert not [v for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO']
 
-    def test_reguardado_sin_cambios_no_duplica_el_vinculo(self, app_ctx, fs_tmp):
+    def test_reguardado_sin_cambios_no_duplica_el_vinculo(self, app_ctx, almacen_tmp):
         tarea = _tarea_real()
         expediente = tarea.tramite.fase.solicitud.expediente
         doc = _documento_prueba(expediente.id, '#677 test — reguardado')
@@ -136,7 +136,7 @@ class TestSincronizarConsumidoDocumental:
         consumidos = [v for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO']
         assert [v.documento_id for v in consumidos] == [doc.id]  # el segundo pase no repite el vínculo
 
-    def test_sin_requisitos_casados_es_no_op(self, app_ctx, fs_tmp):
+    def test_sin_requisitos_casados_es_no_op(self, app_ctx, almacen_tmp):
         tarea = _tarea_real()
 
         with patch('app.services.mutaciones_arbol.build', return_value=(None, {})), \
@@ -146,7 +146,7 @@ class TestSincronizarConsumidoDocumental:
 
         assert not tarea.vinculos_documento
 
-    def test_error_evaluar_requisitos_es_no_op(self, app_ctx, fs_tmp):
+    def test_error_evaluar_requisitos_es_no_op(self, app_ctx, almacen_tmp):
         tarea = _tarea_real()
 
         with patch('app.services.mutaciones_arbol.build', return_value=(None, {})), \

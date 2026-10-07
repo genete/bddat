@@ -264,29 +264,6 @@ def diagnostico_seed(app):
         return diag.documento.expediente_id, diag.documento_id
 
 
-@pytest.fixture
-def fs_tmp(app, tmp_path, almacen_tmp):
-    """Redirige FILESYSTEM_BASE a un directorio temporal (#674).
-
-    app_ctx revierte la BD por SAVEPOINT, pero el filesystem no es
-    transaccional — cualquier test que genere un documento/certificado real
-    dentro de una transacción que luego revierte deja el fichero físico
-    huérfano en el servidor de ficheros de desarrollo real
-    (FILESYSTEM_BASE=D:/BDDAT/docs_prueba en .env). Usar en cualquier test
-    que cree un Expediente/Documento con esquema local y pueda disparar
-    escritura a disco (certificados, escritos, pool).
-
-    Pide también `almacen_tmp` (#1007, corte): lo que se sube, se genera o se da de alta
-    ya va al almacén, y los tests que piden esta fixture por el alta, los certificados o
-    los escritos no se tocan. En el PR 5 de #1007 sale esta fixture y quien la pida pasa
-    a `almacen_tmp`.
-    """
-    base_original = app.config.get('FILESYSTEM_BASE')
-    app.config['FILESYSTEM_BASE'] = str(tmp_path)
-    yield tmp_path
-    app.config['FILESYSTEM_BASE'] = base_original
-
-
 @contextlib.contextmanager
 def _contexto_de_app(app):
     """El contexto de la app, sin empujar otro si ya hay uno.
@@ -337,8 +314,8 @@ def almacen_tmp(app, tmp_path_factory, _limpieza_ficheros):
     Redirige `ALMACEN_BASE` y `MANIFIESTOS_BASE`, y devuelve un objeto con sus rutas
     (`.almacen`, `.manifiestos`). Úsalo en cuanto el código suba un documento o escriba
     un manifiesto: el disco no es transaccional y el contenido quedaría puesto aunque
-    la transacción se deshaga. En el corte (PR 4 de #1007) será la base de
-    `documento_con_contenido_de_prueba` (#1014).
+    la transacción se deshaga. Es la base de `documento_con_contenido_de_prueba`
+    (#1014) y de `arbol_aislado`.
 
     Lo que no revierte el SAVEPOINT de `app_ctx` es la fila de `ficheros`, que el módulo
     de contenido escribe en su propia transacción: la borra `_limpieza_ficheros` al
@@ -416,8 +393,8 @@ def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None):
     monte el árbol a mano se queda probando contra un estado que el sistema ya no
     sabe producir.
 
-    Requiere `app_ctx` (la transacción que lo revierte) y `fs_tmp` (el alta guarda el
-    escrito en el almacén; ni el disco ni la fila de `ficheros` revierten solos). Sin
+    Requiere `app_ctx` (la transacción que lo revierte) y `almacen_tmp` (el alta guarda
+    el escrito en el almacén; ni el disco ni la fila de `ficheros` revierten solos). Sin
     `almacen_tmp` falla en vez de dejar el contenido y su fila en el almacén compartido
     de tests: una fila suelta hace que `subir` dé por «ya guardado» un contenido que el
     almacén temporal de otro test no tiene, y ese test falla lejos de la causa (#1007).
@@ -440,7 +417,7 @@ def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None):
     from app.services.reloj_simulado import hoy
 
     assert current_app.config.get('ALMACEN_DE_PRUEBA'), (
-        'El alta guarda el escrito en el almacén: pide `fs_tmp`, `almacen_tmp` o `arbol_aislado` '
+        'El alta guarda el escrito en el almacén: pide `almacen_tmp` o `arbol_aislado` '
         'en el test (con `arbol_esftt` a secas el contenido y su fila quedan en el almacén de tests).')
     n = next(_SECUENCIA_PRUEBA)
     tipo_exp, tipo_sol, municipio = _catalogo_para_alta()
@@ -491,8 +468,8 @@ def documento_ancla_de_prueba(expediente_id, *, fecha=None):
     los que solo necesitan que la fila exista y les da igual el documento —los que
     prueban el alta de verdad usan `crear_expediente_de_prueba()`—.
 
-    Con esquema `bddat://` a propósito: no toca el disco, así que quien lo use no
-    necesita `fs_tmp`. La fecha sale del reloj del sistema porque el modelo rechaza
+    Con esquema `bddat://` a propósito: no toca el almacén, así que quien lo use no
+    necesita `almacen_tmp`. La fecha sale del reloj del sistema porque el modelo rechaza
     las futuras (#824), y sin fecha el ancla no serviría para computar plazos.
     """
     from app import db as _db_app
@@ -531,8 +508,8 @@ def documento_con_contenido_de_prueba(nombre, contenido, **datos_documento):
     coincidir con la extensión del nombre. Un test que quiera probar un fichero engañoso
     llama a esa puerta, no a este helper.
 
-    Requiere `app_ctx` y un almacén de pruebas (`fs_tmp`, `almacen_tmp` o
-    `arbol_aislado`): sin él falla en voz alta, en vez de dejar el contenido y su fila de
+    Requiere `app_ctx` y un almacén de pruebas (`almacen_tmp` o `arbol_aislado`): sin
+    él falla en voz alta, en vez de dejar el contenido y su fila de
     `ficheros` en el almacén de tests.
     """
     from io import BytesIO
@@ -543,7 +520,7 @@ def documento_con_contenido_de_prueba(nombre, contenido, **datos_documento):
     from app.services.almacenamiento.contenido import EntradaSubida, subir
 
     assert current_app.config.get('ALMACEN_DE_PRUEBA'), (
-        'El documento se guarda en el almacén: pide `fs_tmp`, `almacen_tmp` o `arbol_aislado` '
+        'El documento se guarda en el almacén: pide `almacen_tmp` o `arbol_aislado` '
         'en el test (sin ellos el contenido y su fila quedan en el almacén de tests).')
     [doc] = subir([EntradaSubida(BytesIO(contenido), nombre, datos_documento)])
     _db_app.session.add(doc)
@@ -552,7 +529,7 @@ def documento_con_contenido_de_prueba(nombre, contenido, **datos_documento):
 
 
 @pytest.fixture
-def alta_propia(app_ctx, fs_tmp):
+def alta_propia(app_ctx, almacen_tmp):
     """Un expediente recién fabricado, con su solicitud anclada. Se revierte al salir."""
     return crear_expediente_de_prueba()
 
@@ -627,8 +604,8 @@ class ArbolESFTT:
         documentos de cualquier otro sitio— crea un expediente entero por la vía
         real y devuelve la suya, garantizada sin hijos.
 
-        Necesita `fs_tmp` en el test, porque el alta escribe el documento de
-        solicitud a disco. Usar la fixture `arbol_aislado`, que ya lo trae.
+        Necesita `almacen_tmp` en el test, porque el alta sube el documento de
+        solicitud al almacén. Usar la fixture `arbol_aislado`, que ya lo trae.
         """
         return crear_expediente_de_prueba().solicitud
 
@@ -890,12 +867,12 @@ def arbol_esftt(app_ctx):
 
 
 @pytest.fixture
-def arbol_aislado(app_ctx, fs_tmp):
-    """`ArbolESFTT` con raíz de ficheros propia, para `solicitud_propia`/`tarea_propia`.
+def arbol_aislado(app_ctx, almacen_tmp):
+    """`ArbolESFTT` con almacén propio, para `solicitud_propia`/`tarea_propia`.
 
-    Mismo builder que `arbol_esftt`; lo que añade es `fs_tmp`, que hace falta en
-    cuanto el árbol nace de un alta real — el documento de solicitud se escribe a
-    disco y el SAVEPOINT no lo revierte.
+    Mismo builder que `arbol_esftt`; lo que añade es `almacen_tmp`, que hace falta en
+    cuanto el árbol nace de un alta real — el documento de solicitud se sube al
+    almacén y el SAVEPOINT no lo revierte.
     """
     from app import db
     return ArbolESFTT(db)

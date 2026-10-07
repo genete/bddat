@@ -82,7 +82,7 @@ ENTIDADES = [
 # Para qué existe cada una, que es lo que se olvida en seis meses:
 #   B00000001  titular por defecto de los expedientes de semilla
 #   B00000002  segundo titular: expediente ajeno, filtros de listado
-#   Q0000001A  organismo consultado con abreviatura (carpetas ESFTT, ADR-032 #665)
+#   Q0000001A  organismo consultado con abreviatura (carpeta ESFTT del manifiesto, #665, ADR-050 §H)
 #   P0000002B  consultado Y publicador: tablón de ayuntamiento
 #   Q0000003C  segundo consultado, para consultas con más de un destinatario
 
@@ -255,7 +255,7 @@ def _arbol_ficheros(app):
     from app.services.almacenamiento.manifiestos import inicializar as inicializar_manifiestos
 
     creados = []
-    for clave in ('FILESYSTEM_BASE', 'PLANTILLAS_BASE', 'ALMACEN_BASE', 'MANIFIESTOS_BASE'):
+    for clave in ('PLANTILLAS_BASE', 'ALMACEN_BASE', 'MANIFIESTOS_BASE'):
         ruta = app.config.get(clave)
         if not ruta:
             raise RuntimeError(f'{clave} sin configurar en la config de tests')

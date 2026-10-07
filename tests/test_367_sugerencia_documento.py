@@ -15,8 +15,8 @@ TestEndpointsHuerfanoHTTP en test_smoke_seguimiento_y_huerfanos.py) —
 combinar app_ctx con cliente HTTP no es seguro en este proyecto.
 
 pool_subir_documento: mismo patrón que TestEndpointSubirDocumento en
-test_666_ingesta_multipart.py (FILESYSTEM_BASE a tmp_path, limpieza por
-marcador en el asunto).
+test_666_ingesta_multipart.py (`almacen_tmp`, limpieza por marcador en el
+asunto).
 """
 import io
 import json

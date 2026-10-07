@@ -20,7 +20,7 @@ sin fuentes (`ArbolESFTT.tramite_sin_destinatario` / `tramite_sin_fuentes`). Los
 de la lista provisional de fuentes los sustituye el de cobertura de
 `test_968_fuentes_destinatarios.py`.
 
-BD de tests con rollback por SAVEPOINT (`arbol_aislado`) + `fs_tmp`.
+BD de tests con rollback por SAVEPOINT (`arbol_aislado`, que trae `almacen_tmp`).
 """
 import pytest
 from flask_login import login_user
@@ -178,7 +178,7 @@ def test_la_ficha_se_borra_con_la_tarea(con_usuario, arbol_aislado):
 # Sin destinatario no avanza
 # ---------------------------------------------------------------------------
 
-def test_vincular_sin_destinatario_se_bloquea_con_escape(con_usuario, arbol_aislado, fs_tmp):
+def test_vincular_sin_destinatario_se_bloquea_con_escape(con_usuario, arbol_aislado):
     tarea = _crear_notificar(arbol_aislado.tramite_sin_destinatario())
     doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA')
 
@@ -193,7 +193,7 @@ def test_vincular_sin_destinatario_se_bloquea_con_escape(con_usuario, arbol_aisl
 
 
 def test_escape_sin_destinatario_queda_en_bitacora_y_es_para_siempre(
-        con_usuario, arbol_aislado, fs_tmp):
+        con_usuario, arbol_aislado):
     tarea = _crear_notificar(arbol_aislado.tramite_sin_destinatario())
     doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA')
 
@@ -215,7 +215,7 @@ def test_escape_sin_destinatario_queda_en_bitacora_y_es_para_siempre(
     assert not res.ok and 'escape' in res.error
 
 
-def test_escape_sin_destinatario_se_relata(con_usuario, arbol_aislado, fs_tmp):
+def test_escape_sin_destinatario_se_relata(con_usuario, arbol_aislado):
     from app.services.informe_instruccion import escapes_de_fase, relato_escapes
     tarea = _crear_notificar(arbol_aislado.tramite_sin_destinatario())
     doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA')
@@ -229,7 +229,7 @@ def test_escape_sin_destinatario_se_relata(con_usuario, arbol_aislado, fs_tmp):
     assert 'Motivo del escape' in frase
 
 
-def test_desvincular_no_se_bloquea(con_usuario, arbol_aislado, fs_tmp):
+def test_desvincular_no_se_bloquea(con_usuario, arbol_aislado):
     """Solo añadir vínculos exige destinatario; quitar sigue libre."""
     tarea = _crear_notificar(_tramite(arbol_aislado))
     assert svc.fijar_destinatario(tarea).ok
@@ -331,8 +331,7 @@ def test_direccion_de_otra_entidad_se_rechaza(con_usuario, arbol_aislado):
     assert not res.ok
 
 
-def test_destinatario_se_refresca_hasta_el_primer_justificante(con_usuario, arbol_aislado,
-                                                              fs_tmp):
+def test_destinatario_se_refresca_hasta_el_primer_justificante(con_usuario, arbol_aislado):
     tarea = _crear_notificar(_tramite(arbol_aislado))
     solicitud = tarea.tramite.fase.solicitud
     assert svc.fijar_destinatario(tarea).ok
@@ -371,7 +370,7 @@ def test_fijar_destinatario_deja_bitacora(con_usuario, arbol_aislado):
 # Cotejo del NIF del justificante de Notifica (A00000000 en el texto de muestra)
 # ---------------------------------------------------------------------------
 
-def test_cotejo_del_nif(con_usuario, arbol_aislado, fs_tmp):
+def test_cotejo_del_nif(con_usuario, arbol_aislado):
     """El justificante va dirigido a A00000000 y el destinatario registrado es B99999999:
     avisa, sin bloquear."""
     tarea = _crear_notificar(arbol_aislado.tramite_sin_fuentes(), fuente='BOLETIN')
@@ -408,8 +407,7 @@ def test_representante_autorizado_del_solicitante(con_usuario, arbol_aislado):
     assert solicitud.representante_entidad_id is None
 
 
-def test_cambiar_representante_refresca_lo_que_no_ha_salido(con_usuario, arbol_aislado,
-                                                            fs_tmp):
+def test_cambiar_representante_refresca_lo_que_no_ha_salido(con_usuario, arbol_aislado):
     """#989: la NOTIFICAR al solicitante sin justificante pasa al nuevo
     representante; la que ya lo tiene no se toca, y la respuesta lo cuenta.
     Evita que la notificación salga a quien ya no representa."""

@@ -26,10 +26,6 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-fallback'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False
-    # Raíz del servidor de ficheros corporativo.
-    # Desarrollo: cualquier carpeta local (p.ej. D:/BDDAT/docs_prueba)
-    # Producción: W:\ALTA TENSION\Expedientes  o  \\HACACL0102\energia\ALTA TENSION\Expedientes
-    FILESYSTEM_BASE = _ruta_base_env('FILESYSTEM_BASE')
     # Raíz de plantillas (.odt / .docx) para generación de escritos.
     # Estructura: PLANTILLAS_BASE/plantillas/ y PLANTILLAS_BASE/fragmentos/
     # Desarrollo: p.ej. D:/BDDAT/docs_prueba/plantillas_escritos
@@ -78,21 +74,17 @@ class TestingConfig(Config):
     en la BD de desarrollo creyendo que está aislada.
 
     Lo mismo vale para el disco. El aislamiento por SAVEPOINT revierte la BD,
-    pero el sistema de ficheros no es transaccional: un test que genere un
-    escrito o suba al pool deja el fichero puesto aunque la transacción se
-    deshaga. Existe el fixture `fs_tmp` (#674) para redirigirlo, pero es
-    opt-in — depende de que el autor del test se acuerde. Con una raíz propia,
-    un olvido ensucia el árbol de tests y nunca el de desarrollo.
+    pero el sistema de ficheros no es transaccional: un test que suba un fichero
+    deja el contenido puesto en el almacén aunque su transacción se deshaga. La
+    fixture `almacen_tmp` (ADR-050) lo redirige a un temporal, pero es opt-in —
+    depende de que el autor del test se acuerde. Con raíces propias, un olvido
+    ensucia las de tests y nunca las de desarrollo.
     """
     DEBUG = False
     TESTING = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL')
     SQLALCHEMY_ECHO = False
-    FILESYSTEM_BASE = _ruta_base_env('TEST_FILESYSTEM_BASE')
     PLANTILLAS_BASE = _ruta_base_env('TEST_PLANTILLAS_BASE')
-    # Igual para el almacén y los manifiestos (ADR-050): un test que suba un fichero
-    # deja el contenido puesto aunque su transacción se deshaga. La fixture
-    # `almacen_tmp` lo redirige a un temporal; esto es la red para quien se olvide.
     ALMACEN_BASE = _ruta_base_env('TEST_ALMACEN_BASE')
     MANIFIESTOS_BASE = _ruta_base_env('TEST_MANIFIESTOS_BASE')
 

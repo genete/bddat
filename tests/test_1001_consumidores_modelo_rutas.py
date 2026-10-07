@@ -21,10 +21,13 @@ carta blanca: los grandes (`expedientes/routes.py`, `mutaciones_arbol.py`,
 
 - **Python**, por AST: solo el código —atributos, nombres, imports, argumentos con
   nombre, definiciones y cadenas que son exactamente el símbolo
-  (`config['FILESYSTEM_BASE']`)—. Los comentarios y los docstrings no cuentan.
+  (`config['PLANTILLAS_BASE']`)—. Los comentarios y los docstrings no cuentan.
 - **Plantillas HTML**, por texto, quitando los comentarios `{# #}` y `<!-- -->`.
 
-`resolver_url()` no está en la lista: sobrevive y pasa a leer del almacén (§M).
+Desde el PR 5 de #1007 solo quedan los símbolos de las plantillas (`PLANTILLAS_BASE`,
+`ruta_plantilla`), que pasan al almacén en la fase 4 (#1009). Los demás —`ruta_absoluta`,
+`FILESYSTEM_BASE`, `hash_md5`, `ruta_pdf` y los `mover_*` de `rutas_esftt.py`— ya no
+existen: quien los usara fallaría a la vista. `resolver_url()` lee del almacén.
 La otra mitad de la regla de ADR-050 §B —solo el subsistema de almacenamiento ve
 `ficheros` y la `ref`— es permanente y vive en
 `test_1007_subsistema_almacenamiento.py` (llegó con la fase 1). Cuando `PERMITIDOS`
@@ -44,20 +47,13 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 
 # ADR-050 §I. Un `_` delante cuenta como el mismo símbolo (`_ruta_plantilla`).
-SIMBOLOS = {
-    'ruta_absoluta', 'FILESYSTEM_BASE', 'PLANTILLAS_BASE', 'hash_md5',
-    'ruta_plantilla', 'ruta_pdf', 'mover_a_esftt', 'mover_a_pool',
-    'nombre_pool_unico', 'ruta_pool_documento', 'ruta_destino_esftt_fichero',
-}
-# Como variable local, `ruta_absoluta` es un nombre genérico y no el método de
-# `Documento`: en `admin_plantillas/routes.py` lo es.
-SOLO_COMO_METODO = {'ruta_absoluta'}
+SIMBOLOS = {'PLANTILLAS_BASE', 'ruta_plantilla'}
 
-# Apariciones por fichero el 2026-10-02 (develop en c7d4a49). Solo bajan.
-# NO subir un número ni añadir un fichero para hacer pasar el test: el arreglo
-# es pedir el contenido por el documento.
+# Apariciones por fichero el 2026-10-02 (develop en c7d4a49), bajadas en el PR 5 de
+# #1007. Solo bajan. NO subir un número ni añadir un fichero para hacer pasar el
+# test: el arreglo es pedir el contenido por el documento.
 PERMITIDOS = {
-    'app/config.py': 6,
+    'app/config.py': 3,
     'app/models/plantillas.py': 1,
     'app/modules/admin_plantillas/routes.py': 10,
     'app/modules/admin_plantillas/templates/admin_plantillas/_detalle_fragmento.html': 1,
@@ -70,37 +66,32 @@ PERMITIDOS = {
 }
 
 _AYUDA = (
-    "Lo que necesite un fichero lo pide por el documento: "
-    "`documento.resolver_url()`, que sobrevive a ADR-050 y pasará a leer del "
-    "almacén. No subas el número ni añadas el fichero a PERMITIDOS: cada "
-    "consumidor nuevo es deuda que la fase 1 tendría que deshacer. Ver "
-    "REGLAS_DESARROLLO.md, «Documentos: el contenido es del almacén»."
+    "Lo que necesite un fichero lo pide por el documento, al módulo de contenido "
+    "(`app.services.almacenamiento.contenido`). No subas el número ni añadas el "
+    "fichero a PERMITIDOS: cada consumidor nuevo es deuda que la fase 4 tendría "
+    "que deshacer. Ver REGLAS_DESARROLLO.md, «Documentos: el contenido es del almacén»."
 )
 
-_RE_HTML = re.compile(
-    r'(?<!\w)_?(' + '|'.join(sorted(SIMBOLOS - SOLO_COMO_METODO))
-    + '|' + '|'.join(rf'{s}(?=\s*\()' for s in sorted(SOLO_COMO_METODO))
-    + r')(?!\w)'
-)
+_RE_HTML = re.compile(r'(?<!\w)_?(' + '|'.join(sorted(SIMBOLOS)) + r')(?!\w)')
 _RE_COMENTARIO_HTML = re.compile(r'\{#.*?#\}|<!--.*?-->', re.S)
 
 
 def _nombres_python(fuente):
-    """(nombre, es_nombre_suelto) de lo que usa el código, sin comentarios ni docstrings."""
+    """Los nombres que usa el código, sin comentarios ni docstrings."""
     for nodo in ast.walk(ast.parse(fuente)):
         if isinstance(nodo, ast.Attribute):
-            yield nodo.attr, False
+            yield nodo.attr
         elif isinstance(nodo, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            yield nodo.name, False
+            yield nodo.name
         elif isinstance(nodo, ast.Name):
-            yield nodo.id, True
+            yield nodo.id
         elif isinstance(nodo, ast.alias):
-            yield nodo.name, True
+            yield nodo.name
         elif isinstance(nodo, ast.keyword) and nodo.arg:
-            yield nodo.arg, True
+            yield nodo.arg
         elif isinstance(nodo, ast.Constant) and nodo.value in SIMBOLOS:
             # Solo la cadena exacta: la clave de configuración, no un texto que la cite.
-            yield nodo.value, False
+            yield nodo.value
 
 
 def _apariciones(fichero):
@@ -110,9 +101,9 @@ def _apariciones(fichero):
         texto = _RE_COMENTARIO_HTML.sub('', texto)
         return Counter(m.group(1) for m in _RE_HTML.finditer(texto))
     cuenta = Counter()
-    for nombre, suelto in _nombres_python(texto):
+    for nombre in _nombres_python(texto):
         simbolo = nombre.lstrip('_')
-        if simbolo in SIMBOLOS and not (suelto and simbolo in SOLO_COMO_METODO):
+        if simbolo in SIMBOLOS:
             cuenta[simbolo] += 1
     return cuenta
 
