@@ -3,25 +3,26 @@
 ENDPOINTS:
     1. GET  /api/escritos/plantillas?tarea_id=X — Plantillas ESFTT compatibles
     2. GET  /api/escritos/preview?plantilla_id=X&tarea_id=Y — Preview del contexto
-    3. POST /api/escritos/generar — Genera el escrito (.docx o .odt) y lo registra en pool
+    3. POST /api/escritos/generar — Genera el escrito (.odt, o .docx heredado), lo guarda en el
+       almacén y lo vincula como consumido de la tarea
 """
 
 import logging
-import os
 from datetime import date
 
 import jinja2
-from flask import Blueprint, request, jsonify, current_app
-from flask_login import login_required
+from flask import Blueprint, request, jsonify, url_for
+from flask_login import current_user, login_required
 
 from app import db
 from app.models.plantillas import Plantilla
 from app.models.tareas import Tarea
+from app.services.almacenamiento.adaptador import AlmacenNoDisponible, MENSAJE_ALMACEN_NO_DISPONIBLE
+from app.services.almacenamiento.contenido import ContenidoNoUtilizable
 from app.services.codigo_seguimiento import componer_codigo
 from app.services.escritos import ContextoBaseExpediente, solicitud_de, variables_destinatario
 from app.services.generador_escritos import generar_escrito, componer_nombre_documento
-from app.services.regeneracion_escritos import evaluar_regeneracion, ejecutar_regeneracion
-from app.services.rutas_esftt import ruta_destino_esftt_fichero
+from app.services.regeneracion_escritos import regenerar_escrito
 from app.utils.permisos import puede_editar_expediente
 
 logger = logging.getLogger(__name__)
@@ -141,12 +142,11 @@ def preview():
 
 
 # ------------------------------------------------------------------
-# POST /api/escritos/generar (+ /generar/confirmar) — #730
+# POST /api/escritos/generar — #730 (ADR-050: dos casos, sin segundo paso)
 # ------------------------------------------------------------------
 
 class _ErrorGenerar(Exception):
     """Error de validación/generación con su respuesta HTTP ya decidida.
-    Común a /generar y /generar/confirmar para no duplicar las 6 comprobaciones.
     `extra` va tal cual al JSON de la respuesta (p. ej. `elegir_destinatario`)."""
     def __init__(self, mensaje, status, extra=None):
         super().__init__(mensaje)
@@ -161,15 +161,17 @@ class _ErrorGenerar(Exception):
 def _preparar_generacion(data):
     """Valida la petición y genera los bytes del escrito.
 
+    El nombre del fichero lo pone el sistema (`componer_nombre_documento`): el
+    cuerpo de la petición no lo lleva.
+
     Returns:
-        (tarea, expediente, plantilla, nombre_fichero, doc_bytes, fs_base)
+        (tarea, expediente, plantilla, nombre_fichero, doc_bytes)
 
     Raises:
         _ErrorGenerar — con la respuesta de error lista para devolver.
     """
     plantilla_id = data.get('plantilla_id')
     tarea_id = data.get('tarea_id')
-    nombre_fichero = (data.get('nombre_fichero') or '').strip()
 
     if not plantilla_id or not tarea_id:
         raise _ErrorGenerar('plantilla_id y tarea_id requeridos', 400)
@@ -193,12 +195,7 @@ def _preparar_generacion(data):
 
     _exigir_destinatario(tarea, data.get('destinatario'))
 
-    fs_base = current_app.config.get('FILESYSTEM_BASE', '')
-    if not fs_base:
-        raise _ErrorGenerar('FILESYSTEM_BASE no configurado en el servidor', 503)
-
-    if not nombre_fichero:
-        nombre_fichero = componer_nombre_documento(tarea, plantilla)
+    nombre_fichero = componer_nombre_documento(tarea, plantilla)
 
     # Código de seguimiento (#182) se compone siempre; el motor .docx lo
     # ignora con un warning porque ningún canal de metadatos OOXML sobrevive
@@ -216,7 +213,7 @@ def _preparar_generacion(data):
     except (RuntimeError, ValueError) as e:
         raise _ErrorGenerar(str(e), 500)
 
-    return tarea, expediente, plantilla, nombre_fichero, doc_bytes, fs_base
+    return tarea, expediente, plantilla, nombre_fichero, doc_bytes
 
 
 def _exigir_destinatario(tarea, eleccion):
@@ -268,100 +265,59 @@ def _asunto_escrito(plantilla):
     return asunto
 
 
-def _respuesta_generado(documento, caso):
-    ruta_abs = documento.ruta_absoluta()
+def _respuesta_generado(res, expediente):
+    documento = res.documento
     return jsonify(
         ok=True,
-        caso=caso,
-        nombre_fichero=os.path.basename(ruta_abs),
-        ruta=ruta_abs,
+        resultado=res.resultado,
         doc_id=documento.id,
+        nombre_fichero=documento.nombre_visible(),
+        enlace=url_for('expedientes.pool_descargar_documento',
+                       id=expediente.id, doc_id=documento.id),
     )
 
 
 @api_escritos_bp.route('/generar', methods=['POST'])
 @login_required
 def generar():
-    """Genera el escrito, lo registra en el pool y lo vincula como CONSUMIDO
-    de la tarea (#608 — único caller: ElaborarEditor.jsx), por la matriz de
-    #730. Si hace falta decisión del usuario (colisión de nombre o
-    sustitución de contenido) no escribe nada y devuelve el caso para que el
-    frontend pida confirmación vía /generar/confirmar.
+    """Genera el escrito y lo vincula como CONSUMIDO de la tarea (#608 — único
+    caller: ElaborarEditor.jsx), con los dos casos de #730 (ADR-050).
+
+    Sin borrador previo, el escrito se sube al almacén y se vincula. Con
+    borrador, si el contenido es el mismo no se hace nada y si es distinto se
+    sustituye sin preguntar (hasta la fase 5), conservando el documento: el
+    cambio queda en la bitácora. El nombre lo pone el sistema.
+
+    Respuesta: `{ok, resultado: GENERADO | SIN_CAMBIOS | SUSTITUIDO, doc_id,
+    nombre_fichero, enlace}`. Errores con mensaje para el usuario: 422 si el
+    contenido no es lo que dice la extensión del borrador (p. ej. una plantilla
+    que ahora genera .odt sobre un borrador .docx) o el borrador aún tiene ruta
+    local; 409 si el borrador está ausente o dañado en el almacén; 503 si el
+    almacén no contesta.
     """
     data = request.get_json(silent=True) or {}
 
     try:
-        tarea, expediente, plantilla, nombre_fichero, doc_bytes, fs_base = _preparar_generacion(data)
+        tarea, expediente, plantilla, nombre_fichero, doc_bytes = _preparar_generacion(data)
     except _ErrorGenerar as e:
         return e.respuesta()
 
-    ruta = ruta_destino_esftt_fichero(tarea, nombre_fichero)
-
-    evaluacion = evaluar_regeneracion(
-        tarea=tarea, rol='CONSUMIDO', tipo_doc_id=plantilla.tipo_documento_id,
-        doc_bytes=doc_bytes, nombre_fichero=nombre_fichero, ruta_destino_abs=ruta,
-    )
-
-    if evaluacion.requiere_confirmacion:
-        return jsonify(
-            ok=True,
-            requiere_confirmacion=True,
-            caso=evaluacion.caso,
-            nombre_fichero=nombre_fichero,
-            documento_existente_id=(
-                evaluacion.documento_existente.id if evaluacion.documento_existente else None
-            ),
-            colision_nombre=evaluacion.colision_nombre,
+    try:
+        res = regenerar_escrito(
+            tarea=tarea, expediente=expediente, plantilla=plantilla, doc_bytes=doc_bytes,
+            nombre_fichero=nombre_fichero, asunto=_asunto_escrito(plantilla),
+            usuario_id=current_user.id,
         )
+        db.session.flush()   # aquí saltan los validadores del modelo, antes del commit
+    except AlmacenNoDisponible:
+        db.session.rollback()
+        return jsonify(ok=False, error=MENSAJE_ALMACEN_NO_DISPONIBLE), 503
+    except ContenidoNoUtilizable as e:
+        db.session.rollback()
+        return jsonify(ok=False, error=str(e)), 409
+    except ValueError as e:   # FormatoNoAdmitido incluido
+        db.session.rollback()
+        return jsonify(ok=False, error=str(e)), 422
 
-    documento = ejecutar_regeneracion(
-        tarea=tarea, expediente=expediente, plantilla=plantilla, doc_bytes=doc_bytes,
-        nombre_fichero=nombre_fichero, ruta_destino_abs=ruta, fs_base=fs_base,
-        rol='CONSUMIDO', asunto=_asunto_escrito(plantilla), evaluacion=evaluacion,
-    )
     db.session.commit()
-    return _respuesta_generado(documento, evaluacion.caso)
-
-
-@api_escritos_bp.route('/generar/confirmar', methods=['POST'])
-@login_required
-def generar_confirmar():
-    """Segundo paso de la regeneración (#730): ejecuta la decisión que el
-    usuario tomó en el popup correspondiente al caso devuelto por /generar.
-
-    Regenera el documento en vez de guardar bytes entre peticiones — el motor
-    es determinista (misma plantilla + mismos datos → mismos bytes), y es más
-    simple que mantener un estado de sesión intermedio.
-
-    decision: 'continuar' (casos 6/7, sin colisión) | 'cancelar' |
-              'renombrar_nuevo' | 'renombrar_existente' (casos 2/5/8).
-    """
-    data = request.get_json(silent=True) or {}
-    decision = data.get('decision')
-
-    if decision == 'cancelar':
-        return jsonify(ok=True, cancelado=True)
-
-    try:
-        tarea, expediente, plantilla, nombre_fichero, doc_bytes, fs_base = _preparar_generacion(data)
-    except _ErrorGenerar as e:
-        return e.respuesta()
-
-    ruta = ruta_destino_esftt_fichero(tarea, nombre_fichero)
-    evaluacion = evaluar_regeneracion(
-        tarea=tarea, rol='CONSUMIDO', tipo_doc_id=plantilla.tipo_documento_id,
-        doc_bytes=doc_bytes, nombre_fichero=nombre_fichero, ruta_destino_abs=ruta,
-    )
-
-    decision_colision = decision if decision in ('renombrar_nuevo', 'renombrar_existente') else None
-    if evaluacion.colision_nombre and decision_colision is None:
-        return jsonify(ok=False, error='Falta indicar cómo resolver la colisión de nombre'), 400
-
-    documento = ejecutar_regeneracion(
-        tarea=tarea, expediente=expediente, plantilla=plantilla, doc_bytes=doc_bytes,
-        nombre_fichero=nombre_fichero, ruta_destino_abs=ruta, fs_base=fs_base,
-        rol='CONSUMIDO', asunto=_asunto_escrito(plantilla), evaluacion=evaluacion,
-        decision_colision=decision_colision,
-    )
-    db.session.commit()
-    return _respuesta_generado(documento, evaluacion.caso)
+    return _respuesta_generado(res, expediente)

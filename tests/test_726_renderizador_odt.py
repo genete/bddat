@@ -15,9 +15,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.services.generador_escritos import (
-    TIPOS_CONTENIDO,
     componer_nombre_documento,
-    tipo_contenido_documento,
     validar_plantilla,
 )
 from app.services.generador_escritos_odt import generar_escrito_odt
@@ -458,11 +456,6 @@ class TestEleccionDeMotor:
 
         assert nombre_odt.endswith('.odt')
         assert nombre_docx.endswith('.docx')
-
-    def test_tipo_contenido_por_extension(self):
-        assert tipo_contenido_documento('escrito.odt') == TIPOS_CONTENIDO['.odt']
-        assert tipo_contenido_documento('escrito.docx') == TIPOS_CONTENIDO['.docx']
-        assert tipo_contenido_documento('escrito.xyz') == 'application/octet-stream'
 
     def test_validacion_acepta_un_odt_correcto(self, tmp_path):
         ruta = _odt(tmp_path, 'p.odt',

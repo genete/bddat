@@ -66,13 +66,11 @@ PERMITIDOS = {
     'app/modules/admin_plantillas/templates/admin_plantillas/_editar_fragmento.html': 2,
     'app/modules/admin_plantillas/templates/admin_plantillas/_panel_tokens.html': 1,
     'app/modules/admin_plantillas/templates/admin_plantillas/form.html': 5,
-    'app/routes/api_escritos.py': 5,
     'app/services/cert_fin_instruccion.py': 3,
     'app/services/generador_cert.py': 7,
     'app/services/generador_escritos.py': 7,
     'app/services/generador_escritos_docx.py': 2,
     'app/services/generador_escritos_odt.py': 1,
-    'app/services/regeneracion_escritos.py': 7,
     'app/services/rutas_esftt.py': 22,
 }
 

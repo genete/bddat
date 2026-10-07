@@ -325,33 +325,18 @@ export function postNotificarParsearDocumento(expedienteId, tareaId, documentoId
   )
 }
 
-// Genera el escrito y lo guarda en disco + pool (#608: el escrito es un auxiliar
-// de trabajo, no dispara cambio de estado de la tarea; el ciclo
+// Genera el escrito, lo guarda en el almacén y lo vincula (#608: el escrito es un
+// auxiliar de trabajo, no dispara cambio de estado de la tarea; el ciclo
 // BORRADOR_FIRMA/firmado se gestiona aparte vía Despensa).
-// El draft de la tarea es único (#730): si ya existe y hace falta decisión del
-// usuario (colisión de nombre o sustitución de contenido) no escribe nada y
-// devuelve {ok, requiere_confirmacion:true, caso, colision_nombre,
-// documento_existente_id} — ver postEscritosGenerarConfirmar. Si no hace
-// falta decisión: {ok, caso, nombre_fichero, ruta, doc_id}.
-export function postEscritosGenerar(plantillaId, tareaId, nombreFichero) {
+// El borrador de la tarea es único (#730) y el nombre lo pone el sistema. Sin
+// borrador se sube y se vincula; con borrador, si el contenido es el mismo no pasa
+// nada y si es distinto se sustituye sin preguntar (ADR-050, #1007). Respuesta:
+// {ok, resultado: 'GENERADO'|'SIN_CAMBIOS'|'SUSTITUIDO', doc_id, nombre_fichero,
+// enlace} (enlace = descarga del documento).
+export function postEscritosGenerar(plantillaId, tareaId) {
   return api.post('/api/escritos/generar', {
     plantilla_id: plantillaId,
     tarea_id: tareaId,
-    nombre_fichero: nombreFichero,
-  })
-}
-
-// Segundo paso de la regeneración (#730): ejecuta la decisión tomada en el
-// popup correspondiente al `caso` devuelto por postEscritosGenerar.
-// decision: 'continuar' | 'cancelar' | 'renombrar_nuevo' | 'renombrar_existente'.
-// Respuesta: {ok, cancelado:true} si decision='cancelar', si no la misma
-// forma que postEscritosGenerar cuando no requiere confirmación.
-export function postEscritosGenerarConfirmar(plantillaId, tareaId, nombreFichero, decision) {
-  return api.post('/api/escritos/generar/confirmar', {
-    plantilla_id: plantillaId,
-    tarea_id: tareaId,
-    nombre_fichero: nombreFichero,
-    decision,
   })
 }
 

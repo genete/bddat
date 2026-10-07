@@ -374,7 +374,7 @@ la base canónica correspondiente.
 | B3 | Preview de campos antes de generar | Valores del expediente + alerta si vacío (Fase 5) |
 | B4 | Guardado con nombre sistematizado | Siempre al pool y vinculado como CONSUMIDO (#608); sin casillas (#1007) |
 | B5 | Abrir carpeta contenedora tras generar | Retirada (ADR-050, #1007): con el almacén no hay carpeta que abrir |
-| B6 | Regeneración: sobrescritura transparente | Aviso + reemplazo binario en disco (Fase 5) |
+| B6 | Regeneración: sobrescritura transparente | Sin aviso hasta la fase 5 (#1007): el mismo contenido no hace nada y el distinto sustituye el contenido del mismo documento (`cambiar_contenido`, con bitácora); el nombre lo pone el sistema |
 | B8 | Generar = iniciar tarea | Si `fecha_inicio is None` → asignar `date.today()` (Fase 5) |
 
 ### C. Transversales
