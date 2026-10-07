@@ -15,9 +15,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.services.generador_escritos import (
-    TIPOS_CONTENIDO,
     componer_nombre_documento,
-    tipo_contenido_documento,
     validar_plantilla,
 )
 from app.services.generador_escritos_odt import generar_escrito_odt
@@ -390,6 +388,31 @@ class TestEmpaquetado:
             assert primero.compress_type == zipfile.ZIP_STORED
             assert z.read('mimetype') == b'application/vnd.oasis.opendocument.text'
 
+    def test_todas_las_entradas_conservan_la_fecha_de_la_plantilla(self, tmp_path):
+        """Fallo silencioso que evita: el ZIP lleva la hora a la que se generó (el `mimetype` la
+        tomaba del reloj), así que regenerar con los mismos datos nunca da los mismos bytes y
+        el caso «mismo contenido, nada» de la regeneración (#1007) no se da jamás.
+
+        Se comprueban las fechas de las entradas y no los bytes de dos generaciones seguidas:
+        la hora de un ZIP tiene resolución de 2 s y, sin el arreglo, la segunda generación
+        saldría casi siempre igual y el test pasaría en vacío."""
+        import io
+        fecha = (2020, 1, 1, 0, 0, 0)
+        ruta = tmp_path / 'p.odt'
+        with zipfile.ZipFile(ruta, 'w') as z:
+            z.writestr(zipfile.ZipInfo('mimetype', fecha), 'application/vnd.oasis.opendocument.text',
+                       compress_type=zipfile.ZIP_STORED)
+            z.writestr(zipfile.ZipInfo('content.xml', fecha),
+                       CONTENT.format(cuerpo='<text:p>x</text:p>', estilos=''),
+                       compress_type=zipfile.ZIP_DEFLATED)
+            z.writestr(zipfile.ZipInfo('styles.xml', fecha), STYLES.format(masters=MASTERS_DOS),
+                       compress_type=zipfile.ZIP_DEFLATED)
+
+        datos = generar_escrito_odt(str(ruta), {}, fragmentos_dir=str(tmp_path))
+
+        with zipfile.ZipFile(io.BytesIO(datos)) as z:
+            assert {i.date_time for i in z.infolist()} == {fecha}
+
     def test_conserva_las_partes_que_no_toca(self, tmp_path):
         import io
         ruta = tmp_path / 'p.odt'
@@ -433,11 +456,6 @@ class TestEleccionDeMotor:
 
         assert nombre_odt.endswith('.odt')
         assert nombre_docx.endswith('.docx')
-
-    def test_tipo_contenido_por_extension(self):
-        assert tipo_contenido_documento('escrito.odt') == TIPOS_CONTENIDO['.odt']
-        assert tipo_contenido_documento('escrito.docx') == TIPOS_CONTENIDO['.docx']
-        assert tipo_contenido_documento('escrito.xyz') == 'application/octet-stream'
 
     def test_validacion_acepta_un_odt_correcto(self, tmp_path):
         ruta = _odt(tmp_path, 'p.odt',

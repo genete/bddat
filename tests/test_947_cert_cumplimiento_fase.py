@@ -366,13 +366,26 @@ class TestProteccionEnElPool:
     @pytest.mark.parametrize('cuerpo', [
         {'fecha_administrativa': '2025-03-01'},
         {'fecha_administrativa': ''},
-        {'url': 'otra/ruta.pdf'},
     ])
-    def test_fecha_o_fichero_del_citado(self, app_ctx, citado, cuerpo):
+    def test_fecha_del_citado(self, app_ctx, citado, cuerpo):
         status, datos = _editar_en_pool(app_ctx, citado, cuerpo)
         assert status == 422
         assert 'deshaga el certificado de cumplimiento' in datos['error']
         assert citado.fecha_administrativa == _F1
+
+    def test_url_externa_del_citado(self, app_ctx, citado):
+        """Fallo silencioso que evita: un documento citado por un certificado cambia de
+        URL y el certificado pasa a citar otra cosa sin que nadie lo vea.
+
+        La `url` solo se rectifica en un documento de URL externa (ADR-050 §M, #1007),
+        así que el citado se hace de URL externa: es el único caso en que el sello
+        tiene algo que proteger.
+        """
+        citado.url = 'https://sede.example/justificante-947'
+        status, datos = _editar_en_pool(app_ctx, citado, {'url': 'https://sede.example/otro'})
+        assert status == 422
+        assert 'deshaga el certificado de cumplimiento' in datos['error']
+        assert citado.url == 'https://sede.example/justificante-947'
 
     def test_tipo_del_citado(self, app_ctx, citado):
         from app.models.tipos_documentos import TipoDocumento

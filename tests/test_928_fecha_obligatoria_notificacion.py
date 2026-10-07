@@ -7,8 +7,6 @@ silencioso (P1). Mismos patrones que test_885_reformados_proyecto.py bloque D
 (listener, ingesta) y test_367_sugerencia_documento.py (limpieza por marcador
 en el asunto para el test HTTP, que escribe de verdad — sin app_ctx).
 """
-import os
-
 import pytest
 
 from app.services.fechas import TIPOS_FECHA_OBLIGATORIA, mensaje_fecha_obligatoria
@@ -59,23 +57,30 @@ def test_justificante_con_fecha_se_admite(app_ctx, arbol_esftt, codigo):
 
 def test_la_ingesta_rechaza_un_justificante_sin_fecha_antes_de_escribir(app_ctx, arbol_aislado):
     """Mismo patrón que #885 (`ingestar_en_pool`): la puerta que escribe
-    pregunta antes de tocar el disco — no deja fichero huérfano."""
+    pregunta antes de enviar nada al almacén — no deja contenido sin referencias."""
+    import hashlib
+    import io
+
+    from sqlalchemy import text
+
+    from app import db
     from app.models.tipos_documentos import TipoDocumento
-    from app.services.ingesta_pool import ingestar_en_pool
-    from app.services.rutas_esftt import ruta_pool_documento
+    from app.services.ingesta_pool import FicheroAIngestar, ingestar_en_pool
 
     expediente = arbol_aislado.solicitud_propia().expediente
     tipo = TipoDocumento.query.filter_by(codigo='JUSTIFICANTE_NOTIFICA_DISPOSICION').first()
     assert tipo is not None, 'la semilla debe traer JUSTIFICANTE_NOTIFICA_DISPOSICION'
+    contenido = b'%PDF-1.4 justificante sin fecha #928'
 
     with pytest.raises(ValueError, match='fecha administrativa'):
-        ingestar_en_pool(expediente, b'contenido', 'disposicion-928.pdf',
-                         tipo_doc_id=tipo.id, fecha_administrativa=None)
+        ingestar_en_pool(expediente, [FicheroAIngestar(
+            io.BytesIO(contenido), 'disposicion-928.pdf',
+            tipo_doc_id=tipo.id, fecha_administrativa=None)])
 
-    directorio = ruta_pool_documento(expediente)
-    presentes = os.listdir(directorio) if os.path.isdir(directorio) else []
-    assert not any('disposicion-928' in nombre for nombre in presentes), \
-        'no debe quedar fichero huérfano en el pool'
+    enviados = db.session.execute(
+        text('SELECT count(*) FROM public.ficheros WHERE contenido_sha256 = :h'),
+        {'h': hashlib.sha256(contenido).hexdigest()}).scalar()
+    assert enviados == 0, 'no debe llegar nada al almacén'
 
 
 # ---------------------------------------------------------------------------

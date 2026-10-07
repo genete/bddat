@@ -241,31 +241,36 @@ def test_reclasificar_a_proyecto_exige_la_fecha(app_ctx, arbol_esftt):
 
 
 def test_la_ingesta_rechaza_el_proyecto_sin_fecha_antes_de_escribir(app_ctx, arbol_aislado):
-    """La puerta que escribe pregunta antes de tocar el disco.
+    """La puerta que escribe pregunta antes de enviar nada al almacén.
 
-    El listener es la red final, pero salta en el flush —cuando el fichero ya está
-    en el pool— y el rollback devuelve la fila sin borrar el fichero (es lo que
-    documenta `ResultadoIngesta`). Sin la comprobación temprana, un proyecto sin
-    fecha dejaba un huérfano en el pool.
+    El listener es la red final, pero salta en el flush —cuando el contenido ya está
+    en el almacén— y el rollback devuelve la fila sin deshacer lo enviado. Sin la
+    comprobación temprana, un proyecto sin fecha dejaba un contenido sin referencias
+    en el almacén.
     """
-    import os
+    import hashlib
+    import io
 
+    from sqlalchemy import text
+
+    from app import db
     from app.models.tipos_documentos import TipoDocumento
-    from app.services.ingesta_pool import ingestar_en_pool
-    from app.services.rutas_esftt import ruta_pool_documento
+    from app.services.ingesta_pool import FicheroAIngestar, ingestar_en_pool
 
     expediente = arbol_aislado.solicitud_propia().expediente
     tipo = TipoDocumento.query.filter_by(codigo=CODIGO_PROYECTO).first()
     assert tipo is not None, 'la semilla debe traer el TipoDocumento DOC_PROYECTO'
+    contenido = b'%PDF-1.4 proyecto sin fecha #885'
 
     with pytest.raises(ValueError, match='fecha administrativa'):
-        ingestar_en_pool(expediente, b'contenido', 'proyecto-885.pdf',
-                         tipo_doc_id=tipo.id, fecha_administrativa=None)
+        ingestar_en_pool(expediente, [FicheroAIngestar(
+            io.BytesIO(contenido), 'proyecto-885.pdf',
+            tipo_doc_id=tipo.id, fecha_administrativa=None)])
 
-    directorio = ruta_pool_documento(expediente)
-    presentes = os.listdir(directorio) if os.path.isdir(directorio) else []
-    assert not any('proyecto-885' in nombre for nombre in presentes), \
-        'no debe quedar fichero huérfano en el pool'
+    enviados = db.session.execute(
+        text('SELECT count(*) FROM public.ficheros WHERE contenido_sha256 = :h'),
+        {'h': hashlib.sha256(contenido).hexdigest()}).scalar()
+    assert enviados == 0, 'no debe llegar nada al almacén'
 
 
 def test_los_demas_tipos_siguen_admitiendo_fecha_vacia(app_ctx, arbol_esftt):

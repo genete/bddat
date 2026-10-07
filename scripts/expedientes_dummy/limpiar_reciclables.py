@@ -19,8 +19,10 @@ Salvaguardas:
     - Dry-run por defecto: sin `--borrar` solo informa.
     - Solo entra un expediente si TODAS sus solicitudes están marcadas.
     - `--at` acota a números de expediente concretos.
-    - Los ficheros del pool (`FILESYSTEM_BASE/AT-N/`) solo se tocan con
-      `--con-ficheros`; por defecto se informa de que quedan y no se borran.
+    - Los contenidos del almacén no se tocan (ADR-050 §M): los documentos se
+      borran por SQL y su contenido queda sin referencias en `ficheros`; solo lo
+      recoge la limpieza de la fase 7, porque el almacén guarda un contenido una
+      sola vez aunque lo compartan varios documentos.
     - Comprobación dinámica del esquema antes de tocar nada: si alguien añade
       una tabla que apunta a las que aquí se borran y no está contemplada, el
       script aborta en vez de dejar filas colgando en silencio.
@@ -30,11 +32,8 @@ Uso:
     venv/Scripts/python.exe scripts/expedientes_dummy/limpiar_reciclables.py
     venv/Scripts/python.exe scripts/expedientes_dummy/limpiar_reciclables.py --borrar
     venv/Scripts/python.exe scripts/expedientes_dummy/limpiar_reciclables.py --borrar --at 12,13 --si
-    venv/Scripts/python.exe scripts/expedientes_dummy/limpiar_reciclables.py --borrar --con-ficheros --si
 """
 import argparse
-import os
-import shutil
 import sys
 
 sys.path.insert(0, r"D:\BDDAT")
@@ -213,14 +212,6 @@ def _inventario(expediente_id):
     """), {'eid': expediente_id}).mappings().one()
 
 
-def _ruta_pool(numero_at):
-    base = app.config.get('FILESYSTEM_BASE') or ''
-    if not base:
-        return None
-    ruta = os.path.join(base, f'AT-{numero_at}')
-    return ruta if os.path.isdir(ruta) else None
-
-
 # ---------------------------------------------------------------------------
 # Borrado
 # ---------------------------------------------------------------------------
@@ -230,7 +221,7 @@ def _ruta_pool(numero_at):
 TABLAS_CON_BITACORA = ('expedientes', 'solicitudes', 'fases', 'tramites', 'tareas', 'documentos')
 
 
-def _borrar_expediente(exp, con_ficheros):
+def _borrar_expediente(exp):
     """Borra un expediente completo. Una transacción: o entero o nada."""
     eid = exp['expediente_id']
     numero_at = exp['numero_at']
@@ -351,15 +342,9 @@ def _borrar_expediente(exp, con_ficheros):
         db.session.rollback()
         raise
 
-    print(f"  AT-{numero_at} borrado (expediente {eid}); {n_bitacora} fila(s) de bitácora.")
-
-    # 8. Ficheros físicos, fuera de la transacción y solo bajo petición expresa.
-    ruta = _ruta_pool(numero_at)
-    if ruta and con_ficheros:
-        shutil.rmtree(ruta)
-        print(f"    ficheros borrados: {ruta}")
-    elif ruta:
-        print(f"    ficheros CONSERVADOS en {ruta} (usa --con-ficheros para borrarlos)")
+    print(f"  AT-{numero_at} borrado (expediente {eid}); {n_bitacora} fila(s) de bitácora. "
+          "Sus contenidos siguen en el almacén; los que ya no referencia ningún documento "
+          "los recoge la limpieza (fase 7).")
 
 
 # ---------------------------------------------------------------------------
@@ -372,8 +357,6 @@ def main():
                         help='ejecuta el borrado (por defecto solo informa)')
     parser.add_argument('--at', default='',
                         help='limita a estos números de expediente, separados por comas')
-    parser.add_argument('--con-ficheros', action='store_true',
-                        help='borra también FILESYSTEM_BASE/AT-N/ (irreversible)')
     parser.add_argument('--si', action='store_true',
                         help='no pide confirmación interactiva')
     args = parser.parse_args()
@@ -392,14 +375,12 @@ def main():
         print(f'\nExpedientes marcados {MARCA}:')
         for exp in candidatos:
             inv = _inventario(exp['expediente_id'])
-            ruta = _ruta_pool(exp['numero_at'])
             print(f"  AT-{exp['numero_at']} (id={exp['expediente_id']}): "
                   f"{inv['solicitudes']} solicitud(es), {inv['fases']} fase(s), "
                   f"{inv['tramites']} trámite(s), {inv['tareas']} tarea(s), "
                   f"{inv['documentos']} documento(s), {inv['vinculos']} vínculo(s), "
                   f"{inv['notificaciones']} notificación(es), {inv['diagnosticos']} diagnóstico(s), "
-                  f"{inv['organismos']} organismo(s)"
-                  + (f" · ficheros en {ruta}" if ruta else ' · sin carpeta de ficheros'))
+                  f"{inv['organismos']} organismo(s)")
 
         if not args.borrar:
             print('\nSimulación: no se ha borrado nada. Añade --borrar para ejecutar.')
@@ -415,7 +396,7 @@ def main():
         fallidos = 0
         for exp in candidatos:
             try:
-                _borrar_expediente(exp, args.con_ficheros)
+                _borrar_expediente(exp)
             except Exception as e:      # un expediente que falla no aborta el resto
                 fallidos += 1
                 print(f"  AT-{exp['numero_at']}: ERROR — {e}")

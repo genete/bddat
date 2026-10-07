@@ -27,31 +27,27 @@ EL ORDEN, QUE ES FORZOSO
     proyecto → municipios → numero_at → expediente (flush)
         → documento al pool → solicitud con ancla → acreditativo del TITULAR → commit
 
-`Documento.expediente_id` es NOT NULL y su ruta física es `AT-N/pool/…`, con el
-`numero_at` saliendo del contador atómico dentro de la transacción: el documento no
-puede existir antes que el expediente. De ahí se sigue que el signal `after_insert`
-de `Expediente` **no puede** rellenar el acreditativo del interesado TITULAR —corre
-en el flush del expediente, cuando el documento todavía no existe—. El signal deja
-la fila puesta y aquí se completa, unas líneas después y en la misma transacción.
+`Documento.expediente_id` es NOT NULL: el documento no puede existir antes que el
+expediente. De ahí se sigue que el signal `after_insert` de `Expediente` **no puede**
+rellenar el acreditativo del interesado TITULAR —corre en el flush del expediente,
+cuando el documento todavía no existe—. El signal deja la fila puesta y aquí se
+completa, unas líneas después y en la misma transacción.
 
-LA LIMPIEZA
-===========
+EL CONTENIDO DE UN ALTA FALLIDA
+===============================
 
-El sistema de ficheros no es transaccional. Si el commit falla, el rollback
-devuelve el `numero_at` al contador y el siguiente expediente reutiliza ese número,
-heredando una carpeta con el documento del intento fallido. Por eso el manejador
-borra lo que escribió — ver `_limpiar_alta_fallida` para por qué ahí es seguro y en
-ningún otro sitio lo sería.
+El almacén no es transaccional. Si el commit falla, el rollback deshace el
+expediente y el documento, pero no el contenido que el almacén ya recibió: queda sin
+referencias y lo recoge la limpieza (ADR-050 §G, fase 7). El `numero_at` vuelve al
+contador y el siguiente expediente lo reutiliza sin heredar nada, porque el contenido
+no depende del número.
 """
 from __future__ import annotations
 
-import logging
-import os
+import io
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Optional
-
-from flask import current_app
 
 from app import db
 from app.models.documentos import Documento
@@ -61,9 +57,7 @@ from app.models.proyectos import Proyecto
 from app.models.solicitudes import Solicitud
 from app.models.tipos_documentos import TipoDocumento
 from app.models.tipos_solicitudes import TipoSolicitud
-from app.services.ingesta_pool import ingestar_en_pool
-
-log = logging.getLogger(__name__)
+from app.services.ingesta_pool import FicheroAIngestar, ingestar_en_pool
 
 # Tipo documental del escrito que abre el procedimiento. Por código y nunca por id:
 # es 146 en desarrollo y 56 en una instalación limpia (#849).
@@ -144,10 +138,12 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
             el catálogo no tiene el tipo documental o el tipo de solicitud pedidos,
             o si el representante o la sede no valen (`mutaciones_arbol.
             validar_representante` y `validar_sede`, las mismas reglas que al
-            crear o editar una solicitud). El llamador decide cómo contarlo: la
-            ruta repinta el formulario, el script aborta.
-        Cualquier otra: se propaga tras deshacer la transacción y borrar los
-            ficheros escritos.
+            crear o editar una solicitud), o si el escrito de solicitud no es de un
+            formato admitido (`FormatoNoAdmitido`, con mensaje para el usuario). El
+            llamador decide cómo contarlo: la ruta repinta el formulario, el script
+            aborta.
+        `AlmacenNoDisponible`: el almacén no contesta; reintentar en unos minutos.
+        Cualquier otra: se propaga tras deshacer la transacción.
 
     La dependencia de catálogo no se degrada, al contrario que en el resto de
     servicios (#347): sin el tipo documental no hay documento, sin documento no hay
@@ -175,8 +171,6 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
     if error:
         raise ValueError(error)
 
-    ingestado = None
-    numero_at = None
     try:
         # 1) Proyecto y sus municipios
         proyecto = Proyecto(
@@ -216,14 +210,14 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
         db.session.flush()          # → expediente.id, y dispara el signal
 
         # 4) El escrito de solicitud entra al pool como cualquier otro documento
-        ingestado = ingestar_en_pool(
-            expediente,
-            datos.documento.contenido,
+        [documento] = ingestar_en_pool(expediente, [FicheroAIngestar(
+            io.BytesIO(datos.documento.contenido),
             datos.documento.nombre_original,
             tipo_doc_id=tipo_doc.id,
             fecha_administrativa=datos.documento.fecha_registro,
             asunto=f'Solicitud de {tipo_solicitud.siglas}',
-        )
+        )])
+        db.session.add(documento)
         db.session.flush()          # → documento.id
 
         # 5) Solicitud, ya anclada
@@ -233,7 +227,7 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
             representante_entidad_id=datos.representante_entidad_id,
             direccion_notificacion_id=datos.direccion_notificacion_id,
             tipo_solicitud_id=datos.tipo_solicitud_id,
-            documento_solicitud_id=ingestado.documento.id,
+            documento_solicitud_id=documento.id,
             observaciones=datos.observaciones,
         )
         db.session.add(solicitud)
@@ -245,59 +239,18 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
             db.text('UPDATE public.interesados_expediente '
                     'SET documento_acreditativo_id = :doc '
                     'WHERE expediente_id = :exp AND tipo_origen = :tipo'),
-            {'doc': ingestado.documento.id, 'exp': expediente.id, 'tipo': 'TITULAR'},
+            {'doc': documento.id, 'exp': expediente.id, 'tipo': 'TITULAR'},
         )
 
         db.session.commit()
 
     except Exception:
         db.session.rollback()
-        _limpiar_alta_fallida(ingestado, numero_at)
         raise
 
     return ResultadoAlta(
         expediente=expediente,
         solicitud=solicitud,
-        documento=ingestado.documento,
+        documento=documento,
         numero_at=numero_at,
     )
-
-
-def _limpiar_alta_fallida(ingestado, numero_at) -> None:
-    """Retira del disco lo que escribió un alta que no llegó a cuajar.
-
-    Aquí es seguro borrar y en ningún otro sitio lo sería: este `AT-N/` acaba de
-    nacer en esta misma transacción —el `numero_at` sale del contador unas líneas
-    antes— así que no había nada dentro que no hayamos puesto nosotros.
-
-    Aun así se borra por lo fino, nunca con `rmtree`: primero el fichero que consta
-    escrito (`fichero_escrito`, que un duplicado exacto pone a False — ahí el
-    fichero es de otro documento que sí lo usa), y después las carpetas con
-    `os.rmdir`, que se niega a borrar una que no esté vacía. Si el contador llegara
-    a repetir un número cuya carpeta tuviera contenido ajeno, esto no lo tocaría.
-
-    Los fallos de borrado se loguean y no se propagan: la excepción que importa es
-    la que trajo hasta aquí, y taparla con un error de permisos de fichero dejaría
-    al usuario sin saber por qué no se creó su expediente.
-    """
-    if ingestado is not None and ingestado.fichero_escrito:
-        try:
-            os.remove(ingestado.ruta_absoluta)
-        except OSError as exc:
-            log.warning('alta fallida: no se pudo borrar %s — %s',
-                        ingestado.ruta_absoluta, exc)
-
-    if numero_at is None:
-        return
-
-    base = current_app.config.get('FILESYSTEM_BASE', '')
-    if not base:
-        return
-
-    raiz = os.path.join(base, f'AT-{numero_at}')
-    for carpeta in (os.path.join(raiz, 'pool'), raiz):
-        try:
-            os.rmdir(carpeta)
-        except OSError:
-            # No está vacía o no existe: en ambos casos no es nuestra para borrarla.
-            break

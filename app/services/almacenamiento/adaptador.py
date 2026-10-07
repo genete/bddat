@@ -47,6 +47,12 @@ class AlmacenNoDisponible(ErrorAlmacenamiento):
     contenido: reintentar en unos minutos. No es un fallo del documento."""
 
 
+# Lo que se le cuenta al usuario cuando salta `AlmacenNoDisponible`: el texto de la excepción
+# es técnico (qué falló); este, el que lee una persona. Lo usan la subida, el alta y la descarga.
+MENSAJE_ALMACEN_NO_DISPONIBLE = (
+    'El almacén de documentos no está disponible: inténtalo en unos minutos.')
+
+
 class ContenidoNoExiste(ErrorAlmacenamiento):
     """El almacén contesta y no tiene ese contenido: un fallo de integridad."""
 

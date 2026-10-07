@@ -312,8 +312,10 @@ y ninguno decía cuál, así que el test no podía cumplir su papel de aviso.
 4. **Aislamiento:**
    - BD: `app_ctx` (o `arbol_esftt` / `arbol_aislado`, que lo traen) — todo se
      revierte al acabar, aunque la aplicación haga `commit()`.
-   - Disco: `fs_tmp` en cuanto el código escriba ficheros (alta, escritos,
-     certificados, pool). El SAVEPOINT no revierte el disco.
+   - Disco: `fs_tmp` queda hasta el PR 5 de #1007 y solo porque pide además
+     `almacen_tmp`: tras el corte ninguna ruta del código escribe ficheros en
+     `FILESYSTEM_BASE` (alta, escritos, certificados y pool van al almacén). El
+     SAVEPOINT no revierte el disco.
    - Almacén de documentos (ADR-050): `almacen_tmp` en cuanto el código suba un
      documento (`contenido.subir`) o escriba un manifiesto. Redirige `ALMACEN_BASE` y
      `MANIFIESTOS_BASE` a un temporal ya inicializado (los dos con su marca de raíz:

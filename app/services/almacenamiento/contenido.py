@@ -6,10 +6,17 @@ resto trabaja con `documentos.id` y pide el contenido por aquí:
 - `subir`: el flujo de §B (validar todo, hash a trozos, reutilizar o escribir, la fila
   de `ficheros` en su propia transacción, los documentos todo o nada).
 - `leer`: el contenido entero con su formato, comprobando el hash.
+- `tiene_contenido_propio`: si el documento guarda su contenido en el almacén (y no es un enlace
+  externo ni un documento virtual).
 - `comprobar_para_vincular`: un contenido ausente o corrupto no sostiene ningún acto.
 - `servir_descarga`: la respuesta HTTP con las cabeceras de §E.
+- `cambiar_contenido`: el documento se conserva (mismo `id`, mismos vínculos) y apunta a otro
+  contenido; el cambio queda en la bitácora con el hash anterior y el nuevo (§C).
+- `copiar_documento`: un documento nuevo sobre el mismo contenido que otro, sin enviar nada
+  al almacén (la copia del anuncio edictal, #568).
 
-Sustituir con motivo y aportar desde otro expediente llegan en el PR 6, con su interfaz.
+Sustituir con motivo (que reutilizará `cambiar_contenido`, con motivo y sellos) y aportar
+desde otro expediente llegan en el PR 6, con su interfaz.
 
 **Dos conexiones.** La fila de `ficheros` se escribe **en una conexión propia**, no en la
 sesión de la petición: con la sesión, el commit de la fila arrastraría lo que el
@@ -38,6 +45,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app import db
 from app.models.documentos import Documento
 from app.models.ficheros import AUSENTE, CORRUPTO, OK, Fichero
+from app.services import bitacora as bitacora_svc
 from app.services.almacenamiento.adaptador import (
     AlmacenNoDisponible, ContenidoNoExiste, ErrorAlmacenamiento, obtener_adaptador,
 )
@@ -52,6 +60,10 @@ _T = Fichero.__table__
 # Lo que fija el módulo al subir: quien llama no lo pasa (si pudiera, saltaría el saneado
 # del nombre o la comprobación del contenido).
 _CAMPOS_DEL_MODULO = frozenset({'url', 'nombre_fichero', 'fichero_ref', 'fecha_modificacion_fichero'})
+
+# Por qué vía cambia el contenido de un documento (§C). Hoy solo la regeneración de un
+# escrito; la edición (fase 5) y la sustitución con motivo (PR 6) se añaden con su interfaz.
+VIA_REGENERACION = 'REGENERACION'
 
 
 class ContenidoNoUtilizable(ErrorAlmacenamiento):
@@ -113,6 +125,88 @@ def subir(entradas: Sequence[EntradaSubida]) -> list[Documento]:
     return [documento for _, documento, _ in preparadas]
 
 
+def cambiar_contenido(documento: Documento, flujo: BinaryIO, *, via: str, usuario_id: int) -> bool:
+    """Da al documento otro contenido, conservando el documento (§C): mismo `id`, mismo
+    nombre y mismos vínculos; solo cambia el contenido al que apunta.
+
+    Devuelve `False` y no hace nada si el contenido nuevo es el que ya tiene (mismo SHA-256).
+    Si no, lo valida con el nombre del documento (como `subir`), lo guarda (si ese contenido
+    ya estaba en el almacén se reutiliza su fila y no se envía nada), apunta el documento a él
+    y **anota en la bitácora** el hash anterior y el nuevo, quién y la `via`. Quien llama no
+    escribe `fichero_ref`, así que ningún cambio de contenido se salta la bitácora.
+
+    El contenido anterior no se toca: otros documentos pueden compartirlo. Cuando ya no lo
+    referencie nada, la limpieza (fase 7) lo recoge pasados los días de la papelera, y la
+    bitácora dice cuál era. Se compara con la fila de `ficheros`, sin leer el contenido
+    anterior: funciona aunque esté ausente o dañado.
+
+    No hace commit: el cambio del documento y la entrada de bitácora van en la sesión de
+    quien llama y se confirman juntos. Si ese commit falla, el contenido nuevo queda en el
+    almacén sin referencias y el documento sigue con el anterior.
+
+    Lanza `FormatoNoAdmitido`, `ValueError` (el documento no tiene contenido propio) o
+    `AlmacenNoDisponible`.
+    """
+    if documento.fichero_ref is None:
+        raise ValueError('El documento no tiene contenido propio en el almacén (fichero_ref)')
+    anterior = _fila_por_ref(documento.fichero_ref)
+    if anterior is None:
+        raise ErrorAlmacenamiento(f'Falta la fila de ficheros de {documento.fichero_ref}')
+
+    nombre = documento.nombre_visible()
+    try:
+        formato = validar_fichero(nombre, flujo)
+    except FormatoNoAdmitido as exc:
+        raise FormatoNoAdmitido(f'«{nombre}»: {exc}') from exc
+    sha256, tamano = _calcular_sha256(flujo)
+    if sha256 == anterior.contenido_sha256:
+        return False
+
+    fila = _guardar_contenido(flujo, formato, sha256, tamano)
+    documento.fichero_ref = fila.ref
+    documento.fecha_modificacion_fichero = datetime.now(timezone.utc)
+    bitacora_svc.registrar(
+        usuario_id, 'ALTERAR', 'documentos', documento.id, columna='fichero_ref',
+        detalle={'via': via, 'sha256_anterior': anterior.contenido_sha256, 'sha256_nuevo': sha256},
+    )
+    return True
+
+
+def copiar_documento(origen: Documento, **datos) -> Documento:
+    """Un documento nuevo con el mismo contenido que `origen`, sin enviar nada al almacén.
+
+    Hace falta cuando un mismo contenido tiene que figurar en más de un documento (un
+    documento tiene un solo productor, así que cada tarea que lo produce necesita el suyo).
+    La copia apunta a la misma fila de `ficheros` y lleva el mismo nombre y la misma fecha
+    de fichero que el origen; si el origen es un enlace `http(s)://`, lleva la misma `url`.
+
+    `datos` son los del documento nuevo (`expediente_id`, `tipo_doc_id`,
+    `fecha_administrativa`, `asunto`…) y no pueden llevar `url`, `nombre_fichero`,
+    `fichero_ref` ni `fecha_modificacion_fichero`: los toma este módulo del origen, así
+    que ninguna copia sale sin su contenido.
+
+    El documento **no se añade a la sesión**: quien llama lo añade, como con `subir`. Que el
+    contenido se pueda usar lo comprueba `comprobar_para_vincular` al vincular la copia.
+
+    Lanza `ValueError` si `datos` trae un campo del módulo, o si el origen no tiene nada que
+    copiar: ni contenido propio ni enlace `http(s)://` (un documento `bddat://`, una ruta
+    local sin migrar o un documento vacío).
+    """
+    propios = _CAMPOS_DEL_MODULO & set(datos)
+    if propios:
+        raise ValueError(f'datos no puede llevar {sorted(propios)}: los toma el módulo del origen')
+    if origen.fichero_ref is not None:
+        return Documento(
+            **datos, nombre_fichero=origen.nombre_fichero, fichero_ref=origen.fichero_ref,
+            fecha_modificacion_fichero=origen.fecha_modificacion_fichero,
+        )
+    if (origen.url or '').startswith(('http://', 'https://')):
+        return Documento(**datos, url=origen.url, nombre_fichero=origen.nombre_fichero)
+    raise ValueError(
+        f'El documento {origen.id} no tiene nada que copiar: ni contenido propio en el '
+        f'almacén ni un enlace http(s)://')
+
+
 def leer(documento: Documento) -> ContenidoLeido:
     """El contenido entero del documento, con el hash comprobado (§G).
 
@@ -131,6 +225,15 @@ def leer(documento: Documento) -> ContenidoLeido:
         _marcar_estado(fila.ref, CORRUPTO)
         raise ContenidoNoUtilizable(_mensaje_no_utilizable(CORRUPTO, documento))
     return ContenidoLeido(datos=datos, formato=fila.formato, nombre_fichero=documento.nombre_visible())
+
+
+def tiene_contenido_propio(documento: Documento) -> bool:
+    """El documento guarda su contenido en el almacén, a diferencia de un enlace externo
+    (`http(s)://`) o un documento virtual (`bddat://`), que no tienen nada que leer ni servir.
+
+    Es la pregunta que se le hace al módulo en vez de mirar `fichero_ref` desde fuera: la `ref`
+    solo la ve el subsistema de almacenamiento (ADR-050 §B)."""
+    return documento.fichero_ref is not None
 
 
 def comprobar_para_vincular(documento: Documento) -> None:
@@ -183,9 +286,13 @@ def servir_descarga(documento: Documento) -> Response:
 
 # --- subir: el contenido ------------------------------------------------------------
 
-def _guardar_contenido(flujo: BinaryIO, formato: str):
-    """Pasos 2-5 de §B para un fichero: la fila de `ficheros` con su contenido en el almacén."""
-    sha256, tamano = _calcular_sha256(flujo)
+def _guardar_contenido(flujo: BinaryIO, formato: str, sha256: str | None = None, tamano: int | None = None):
+    """Pasos 2-5 de §B para un fichero: la fila de `ficheros` con su contenido en el almacén.
+
+    `sha256` y `tamano` se pasan si quien llama ya los calculó, para no leer dos veces un
+    fichero grande."""
+    if sha256 is None:
+        sha256, tamano = _calcular_sha256(flujo)
 
     fila = _fila_por_hash(sha256)
     if fila is not None and fila.estado == OK:

@@ -97,6 +97,23 @@ def _documento_suelto(app, *, url, tipo_doc_id=None, expediente_id=None):
         return expediente_id, doc.id
 
 
+def _documento_suelto_con_contenido(app, nombre):
+    """Documento sin vínculo a tarea y con contenido propio en el almacén (`url` NULL),
+    commiteado como `_documento_suelto`. Es la única forma de tener un documento sin
+    `url`: el CHECK de la BD exige que tenga `fichero_ref` (ADR-050 §C). Pide `almacen_tmp`."""
+    from app import db
+    from app.models.expedientes import Expediente
+    from tests.conftest import documento_con_contenido_de_prueba
+    with app.app_context():
+        exp = Expediente.query.first()
+        assert exp is not None, 'la semilla debe traer algún expediente'
+        doc = documento_con_contenido_de_prueba(
+            nombre, b'%PDF-1.4 contenido de prueba del radar',
+            expediente_id=exp.id, tipo_doc_id=_tipo_doc_cualquiera().id)
+        db.session.commit()
+        return doc.id
+
+
 def _borrar_documento(app, doc_id):
     from app import db
     from app.models.documentos import Documento
@@ -132,19 +149,21 @@ class TestListadoHuerfanos:
         finally:
             _borrar_documento(app, doc_id)
 
-    def test_documento_sin_url_sin_vinculo_aparece_como_huerfano(self, usuario_tramitador, app):
+    def test_documento_sin_url_sin_vinculo_aparece_como_huerfano(self, usuario_tramitador, app,
+                                                                 almacen_tmp):
         """ADR-050: un documento con contenido propio en el almacén no tiene url (NULL).
 
         Fallo silencioso que evita: `NOT url LIKE 'bddat://%'` da NULL cuando la url es
         NULL, así que el documento sale del radar sin ningún error y nadie lo vincula
-        nunca a una tarea."""
-        _, doc_id = _documento_suelto(app, url=None)
+        nunca a una tarea. Desde el CHECK de la BD, todo fichero de BDDAT es así: sin
+        este caso el radar saldría vacío."""
+        doc_id = _documento_suelto_con_contenido(app, 'radar-sin-url.pdf')
         try:
             r = usuario_tramitador.get('/api/documentos/huerfanos?ver=todos&limit=200')
             assert r.status_code == 200
             fila = next((d for d in r.get_json()['data'] if d['id'] == doc_id), None)
             assert fila is not None, 'el radar no lista el documento sin url'
-            assert fila['nombre'] == f'Documento {doc_id}'
+            assert fila['nombre'] == 'radar-sin-url.pdf'
         finally:
             _borrar_documento(app, doc_id)
 

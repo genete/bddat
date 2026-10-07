@@ -317,24 +317,16 @@ def _limpiar_documentos_prueba_367(app):
         db.session.commit()
 
 
-@pytest.fixture
-def _pool_tmp_367(app, tmp_path):
-    base_original = app.config.get('FILESYSTEM_BASE')
-    app.config['FILESYSTEM_BASE'] = str(tmp_path)
-    yield tmp_path
-    app.config['FILESYSTEM_BASE'] = base_original
-
-
 class TestPoolSubirDocumentoRespuestaExtendida:
 
     def test_respuesta_incluye_documentos_con_campos_esperados(
-        self, usuario_supervisor, expediente_seed, _pool_tmp_367,
+        self, usuario_supervisor, expediente_seed, almacen_tmp,
     ):
         metadatos = [{'tipo_doc_id': 1, 'asunto': '#367 test — respuesta extendida'}]
         r = usuario_supervisor.post(
             f'/expedientes/{expediente_seed}/documentos/subir',
             data={
-                'ficheros': (io.BytesIO(b'contenido #367'), 'informe_367.pdf'),
+                'ficheros': (io.BytesIO(b'%PDF-1.4 contenido #367'), 'informe_367.pdf'),
                 'metadatos': json.dumps(metadatos),
             },
             content_type='multipart/form-data',
@@ -349,7 +341,7 @@ class TestPoolSubirDocumentoRespuestaExtendida:
         assert doc['nombre'].endswith('informe_367.pdf')
 
     def test_contrato_previo_ok_creados_se_mantiene(
-        self, usuario_supervisor, expediente_seed, _pool_tmp_367,
+        self, usuario_supervisor, expediente_seed, almacen_tmp,
     ):
         """Cambio aditivo: el único consumidor previo (pool_documentos.html)
         solo lee 'ok'/'creados' — deben seguir presentes y sin cambiar de forma."""
@@ -357,7 +349,7 @@ class TestPoolSubirDocumentoRespuestaExtendida:
         r = usuario_supervisor.post(
             f'/expedientes/{expediente_seed}/documentos/subir',
             data={
-                'ficheros': (io.BytesIO(b'contenido #367 v2'), 'informe_367_b.pdf'),
+                'ficheros': (io.BytesIO(b'%PDF-1.4 contenido #367 v2'), 'informe_367_b.pdf'),
                 'metadatos': json.dumps(metadatos),
             },
             content_type='multipart/form-data',

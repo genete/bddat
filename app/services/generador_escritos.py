@@ -5,7 +5,7 @@ RESPONSABILIDAD:
     Orquesta las capas de contexto y despacha al motor de render que
     corresponda para producir un escrito relleno a partir de una Plantilla
     registrada. Aquí no se renderiza nada: solo vive lo común a los dos
-    formatos (nombre, ruta, guardado, MIME y validación).
+    formatos (nombre, MIME y validación).
 
 DOS MOTORES HERMANOS (ADR-035 §2):
     .odt  → renderizador propio, en generador_escritos_odt   (formato de referencia)
@@ -25,25 +25,17 @@ FLUJO:
 
 FUNCIONES PÚBLICAS ADICIONALES (Fase 5 #167):
     componer_nombre_documento  — Nombre sistematizado para el documento generado
-    guardar_documento          — Escribe bytes a disco (sobrescribe si existe)
-    tipo_contenido_documento   — MIME del documento según su extensión
     advertencias_plantilla     — Avisos de canonicidad (#727); solo .odt, no bloquean
 
-    La ruta de destino ya no se calcula aquí (ver `ruta_destino_documento`,
-    retirada en #730): el documento se genera directamente en su carpeta ESFTT
-    definitiva (`rutas_esftt.ruta_destino_esftt_fichero`), no en un intermedio
-    en `AT-N/` raíz que había que mover después.
+    El escrito no se guarda aquí: lo sube `regeneracion_escritos.regenerar_escrito`
+    al almacén (ADR-050), con el nombre que compone `componer_nombre_documento`.
 
 USO:
-    from app.services.generador_escritos import (
-        generar_escrito, componer_nombre_documento, guardar_documento,
-    )
-    from app.services.rutas_esftt import ruta_destino_esftt_fichero
+    from app.services.generador_escritos import generar_escrito, componer_nombre_documento
 
     doc_bytes = generar_escrito(plantilla, expediente, db_session)
     nombre = componer_nombre_documento(tarea, plantilla)
-    ruta = ruta_destino_esftt_fichero(tarea, nombre)
-    guardar_documento(doc_bytes, ruta)
+    # regeneracion_escritos.regenerar_escrito(...) lo sube y lo vincula
 
 DEPENDENCIA:
     Ninguna propia. La rama .docx arrastra python-docx-template, pero se
@@ -59,8 +51,8 @@ from app.services.nombres_documentos import texto_tramite
 
 logger = logging.getLogger(__name__)
 
-# MIME por extensión de plantilla. Lo consume la API al registrar el documento
-# generado en el pool.
+# Extensiones de plantilla que tienen motor, con su MIME: las que admiten
+# `validar_plantilla` y el alta de plantillas (`admin_plantillas`).
 TIPOS_CONTENIDO = {
     '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     '.odt':  'application/vnd.oasis.opendocument.text',
@@ -121,7 +113,7 @@ def generar_escrito(plantilla, expediente, db_session, tarea=None,
 
 
 # ------------------------------------------------------------------
-# Funciones públicas — nombre, ruta y guardado (Fase 5 #167)
+# Funciones públicas — nombre y validación (Fase 5 #167)
 # ------------------------------------------------------------------
 
 # Caracteres no válidos en nombres de fichero Windows
@@ -177,18 +169,6 @@ def componer_nombre_documento(tarea, plantilla) -> str:
     return nombre
 
 
-def guardar_documento(doc_bytes, ruta_destino) -> str:
-    """
-    Escribe los bytes del documento a disco. Sobrescribe si existe (regeneración B6).
-
-    Returns:
-        str — Ruta absoluta del fichero escrito.
-    """
-    with open(ruta_destino, 'wb') as f:
-        f.write(doc_bytes)
-    return ruta_destino
-
-
 def validar_plantilla(ruta_abs: str) -> str | None:
     """
     Comprueba que el fichero sea una plantilla utilizable por su motor.
@@ -234,17 +214,6 @@ def advertencias_plantilla(ruta_abs: str) -> list[str]:
         return []
     from app.services.plantilla_canonica_odt import comprobar_canonicidad
     return comprobar_canonicidad(ruta_abs)
-
-
-def tipo_contenido_documento(nombre_o_ruta: str) -> str:
-    """
-    MIME del documento generado, deducido de su extensión.
-
-    Desconocida → 'application/octet-stream', que es lo honesto: mejor que el
-    navegador no sepa abrirlo a que lo abra con el programa equivocado.
-    """
-    extension = os.path.splitext(nombre_o_ruta or '')[1].lower()
-    return TIPOS_CONTENIDO.get(extension, 'application/octet-stream')
 
 
 # ------------------------------------------------------------------

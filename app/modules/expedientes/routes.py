@@ -20,9 +20,8 @@ FECHA: 2026-06-11
 ISSUE: #543
 """
 import json
-import os
 from datetime import date
-from flask import current_app, send_file, g
+from flask import g
 from flask import Blueprint, render_template, request, flash, redirect, url_for, abort, jsonify
 from flask_login import login_required, current_user
 from app import db
@@ -39,7 +38,15 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
-from app.services.ingesta_pool import ingestar_en_pool
+from app.services.almacenamiento.adaptador import AlmacenNoDisponible, MENSAJE_ALMACEN_NO_DISPONIBLE
+from app.services.almacenamiento.contenido import (
+    ContenidoNoUtilizable, servir_descarga, tiene_contenido_propio,
+)
+from app.services.almacenamiento.formatos import FormatoNoAdmitido
+from app.services.ingesta_pool import (
+    FicheroAIngestar, comprobar_rectificacion_url, exigir_url_externa, ingestar_en_pool,
+    rectificar_url_externa,
+)
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
 from app.services.detalle_nodo import info_apertura_documento
 from app.services.parser_justificante_notifica import parsear_justificante_notifica
@@ -697,24 +704,25 @@ def pool_documentos_json(id):
 @login_required
 def pool_subir_documento(id):
     """
-    Ingesta multipart al pool (#666, ADR-032 §1/§4): sube ficheros reales
-    (diálogo nativo del navegador), indiferente a si el origen navegado por
-    el usuario era una carpeta del servidor o su disco local. Siempre copia
-    al punto de entrada fijo AT-N/pool/<prefijo-hash>_<nombre-original>.
+    Ingesta multipart al pool (#666, ADR-032 §1/§4, ADR-050 §B): sube ficheros reales
+    (diálogo nativo del navegador) al almacén y crea un documento por cada uno. La
+    Despensa usa esta misma ruta.
 
     Recibe multipart: 'ficheros' (N ficheros) + 'metadatos' (JSON, array
     paralelo por índice a 'ficheros'): [{tipo_doc_id, fecha_administrativa,
     asunto, prioridad}, ...].
 
-    Duplicado exacto (mismo MD5 completo ya presente en el pool): no se
-    reescribe el fichero físico, pero sí se crea el Documento — el usuario
-    ha pedido explícitamente añadirlo (ADR-032 §4, sin bloquear ni avisar).
+    Todo o nada: se validan todos los ficheros antes de enviar el primero al almacén
+    (un formato no admitido, 422; un fichero vacío cuenta como tal). Duplicado exacto
+    (mismo contenido ya en el almacén): no se vuelve a guardar, pero sí se crea el
+    Documento — el usuario ha pedido explícitamente añadirlo (ADR-032 §4, sin bloquear
+    ni avisar).
 
-    La copia y el alta del Documento viven en `app/services/ingesta_pool.py`
-    desde #428, porque el alta de expediente hace lo mismo y no puede llamarse a
-    sí misma por HTTP. Aquí queda lo que solo tiene sentido hablando HTTP: el
-    permiso, el 503, el parseo del JSON de metadatos, el commit del lote y la
-    traducción del error a código de estado.
+    El envío al almacén y el armado de los Documento viven en
+    `app/services/ingesta_pool.py`, porque el alta de expediente hace lo mismo y no
+    puede llamarse a sí misma por HTTP. Aquí queda lo que solo tiene sentido hablando
+    HTTP: el permiso, el parseo del JSON de metadatos, el commit del lote y la
+    traducción del error a código de estado (422 formato, 503 almacén sin contestar).
 
     Permiso 'subir_documento' (ADR-027 / #501): aportar al pool no edita el
     expediente — el documento nace sin vínculo (huérfano) y es el técnico quien
@@ -724,10 +732,6 @@ def pool_subir_documento(id):
     resultado = verificar_acceso_expediente(expediente, 'subir_documento')
     if resultado:
         return resultado
-
-    base = current_app.config.get('FILESYSTEM_BASE', '')
-    if not base or not os.path.isdir(base):
-        return jsonify({'ok': False, 'error': 'Servidor de ficheros no accesible'}), 503
 
     ficheros = request.files.getlist('ficheros')
     if not ficheros:
@@ -740,16 +744,11 @@ def pool_subir_documento(id):
     if not isinstance(metadatos, list):
         return jsonify({'ok': False, 'error': 'Metadatos inválidos'}), 400
 
-    creados = 0
-    creados_docs = []
     try:
+        entrantes, items = [], []
         for i, fichero in enumerate(ficheros):
             if not fichero.filename:
                 continue
-            contenido = fichero.read()
-            if not contenido:
-                continue
-
             item = metadatos[i] if i < len(metadatos) else {}
 
             fecha_admin = None
@@ -760,32 +759,37 @@ def pool_subir_documento(id):
                 except ValueError:
                     pass
 
-            ingestado = ingestar_en_pool(
-                expediente, contenido, fichero.filename,
+            entrantes.append(FicheroAIngestar(
+                fichero.stream, fichero.filename,
                 tipo_doc_id=int(item.get('tipo_doc_id') or 1),
                 fecha_administrativa=fecha_admin,
                 asunto=(item.get('asunto') or '').strip() or None,
                 prioridad=bool(item.get('prioridad')),
-            )
+            ))
+            items.append(item)
+
+        creados_docs = ingestar_en_pool(expediente, entrantes)
+        # De uno en uno y en orden: la bifurcación de un lote de DOC_PROYECTO la decide el
+        # estado del ancla tras el documento anterior (§C de ADR-044).
+        for documento, item in zip(creados_docs, items):
+            db.session.add(documento)
             db.session.flush()   # el corte necesita el id del documento
-            declarar_desde_metadatos(ingestado.documento, item, usuario_id=current_user.id)
-            creados += 1
-            creados_docs.append(ingestado.documento)
+            declarar_desde_metadatos(documento, item, usuario_id=current_user.id)
 
         db.session.commit()
-    except OSError as e:
+    except FormatoNoAdmitido as e:
         db.session.rollback()
-        return jsonify({
-            'ok': False,
-            'error': f'No se pudo escribir a disco (¿ruta demasiado larga?): {e}',
-        }), 500
+        return jsonify({'ok': False, 'error': str(e)}), 422
+    except AlmacenNoDisponible:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': MENSAJE_ALMACEN_NO_DISPONIBLE}), 503
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
 
     return jsonify({
         'ok': True,
-        'creados': creados,
+        'creados': len(creados_docs),
         'documentos': [
             {
                 'id':              d.id,
@@ -837,13 +841,19 @@ def pool_parsear_justificante(id):
 @bp.route('/<int:id>/documentos/<int:doc_id>/fichero')
 @login_required
 def pool_descargar_documento(id, doc_id):
-    """Sirve un fichero del servidor de ficheros. Para URLs externas, redirige.
+    """Sirve el contenido de un documento desde el almacén. Para URLs externas, redirige.
 
     bddat:// (ADR-006, #610): certificados redirige a su PDF; diagnósticos no
     tiene descarga posible (400 explícito, no 404 silencioso) — desde #629 la
     apertura real de un diagnóstico pasa por diagnostico_modal(), esta rama
     queda como defensa ante un acceso directo a esta URL; recurso no
     contemplado falla alto, igual que en info_apertura_documento().
+
+    Contenido propio (`fichero_ref`, ADR-050 §E): lo sirve el módulo de contenido, con sus
+    cabeceras de seguridad. Si el contenido está ausente o dañado, 409 con el mensaje para
+    el usuario; si el almacén no contesta, 503 «inténtalo en unos minutos». No valen 404 ni
+    500 para esos dos mensajes: sus manejadores pintan una plantilla fija y esconderían el
+    texto. Un documento sin contenido ni enlace es 404.
     """
     expediente = Expediente.query.get_or_404(id)
     resultado = verificar_acceso_expediente(expediente, 'ver')
@@ -874,15 +884,14 @@ def pool_descargar_documento(id, doc_id):
             abort(400, description='Este documento no tiene representación descargable.')
         raise NotImplementedError(f'Apertura no definida para recurso bddat://: {recurso!r}')
 
+    if not tiene_contenido_propio(doc):
+        abort(404)
     try:
-        ruta_abs = doc.ruta_absoluta()
-    except (RuntimeError, ValueError):
-        abort(404)
-    if not os.path.isfile(ruta_abs):
-        abort(404)
-
-    return send_file(ruta_abs, as_attachment=False,
-                     download_name=os.path.basename(ruta_abs))
+        return servir_descarga(doc)
+    except ContenidoNoUtilizable as exc:
+        abort(409, description=str(exc))
+    except AlmacenNoDisponible:
+        abort(503, description=MENSAJE_ALMACEN_NO_DISPONIBLE)
 
 
 @bp.route('/<int:id>/documentos/<int:doc_id>/diagnostico-modal')
@@ -1002,6 +1011,11 @@ def pool_registrar_url_externa(id):
     Registra una URL externa en el pool (BOE, Notifica, sede electrónica, etc.)
     sin subir ningún fichero. Recibe JSON, devuelve JSON.
 
+    Solo admite `http://` y `https://` (ADR-050 §C, #1007): cualquier otra cosa —una ruta
+    local, un `bddat://` escrito a mano, otro esquema— da 422 con el motivo. Los `bddat://`
+    los crean solo los servicios de certificados y diagnósticos; una ruta local sería un
+    escritor de rutas vivo tras la migración.
+
     Permiso 'subir_documento' (ADR-027 / #501): aportar al pool no edita el
     expediente; sin limitación de rol (igual que pool_subir_documento).
     """
@@ -1014,6 +1028,10 @@ def pool_registrar_url_externa(id):
     url = (datos.get('url') or '').strip()
     if not url:
         return jsonify({'ok': False, 'error': 'La URL es obligatoria'}), 400
+    try:
+        url = exigir_url_externa(url)
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 422
 
     fecha_admin = None
     fecha_raw = datos.get('fecha_administrativa') or None
@@ -1056,7 +1074,7 @@ def _fecha_del_payload(fecha_raw):
 
 
 def _cambia_lo_sellable(doc, datos) -> bool:
-    """El cuerpo de `pool_editar_documento` cambia la fecha, el tipo o el fichero
+    """El cuerpo de `pool_editar_documento` cambia la fecha, el tipo o la URL
     de `doc` — lo que un sello protege (#947). Con la misma interpretación que
     aplica la ruta al escribir: url vacía no cambia nada; tipo vacío es OTROS (1)."""
     url_nueva = (datos.get('url') or '').strip()
@@ -1077,7 +1095,13 @@ def _cambia_lo_sellable(doc, datos) -> bool:
 @bp.route('/<int:id>/documentos/<int:doc_id>/editar', methods=['POST'])
 @login_required
 def pool_editar_documento(id, doc_id):
-    """Editar metadatos de un documento del pool — devuelve JSON."""
+    """Editar metadatos de un documento del pool — devuelve JSON.
+
+    La `url` solo se rectifica en un documento de URL externa y por otra `http(s)://`, y la
+    anterior queda en la bitácora (ADR-050 §M, #1007); en un fichero propio o un `bddat://`
+    un cuerpo con una `url` distinta da 422. Una `url` vacía, igual a la actual o ausente no
+    cambia nada: el formulario reenvía los campos aunque no cambien.
+    """
     expediente = Expediente.query.get_or_404(id)
     resultado = verificar_acceso_expediente(expediente, 'editar')
     if resultado:
@@ -1092,8 +1116,19 @@ def pool_editar_documento(id, doc_id):
     # Esto permite edición masiva parcial (p.ej. solo cambiar prioridad)
     # sin sobreescribir los demás metadatos.
 
+    # La validez de la URL va ANTES que el sello: si fuera al revés, a quien intenta cambiar
+    # la url de un fichero citado por un certificado se le diría «deshaga el certificado»
+    # cuando, aun deshaciéndolo, no podría.
+    url_nueva = str(datos.get('url') or '').strip()
+    cambia_url = bool(url_nueva) and url_nueva != doc.url
+    if cambia_url:
+        try:
+            comprobar_rectificacion_url(doc, url_nueva)
+        except ValueError as e:
+            return jsonify({'ok': False, 'error': str(e)}), 422
+
     # Sello (#947, ADR-049 §F): del documento que cita un certificado, o del propio
-    # certificado, no se cambian la fecha, el tipo ni el fichero. Se comparan
+    # certificado, no se cambian la fecha, el tipo ni la URL. Se comparan
     # VALORES y no presencia de claves: el formulario completo del pool reenvía
     # todos los campos aunque no cambien, y bloquear por «viene la clave» impediría
     # editar el asunto de un documento citado. La consulta al sello solo se paga
@@ -1104,13 +1139,8 @@ def pool_editar_documento(id, doc_id):
             return jsonify({'ok': False, 'error': motivo}), 422
 
     try:
-        url_nueva = (datos.get('url') or '').strip()
-        if url_nueva:
-            if url_nueva != doc.url:
-                # El nombre del fichero anterior no describe al nuevo: sin esto,
-                # nombre_visible() seguiría enseñando el de antes (ADR-050 §C).
-                doc.nombre_fichero = None
-            doc.url = url_nueva
+        if cambia_url:
+            rectificar_url_externa(doc, url_nueva, current_user.id)
 
         if 'tipo_doc_id' in datos:
             doc.tipo_doc_id = int(datos['tipo_doc_id'] or 1)

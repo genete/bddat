@@ -38,6 +38,8 @@ from app.services.tipos_creables import tipos_creables_de_nodo
 from app.services.detalle_nodo import detalle_de_nodo, info_apertura_documento
 from app.services.esquema_editable import esquema_de_nodo
 from app.services import mutaciones_arbol as svc
+from app.services.almacenamiento.adaptador import AlmacenNoDisponible, MENSAJE_ALMACEN_NO_DISPONIBLE
+from app.services.almacenamiento.contenido import ContenidoNoUtilizable, comprobar_para_vincular
 from app.services import consultas_organismos as svc_consultas
 from app.utils.api_respuestas import leer_bypass
 from app.utils.formularios import leer_json
@@ -983,7 +985,8 @@ def emitir_cert_fin_instruccion_nodo(expediente_id, nodo_id):
     `documento_id`, `certificado_id`).
 
     422 se reserva para errores de verdad: ya estaba emitido, el catálogo no tiene
-    el tipo documental, o el PDF no se pudo generar. El 422 de bloqueo
+    el tipo documental, o el PDF no se pudo generar o guardar (con el mensaje del
+    almacén si no contesta: no queda nada creado). El 422 de bloqueo
     (`puede_escapar: false`) solo aparecería si la puerta cerrada del invariante
     discrepara del informe, que sería una divergencia a investigar.
     """
@@ -1498,6 +1501,14 @@ def _resolver_tarea_analizar(expediente, tarea_id):
     return tarea
 
 
+def _error_de_contenido(exc):
+    """Respuesta JSON de un contenido que no se puede usar (ADR-050 §G): 503 si el almacén
+    no contesta, 409 con el mensaje para el usuario si está ausente o dañado."""
+    if isinstance(exc, AlmacenNoDisponible):
+        return jsonify({'error': MENSAJE_ALMACEN_NO_DISPONIBLE}), 503
+    return jsonify({'error': str(exc)}), 409
+
+
 def _candado_diagnostico_producido(tarea):
     """422 si la tarea ya tiene diagnóstico producido, o None si puede mutar.
 
@@ -1878,6 +1889,12 @@ def vincular_requisito_documental(expediente_id, tarea_id, requisito_id):
     if documento is None:
         return jsonify({'error': 'Documento no encontrado en este expediente'}), 422
 
+    # Un contenido ausente o dañado no se vincula (ADR-050 §G): antes de tocar nada.
+    try:
+        comprobar_para_vincular(documento)
+    except (ContenidoNoUtilizable, AlmacenNoDisponible) as exc:
+        return _error_de_contenido(exc)
+
     solicitud = tarea.tramite.fase.solicitud
     reformado_id_vinculo = None
     if requisito.afectado_por_reformado:
@@ -1897,7 +1914,10 @@ def vincular_requisito_documental(expediente_id, tarea_id, requisito_id):
         vinculo.documento_id = documento.id
     db.session.commit()
 
-    svc.sincronizar_consumido_documental(tarea)
+    try:
+        svc.sincronizar_consumido_documental(tarea)
+    except (ContenidoNoUtilizable, AlmacenNoDisponible) as exc:
+        return _error_de_contenido(exc)
 
     return jsonify({'ok': True, 'checklist_documental': _checklist_documental_json(tarea)}), 200
 
@@ -1971,7 +1991,10 @@ def desvincular_requisito_documental(expediente_id, tarea_id, requisito_id):
                 },
             )
 
-    svc.sincronizar_consumido_documental(tarea)
+    try:
+        svc.sincronizar_consumido_documental(tarea)
+    except (ContenidoNoUtilizable, AlmacenNoDisponible) as exc:
+        return _error_de_contenido(exc)
 
     return jsonify({'ok': True, 'checklist_documental': _checklist_documental_json(tarea)}), 200
 
@@ -2788,7 +2811,7 @@ def edicto_aplicar_anuncio(expediente_id, tramite_id):
 def post_notificar_parsear_documento(expediente_id, tarea_id):
     """
     POST .../notificar/parsear_documento — preview de un justificante del pool
-    (#712, acto 1 del flujo de dos actos): se lee de disco por `documento_id`,
+    (#712, acto 1 del flujo de dos actos): se lee del almacén por `documento_id`,
     se parsea con la misma lógica que el hook de vinculación
     (`parsear_documento_notifica`) y NO se persiste nada ni se vincula — eso lo
     hace el PATCH .../notificar (acto 3) cuando el usuario confirma.
@@ -2830,7 +2853,10 @@ def post_notificar_parsear_documento(expediente_id, tarea_id):
     if canal != 'NOTIFICA':
         return jsonify(sin_parseo), 200
 
-    resultado = svc.parsear_documento_notifica(doc)
+    try:
+        resultado = svc.parsear_documento_notifica(doc)
+    except (ContenidoNoUtilizable, AlmacenNoDisponible) as exc:
+        return _error_de_contenido(exc)
     if resultado is None:
         return jsonify(sin_parseo), 200
 

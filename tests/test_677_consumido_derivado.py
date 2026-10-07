@@ -2,19 +2,46 @@
 Tests #677 — casar un requisito documental ⇒ consumido derivado (ADR-033 §1).
 
 sincronizar_consumido_documental(): deriva el vínculo DocumentoTarea CONSUMIDO
-sin gesto manual en la Despensa (oculta para ANALIZAR extendido). Mismo patrón
-de test que #667 (mover_a_esftt/mover_a_pool monkeypatcheados, BD real de
-desarrollo con rollback por SAVEPOINT — join_transaction_mode='create_savepoint'
-en conftest.py absorbe también los commit() explícitos, ver su docstring).
+sin gesto manual en la Despensa (oculta para ANALIZAR extendido). BD real con
+rollback por SAVEPOINT — join_transaction_mode='create_savepoint' en
+conftest.py absorbe también los commit() explícitos, ver su docstring. Vincular
+es solo una fila: no mueve ningún fichero (ADR-050 §C).
 """
 from unittest.mock import patch
 
 import pytest
 
 from app import db
+from app.models.documentos import Documento
 from app.models.documentos_tarea import DocumentoTarea
 from app.services import mutaciones_arbol as svc
-from tests.test_667_mover_documento_esftt import _tarea_real, _documento_prueba
+
+
+def _tarea_real():
+    """Tarea ANALIZAR sin vínculos documentales previos, fabricada por el test (#428).
+
+    Fabricarla, además de no saltar nunca, garantiza lo que el test necesita de
+    verdad: que el diff de `sincronizar_consumido_documental()` no pise ni libere
+    documentos ajenos, cosa que la tarea encontrada solo cumplía mientras nadie
+    tramitara por ahí.
+
+    El test que la llame debe traer `app_ctx` y `fs_tmp`: el expediente nace por
+    la vía real, que guarda el documento de solicitud en el almacén.
+    """
+    from tests.conftest import ArbolESFTT
+
+    return ArbolESFTT(db).tarea_propia('ANALIZAR')
+
+
+def _documento_prueba(expediente_id, asunto):
+    doc = Documento(
+        expediente_id=expediente_id,
+        url='no-relevante-para-este-test.pdf',  # nada lo lee ni lo mueve: vincular es solo una fila
+        asunto=asunto,
+    )
+    db.session.add(doc)
+    db.session.flush()
+    return doc
 
 
 def _stub_evaluar_requisitos(documentos):
@@ -65,55 +92,40 @@ def _dos_tareas_analizar_cadena(app_ctx):
 
 class TestSincronizarConsumidoDocumental:
 
-    def test_casar_requisito_llama_mover_a_esftt(self, app_ctx, fs_tmp, monkeypatch):
+    def test_casar_requisito_deriva_el_consumido(self, app_ctx, fs_tmp):
         tarea = _tarea_real()
         expediente = tarea.tramite.fase.solicitud.expediente
         doc = _documento_prueba(expediente.id, '#677 test — casar requisito')
 
-        llamadas = []
-        monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: llamadas.append((d.id, t.id)))
-        monkeypatch.setattr(svc, 'mover_a_pool', lambda d, e: pytest.fail('no debería llamarse'))
-
         with patch('app.services.mutaciones_arbol.build', return_value=(None, {})), \
              patch('app.services.mutaciones_arbol.evaluar_requisitos',
                    return_value=_stub_evaluar_requisitos([doc])):
             svc.sincronizar_consumido_documental(tarea)
 
-        assert llamadas == [(doc.id, tarea.id)]
         consumidos = {v.documento_id for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO'}
         assert consumidos == {doc.id}
 
-    def test_descasar_ultimo_llama_mover_a_pool(self, app_ctx, fs_tmp, monkeypatch):
+    def test_descasar_ultimo_quita_el_consumido(self, app_ctx, fs_tmp):
         tarea = _tarea_real()
         expediente = tarea.tramite.fase.solicitud.expediente
         doc = _documento_prueba(expediente.id, '#677 test — descasar')
 
-        monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: None)
         with patch('app.services.mutaciones_arbol.build', return_value=(None, {})), \
              patch('app.services.mutaciones_arbol.evaluar_requisitos',
                    return_value=_stub_evaluar_requisitos([doc])):
             svc.sincronizar_consumido_documental(tarea)
-
-        llamadas_pool = []
-        monkeypatch.setattr(svc, 'mover_a_pool', lambda d, e: llamadas_pool.append(d.id))
-        monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: pytest.fail('no debería llamarse'))
 
         with patch('app.services.mutaciones_arbol.build', return_value=(None, {})), \
              patch('app.services.mutaciones_arbol.evaluar_requisitos',
                    return_value=_stub_evaluar_requisitos([])):
             svc.sincronizar_consumido_documental(tarea)
 
-        assert llamadas_pool == [doc.id]
         assert not [v for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO']
 
-    def test_reguardado_sin_cambios_no_repite_movimiento(self, app_ctx, fs_tmp, monkeypatch):
+    def test_reguardado_sin_cambios_no_duplica_el_vinculo(self, app_ctx, fs_tmp):
         tarea = _tarea_real()
         expediente = tarea.tramite.fase.solicitud.expediente
         doc = _documento_prueba(expediente.id, '#677 test — reguardado')
-
-        llamadas = []
-        monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: llamadas.append(d.id))
-        monkeypatch.setattr(svc, 'mover_a_pool', lambda d, e: llamadas.append(('pool', d.id)))
 
         with patch('app.services.mutaciones_arbol.build', return_value=(None, {})), \
              patch('app.services.mutaciones_arbol.evaluar_requisitos',
@@ -121,26 +133,28 @@ class TestSincronizarConsumidoDocumental:
             svc.sincronizar_consumido_documental(tarea)
             svc.sincronizar_consumido_documental(tarea)  # re-cómputo idéntico
 
-        assert llamadas == [doc.id]  # el segundo pase no repite el movimiento
+        consumidos = [v for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO']
+        assert [v.documento_id for v in consumidos] == [doc.id]  # el segundo pase no repite el vínculo
 
-    def test_sin_requisitos_casados_es_no_op(self, app_ctx, fs_tmp, monkeypatch):
+    def test_sin_requisitos_casados_es_no_op(self, app_ctx, fs_tmp):
         tarea = _tarea_real()
-        monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: pytest.fail('no debería llamarse'))
-        monkeypatch.setattr(svc, 'mover_a_pool', lambda d, e: pytest.fail('no debería llamarse'))
 
         with patch('app.services.mutaciones_arbol.build', return_value=(None, {})), \
              patch('app.services.mutaciones_arbol.evaluar_requisitos',
                    return_value=_stub_evaluar_requisitos([])):
             svc.sincronizar_consumido_documental(tarea)
 
-    def test_error_evaluar_requisitos_es_no_op(self, app_ctx, fs_tmp, monkeypatch):
+        assert not tarea.vinculos_documento
+
+    def test_error_evaluar_requisitos_es_no_op(self, app_ctx, fs_tmp):
         tarea = _tarea_real()
-        monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: pytest.fail('no debería llamarse'))
 
         with patch('app.services.mutaciones_arbol.build', return_value=(None, {})), \
              patch('app.services.mutaciones_arbol.evaluar_requisitos',
                    return_value={'items': [], 'error': True}):
             svc.sincronizar_consumido_documental(tarea)
+
+        assert not tarea.vinculos_documento
 
 
 class TestNoAcumulaEntreVueltas:
@@ -148,7 +162,7 @@ class TestNoAcumulaEntreVueltas:
     la cadena, cada ANALIZAR reclamaría también lo que ya consumió una vuelta
     anterior."""
 
-    def test_no_reclama_lo_consumido_por_otra_tarea_de_la_cadena(self, app_ctx, monkeypatch):
+    def test_no_reclama_lo_consumido_por_otra_tarea_de_la_cadena(self, app_ctx):
         tarea_anterior, tarea_actual = _dos_tareas_analizar_cadena(app_ctx)
         expediente = tarea_actual.tramite.fase.solicitud.expediente
         doc_vuelta_anterior = _documento_prueba(expediente.id, '#826 test — ya consumido en vuelta anterior')
@@ -157,9 +171,6 @@ class TestNoAcumulaEntreVueltas:
         tarea_anterior.vinculos_documento.append(
             DocumentoTarea(documento_id=doc_vuelta_anterior.id, rol='CONSUMIDO'))
         db.session.flush()
-
-        monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: None)
-        monkeypatch.setattr(svc, 'mover_a_pool', lambda d, e: None)
 
         with patch('app.services.mutaciones_arbol.build', return_value=(None, {})), \
              patch('app.services.mutaciones_arbol.evaluar_requisitos',
@@ -172,19 +183,16 @@ class TestNoAcumulaEntreVueltas:
             'tarea ANALIZAR de la misma cadena de subsanación'
         )
 
-    def test_no_toca_lo_ya_consumido_por_la_vuelta_anterior(self, app_ctx, monkeypatch):
-        """La exclusión no debe mover físicamente el documento de la tarea anterior
-        (esa tarea no es la que se está sincronizando)."""
+    def test_no_toca_lo_ya_consumido_por_la_vuelta_anterior(self, app_ctx):
+        """La exclusión no debe quitarle el vínculo a la tarea anterior (esa tarea
+        no es la que se está sincronizando)."""
         tarea_anterior, tarea_actual = _dos_tareas_analizar_cadena(app_ctx)
         expediente = tarea_actual.tramite.fase.solicitud.expediente
-        doc_vuelta_anterior = _documento_prueba(expediente.id, '#826 test — no debe moverse')
+        doc_vuelta_anterior = _documento_prueba(expediente.id, '#826 test — no debe tocarse')
 
         tarea_anterior.vinculos_documento.append(
             DocumentoTarea(documento_id=doc_vuelta_anterior.id, rol='CONSUMIDO'))
         db.session.flush()
-
-        monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: pytest.fail('no debería llamarse'))
-        monkeypatch.setattr(svc, 'mover_a_pool', lambda d, e: pytest.fail('no debería llamarse'))
 
         with patch('app.services.mutaciones_arbol.build', return_value=(None, {})), \
              patch('app.services.mutaciones_arbol.evaluar_requisitos',

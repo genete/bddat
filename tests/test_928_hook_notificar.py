@@ -13,8 +13,9 @@ Tests #928 (N1, 928c) — el acto de notificar sin fechas en la fila: hook de
   - PDF polivalente (§9): el mismo fichero como DISPOSICION y como NOTIFICA.
   - Sin N+1 en el árbol con varias NOTIFICAR (#907).
 
-BD de tests con rollback por SAVEPOINT (app_ctx) + fs_tmp para el movimiento
-físico de `mover_a_esftt`. Los endpoints HTTP están en test_928_api_notificar.py.
+BD de tests con rollback por SAVEPOINT (app_ctx) + fs_tmp, que trae el almacén de
+pruebas donde los documentos guardan su contenido. Los endpoints HTTP están en
+test_928_api_notificar.py.
 """
 import pytest
 from sqlalchemy import text
@@ -380,7 +381,7 @@ def test_huerfanos_ofrece_el_previo_aunque_la_tarea_este_ejecutada(app_ctx, arbo
 # PDF polivalente (§9): un fichero, dos Documento, dos roles
 # ---------------------------------------------------------------------------
 
-def test_pdf_polivalente_ambos_ficheros_validos_y_cada_fecha_la_suya(
+def test_pdf_polivalente_cada_fecha_la_suya(
         con_usuario, arbol_aislado, fs_tmp):
     from datetime import timedelta
     from app.services.notificaciones import fecha_cumplimiento, fecha_efectos
@@ -404,9 +405,6 @@ def test_pdf_polivalente_ambos_ficheros_validos_y_cada_fecha_la_suya(
     db.session.flush()
     db.session.expire_all()
 
-    import os
-    assert os.path.isfile(disposicion.ruta_absoluta())
-    assert os.path.isfile(notifica.ruta_absoluta())
     assert fecha_cumplimiento(tarea).fecha == f_disp
     assert fecha_cumplimiento(tarea).documento.id == disposicion.id
     assert fecha_efectos(tarea).fecha == f_efectos

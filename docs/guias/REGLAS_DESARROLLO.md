@@ -212,6 +212,8 @@ restricción de BD (índice único, `CHECK`), una comprobación al entrar en una
   entiende. El mensaje del commit dice qué se comprobó y cómo. No se convierte en test permanente
   salvo que cumpla `tests/README.md` §3 (la puede romper otro código, es un cálculo o tiene
   severidad).
+- **Se prueba entrando por donde llega el dato** (la ruta, el comando o la BD, según dónde viva), no
+  solo llamando a la función interna; el servicio solo basta si es lo único que decide.
 - **Cuanto más ruidoso es el fallo, menos falta el test.** Un error que salta a la vista no necesita
   vigilante; el que no se ve, sí.
 

@@ -357,7 +357,7 @@
                   data-doc-abre-reformado="{{ 'true' if item.reformado else 'false' }}"
                   data-doc-origen-reformado="{{ item.reformado.origen if item.reformado else '' }}"
                   data-doc-reformado-ultimo="{{ 'true' if item.reformado_ultimo else 'false' }}"
-                  data-doc-url="{{ doc.url | e }}">
+                  data-doc-url="{{ (doc.url or '') | e }}">
             <i class="fas fa-pencil-alt"></i>
           </button>
           {% if item.es_referenciado %}
@@ -405,7 +405,8 @@
       <div class="modal-body">
         <p class="text-secondary small">
           Para documentos publicados en fuentes externas: BOE, BOP, Notifica, sede electrónica…
-          El documento no se sube — solo se registra el enlace.
+          El documento no se sube — solo se registra el enlace, que debe empezar por
+          <code>http://</code> o <code>https://</code>.
         </p>
         <div class="mb-3">
           <label class="form-label fw-semibold">URL <span class="text-danger">*</span></label>
@@ -1291,13 +1292,19 @@
       URL_BASE_DOCS.replace(/\/documentos$/, '/documentos/') + doc_id + '/editar';
 
     var payload = {
-      url:                  document.getElementById('editar-url').value.trim() || null,
       tipo_doc_id:          document.getElementById('editar-tipo-doc-id').value || 1,
       fecha_administrativa: _ef_editar ? _ef_editar.getValue() : null,
       asunto:               document.getElementById('editar-asunto').value.trim(),
       prioridad:            document.getElementById('editar-prioridad').checked,
       observaciones:        document.getElementById('editar-observaciones').value.trim(),
     };
+
+    // La URL solo se rectifica en un documento de URL externa (ADR-050 §M): solo viaja
+    // si el campo es visible; en un fichero propio la clave no se manda y el backend
+    // conserva (clave ausente conserva).
+    if (!document.getElementById('editar-url-campo').classList.contains('d-none')) {
+      payload.url = document.getElementById('editar-url').value.trim();
+    }
 
     // Solo se habla del corte si el control está visible. Si el tipo ha dejado de
     // ser DOC_PROYECTO no se manda la clave: el backend retira el corte por el

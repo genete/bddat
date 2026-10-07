@@ -24,16 +24,17 @@ class CertificadoFase(db.Model):
         un acta que no reproduce literalmente lo auditado es un acta peor).
 
     RUTA_PDF:
-        Se rellena tras la generación del PDF. NULL hasta entonces.
+        Ya no se rellena (#1007, ADR-050): el PDF vive en el almacén y se llega a él
+        por `documento_id`. NULL en los certificados nuevos; la columna sale en el
+        PR 5 de #1007.
 
     DOCUMENTO_ID (#827):
-        Documento del pool que materializa este certificado. Es la vuelta que le
-        faltaba al vínculo —`Documento` apunta al PDF, nadie apuntaba al
-        `Documento`— y la que #838 necesitará para deshacer el sello. NULL entre
-        el flush del certificado y el del documento (el PDF se llama con
-        `cert.id`, así que el certificado va primero) y en lo emitido antes de
-        #827. `ruta_pdf` es otra cosa: la ruta física absoluta, mientras que
-        `documento.url` es relativa a FILESYSTEM_BASE (ADR-032).
+        Documento del pool que materializa este certificado, con el PDF en el
+        almacén. Es la vuelta que le faltaba al vínculo —`Documento` apunta al PDF,
+        nadie apuntaba al `Documento`— y la que #838 necesitará para deshacer el
+        sello. NULL entre el flush del certificado y el del documento (el PDF se
+        llama con `cert.id`, así que el certificado va primero) y en lo emitido
+        antes de #827.
     """
     __tablename__ = 'certificados_fase'
     __table_args__ = (

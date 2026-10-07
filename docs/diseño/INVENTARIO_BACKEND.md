@@ -260,7 +260,7 @@ Dict plano con datos básicos: `expediente_id`, `numero_at`, `titular_nombre`, `
 
 ### 4.5 Certificados internos (`services/cert_pdf.py`, `cert_fin_ip_consultas.py`, `generador_cert.py`)
 
-Documentos `CERT_*` generados por el motor sin fichero físico (URL `bddat://certificados/<id>`). PDF on-demand vía endpoint `GET /expedientes/cert/<cert_id>/pdf`.
+Documentos `CERT_*` generados por el motor sin fichero físico (URL `bddat://certificados/<id>`), salvo el `CERT_FIN_INSTRUCCION` (`generador_cert.py`): su PDF se guarda en el almacén como el de cualquier fichero propio, sin `url` y con `fichero_ref` (#1007). PDF on-demand vía endpoint `GET /expedientes/cert/<cert_id>/pdf`.
 
 Tipos: `CERT_PLAZO_CUMPLIDO`, `CERT_FIN_INSTRUCCION`, `CERT_FIN_IP_CONSULTAS`.
 
@@ -319,7 +319,7 @@ Selección (#785): de las entradas activas del nivel, se descartan las cuyo `cam
 ### 6.2 APIs en `app/modules/*/routes.py`
 
 - `admin_plantillas`: 5 endpoints JSON (`/api/admin_plantillas/tipos-solicitud`, `/tipos-fase`, `/tipos-tramite`, `/fs`, `/tokens`).
-- `expedientes` (pool documentos): `/expedientes/<id>/documentos/json`, `/subir`, `/url-externa`, `/editar`, `/borrar`. El registro in situ (`/explorador-fs`, `/registrar-rutas`) y «abrir carpeta» (`/abrir-en-carpeta`, `/expedientes/<id>/abrir-carpeta`) se retiraron en #1007 (ADR-050).
+- `expedientes` (pool documentos): `/expedientes/<id>/documentos/json`, `/subir` (errores del contenido con 409 y 503), `/url-externa` (solo `http(s)://`; otra cosa, 422), `/editar` (la `url` solo se rectifica en un documento de URL externa, con la anterior en la bitácora), `/borrar`. El registro in situ (`/explorador-fs`, `/registrar-rutas`) y «abrir carpeta» (`/abrir-en-carpeta`, `/expedientes/<id>/abrir-carpeta`) se retiraron en #1007 (ADR-050).
 
 ---
 
@@ -524,7 +524,6 @@ Otros: `diagrama.html` (visualización interactiva ESFTT, distinta de `app/templ
 | Organismos | `test_247_organismos_crud` *(roto, #487)*, `test_391_organismo_expediente`, `test_395_organismos_consulta`, `test_456_tramites_organismos`, `test_457_cbs_traslado`, `test_458_estado_organismo`, `test_461_entidades_consultables`, `test_462_enviar_consultas`, `test_471_crear_traslado` |
 | Resolución / IP / alegaciones | `test_403_resolucion`, `test_404_informacion_publica`, `test_393_alegante`, `test_394_analisis_alegaciones`, `test_406_subsanacion`, `test_402_notificacion_organismo`, `test_470_cert_fin_ip_consultas` |
 | Requisitos documentales | `test_192_requisitos_documentales` (#192 PR #496) |
-| Certificados / fase | `test_373_cert_fase` |
 | Bitácora | `test_001_bitacora` |
 | Entidades / direcciones | `test_300_direccion_titular` |
 | Misceláneos | `test_296_senal_resultado`, `test_347_defensividad_backend`, `test_348_instalacion_limpia` |

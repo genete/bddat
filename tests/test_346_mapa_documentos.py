@@ -291,18 +291,18 @@ def test_entradas_multiples_datos_catastrales_exactas(app_ctx, paso):
 
 
 @pytest.mark.parametrize('paso', sorted(ENTRADAS_DATOS_CATASTRALES))
-def test_radar_ofrece_cada_entrada_multiple(app_ctx, arbol_esftt, paso):
+def test_radar_ofrece_cada_entrada_multiple(app_ctx, arbol_aislado, paso):
     """Cada tipo consumido del paso hace candidata a la tarea (CONSUMIDO, exacta):
     la multi-entrada no puede quedarse en «solo la primera fila»."""
     from app.services.huerfanos import tareas_candidatas
 
     tramite_codigo, _orden, tarea_codigo = paso
-    tarea = arbol_esftt.tarea_propia(
+    tarea = arbol_aislado.tarea_propia(
         tarea_codigo, codigo_fase='DATOS_CATASTRALES', codigo_tramite=tramite_codigo)
     exp_id = tarea.tramite.fase.solicitud.expediente_id
 
     for tipo_codigo in ENTRADAS_DATOS_CATASTRALES[paso]:
-        doc = arbol_esftt.documento(exp_id, tipo_codigo, f'927-{tarea.id}-{tipo_codigo}')
+        doc = arbol_aislado.documento(exp_id, tipo_codigo, f'927-{tarea.id}-{tipo_codigo}')
         propias = [c for c in tareas_candidatas(doc) if c['tarea_id'] == tarea.id]
         assert any(c['rol'] == 'CONSUMIDO' and c['coincidencia'] == 'exacta'
                    for c in propias), (
