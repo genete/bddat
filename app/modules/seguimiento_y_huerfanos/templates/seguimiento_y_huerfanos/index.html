@@ -325,8 +325,10 @@ class SeguimientoScroll extends ScrollInfinito {
             const ver = sfVer.getValue() || 'todos';
             params.append('ver', ver);
 
-            const estado = sfEstado.getValue();
-            if (estado) params.append('estado', estado);
+            // «Estado (todos)» = vacío → 'todos' explícito: sin el parámetro la API
+            // aplica su defecto (EN_TRAMITE) y el filtro quitado seguiría puesto.
+            const estado = sfEstado.getValue() || 'todos';
+            params.append('estado', estado);
 
             const tipoTitular = sfTipoTitular.getValue();
             if (tipoTitular) params.append('tipo_titular', tipoTitular);
