@@ -43,7 +43,10 @@ from app.services.almacenamiento.contenido import (
     ContenidoNoUtilizable, servir_descarga, tiene_contenido_propio,
 )
 from app.services.almacenamiento.formatos import FormatoNoAdmitido
-from app.services.ingesta_pool import FicheroAIngestar, ingestar_en_pool
+from app.services.ingesta_pool import (
+    FicheroAIngestar, comprobar_rectificacion_url, exigir_url_externa, ingestar_en_pool,
+    rectificar_url_externa,
+)
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
 from app.services.detalle_nodo import info_apertura_documento
 from app.services.parser_justificante_notifica import parsear_justificante_notifica
@@ -1008,6 +1011,11 @@ def pool_registrar_url_externa(id):
     Registra una URL externa en el pool (BOE, Notifica, sede electrónica, etc.)
     sin subir ningún fichero. Recibe JSON, devuelve JSON.
 
+    Solo admite `http://` y `https://` (ADR-050 §C, #1007): cualquier otra cosa —una ruta
+    local, un `bddat://` escrito a mano, otro esquema— da 422 con el motivo. Los `bddat://`
+    los crean solo los servicios de certificados y diagnósticos; una ruta local sería un
+    escritor de rutas vivo tras la migración.
+
     Permiso 'subir_documento' (ADR-027 / #501): aportar al pool no edita el
     expediente; sin limitación de rol (igual que pool_subir_documento).
     """
@@ -1020,6 +1028,10 @@ def pool_registrar_url_externa(id):
     url = (datos.get('url') or '').strip()
     if not url:
         return jsonify({'ok': False, 'error': 'La URL es obligatoria'}), 400
+    try:
+        url = exigir_url_externa(url)
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 422
 
     fecha_admin = None
     fecha_raw = datos.get('fecha_administrativa') or None
@@ -1062,7 +1074,7 @@ def _fecha_del_payload(fecha_raw):
 
 
 def _cambia_lo_sellable(doc, datos) -> bool:
-    """El cuerpo de `pool_editar_documento` cambia la fecha, el tipo o el fichero
+    """El cuerpo de `pool_editar_documento` cambia la fecha, el tipo o la URL
     de `doc` — lo que un sello protege (#947). Con la misma interpretación que
     aplica la ruta al escribir: url vacía no cambia nada; tipo vacío es OTROS (1)."""
     url_nueva = (datos.get('url') or '').strip()
@@ -1083,7 +1095,13 @@ def _cambia_lo_sellable(doc, datos) -> bool:
 @bp.route('/<int:id>/documentos/<int:doc_id>/editar', methods=['POST'])
 @login_required
 def pool_editar_documento(id, doc_id):
-    """Editar metadatos de un documento del pool — devuelve JSON."""
+    """Editar metadatos de un documento del pool — devuelve JSON.
+
+    La `url` solo se rectifica en un documento de URL externa y por otra `http(s)://`, y la
+    anterior queda en la bitácora (ADR-050 §M, #1007); en un fichero propio o un `bddat://`
+    un cuerpo con una `url` distinta da 422. Una `url` vacía, igual a la actual o ausente no
+    cambia nada: el formulario reenvía los campos aunque no cambien.
+    """
     expediente = Expediente.query.get_or_404(id)
     resultado = verificar_acceso_expediente(expediente, 'editar')
     if resultado:
@@ -1098,8 +1116,19 @@ def pool_editar_documento(id, doc_id):
     # Esto permite edición masiva parcial (p.ej. solo cambiar prioridad)
     # sin sobreescribir los demás metadatos.
 
+    # La validez de la URL va ANTES que el sello: si fuera al revés, a quien intenta cambiar
+    # la url de un fichero citado por un certificado se le diría «deshaga el certificado»
+    # cuando, aun deshaciéndolo, no podría.
+    url_nueva = str(datos.get('url') or '').strip()
+    cambia_url = bool(url_nueva) and url_nueva != doc.url
+    if cambia_url:
+        try:
+            comprobar_rectificacion_url(doc, url_nueva)
+        except ValueError as e:
+            return jsonify({'ok': False, 'error': str(e)}), 422
+
     # Sello (#947, ADR-049 §F): del documento que cita un certificado, o del propio
-    # certificado, no se cambian la fecha, el tipo ni el fichero. Se comparan
+    # certificado, no se cambian la fecha, el tipo ni la URL. Se comparan
     # VALORES y no presencia de claves: el formulario completo del pool reenvía
     # todos los campos aunque no cambien, y bloquear por «viene la clave» impediría
     # editar el asunto de un documento citado. La consulta al sello solo se paga
@@ -1110,13 +1139,8 @@ def pool_editar_documento(id, doc_id):
             return jsonify({'ok': False, 'error': motivo}), 422
 
     try:
-        url_nueva = (datos.get('url') or '').strip()
-        if url_nueva:
-            if url_nueva != doc.url:
-                # El nombre del fichero anterior no describe al nuevo: sin esto,
-                # nombre_visible() seguiría enseñando el de antes (ADR-050 §C).
-                doc.nombre_fichero = None
-            doc.url = url_nueva
+        if cambia_url:
+            rectificar_url_externa(doc, url_nueva, current_user.id)
 
         if 'tipo_doc_id' in datos:
             doc.tipo_doc_id = int(datos['tipo_doc_id'] or 1)

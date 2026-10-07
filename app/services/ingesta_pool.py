@@ -18,6 +18,10 @@ referencias y lo recoge la limpieza (fase 7).
 Lo que NO entra aquí es todo lo que solo tiene sentido hablando HTTP: el permiso, el 503 si
 el almacén no contesta, el parseo del JSON de metadatos y la traducción de un error a código
 de estado. Eso se queda en la ruta.
+
+Aquí viven también las dos reglas de la URL externa (ADR-050 §C y §M), para que valgan igual
+vengan por la ruta que vengan: solo `http(s)://` entra como URL externa, y la `url` de un
+documento solo se rectifica si es de URL externa, dejando la anterior en la bitácora.
 """
 from __future__ import annotations
 
@@ -26,8 +30,11 @@ from datetime import date
 from typing import BinaryIO, Optional, Sequence
 
 from app.models.documentos import Documento
+from app.services import bitacora as bitacora_svc
 from app.services.almacenamiento.contenido import EntradaSubida, subir
 from app.services.reformados import exigir_fecha_administrativa
+
+_ESQUEMAS_URL_EXTERNA = ('http://', 'https://')
 
 
 @dataclass(frozen=True)
@@ -79,3 +86,60 @@ def ingestar_en_pool(expediente, ficheros: Sequence[FicheroAIngestar]) -> list[D
         })
         for fichero in ficheros
     ])
+
+
+def _es_url_externa(url) -> bool:
+    return (url or '').startswith(_ESQUEMAS_URL_EXTERNA)
+
+
+def exigir_url_externa(url: str) -> str:
+    """Devuelve la URL sin espacios si es `http://` o `https://`; si no, lanza `ValueError`.
+
+    Es lo único que entra al pool como «URL externa». Rechaza una ruta local, un `bddat://`
+    escrito a mano (los crean solo sus servicios: certificados y diagnósticos), cualquier otro
+    esquema (`ftp://`, `javascript:`) y el esquema en mayúsculas (`HTTPS://`), como el modelo.
+    El mensaje es para el usuario; la ruta lo devuelve en un 422.
+    """
+    url = (url or '').strip()
+    if not _es_url_externa(url):
+        raise ValueError('Solo se admiten enlaces que empiecen por http:// o https://.')
+    return url
+
+
+def comprobar_rectificacion_url(documento: Documento, url_nueva: str) -> str:
+    """Comprueba que se puede cambiar la `url` de `documento` por `url_nueva` y devuelve la
+    nueva sin espacios. No cambia nada. Lanza `ValueError` con el mensaje para el usuario.
+
+    Solo se rectifica la `url` de un documento **de URL externa** (la suya empieza por
+    `http(s)://`) y por otra URL externa. La de un fichero propio, de un `bddat://` o de una
+    ruta local no se cambia nunca: para el fichero, cambiar la `url` perdería el rastro de lo
+    que contenía (ADR-050 §M); los `bddat://` los fijan sus servicios.
+    """
+    if not _es_url_externa(documento.url):
+        raise ValueError('Solo se puede rectificar la URL de un documento de URL externa; '
+                         'la de un fichero o de un registro interno no se cambia.')
+    return exigir_url_externa(url_nueva)
+
+
+def rectificar_url_externa(documento: Documento, url_nueva: str, usuario_id: int) -> bool:
+    """Cambia la `url` de un documento de URL externa y anota la anterior en la bitácora.
+
+    Devuelve `False` y no hace nada si `url_nueva` es la que ya tiene. Si no, comprueba que la
+    rectificación vale (`comprobar_rectificacion_url`), asigna y anota quién, cuándo y de qué
+    URL venía (`ALTERAR` sobre `documentos`, columna `url`). Quien llama no asigna
+    `documento.url`, así que ninguna rectificación se salta la bitácora; la anotación y el
+    cambio van en la misma transacción.
+
+    No hace commit: lo decide quien llama. Lanza `ValueError` si la rectificación no vale.
+    """
+    url_nueva = (url_nueva or '').strip()
+    if url_nueva == documento.url:
+        return False
+    url_nueva = comprobar_rectificacion_url(documento, url_nueva)
+    anterior = documento.url
+    documento.url = url_nueva
+    bitacora_svc.registrar(
+        usuario_id, 'ALTERAR', 'documentos', documento.id, columna='url',
+        detalle={'url_anterior': anterior, 'url_nueva': url_nueva},
+    )
+    return True
