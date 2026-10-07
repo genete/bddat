@@ -11,7 +11,7 @@ Tests #928 (N1, 928c) — endpoints del contenedor NOTIFICAR (§6 del issue).
 HTTP real contra la BD de tests: el árbol se commitea sobre `expediente_seed`
 y se borra al terminar (la Fase arrastra por CASCADE trámite, tarea, vínculos
 y notificación; los documentos se borran por asunto). Documentos `bddat://`,
-sin fichero físico: `mover_a_esftt` no los toca.
+sin fichero en el almacén.
 """
 import pytest
 

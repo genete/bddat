@@ -52,7 +52,7 @@ def _tarea_notificar(arbol, codigo_tramite='NOTIFICACION'):
 
 
 def _doc(tarea, codigo, nombre=None, contenido=b'%PDF-1.4 justificante'):
-    """Documento del pool con fichero real (mover_a_esftt lo mueve al vincular)."""
+    """Documento del pool con contenido real en el almacén (vincularlo no mueve nada)."""
     tipo = TipoDocumento.query.filter_by(codigo=codigo).first()
     assert tipo is not None, f'la semilla debe traer el tipo de documento {codigo}'
     return documento_con_contenido_de_prueba(

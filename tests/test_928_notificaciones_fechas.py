@@ -5,8 +5,8 @@ de notificar, derivados de sus documentos (ADR-049 §C).
 Una función por caso de la tabla del propio issue (ADR §C, destinatario
 titular). Cada caso monta una tarea NOTIFICAR real (`ArbolESFTT`) y vincula
 sus documentos con el rol de la tabla — los documentos son `bddat://`, sin
-fichero físico, así que `rutas_esftt.py` no entra en juego. El PDF polivalente
-con fichero físico compartido está en test_928_hook_notificar.py.
+fichero en el almacén. El PDF polivalente con contenido real está en
+test_928_hook_notificar.py.
 
 Desde 928c todos los casos van contra filas `Notificacion` reales (antes,
 RECHAZADA y `sede_justificacion` se probaban con dobles).
@@ -214,8 +214,7 @@ def test_bandeja_sir(app_ctx, arbol_esftt, codigo, canal):
 def test_pdf_polivalente(app_ctx, arbol_esftt):
     """El mismo PDF sube dos veces con tipos distintos (ADR-049 §B): dos
     filas Documento, una CONSUMIDO (disposición) y otra PRODUCIDO (efectos).
-    Prerrequisito #926 (mover_a_esftt/mover_a_pool) no entra aquí — los
-    documentos son bddat://, sin fichero físico compartido que mover."""
+    Los documentos son bddat://: aquí solo cuentan las fechas, no el contenido."""
     f_disposicion, f_notifica = _fecha(8), _fecha(1)
     tarea = _montar_notificar(arbol_esftt, vinculos=[
         ('JUSTIFICANTE_NOTIFICA_DISPOSICION', 'CONSUMIDO', f_disposicion),

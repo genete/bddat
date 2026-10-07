@@ -148,7 +148,7 @@ def cambiar_contenido(documento: Documento, flujo: BinaryIO, *, via: str, usuari
     `AlmacenNoDisponible`.
     """
     if documento.fichero_ref is None:
-        raise ValueError('El documento no tiene contenido propio en el almacén (fichero_ref)')
+        raise ValueError(_mensaje_sin_contenido_propio(documento))
     anterior = _fila_por_ref(documento.fichero_ref)
     if anterior is None:
         raise ErrorAlmacenamiento(f'Falta la fila de ficheros de {documento.fichero_ref}')
@@ -357,7 +357,7 @@ def _marcar_estado(ref: str, estado: str) -> None:
 def _fila_utilizable(documento: Documento):
     """La fila de `ficheros` del documento, si su contenido se puede usar."""
     if documento.fichero_ref is None:
-        raise ValueError('El documento no tiene contenido propio en el almacén (fichero_ref)')
+        raise ValueError(_mensaje_sin_contenido_propio(documento))
     fila = _fila_por_ref(documento.fichero_ref)
     if fila is None:
         raise ErrorAlmacenamiento(f'Falta la fila de ficheros de {documento.fichero_ref}')
@@ -378,6 +378,13 @@ def _mensaje_no_utilizable(estado: str, documento: Documento) -> str:
     que = 'no está en el almacén' if estado == AUSENTE else 'está dañado'
     return (f'El contenido de «{documento.nombre_visible()}» {que}. '
             f'Avisa al administrador para que lo recupere de la copia de seguridad.')
+
+
+def _mensaje_sin_contenido_propio(documento: Documento) -> str:
+    """Para el usuario (llega en un 422, p. ej. al regenerar sobre un «borrador» que es
+    un enlace): sin nombres de columnas."""
+    return (f'«{documento.nombre_visible()}» no tiene fichero propio en BDDAT: es un '
+            f'enlace externo o un registro interno.')
 
 
 def _cabecera_disposicion(disposicion: str, nombre: str) -> str:

@@ -1,25 +1,24 @@
 """
-Tests #666 — ingesta multipart al pool de documentos (ADR-032 §4).
+Tests #666 — ingesta multipart al pool de documentos (ADR-032 §4, ADR-050 §C).
 
-Parte 1 (esta sección): saneado de nombre y resolución de nombre único en el
-pool — funciones puras / solo filesystem local, sin necesidad de contexto
-Flask ni BD (mismo patrón que TestRutaPoolDocumento en test_665_ruta_esftt.py).
+Parte 1 (esta sección): saneado del nombre del fichero que llega de fuera —
+función pura, sin contexto Flask ni BD. El nombre único con prefijo MD5 del pool
+salió con el modelo de rutas (#1007, PR 5): el almacén nombra por SHA-256.
 
 Parte 2: test funcional del endpoint de subida, contra la BD real de
 desarrollo (mismo patrón que el resto de la suite) — ver fixture autouse de
 limpieza más abajo.
 """
-import hashlib
 import io
 import json
 
 import pytest
 
-from app.services.rutas_esftt import _saneado_nombre_pool, nombre_pool_unico
+from app.services.almacenamiento.nombres import sanear_nombre as _saneado_nombre_pool
 
 
 # ---------------------------------------------------------------------------
-# _saneado_nombre_pool — solo correctivo, nunca trunca por longitud
+# sanear_nombre — solo correctivo, nunca trunca por longitud
 # ---------------------------------------------------------------------------
 
 class TestSaneadoNombrePool:
@@ -57,55 +56,6 @@ class TestSaneadoNombrePool:
 
     def test_nombre_no_reservado_no_se_toca(self):
         assert _saneado_nombre_pool('conclusiones.pdf') == 'conclusiones.pdf'
-
-
-# ---------------------------------------------------------------------------
-# nombre_pool_unico — prefijo de hash + colisión git-style, sin tocar BD
-# ---------------------------------------------------------------------------
-
-class TestNombrePoolUnico:
-
-    def test_directorio_vacio_usa_prefijo_de_8(self, tmp_path):
-        hash_md5 = hashlib.md5(b'contenido').hexdigest()
-        nombre, ya_existe = nombre_pool_unico(hash_md5, 'informe.pdf', str(tmp_path))
-        assert nombre == f'{hash_md5[:8]}_informe.pdf'
-        assert ya_existe is False
-
-    def test_sanea_el_nombre_original(self, tmp_path):
-        hash_md5 = hashlib.md5(b'contenido').hexdigest()
-        nombre, _ = nombre_pool_unico(hash_md5, '../../etc/passwd', str(tmp_path))
-        assert nombre == f'{hash_md5[:8]}_passwd'
-
-    def test_colision_prefijo_con_contenido_distinto_extiende_un_caracter(self, tmp_path):
-        hash_nuevo = 'deadbeef' + '0' * 24
-        existente = tmp_path / f'{hash_nuevo[:8]}_informe.pdf'
-        existente.write_bytes(b'contenido distinto')
-
-        nombre, ya_existe = nombre_pool_unico(hash_nuevo, 'informe.pdf', str(tmp_path))
-
-        assert ya_existe is False
-        assert nombre == f'{hash_nuevo[:9]}_informe.pdf'
-
-    def test_duplicado_exacto_no_marca_reescritura(self, tmp_path):
-        contenido = b'contenido real e identico'
-        hash_real = hashlib.md5(contenido).hexdigest()
-        ruta = tmp_path / f'{hash_real[:8]}_informe.pdf'
-        ruta.write_bytes(contenido)
-
-        nombre, ya_existe = nombre_pool_unico(hash_real, 'informe.pdf', str(tmp_path))
-
-        assert ya_existe is True
-        assert nombre == f'{hash_real[:8]}_informe.pdf'
-
-    def test_dos_colisiones_seguidas_extiende_dos_caracteres(self, tmp_path):
-        hash_nuevo = 'cafebabe' + '1' * 24
-        (tmp_path / f'{hash_nuevo[:8]}_informe.pdf').write_bytes(b'otro contenido A')
-        (tmp_path / f'{hash_nuevo[:9]}_informe.pdf').write_bytes(b'otro contenido B')
-
-        nombre, ya_existe = nombre_pool_unico(hash_nuevo, 'informe.pdf', str(tmp_path))
-
-        assert ya_existe is False
-        assert nombre == f'{hash_nuevo[:10]}_informe.pdf'
 
 
 # ---------------------------------------------------------------------------

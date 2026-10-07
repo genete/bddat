@@ -5,9 +5,8 @@ lo cambia nadie: `documentos.nombre_fichero` es lo que se enseña y lo que se us
 como nombre de descarga. Sanear no es cambiar el nombre; lo que no se modifica es
 el nombre ya saneado.
 
-Salió de `rutas_esftt` (ADR-032 §4, #666, #1007) para que el subsistema no dependa
-de un módulo que el PR 5 retira. `rutas_esftt._saneado_nombre_pool` sigue
-existiendo, como alias de esta función, mientras viva el modelo de rutas.
+Salió de `rutas_esftt` (ADR-032 §4, #666, #1007), donde nombraba los ficheros del pool
+en disco; ese nombrado se retiró con el modelo de rutas (#1007, PR 5).
 """
 import os
 import re

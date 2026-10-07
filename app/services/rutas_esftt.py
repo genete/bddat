@@ -1,29 +1,21 @@
 """
-Servicio de cálculo de rutas ESFTT (Expediente-Solicitud-Fase-Trámite-Tarea) y de
-la carpeta de entrada al pool (ADR-032 §4, #665), y del movimiento físico real
-al vincularse/desvincularse un documento de una tarea (ADR-032 §3, #667).
+Carpeta ESFTT (Expediente-Solicitud-Fase-Trámite-Tarea) legible de un documento
+(ADR-032 §3, #665).
 
-También resuelve el nombrado único de entrada al pool (#666, ADR-032 §4).
+Hoy la usa solo el manifiesto (ADR-050 §H): es la carpeta en la que el exportador
+reconstruye cada documento. El movimiento de ficheros al vincular y el nombrado
+del pool en disco salieron con el modelo de rutas (#1007, PR 5): el contenido vive
+en el almacén y vincular no mueve nada.
 """
-import hashlib
-import os
 import re
-import secrets
-import shutil
 
-from app import db
 from app.models.documentos import Documento
 from app.models.tareas import Tarea
-from app.services.almacenamiento.nombres import sanear_nombre
 
 # Caracteres no válidos en nombres de carpeta Windows (mismo patrón que generador_escritos.py),
 # incluidos los de control (0-31), como en el saneado de nombres de fichero.
 _CARACTERES_INVALIDOS = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
 _LONGITUD_MAX_FALLBACK_ORGANISMO = 30
-
-# Longitud inicial del prefijo de hash en el nombre de fichero del pool (ADR-032 §4,
-# git-style: se extiende un carácter más ante colisión real con contenido distinto).
-_LONGITUD_PREFIJO_HASH = 8
 
 
 def _segmento(instancia_id: int, codigo: str) -> str:
@@ -70,25 +62,22 @@ def ruta_esftt_documento(documento_o_tarea) -> str:
     Calcula la carpeta ESFTT legible (`AT-N/…`, sin nombre de fichero) que le toca
     a un documento, derivada de los códigos inmutables de catálogo
     (tipos_fases.codigo, tipos_tramites.codigo, tipos_tareas.codigo) y las siglas
-    de tipos_solicitudes. Es relativa a la raíz del árbol legible: hoy
-    FILESYSTEM_BASE; con el almacén (ADR-050 §H), la carpeta que reconstruye el
-    exportador a partir del manifiesto, que es quien la sigue usando cuando se
-    retire el resto de este módulo (PR 5 de #1007).
+    de tipos_solicitudes. Es relativa a la raíz del árbol legible que reconstruye
+    el exportador a partir del manifiesto (ADR-050 §H).
 
     Acepta:
-    - Tarea: construye la ruta directamente a partir de tarea.tramite.fase.solicitud
-      (punto de entrada natural cuando #667 mueva un documento al vincularse).
+    - Tarea: construye la ruta directamente a partir de tarea.tramite.fase.solicitud.
     - Documento: resuelve la tarea "propietaria" por su primera vinculación
-      (menor id en documentos_tarea) — la primera vinculación fija la ubicación,
+      (menor id en documentos_tarea) — la primera vinculación fija la carpeta,
       ADR-032 §3. Lanza ValueError si el documento no tiene ninguna vinculación
-      (aún huérfano en el pool, sin destino ESFTT).
+      (aún huérfano: el manifiesto lo pone en `AT-N/pool`).
     """
     if isinstance(documento_o_tarea, Documento):
         vinculos = sorted(documento_o_tarea.vinculos_tarea, key=lambda v: v.id)
         if not vinculos:
             raise ValueError(
                 f'Documento id={documento_o_tarea.id} no tiene ninguna tarea vinculada: '
-                'aún no tiene destino ESFTT (usar ruta_pool_documento mientras esté huérfano)'
+                'aún no tiene carpeta ESFTT (huérfano, va a AT-N/pool)'
             )
         tarea = vinculos[0].tarea
     elif isinstance(documento_o_tarea, Tarea):
@@ -117,238 +106,3 @@ def ruta_esftt_documento(documento_o_tarea) -> str:
     segmentos.append(_segmento(tarea.id, tarea.tipo_tarea.codigo))
 
     return '/'.join(segmentos)
-
-
-def ruta_destino_esftt_fichero(tarea, nombre_fichero: str) -> str:
-    """
-    Ruta absoluta donde debe escribirse un documento generado directamente para
-    esta tarea (#730) — sustituye al intermedio en `AT-N/` raíz
-    (`ruta_destino_documento`, #167) que dejó de tener sentido en cuanto existió
-    la carpeta ESFTT propia de la tarea (ADR-032 §3): escribir ahí y mover
-    después era el paso que rompía la regeneración, porque el documento nunca
-    volvía a estar en la ruta donde se le buscaba.
-
-    Crea el subdirectorio si no existe (mismo patrón que ruta_pool_documento).
-    """
-    from flask import current_app
-    base = current_app.config.get('FILESYSTEM_BASE', '')
-    if not base:
-        raise RuntimeError('FILESYSTEM_BASE no está configurado')
-
-    directorio_rel = ruta_esftt_documento(tarea)
-    directorio_abs = os.path.normpath(os.path.join(base, directorio_rel.replace('/', os.sep)))
-    os.makedirs(directorio_abs, exist_ok=True)
-
-    return os.path.join(directorio_abs, nombre_fichero)
-
-
-def ruta_pool_documento(expediente) -> str:
-    """
-    Ruta absoluta de la carpeta pool/ del expediente (AT-N/pool, landing zone física
-    de documentos huérfanos — ADR-032 §1/§4). Crea el directorio si no existe
-    (mismo patrón que ruta_destino_documento en generador_escritos.py).
-    """
-    from flask import current_app
-    base = current_app.config.get('FILESYSTEM_BASE', '')
-    if not base:
-        raise RuntimeError('FILESYSTEM_BASE no está configurado')
-
-    directorio = os.path.join(base, f'AT-{expediente.numero_at}', 'pool')
-    os.makedirs(directorio, exist_ok=True)
-
-    return directorio
-
-
-# El saneado vive en el subsistema de almacenamiento (ADR-050 §C); aquí queda el
-# nombre de siempre hasta que el PR 5 retire este módulo.
-_saneado_nombre_pool = sanear_nombre
-
-
-def _hash_md5_fichero(ruta: str) -> str:
-    """MD5 completo de un fichero ya existente en disco, por bloques."""
-    hasher = hashlib.md5()
-    with open(ruta, 'rb') as f:
-        for bloque in iter(lambda: f.read(65536), b''):
-            hasher.update(bloque)
-    return hasher.hexdigest()
-
-
-def nombre_pool_unico(hash_md5: str, nombre_original: str, directorio: str) -> tuple[str, bool]:
-    """
-    Calcula el nombre de fichero único para la entrada al pool (ADR-032 §4, #666):
-    prefijo abreviado del hash MD5 completo + nombre original saneado (sin
-    truncar por longitud).
-
-    Ante colisión de prefijo con un fichero ya existente en `directorio` de
-    contenido DISTINTO, extiende el prefijo un carácter más (git-style) y
-    reintenta, hasta encontrar hueco o agotar el hash completo (caso extremo:
-    añade un carácter aleatorio al nombre).
-
-    No escribe nada — solo calcula. El caller decide si escribe el fichero
-    usando el segundo valor devuelto.
-
-    Returns:
-        (nombre_fichero, ya_existe_identico) — ya_existe_identico es True
-        cuando el destino ya existe en disco con el mismo contenido
-        (duplicado exacto, p.ej. re-subida del mismo fichero): el caller no
-        debe reescribirlo, pero puede seguir creando su propio `Documento`.
-    """
-    nombre_saneado = _saneado_nombre_pool(nombre_original)
-    n = _LONGITUD_PREFIJO_HASH
-    while n <= len(hash_md5):
-        candidato = f'{hash_md5[:n]}_{nombre_saneado}'
-        ruta_candidata = os.path.join(directorio, candidato)
-        if not os.path.exists(ruta_candidata):
-            return candidato, False
-        if _hash_md5_fichero(ruta_candidata) == hash_md5:
-            return candidato, True
-        n += 1
-
-    # Caso extremo, "altamente improbable" (ADR-032 §4): agotado el hash completo
-    # como prefijo y sigue habiendo colisión con contenido distinto.
-    candidato = f'{hash_md5}_{secrets.token_hex(1)}_{nombre_saneado}'
-    return candidato, False
-
-
-def _nombre_original_pool(documento: Documento, nombre_actual: str) -> str:
-    """
-    Recupera el nombre original a partir del nombre con prefijo hash del pool
-    (ADR-032 §4): '<prefijo-hash>_<nombre-original>'. Si el documento no tiene
-    hash_md5 (no entró por multipart — registro in situ), nombre_actual ya es
-    el original, se devuelve tal cual.
-    """
-    if not documento.hash_md5:
-        return nombre_actual
-    hash_md5 = documento.hash_md5
-    for n in range(_LONGITUD_PREFIJO_HASH, len(hash_md5) + 1):
-        prefijo = hash_md5[:n] + '_'
-        if nombre_actual.startswith(prefijo):
-            return nombre_actual[len(prefijo):]
-    return nombre_actual
-
-
-def _destino_sin_colision(directorio_abs: str, nombre: str, documento: Documento, origen_abs: str) -> str:
-    """Ruta destino en directorio_abs para `nombre`. Si ya existe un fichero DISTINTO
-    del propio origen:
-
-    - mismo contenido (MD5 coincide) → se reutiliza: dos `Documento` que comparten
-      fichero (duplicado exacto, ADR-032 §4) también lo comparten fuera del pool
-      (#926). El MD5 se toma de `documento.hash_md5` si ya está calculado (viene
-      de multipart) o se calcula del propio origen (registro in situ, #666 no lo
-      tiene).
-    - contenido distinto → se sufija con el id del documento (#667) para no pisarlo.
-    """
-    destino = os.path.join(directorio_abs, nombre)
-    if not os.path.exists(destino) or os.path.normpath(destino) == os.path.normpath(origen_abs):
-        return destino
-
-    hash_documento = documento.hash_md5 or _hash_md5_fichero(origen_abs)
-    if _hash_md5_fichero(destino) == hash_documento:
-        return destino
-
-    base_nombre, ext = os.path.splitext(nombre)
-    return os.path.join(directorio_abs, f'{base_nombre}_{documento.id}{ext}')
-
-
-def _otro_documento_comparte_url(documento_id: int, url: str) -> bool:
-    """True si algún OTRO `Documento` (distinto de documento_id) sigue apuntando a
-    `url` (#926): duplicado exacto del pool (ADR-032 §4) que aún no se ha movido —
-    no hay que borrar un fichero que ese otro documento todavía necesita."""
-    return (
-        Documento.query
-        .filter(Documento.id != documento_id, Documento.url == url)
-        .first() is not None
-    )
-
-
-def mover_a_esftt(documento: Documento, tarea: Tarea) -> bool:
-    """
-    Mueve el fichero físico del documento desde su ubicación de entrada (pool/ u
-    otra ruta bajo FILESYSTEM_BASE) a su carpeta ESFTT legible, al vincularse
-    por primera vez a una tarea (ADR-032 §3, #667).
-
-    No-op (devuelve False) si:
-    - documento.url no es esquema local (bddat://, http(s)://) — no hay
-      fichero físico que mover.
-    - el documento ya está en la carpeta ESFTT destino (idempotente ante
-      llamadas repetidas para el mismo documento/tarea).
-
-    Patrón seguro (ADR-032 §3): copiar a destino → actualizar Documento.url y
-    hacer commit → borrar origen solo tras commit exitoso, y solo si ningún OTRO
-    Documento sigue apuntando a ese mismo origen (#926: dos filas que comparten
-    fichero por ser duplicado exacto, ADR-032 §4). Si el commit falla,
-    Documento.url no llega a apuntar al destino y el origen sigue intacto.
-    """
-    if '://' in (documento.url or ''):
-        return False
-
-    from flask import current_app
-    base = current_app.config.get('FILESYSTEM_BASE', '')
-    if not base:
-        raise RuntimeError('FILESYSTEM_BASE no está configurado')
-
-    directorio_destino_rel = ruta_esftt_documento(tarea)
-    directorio_actual_rel = os.path.dirname(documento.url).replace('\\', '/')
-    if directorio_actual_rel == directorio_destino_rel:
-        return False  # ya está en su sitio
-
-    url_origen = documento.url
-    origen_abs = documento.ruta_absoluta()
-    directorio_destino_abs = os.path.normpath(
-        os.path.join(base, directorio_destino_rel.replace('/', os.sep)))
-    os.makedirs(directorio_destino_abs, exist_ok=True)
-
-    nombre = _nombre_original_pool(documento, os.path.basename(documento.url))
-    destino_abs = _destino_sin_colision(directorio_destino_abs, nombre, documento, origen_abs)
-
-    shutil.copy2(origen_abs, destino_abs)
-    documento.url = os.path.relpath(destino_abs, base).replace(os.sep, '/')
-    db.session.commit()
-
-    if (os.path.normpath(origen_abs) != os.path.normpath(destino_abs)
-            and not _otro_documento_comparte_url(documento.id, url_origen)):
-        os.remove(origen_abs)
-
-    return True
-
-
-def mover_a_pool(documento: Documento, expediente) -> bool:
-    """
-    Mueve el fichero físico del documento de vuelta a AT-N/pool/ cuando pierde
-    su último vínculo con una tarea (queda huérfano de nuevo — ADR-027 §2,
-    ADR-032 §3, #667). Espejo inverso de mover_a_esftt().
-
-    `expediente` se recibe explícito (igual que mover_a_esftt recibe la tarea)
-    en vez de derivarlo de documento.expediente — más simple de testear y el
-    caller (editar_tarea) ya lo tiene calculado.
-
-    No-op (devuelve False) si documento.url no es esquema local, o si ya está
-    en pool/. Mismo patrón seguro copiar→commit→borrar, y misma comprobación de
-    fichero compartido con otro Documento antes de borrar el origen (#926).
-    """
-    if '://' in (documento.url or ''):
-        return False
-
-    from flask import current_app
-    base = current_app.config.get('FILESYSTEM_BASE', '')
-    if not base:
-        raise RuntimeError('FILESYSTEM_BASE no está configurado')
-
-    directorio_pool_abs = ruta_pool_documento(expediente)
-    url_origen = documento.url
-    origen_abs = documento.ruta_absoluta()
-    if os.path.normpath(os.path.dirname(origen_abs)) == os.path.normpath(directorio_pool_abs):
-        return False  # ya está en pool
-
-    nombre = os.path.basename(documento.url)
-    destino_abs = _destino_sin_colision(directorio_pool_abs, nombre, documento, origen_abs)
-
-    shutil.copy2(origen_abs, destino_abs)
-    documento.url = os.path.relpath(destino_abs, base).replace(os.sep, '/')
-    db.session.commit()
-
-    if (os.path.normpath(origen_abs) != os.path.normpath(destino_abs)
-            and not _otro_documento_comparte_url(documento.id, url_origen)):
-        os.remove(origen_abs)
-
-    return True

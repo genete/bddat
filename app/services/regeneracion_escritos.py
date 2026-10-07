@@ -84,7 +84,7 @@ def regenerar_escrito(*, tarea, expediente, plantilla, doc_bytes: bytes,
 
     Lanza `FormatoNoAdmitido` (el contenido no es lo que dice la extensión del
     nombre: p. ej. un borrador `.docx` cuya plantilla ahora genera `.odt`) y
-    `ValueError` (el borrador no tiene contenido propio: ruta local sin migrar),
+    `ValueError` (el «borrador» no tiene contenido propio: un enlace del mismo tipo),
     con mensajes para el usuario; `AlmacenNoDisponible` si el almacén no contesta;
     y `ContenidoNoUtilizable` si el borrador ya estaba ausente o dañado y el
     escrito nuevo es idéntico (no hay nada que sustituir, pero tampoco está).
