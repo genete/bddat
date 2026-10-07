@@ -100,7 +100,7 @@ def _crear_fase_finalizada(db, solicitud, codigo_fase, fecha_fin):
 
     doc = Documento(
         expediente=solicitud.expediente,
-        url=f'test-doc-{codigo_fase}-{time.time()}',
+        url=f'https://ejemplo.invalid/test-doc-{codigo_fase}-{time.time()}',
         fecha_administrativa=fecha_fin,
     )
     db.session.add(doc)
@@ -156,7 +156,7 @@ class TestCertFinIpConsultasFechaAdministrativa:
         tipo_fase = TipoFase.query.filter_by(codigo='CONSULTAS').first()
         assert tipo_fase is not None
         doc_sin_fecha = Documento(
-            expediente=exp, url=f'test-doc-sin-fecha-{time.time()}',
+            expediente=exp, url=f'https://ejemplo.invalid/test-doc-sin-fecha-{time.time()}',
             fecha_administrativa=None,
         )
         db.session.add(doc_sin_fecha)

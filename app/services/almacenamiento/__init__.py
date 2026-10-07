@@ -19,5 +19,5 @@ Piezas:
   BDDAT (§H, N009). Lo lee el exportador (`exportador/`, en la raíz del repositorio).
 
 Este `__init__` no importa nada a propósito: `nombres` y `formatos` no necesitan
-la aplicación, y `rutas_esftt` los usa mientras viva (hasta el PR 5).
+la aplicación, y `Documento.resolver_url()` importa `contenido` solo al usarlo.
 """

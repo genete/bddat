@@ -58,8 +58,6 @@ SOLO_COMO_METODO = {'ruta_absoluta'}
 # es pedir el contenido por el documento.
 PERMITIDOS = {
     'app/config.py': 6,
-    'app/models/certificados_fase.py': 1,
-    'app/models/documentos.py': 5,
     'app/models/plantillas.py': 1,
     'app/modules/admin_plantillas/routes.py': 10,
     'app/modules/admin_plantillas/templates/admin_plantillas/_detalle_fragmento.html': 1,

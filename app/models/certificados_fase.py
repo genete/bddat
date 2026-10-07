@@ -23,15 +23,12 @@ class CertificadoFase(db.Model):
         reordena claves y elimina duplicados, y en un expediente administrativo
         un acta que no reproduce literalmente lo auditado es un acta peor).
 
-    RUTA_PDF:
-        Ya no se rellena (#1007, ADR-050): el PDF vive en el almacén y se llega a él
-        por `documento_id`. NULL en los certificados nuevos; la columna sale en el
-        PR 5 de #1007.
-
     DOCUMENTO_ID (#827):
         Documento del pool que materializa este certificado, con el PDF en el
-        almacén. Es la vuelta que le faltaba al vínculo —`Documento` apunta al PDF,
-        nadie apuntaba al `Documento`— y la que #838 necesitará para deshacer el
+        almacén: es el único camino al PDF (la ruta en disco, `ruta_pdf`, salió
+        con el modelo de rutas, #1007). Es la vuelta que le faltaba al vínculo
+        —`Documento` apunta al PDF, nadie apuntaba al `Documento`— y la que #838
+        necesitará para deshacer el
         sello. NULL entre el flush del certificado y el del documento (el PDF se
         llama con `cert.id`, así que el certificado va primero) y en lo emitido
         antes de #827.
@@ -92,12 +89,6 @@ class CertificadoFase(db.Model):
         db.JSON,
         nullable=False,
         comment='Dict completo de variables en el momento de la auditoría'
-    )
-
-    ruta_pdf = db.Column(
-        db.Text,
-        nullable=True,
-        comment='Ruta absoluta del PDF generado; NULL hasta que se genera'
     )
 
     documento_id = db.Column(

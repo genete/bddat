@@ -36,7 +36,7 @@ def _tarea_real():
 def _documento_prueba(expediente_id, asunto):
     doc = Documento(
         expediente_id=expediente_id,
-        url='no-relevante-para-este-test.pdf',  # nada lo lee ni lo mueve: vincular es solo una fila
+        url='https://ejemplo.invalid/no-relevante-para-este-test.pdf',  # nadie lo lee: vincular es solo una fila
         asunto=asunto,
     )
     db.session.add(doc)

@@ -13,7 +13,7 @@ FLUJO:
     Devuelve CertificadoFase creado.
 
     El PDF vive en el almacén (ADR-050, #1007): el documento no tiene ruta ni carpeta, y
-    `CertificadoFase.ruta_pdf` ya no se rellena (la columna sale en el PR 5 de #1007).
+    al PDF se llega por `CertificadoFase.documento_id`.
 
 QUÉ LLEVA EL PDF (#827, ADR-043 §E ter)
     Con `informe`, el contenido es el que el catálogo describe para el
