@@ -167,6 +167,12 @@ ficheros, que acelera Postgres.
 
 ## 6. El almacenamiento de expedientes es del servidor de archivos corporativo (invariante, común a ambas vías)
 
+> **Nota (2026-10-07, #1007):** lo que sigue describe el share corporativo como el lugar donde
+> viven los documentos. Esa premisa la sustituye [ADR-050](../decisiones/ADR-050-almacen-documental-privado-por-contenido.md):
+> el contenido vive en un almacén privado al que solo accede BDDAT, y las carpetas legibles se
+> reconstruyen a partir de los manifiestos con el exportador. Esta sección se reescribirá cuando
+> se decida el despliegue del almacén.
+
 Los expedientes se guardan y **custodian** en el servidor de archivos
 corporativo (`\\HACACL0102\energia\ALTA TENSION\...`, ver comentario en
 `config.py`), que ya tiene su sistema de copias de seguridad montado. Llevarlos
