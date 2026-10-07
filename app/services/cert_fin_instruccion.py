@@ -63,17 +63,20 @@ resuelve, paso a paso y pasando cada uno por su propio check. Y expreso porque e
 justificación, que queda en bitácora y la relata el informe del certificado
 siguiente: quien redacte la resolución verá que hubo uno anterior y por qué se retiró.
 
-Lo que borra es todo el rastro documental —la FK, el `CertificadoFase`, el `Documento`
-y el PDF—, decisión de Carlos (2026-09-04) frente a desvincular o revocar. Un
-certificado huérfano en el pool seguiría afirmando que la instrucción terminó, que es
-el «documento que miente» que §E declaró inaceptable; y revocar exigiría un concepto
-de anulación que no existe, para un documento interno autogenerado que nadie ha
-notificado a nadie.
+Lo que borra es todo el rastro documental —la FK, el `CertificadoFase` y el `Documento`—,
+decisión de Carlos (2026-09-04) frente a desvincular o revocar. Un certificado huérfano
+en el pool seguiría afirmando que la instrucción terminó, que es el «documento que
+miente» que §E declaró inaceptable; y revocar exigiría un concepto de anulación que no
+existe, para un documento interno autogenerado que nadie ha notificado a nadie.
+
+El PDF ya no se borra aquí (ADR-050 §M, #1007): vive en el almacén, que guarda un
+contenido una sola vez aunque lo compartan varios documentos, y solo la limpieza de la
+fase 7 cuenta referencias. Hasta entonces queda en el almacén sin referencias, fuera del
+pool y de los manifiestos: nada de BDDAT lo ve.
 """
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass
 from typing import Optional
 
@@ -171,16 +174,17 @@ def consolidar(solicitud) -> Consolidacion:
 
     try:
         # `fase=None`: este certificado no es de una fase, certifica la instrucción
-        # completa y se ancla a la solicitud (ADR-043 §D). El generador crea el
-        # Documento con su url definitiva y cierra el vínculo por los dos lados.
+        # completa y se ancla a la solicitud (ADR-043 §D). El generador sube el PDF al
+        # almacén, crea el Documento y cierra el vínculo por los dos lados. Si el
+        # almacén lo rechaza, el error llega como excepción al `except` de abajo.
         cert = generar_certificado_fase(
             solicitud.expediente, None, informe.auditoria, CODIGO_CERT,
             solicitud=solicitud, informe=informe,
         )
-        if cert.ruta_pdf is None or cert.documento_id is None:
-            # Sin PDF o sin documento, el ancla apuntaría a un certificado que no
-            # existe como papel — peor que no tener certificado. `generar_certificado_fase`
-            # ya dejó el error en el log.
+        if cert.documento_id is None:
+            # Sin documento (falló el dibujo del PDF o la BD), el ancla apuntaría a un
+            # certificado que no existe como papel — peor que no tener certificado.
+            # `generar_certificado_fase` ya dejó el error en el log.
             db.session.rollback()
             return Consolidacion(
                 informe=informe,
@@ -259,7 +263,8 @@ def deshacer(solicitud, *, justificacion: str) -> Reversion:
     """Retira el CERT_FIN_INSTRUCCION de `solicitud` y con él el sello de su
     instrucción (ADR-043 §F, vía 2: «la instrucción no estaba terminada de verdad»).
 
-    Borra la FK, el `CertificadoFase`, el `Documento` y el PDF. `justificacion` es
+    Borra la FK, el `CertificadoFase` y el `Documento`. El PDF queda en el almacén sin
+    referencias hasta que la limpieza (fase 7) lo recoja. `justificacion` es
     obligatoria —mismo criterio que `reabrir_fase`: no existe reversión silenciosa— y
     queda en bitácora, de donde la lee el informe del siguiente certificado.
 
@@ -292,12 +297,6 @@ def deshacer(solicitud, *, justificacion: str) -> Reversion:
     # el documento: el sello lo levanta el ancla, no el certificado.
     cert = CertificadoFase.query.filter_by(documento_id=documento_id).first()
     certificado_id = cert.id if cert is not None else None
-    # Se resuelven ANTES de borrar: después no hay objeto del que sacarlas.
-    # `CertificadoFase.ruta_pdf` es absoluta y `Documento.url` relativa a
-    # FILESYSTEM_BASE (ADR-032); las dos apuntan al mismo fichero, pero se recogen
-    # las dos porque los certificados anteriores a 827b no tienen `CertificadoFase`
-    # que casar y solo queda la del documento.
-    rutas = _rutas_del_pdf(cert, documento)
 
     try:
         solicitud.documento_fin_instruccion_id = None
@@ -325,50 +324,6 @@ def deshacer(solicitud, *, justificacion: str) -> Reversion:
                   solicitud.id, exc)
         return Reversion(error=str(exc))
 
-    _borrar_pdf(rutas)
-
     log.info('CERT_FIN_INSTRUCCION deshecho: doc=%s cert=%s solicitud=%s expediente=%s',
              documento_id, certificado_id, solicitud.id, solicitud.expediente_id)
     return Reversion(ok=True, documento_id=documento_id, certificado_id=certificado_id)
-
-
-def _rutas_del_pdf(cert, documento) -> list:
-    """Rutas absolutas candidatas del PDF, resueltas con los objetos todavía vivos.
-
-    Defensivo por partida doble: `ruta_absoluta()` levanta si `FILESYSTEM_BASE` no
-    está configurado o si la url no es del esquema local (los `bddat://` de las
-    pruebas), y ninguno de esos casos debe impedir deshacer el certificado. Lo que
-    manda son las filas; el fichero es consecuencia.
-    """
-    rutas = []
-    ruta_cert = getattr(cert, 'ruta_pdf', None)
-    if ruta_cert:
-        rutas.append(ruta_cert)
-    if documento.url and '://' not in documento.url:
-        try:
-            rutas.append(documento.ruta_absoluta())
-        except (RuntimeError, ValueError) as exc:
-            log.warning('cert_fin_instruccion: no se pudo resolver la ruta de %s — %s',
-                        documento.url, exc)
-    return rutas
-
-
-def _borrar_pdf(rutas: list) -> None:
-    """Borra el PDF del certificado, después del commit y sin poder revertirlo.
-
-    Va detrás a propósito: si fallara antes, el rollback devolvería las filas pero no
-    el fichero. Y su fallo no revierte nada —la BD ya dijo que el certificado no
-    existe—, solo queda en el log: un PDF huérfano en disco no afirma nada que el
-    sistema sostenga, mientras que una fila viva sí.
-
-    Es el único sitio del proyecto que borra el fichero de un documento; el borrado
-    del pool (`pool_borrar_documento`) deja el suyo. Aquí se borra porque el papel
-    dice «la instrucción terminó» y acaba de dejar de ser cierto.
-    """
-    for ruta in rutas:
-        try:
-            if os.path.isfile(ruta):
-                os.remove(ruta)
-        except OSError as exc:
-            log.warning('cert_fin_instruccion: no se pudo borrar el PDF %s — %s',
-                        ruta, exc)

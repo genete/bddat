@@ -6,11 +6,14 @@ El certificado es un snapshot inmutable de la auditoría del motor de reglas.
 
 FLUJO:
     1. Persiste CertificadoFase (snapshot inmutable en BD).
-    2. Genera PDF con reportlab.
-    3. Guarda en ruta_destino_cert(expediente, tipo_cert).
-    4. Crea Documento (tipo_doc = tipo_cert, url = ruta relativa a FILESYSTEM_BASE, ADR-032).
-    5. Actualiza cert.ruta_pdf y cert.documento_id.
+    2. Genera el PDF con reportlab, en memoria.
+    3. Lo sube al almacén por el módulo de contenido (`contenido.subir`), con el nombre
+       `<tipo_cert>_<cert.id>.pdf`, y crea el Documento que devuelve (tipo_doc = tipo_cert).
+    4. Actualiza cert.documento_id.
     Devuelve CertificadoFase creado.
+
+    El PDF vive en el almacén (ADR-050, #1007): el documento no tiene ruta ni carpeta, y
+    `CertificadoFase.ruta_pdf` ya no se rellena (la columna sale en el PR 5 de #1007).
 
 QUÉ LLEVA EL PDF (#827, ADR-043 §E ter)
     Con `informe`, el contenido es el que el catálogo describe para el
@@ -29,9 +32,9 @@ QUÉ LLEVA EL PDF (#827, ADR-043 §E ter)
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import asdict
 from datetime import UTC, date, datetime
+from io import BytesIO
 
 log = logging.getLogger(__name__)
 
@@ -57,19 +60,25 @@ def generar_certificado_fase(expediente, fase, auditoria, tipo_cert: str, *,
                      los actos salvados con criterio. Ver el encabezado del módulo.
 
     Returns:
-        CertificadoFase creado y con ruta_pdf y documento_id rellenos.
+        CertificadoFase creado y con documento_id relleno. Sin documento_id, el PDF no
+        llegó a guardarse (falló el dibujo o la BD; el log lo dice) y quien llama no
+        debe darlo por emitido: `consolidar` lo comprueba.
+
+    Lanza, sin tragarlo, lo que el módulo de contenido rechaza al guardar el PDF:
+    `AlmacenNoDisponible` (el almacén no contesta), `FormatoNoAdmitido` y `ValueError`,
+    con mensajes para el usuario. Quien llama (`consolidar`) deshace todo y se los da al
+    técnico. Tampoco traga que una regla no se pueda serializar: un acta vacía no avisa.
     """
     from app import db
     from app.models.certificados_fase import CertificadoFase
-    from app.models.documentos import Documento
     from app.models.tipos_documentos import TipoDocumento
+    from app.services.almacenamiento.contenido import EntradaSubida, subir
     from sqlalchemy.exc import OperationalError, ProgrammingError
 
-    # 1. Serializar reglas (dataclasses → dicts)
-    try:
-        reglas_json = [asdict(r) for r in auditoria.reglas_evaluadas]
-    except Exception:
-        reglas_json = []
+    # 1. Serializar reglas (dataclasses → dicts). Sin `try`: si una regla no se puede
+    #    serializar, el acta del certificado saldría vacía y nadie lo vería; que falle
+    #    con su error y `consolidar` lo recoja (#1007, guarda dentro del código).
+    reglas_json = [asdict(r) for r in auditoria.reglas_evaluadas]
 
     # variables_ctx puede contener valores no serializables (date, etc.) → convertir
     variables_json = _serializar_variables(auditoria.variables_ctx)
@@ -88,36 +97,30 @@ def generar_certificado_fase(expediente, fase, auditoria, tipo_cert: str, *,
     db.session.add(cert)
     db.session.flush()  # obtener cert.id antes de generar el PDF
 
-    # 3. Generar PDF
+    # 3. Generar el PDF, en memoria
     try:
-        ruta_pdf = _ruta_destino_cert(expediente, tipo_cert, cert.id)
-        _generar_pdf(cert, expediente, auditoria, ruta_pdf,
-                     solicitud=solicitud, informe=informe)
+        pdf = _generar_pdf(cert, expediente, auditoria,
+                           solicitud=solicitud, informe=informe)
     except Exception as exc:
         log.error('generador_cert: error generando PDF para %s (cert.id=%s): %s',
                   tipo_cert, cert.id, exc)
         return cert  # el cert existe aunque el PDF haya fallado
 
-    # 4. Crear el Documento que apunta al PDF
+    # 4. Subir el PDF al almacén y crear el Documento que lo referencia. `subir` valida
+    #    el PDF (formato y tamaño) y lo guarda; sus errores no se capturan aquí (ver el
+    #    docstring). Solo se tolera, como antes, que la BD no conteste.
     try:
-        from flask import current_app
         from app.services.plazos import _hoy
         tipo_doc = TipoDocumento.query.filter_by(codigo=tipo_cert).first()
-        # Documento.url siempre relativa a FILESYSTEM_BASE (ADR-032); cert.ruta_pdf
-        # (más abajo) sigue siendo la ruta absoluta física, campo distinto.
-        base = current_app.config['FILESYSTEM_BASE']
-        ruta_relativa = os.path.relpath(ruta_pdf, base).replace(os.sep, '/')
-        doc = Documento(
-            expediente_id=expediente.id,
-            tipo_doc_id=tipo_doc.id if tipo_doc else 1,
-            url=ruta_relativa,
-            tipo_contenido='application/pdf',
+        [doc] = subir([EntradaSubida(BytesIO(pdf), f'{tipo_cert}_{cert.id}.pdf', {
+            'expediente_id': expediente.id,
+            'tipo_doc_id': tipo_doc.id if tipo_doc else 1,
             # La fecha de trabajo del sistema, no la del reloj de pared: el reloj de
             # desarrollo (#820) es lo que permite probar plazos, y un documento que
             # el propio sistema produce debe fecharse como todo lo demás.
-            fecha_administrativa=_hoy(),
-            asunto=_asunto(tipo_cert, expediente, solicitud),
-        )
+            'fecha_administrativa': _hoy(),
+            'asunto': _asunto(tipo_cert, expediente, solicitud),
+        })])
         db.session.add(doc)
         db.session.flush()
     except (OperationalError, ProgrammingError) as exc:
@@ -126,7 +129,6 @@ def generar_certificado_fase(expediente, fase, auditoria, tipo_cert: str, *,
 
     # 5. Cerrar el vínculo por los dos lados (#827): el documento apunta al PDF y
     #    el certificado al documento — la vuelta que #838 necesita para deshacerlo.
-    cert.ruta_pdf = ruta_pdf
     cert.documento_id = doc.id
     return cert
 
@@ -138,25 +140,9 @@ def _asunto(tipo_cert: str, expediente, solicitud) -> str:
     return f'{base} — solicitud #{solicitud.id}' if solicitud is not None else base
 
 
-def _ruta_destino_cert(expediente, tipo_cert: str, cert_id: int) -> str:
-    """
-    Ruta absoluta donde guardar el PDF del certificado.
-
-    Estructura: FILESYSTEM_BASE / AT-{numero_at} / certificados / {tipo_cert}_{cert_id}.pdf
-    """
-    from flask import current_app
-    base = current_app.config.get('FILESYSTEM_BASE', '')
-    if not base:
-        raise RuntimeError('FILESYSTEM_BASE no está configurado')
-
-    directorio = os.path.join(base, f'AT-{expediente.numero_at}', 'certificados')
-    os.makedirs(directorio, exist_ok=True)
-    return os.path.join(directorio, f'{tipo_cert}_{cert_id}.pdf')
-
-
-def _generar_pdf(cert, expediente, auditoria, ruta_destino: str, *,
-                 solicitud=None, informe=None) -> None:
-    """Genera el PDF del certificado con reportlab y lo escribe en ruta_destino."""
+def _generar_pdf(cert, expediente, auditoria, *,
+                 solicitud=None, informe=None) -> bytes:
+    """Genera el PDF del certificado con reportlab y devuelve sus bytes."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -165,8 +151,9 @@ def _generar_pdf(cert, expediente, auditoria, ruta_destino: str, *,
         Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
     )
 
+    buffer = BytesIO()
     doc = SimpleDocTemplate(
-        ruta_destino,
+        buffer,
         pagesize=A4,
         leftMargin=2 * cm, rightMargin=2 * cm,
         topMargin=2.5 * cm, bottomMargin=2.5 * cm,
@@ -315,6 +302,7 @@ def _generar_pdf(cert, expediente, auditoria, ruta_destino: str, *,
     ]
 
     doc.build(contenido)
+    return buffer.getvalue()
 
 
 def _secciones_del_informe(informe, Paragraph, Spacer, cm,

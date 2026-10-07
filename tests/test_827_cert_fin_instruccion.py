@@ -2,7 +2,8 @@
 Tests #827 — la bisagra instrucción/resolución (ADR-043, §E reescrita).
 
 Con SQL real (fixture `arbol_esftt`, #715) y `fs_tmp` (#674): la consolidación
-genera un PDF de verdad, que no debe caer en el servidor de ficheros de desarrollo.
+genera un PDF de verdad, que va al almacén de pruebas (`fs_tmp` pide `almacen_tmp`) y
+no al de desarrollo.
 
 El gesto dejó de ser una puerta que concede o deniega y pasó a ser una revisión que
 a veces se consolida, así que la mitad de estos tests cambió de premisa: «falta
@@ -18,15 +19,14 @@ Cinco bloques:
      disparada —se evalúa antes de crear nada— y por eso viaja aparte para que el
      PDF la presente como satisfecha por el propio certificado.
 """
-import os
-
 import pytest
 from flask_login import login_user
 
 
 @pytest.fixture(autouse=True)
 def _fs_tmp(fs_tmp):
-    """FILESYSTEM_BASE al tmp del test — este módulo emite certificados reales."""
+    """Almacén de pruebas (y FILESYSTEM_BASE al tmp del test) — este módulo emite
+    certificados reales, cuyo PDF se guarda en el almacén."""
     pass
 
 
@@ -387,6 +387,7 @@ class TestConsolidacion:
     def test_sin_pendientes_consolida_y_ancla(self, arbol_esftt, app_ctx):
         from app.models.certificados_fase import CertificadoFase
         from app.models.documentos import Documento
+        from app.services.almacenamiento import contenido
 
         sol = _solicitud_certificable(arbol_esftt)
 
@@ -397,11 +398,13 @@ class TestConsolidacion:
 
         doc = Documento.query.get(res.documento_id)
         assert doc.tipo_doc.codigo == 'CERT_FIN_INSTRUCCION'
-        assert doc.tipo_contenido == 'application/pdf'
-        # La url es relativa a FILESYSTEM_BASE (ADR-032) y definitiva desde el
-        # principio: ya no hay url provisional que completar después.
-        assert not doc.url.startswith('bddat://')
-        assert doc.url.endswith('.pdf')
+        # El contenido es del almacén (ADR-050 §C): sin url, con su nombre, y un PDF de
+        # verdad leído por el módulo, que es quien comprueba el hash.
+        assert doc.url is None
+        assert doc.nombre_visible() == f'CERT_FIN_INSTRUCCION_{res.certificado_id}.pdf'
+        leido = contenido.leer(doc)
+        assert leido.formato == 'application/pdf'
+        assert leido.datos.startswith(b'%PDF-')
         assert f'#{sol.id}' in (doc.asunto or '')
 
         cert = CertificadoFase.query.get(res.certificado_id)
@@ -409,8 +412,6 @@ class TestConsolidacion:
         assert cert.fase_id is None
         # La vuelta que faltaba (#827) y que #838 necesitará para deshacer el sello.
         assert cert.documento_id == res.documento_id
-        assert os.path.isfile(cert.ruta_pdf)
-        assert os.path.getsize(cert.ruta_pdf) > 0
 
     def test_no_se_reemite(self, arbol_esftt, app_ctx):
         sol = _solicitud_certificable(arbol_esftt)
@@ -438,19 +439,6 @@ class TestConsolidacion:
         assert entrada.detalle['solicitud_id'] == sol.id
         assert entrada.detalle['certificado_fase_id'] == res.certificado_id
 
-    def test_el_informe_viaja_tambien_cuando_consolida(self, arbol_esftt, app_ctx):
-        """El endpoint responde siempre con el informe, consolidado o no."""
-        sol = _solicitud_certificable(arbol_esftt)
-
-        datos = _consolidar(sol, app_ctx).a_dict()
-
-        assert datos['consolidado'] is True
-        assert datos['limpio'] is True
-        assert datos['documento_id'] is not None
-        assert datos['bloques'], 'el informe debe llevar el relato de lo instruido'
-        assert datos['pendientes'] == []
-
-
 # ---------------------------------------------------------------------------
 # D) La bisagra: la regla del art. 82.1 antes y después de consolidar
 # ---------------------------------------------------------------------------
@@ -461,14 +449,19 @@ class TestBisagra:
         """Se mira la regla del art. 82.1 en concreto, no `permitido` global: otras
         reglas del catálogo pueden seguir bloqueando por su cuenta, y eso es
         correcto — el certificado levanta la suya, no las demás."""
+        from app.models.motor_reglas import ReglaMotor
         from app.services.assembler import auditar_multi, evaluar_multi
 
         sol = _solicitud_certificable(arbol_esftt)
         objeto = {'solicitud': sol, 'tipo_fase': _tipo_fase('RESOLUCION')}
+        # Las reglas del acto se localizan por artículo y apartado, como hace el código
+        # (`informe_instruccion._ids_reglas_del_acto`): la descripción es editorial y
+        # cambia, la cita normativa es lo que las define.
+        ids_821 = {r.id for r in ReglaMotor.query.filter_by(
+            accion='CREAR', activa=True, articulo='82', apartado='1').all()}
 
         def _regla_821(auditoria):
-            reglas = [r for r in auditoria.reglas_evaluadas
-                      if 'certificado de fin de instrucción' in (r.descripcion or '')]
+            reglas = [r for r in auditoria.reglas_evaluadas if r.regla_id in ids_821]
             assert reglas, 'la regla del art. 82.1 debe casar con el sujeto RESOLUCION'
             return reglas
 

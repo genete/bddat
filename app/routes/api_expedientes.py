@@ -985,7 +985,8 @@ def emitir_cert_fin_instruccion_nodo(expediente_id, nodo_id):
     `documento_id`, `certificado_id`).
 
     422 se reserva para errores de verdad: ya estaba emitido, el catálogo no tiene
-    el tipo documental, o el PDF no se pudo generar. El 422 de bloqueo
+    el tipo documental, o el PDF no se pudo generar o guardar (con el mensaje del
+    almacén si no contesta: no queda nada creado). El 422 de bloqueo
     (`puede_escapar: false`) solo aparecería si la puerta cerrada del invariante
     discrepara del informe, que sería una divergencia a investigar.
     """
