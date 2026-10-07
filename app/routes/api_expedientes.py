@@ -2810,7 +2810,7 @@ def edicto_aplicar_anuncio(expediente_id, tramite_id):
 def post_notificar_parsear_documento(expediente_id, tarea_id):
     """
     POST .../notificar/parsear_documento — preview de un justificante del pool
-    (#712, acto 1 del flujo de dos actos): se lee de disco por `documento_id`,
+    (#712, acto 1 del flujo de dos actos): se lee del almacén por `documento_id`,
     se parsea con la misma lógica que el hook de vinculación
     (`parsear_documento_notifica`) y NO se persiste nada ni se vincula — eso lo
     hace el PATCH .../notificar (acto 3) cuando el usuario confirma.
@@ -2852,7 +2852,10 @@ def post_notificar_parsear_documento(expediente_id, tarea_id):
     if canal != 'NOTIFICA':
         return jsonify(sin_parseo), 200
 
-    resultado = svc.parsear_documento_notifica(doc)
+    try:
+        resultado = svc.parsear_documento_notifica(doc)
+    except (ContenidoNoUtilizable, AlmacenNoDisponible) as exc:
+        return _error_de_contenido(exc)
     if resultado is None:
         return jsonify(sin_parseo), 200
 

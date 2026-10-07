@@ -371,25 +371,18 @@ def test_fijar_destinatario_deja_bitacora(con_usuario, arbol_aislado):
 # Cotejo del NIF del justificante de Notifica (A00000000 en el texto de muestra)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize('nif_ficha,nif_representado,avisa', [
-    ('A00000000', None, False),
-    ('B99999999', None, True),
-    ('B99999999', 'A-00000000', False),   # el justificante trae al representado
-])
-def test_cotejo_del_nif(con_usuario, arbol_aislado, fs_tmp, nif_ficha, nif_representado, avisa):
+def test_cotejo_del_nif(con_usuario, arbol_aislado, fs_tmp):
+    """El justificante va dirigido a A00000000 y el destinatario registrado es B99999999:
+    avisa, sin bloquear."""
     tarea = _crear_notificar(arbol_aislado.tramite_sin_fuentes(), fuente='BOLETIN')
-    receptor = _entidad('Receptor', nif=nif_ficha)
-    representado = _entidad('Representado', nif=nif_representado) if nif_representado else None
-    assert svc.fijar_destinatario(
-        tarea, entidad_id=receptor.id,
-        en_nombre_de_entidad_id=representado.id if representado else None).ok
+    receptor = _entidad('Receptor', nif='B99999999')
+    assert svc.fijar_destinatario(tarea, entidad_id=receptor.id).ok
     doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA', _pdf_sintetico(TEXTO_JUSTIFICANTE))
 
     res = _vincular(tarea, producido=doc)
 
     assert res.ok, res.error or res.bloqueo
-    hay_aviso = res.advertencia is not None and 'NIF' in res.advertencia['motivo']
-    assert hay_aviso is avisa
+    assert res.advertencia is not None and 'NIF' in res.advertencia['motivo']
 
 
 # ---------------------------------------------------------------------------

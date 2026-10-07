@@ -248,8 +248,9 @@ el documento se fotocopia o se separan páginas sueltas).
 **#717 implementado (2026-08-01):** consumo de `extraer_tarea_id()` para el
 vínculo `CONSUMIDO` sobre el diagnóstico. Al vincular el documento producido
 de un ELABORAR de REQUERIMIENTO_SUBSANACION (`editar_tarea`), se extrae el
-texto del fichero local (`app/services/extraccion_texto_documento.py` — pypdf
-para `.pdf`, zipfile+lxml para `.odt`) y, si el código embebido acredita que
+texto del contenido del documento (`app/services/extraccion_texto_documento.py`,
+que lo lee del almacén y decide el formato por el de su fila — pypdf para PDF,
+zipfile+lxml para ODT) y, si el código embebido acredita que
 salió de *esta* tarea, se deriva el `CONSUMIDO` sobre el diagnóstico del
 trámite anterior en la fase (mismo criterio que `ContextoSubsanacion`, ahora
 compartido en `invariantes_esftt.diagnostico_tramite_anterior`). Sin token

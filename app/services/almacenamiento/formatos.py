@@ -55,6 +55,11 @@ _TIFF = _Formato('image/tiff', frozenset({'.tif', '.tiff'}))
 _XML = _Formato('application/xml', frozenset({'.xml', '.xsig'}))
 _CADES = _Formato('application/pkcs7-signature', frozenset({'.csig', '.p7s'}))
 
+# Los MIME que otros módulos reconocen al leer el contenido por el formato de su fila de
+# `ficheros` (los lectores de texto: #717 y #657). Los demás se quedan privados.
+MIME_PDF = _PDF.mime
+MIME_ODT = _ODT.mime
+
 # `mimetype` de la primera entrada de un ODF (ODT, ODS, ODG: lo admitido en §E).
 _ODF = {
     b'application/vnd.oasis.opendocument.text': _ODT,

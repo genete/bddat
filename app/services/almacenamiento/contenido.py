@@ -12,6 +12,8 @@ resto trabaja con `documentos.id` y pide el contenido por aquí:
 - `servir_descarga`: la respuesta HTTP con las cabeceras de §E.
 - `cambiar_contenido`: el documento se conserva (mismo `id`, mismos vínculos) y apunta a otro
   contenido; el cambio queda en la bitácora con el hash anterior y el nuevo (§C).
+- `copiar_documento`: un documento nuevo sobre el mismo contenido que otro, sin enviar nada
+  al almacén (la copia del anuncio edictal, #568).
 
 Sustituir con motivo (que reutilizará `cambiar_contenido`, con motivo y sellos) y aportar
 desde otro expediente llegan en el PR 6, con su interfaz.
@@ -168,6 +170,41 @@ def cambiar_contenido(documento: Documento, flujo: BinaryIO, *, via: str, usuari
         detalle={'via': via, 'sha256_anterior': anterior.contenido_sha256, 'sha256_nuevo': sha256},
     )
     return True
+
+
+def copiar_documento(origen: Documento, **datos) -> Documento:
+    """Un documento nuevo con el mismo contenido que `origen`, sin enviar nada al almacén.
+
+    Hace falta cuando un mismo contenido tiene que figurar en más de un documento (un
+    documento tiene un solo productor, así que cada tarea que lo produce necesita el suyo).
+    La copia apunta a la misma fila de `ficheros` y lleva el mismo nombre y la misma fecha
+    de fichero que el origen; si el origen es un enlace `http(s)://`, lleva la misma `url`.
+
+    `datos` son los del documento nuevo (`expediente_id`, `tipo_doc_id`,
+    `fecha_administrativa`, `asunto`…) y no pueden llevar `url`, `nombre_fichero`,
+    `fichero_ref` ni `fecha_modificacion_fichero`: los toma este módulo del origen, así
+    que ninguna copia sale sin su contenido.
+
+    El documento **no se añade a la sesión**: quien llama lo añade, como con `subir`. Que el
+    contenido se pueda usar lo comprueba `comprobar_para_vincular` al vincular la copia.
+
+    Lanza `ValueError` si `datos` trae un campo del módulo, o si el origen no tiene nada que
+    copiar: ni contenido propio ni enlace `http(s)://` (un documento `bddat://`, una ruta
+    local sin migrar o un documento vacío).
+    """
+    propios = _CAMPOS_DEL_MODULO & set(datos)
+    if propios:
+        raise ValueError(f'datos no puede llevar {sorted(propios)}: los toma el módulo del origen')
+    if origen.fichero_ref is not None:
+        return Documento(
+            **datos, nombre_fichero=origen.nombre_fichero, fichero_ref=origen.fichero_ref,
+            fecha_modificacion_fichero=origen.fecha_modificacion_fichero,
+        )
+    if (origen.url or '').startswith(('http://', 'https://')):
+        return Documento(**datos, url=origen.url, nombre_fichero=origen.nombre_fichero)
+    raise ValueError(
+        f'El documento {origen.id} no tiene nada que copiar: ni contenido propio en el '
+        f'almacén ni un enlace http(s)://')
 
 
 def leer(documento: Documento) -> ContenidoLeido:

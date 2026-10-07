@@ -361,7 +361,7 @@ def almacen_tmp(app, tmp_path_factory, _limpieza_ficheros):
     originales = (app.config.get('ALMACEN_BASE'), app.config.get('MANIFIESTOS_BASE'))
     app.config['ALMACEN_BASE'] = str(rutas.almacen)
     app.config['MANIFIESTOS_BASE'] = str(rutas.manifiestos)
-    app.config['ALMACEN_DE_PRUEBA'] = True      # lo comprueba `crear_expediente_de_prueba`
+    app.config['ALMACEN_DE_PRUEBA'] = True      # lo comprueban `crear_expediente_de_prueba` y `documento_con_contenido_de_prueba`
 
     with _contexto_de_app(app):
         with _db.engine.connect() as conexion:
@@ -526,23 +526,26 @@ def documento_con_contenido_de_prueba(nombre, contenido, **datos_documento):
     navegador, los bytes y los datos del documento (`expediente_id`, `tipo_doc_id`,
     `fecha_administrativa`, `asunto`…). Devuelve el `Documento` ya añadido a la sesión.
 
-    Hasta el corte escribe el fichero en FILESYSTEM_BASE y pone `url` con su nombre, como
-    hacían los helpers que sustituye; en el corte pasará por `subir`, sobre `almacen_tmp`.
-    No comprueba el formato por su cuenta: desde el corte lo hace `subir`, la misma puerta
-    que usa la aplicación (ADR-050 §E). Un test que quiera probar un fichero engañoso llama
-    a esa puerta, no a este helper.
+    Pasa por `subir`, la misma puerta que usa la aplicación (ADR-050 §E): el contenido
+    tiene que ser de un formato admitido (PDF `%PDF-…`, ODT con su `mimetype`…) y
+    coincidir con la extensión del nombre. Un test que quiera probar un fichero engañoso
+    llama a esa puerta, no a este helper.
 
-    Requiere `app_ctx` y `fs_tmp`.
+    Requiere `app_ctx` y un almacén de pruebas (`fs_tmp`, `almacen_tmp` o
+    `arbol_aislado`): sin él falla en voz alta, en vez de dejar el contenido y su fila de
+    `ficheros` en el almacén de tests.
     """
-    from pathlib import Path
+    from io import BytesIO
 
     from flask import current_app
 
     from app import db as _db_app
-    from app.models.documentos import Documento
+    from app.services.almacenamiento.contenido import EntradaSubida, subir
 
-    (Path(current_app.config['FILESYSTEM_BASE']) / nombre).write_bytes(contenido)
-    doc = Documento(url=nombre, **datos_documento)
+    assert current_app.config.get('ALMACEN_DE_PRUEBA'), (
+        'El documento se guarda en el almacén: pide `fs_tmp`, `almacen_tmp` o `arbol_aislado` '
+        'en el test (sin ellos el contenido y su fila quedan en el almacén de tests).')
+    [doc] = subir([EntradaSubida(BytesIO(contenido), nombre, datos_documento)])
     _db_app.session.add(doc)
     _db_app.session.flush()
     return doc

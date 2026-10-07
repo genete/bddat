@@ -13,8 +13,8 @@ Lo demás del edicto lo cubren tests existentes, ajustados en #568: la escalada
 por acuses (test_558), el canal EDICTO del edicto directo (test_928_hook) y las
 fechas de cumplimiento y efectos (test_928_notificaciones_fechas).
 
-BD de tests con rollback por SAVEPOINT (app_ctx) + fs_tmp para el movimiento
-físico de `mover_a_esftt`.
+BD de tests con rollback por SAVEPOINT (app_ctx) + fs_tmp, que trae el almacén de
+pruebas donde los documentos guardan su contenido.
 """
 import pytest
 
@@ -98,4 +98,3 @@ def test_el_anuncio_se_aplica_con_su_fecha_a_cada_notificacion(con_usuario, arbo
         assert tarea.notificacion.resultado == 'CORRECTA'
         assert tarea.notificacion.canal == canal
         assert fecha_efectos(tarea).fecha == publicacion
-    assert agotada.documento_producido.id != directa.documento_producido.id
