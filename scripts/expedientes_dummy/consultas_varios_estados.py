@@ -531,11 +531,10 @@ def main(app=None, *, efectos_desarrollo=True):
                 svc.crear_tarea(tramite_sep, cat['tarea_elaborar']),
                 f'crear_tarea ELABORAR separata {abrev}'))
             # Subir y vincular organismo a organismo, sin adelantar las tres
-            # separatas: el pool no duplica el fichero cuando el contenido ya está
-            # (mismo hash), de modo que tres DOC_SEPARATA subidos de golpe —los
-            # tres son el mismo PDF dummy— comparten un solo fichero físico, y al
-            # llevarse el primero a su carpeta ESFTT los otros dos se quedan
-            # apuntando a un fichero que ya no existe. Verificado en AT-30.
+            # separatas. Con el modelo de carpetas, tres DOC_SEPARATA subidos de
+            # golpe —el mismo PDF dummy— compartían un fichero que el primero se
+            # llevaba a su carpeta ESFTT (AT-30). Desde ADR-050 (#1007) vincular no
+            # mueve nada; el orden se queda para no cambiar la semilla.
             doc_separata_id = _comun.subir(
                 client, exp_id, 'DOC_SEPARATA', cat['doc_separata'].id, fecha_separatas,
                 f"Separata del proyecto para {org['nombre_completo']}")

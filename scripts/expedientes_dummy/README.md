@@ -91,10 +91,11 @@ Dos cosas que este escenario dejó a la vista y no son suyas:
 - **La condición del requisito `DR_NO_DUP` estaba invertida** — se exigía cuando la solicitud
   incluía DUP, y es al revés. Corregido en #863; desde entonces la declaración que presenta el
   titular se casa como un requisito más del checklist.
-- **Dos documentos de igual contenido comparten fichero en el pool** (misma `url`, misma
-  entrada física: la ingesta no reescribe un duplicado exacto), y al llevarse el primero a su
-  carpeta ESFTT el segundo se queda apuntando a un fichero que ya no existe. Por eso el script
-  sube y vincula cada separata organismo a organismo en vez de subir las tres de golpe.
+- **Dos documentos de igual contenido compartían fichero en el pool**, y al llevarse el primero
+  a su carpeta ESFTT el segundo se quedaba apuntando a un fichero que ya no existía. Por eso el
+  script sube y vincula cada separata organismo a organismo en vez de subir las tres de golpe.
+  Resuelto por ADR-050 (#1007): el contenido vive en el almacén y vincular no mueve nada. El
+  orden de subida se queda para no cambiar la semilla.
 
 ### REFORMADO_ANALISIS_Y_CONSULTAS
 
@@ -125,10 +126,10 @@ servidumbre de vuelo y el nuevo trazado pasa a cruzar la línea de ferrocarril.
 | `MARGEN_RESPUESTA_TITULAR_HABILES` | 5 | Respuesta del titular al traslado, en las dos rondas de la v2 |
 
 Necesitó un fixture nuevo, `doc_proyecto_reformado.pdf` (además del banco generado por
-`scripts/generar_documentos_dummy.py`): el pool no duplica un fichero cuando el
-contenido ya existe (mismo hash, ver el hallazgo de arriba sobre `DOC_SEPARATA`), y
-para cuando se sube el segundo `DOC_PROYECTO` el primero ya se movió a su carpeta
-ESFTT al casarse como `CONSUMIDO` del `ANALIZAR` de la v1.
+`scripts/generar_documentos_dummy.py`): con el modelo de carpetas, el pool no duplicaba un
+fichero con el mismo contenido (ver el hallazgo de arriba sobre `DOC_SEPARATA`), y para
+cuando se subía el segundo `DOC_PROYECTO` el primero ya se había movido a su carpeta ESFTT.
+Desde ADR-050 (#1007) eso ya no pasa; el fixture se queda para no cambiar la semilla.
 
 Al terminar **borra el reloj de desarrollo**: el organismo enquistado de la v1 sigue
 vencido se mire desde la fecha que se mire, y las fechas ya cerradas de la v2 no
@@ -251,7 +252,7 @@ Salvaguardas:
 
 - **Dry-run por defecto**: sin `--borrar` solo informa.
 - Un expediente solo entra si **todas** sus solicitudes están marcadas.
-- Los ficheros del pool (`FILESYSTEM_BASE/AT-N/`) solo se tocan con `--con-ficheros`.
+- Los contenidos del almacén no se tocan: solo los borra la limpieza (fase 7 de ADR-050).
 - Comprobación dinámica del esquema antes de tocar nada: si alguien añade una tabla que apunta a
   las que aquí se borran y no está contemplada, aborta en vez de dejar filas colgando.
 - Una transacción por expediente: si algo falla, ese expediente queda intacto.
@@ -263,7 +264,6 @@ venv/Scripts/python.exe scripts/expedientes_dummy/limpiar_reciclables.py
 # Borrado real (pide confirmación; --si la salta)
 venv/Scripts/python.exe scripts/expedientes_dummy/limpiar_reciclables.py --borrar
 venv/Scripts/python.exe scripts/expedientes_dummy/limpiar_reciclables.py --borrar --at 12,13 --si
-venv/Scripts/python.exe scripts/expedientes_dummy/limpiar_reciclables.py --borrar --con-ficheros --si
 ```
 
 ---
