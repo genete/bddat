@@ -152,7 +152,7 @@ no es neutro: se paga en cada migración y en cada refactor. En septiembre de
 2026 se escribieron 12.687 líneas de test frente a 11.966 de `app/`, y 151
 retoques a ficheros de test que ya existían.
 
-**Sí merece test:**
+**Sí merece test**, si algo ajeno a su línea puede romperlo (ver «¿Qué lo puede romper?»):
 
 - **Lo que calcula y decide**: cómputo de plazos y suspensiones, estado de
   dominio, invariantes, sellado. Si se equivoca, nadie lo ve en pantalla.
@@ -181,6 +181,45 @@ retoques a ficheros de test que ya existían.
   entradas. Si hacen falta varias, `parametrize`.
 - **Lo que otro fichero ya prueba del mismo servicio** desde otro issue (§5).
 - **Mocks que solo comprueban que se llamó a una función.**
+
+**¿Qué lo puede romper? Las tres preguntas** (#1007, 2026-10-07). Que un test
+pase siempre es lo normal en un detector de regresiones; lo que lo hace inútil
+es que lo único que pueda romperlo sea la edición deliberada de su propia línea.
+Esa edición ya pasa por el análisis de consumidores (`REGLAS_DESARROLLO.md`,
+«Análisis de impacto previo»), que es la guarda: quien cambia el código ve los
+tests que lo consumen.
+
+**Cuándo se aplican:** al escribir un test nuevo, y **cada vez que un cambio de
+código afecta a un test que lo consume, se rompa o no**. Un test afectado no se
+adapta por inercia: se le pasan las tres preguntas, una a una, y se decide.
+
+1. **¿Es un fallo silencioso lo que protege?** Si el fallo es ruidoso (un error,
+   un índice único, un 500, un aviso que salta a la vista), no hace falta test:
+   se verá.
+2. **¿Contra qué protege exactamente?** Contra otro código o los datos (una
+   función compartida que cambia por otro issue, un enganche en una función muy
+   tocada, un valor que llega de fuera), o solo contra la edición de su propia
+   línea. Solo lo primero justifica un test; y si ya lo cubre otro (un test por
+   rama), tampoco.
+3. **¿Se puede modificar el código para que ese uso deje de ser silencioso?** Si
+   una llamada exterior puede hacer fallar la API sin ruido, la guarda va
+   **dentro del código** (falla con aviso; no devuelve vacío), se comprueba al
+   escribirla (`REGLAS_DESARROLLO.md`, «Guardas») y el test sobra. El cambio que
+   la mete va en el mismo commit.
+
+**Decisión:** se queda · se adapta (por forma, al helper de `conftest.py`; por
+decisión, con `Decisión que cambia:`) · se retira (con `Test retirado:` y el
+porqué).
+
+**Siguen siendo test, aunque haya guarda dentro:**
+
+- **Los cálculos y las decisiones** cuyo error es un valor válido (una fecha de
+  efectos, un plazo, qué diagnóstico se consume): ninguna guarda distingue lo
+  erróneo de lo correcto sin repetir la regla, y hace falta un valor esperado
+  independiente.
+- **La excepción de severidad:** si el fallo es silencioso, irreversible y con
+  efectos legales (dejar a un interesado notificado en falso), la guarda se fija
+  con un test aunque sea improbable que se rompa.
 
 **Ante un «hueco de cobertura»** (p. ej. al retirar un seed que ejercitaba una vista),
 preguntarse primero si el código escribe o decide algo. Si es solo presentación o
@@ -213,7 +252,8 @@ un test no lo dispara; `tests/smoke/` queda fuera. El hook obliga a formularlo, 
 a que sea cierto: eso se ve en el diff. Si no sabes nombrar el fallo, no hay test.
 
 **Cuando un test se rompe sin que haya fallo real** (migración, refactor,
-cambio de firma), antes de repararlo se le pasa este criterio:
+cambio de firma), antes de repararlo se le pasan las tres preguntas de «¿Qué lo
+puede romper?» y este criterio:
 
 - **No lo supera** → se borra en ese mismo commit, diciendo por qué en el
   mensaje. Basta comprobar que no vigila nada de la lista «Sí». Si vigila algo

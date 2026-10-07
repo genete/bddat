@@ -15,6 +15,7 @@
 | Isla React (nueva o cambio) | React (islas) · `docs/guias/GUIA_REACT_ISLAS.md` |
 | Probar una guarda de plazo sin editar fechas a mano | Reloj de desarrollo |
 | Código que lee, escribe o sirve el fichero de un documento o de una plantilla | Documentos: el contenido es del almacén |
+| Cambiar código que consumen tests, o escribir una guarda o un error | Análisis de impacto previo · Guardas |
 
 ---
 
@@ -65,6 +66,14 @@ Acción para cada consumidor encontrado:
 - **Actualizar** — sigue siendo válido con el nuevo diseño
 - **Eliminar** — asumía algo que ya no existe
 - **Dejar** — zona congelada (historial, ADRs); anotarlo explícitamente
+
+**Los tests son consumidores y se revisan, no se adaptan por inercia.** Cada test de `tests/` que
+consume lo que cambia —se rompa o no— lleva en el mapa su acción, que sale de pasarle las tres
+preguntas de `tests/README.md` §3 («¿Qué lo puede romper?»): se **deja**, se **actualiza** (por forma,
+al helper de `conftest.py`; por decisión, con `Decisión que cambia:`) o se **elimina** (con
+`Test retirado:`). Cómo se presentan al usuario: `.claude/rules/colaboracion.md`. Si la respuesta a la
+tercera pregunta es que la guarda puede ir dentro del código, ese cambio se hace en el mismo commit y
+se comprueba como dice «Guardas».
 
 Presentar ese mapa como tabla al usuario y esperar confirmación **antes de implementar**.
 No hay excepciones por "es pequeño" o "es evidente".
@@ -182,11 +191,38 @@ Una variante de un estilo de párrafo existente (p. ej. el mismo título en may�
 
 ---
 
+## Guardas: dentro del código y comprobadas al escribirlas
+
+Una guarda es lo que hace fallar con aviso un uso incorrecto o un estado imposible: un `raise`, una
+restricción de BD (índice único, `CHECK`), una comprobación al entrar en una función.
+
+- **Dentro del código, no en un test.** Si una llamada exterior puede hacer que una API falle en
+  silencio, se arregla la API. En orden de preferencia: (1) que lo inválido no se pueda expresar (una
+  restricción de BD, un parámetro que el módulo fija por su cuenta); (2) que falle con aviso y con un
+  mensaje que diga qué falta (`ValueError`, como `subir`, `cambiar_contenido` y `copiar_documento`);
+  (3) lo peor, devolver vacío o `None` ante un fallo, que hace creer que no había nada. Un lector que
+  no puede leer lanza; no devuelve `''`.
+- **La condición vive donde se necesita.** Si lo correcto depende de que quien llama lo llame en el
+  momento justo («solo si el producido es nuevo»), ese acuerdo se mete en la función que lo necesita,
+  con un parámetro de valor por defecto, y no se deja en el docstring del llamador.
+- **Se explica en el docstring** qué rechaza y qué regla protege. Sustituye al test que la fijaría.
+- **Se comprueba al escribirla y al modificarla.** Una guarda que nunca se ejecuta es código sin
+  verificar. Al escribirla se ejecuta de verdad (un REPL, o un script temporal en `docs_prueba/temp/`
+  que no se commitea) y se comprueba que caza lo que debe, que deja pasar lo válido y que el mensaje se
+  entiende. El mensaje del commit dice qué se comprobó y cómo. No se convierte en test permanente
+  salvo que cumpla `tests/README.md` §3 (la puede romper otro código, es un cálculo o tiene
+  severidad).
+- **Cuanto más ruidoso es el fallo, menos falta el test.** Un error que salta a la vista no necesita
+  vigilante; el que no se ve, sí.
+
+---
+
 ## Tests
 
 Cómo ejecutar la suite, qué protege cada tipo de test, cuándo escribir uno (y
 cuándo no) y reglas al escribirlos:
-[`tests/README.md`](../../tests/README.md).
+[`tests/README.md`](../../tests/README.md). Antes de escribir un test, o de adaptar uno que consume
+lo que cambia: las tres preguntas de §3. Y antes de una guarda, la sección «Guardas».
 
 ### Smoke tests pytest (ADR-019 Fase 1)
 

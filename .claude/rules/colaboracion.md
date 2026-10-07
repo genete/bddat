@@ -10,6 +10,7 @@ Criterios de trabajo acumulados en sesiones anteriores. Las reglas de proceso (g
 - **Pensar antes de ejecutar literalmente**: inferir el objetivo real y ofrecer alternativas superiores (p. ej. buscar la API subyacente antes de hacer scraping). No preguntar «¿quieres que haga X?» si X es lo que acaba de pedir.
 - **Reflexión conceptual** («¿me equivoco conceptualmente?»): razonar en prosa con las capas ley / modelo / mapeo y el supuesto que provocó el error. Las comprobaciones de código son evidencia de apoyo, no el cuerpo de la respuesta.
 - **Varios «[No preference]» seguidos** en decisiones que importan: puede haber un encuadre propio que no encaja en las opciones. Preguntar «¿o el encuadre es otro?» y, si llega, rehacer el análisis diciendo qué propuestas anteriores caen.
+- **Los tests que consumen lo que cambia se presentan uno a uno** (Carlos, 2026-10-07): cada uno con las tres preguntas de `tests/README.md` §3 respondidas y una propuesta (se queda, se adapta o se retira, con su línea de commit). Decide Carlos y solo entonces se toca el test. El alcance lo da la tabla de consumidores —todo test que llama al código que cambia, se rompa o no—, no «los que pasan por el helper»: un test que llama a una función cuya firma o guardas cambian es consumidor aunque no use el helper.
 - No releer ficheros que ya están en el contexto de la sesión.
 
 ## Qué no asumir
