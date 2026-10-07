@@ -30,7 +30,7 @@ cuello de botella real antes de decidir el despliegue.
 | Estadísticas supervisor | Queries por expediente | ✅ `construir_arbol` por expediente, agrega en Python | Renderiza panel |
 | Búsqueda global / typeahead | ✅ `ILIKE '%q%'` (sin índice B-tree posible) | Compone y serializa | Debounce + pintado |
 | Formularios (POST) | INSERT/UPDATE | Validación servidor + invariantes | ✅ Recopilación, validación ligera, payload |
-| Subida de documentos | Metadatos | ✅ Multipart + escritura a `FILESYSTEM_BASE` — I/O-bound | Envío |
+| Subida de documentos | Metadatos | ✅ Multipart + escritura al almacén (`ALMACEN_BASE`, ADR-050) — I/O-bound | Envío |
 | Estáticos (bundles, CSS) | — | ✅ En dev los sirve Flask | Ejecuta |
 
 **Diagnóstico:** el camino de lectura interactiva está bien equilibrado
@@ -123,7 +123,7 @@ Condicionantes específicos de esta vía:
 - **Exposición del puerto a la LAN:** WSL2 vive tras NAT propio. Requiere modo
   *mirrored networking* (W11) o `portproxy` persistente para que los clientes
   lleguen a gunicorn.
-- **`FILESYSTEM_BASE`:** el montaje CIFS del share corporativo (ver §6, común
+- **`ALMACEN_BASE`** (el almacén de ADR-050, antes `FILESYSTEM_BASE`): el montaje CIFS del share corporativo (ver §6, común
   a ambas vías) tiene aquí una fragilidad añadida: debe hacerse *dentro* de la
   VM de WSL2, cuyo propio ciclo de vida ya depende de tareas programadas
   artesanales — un eslabón más en la cadena de arranque.

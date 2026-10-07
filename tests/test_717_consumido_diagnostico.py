@@ -7,7 +7,7 @@ diagnóstico anterior (`diagnostico_tramite_anterior`) depende de relaciones
 reales (fase.tramites, tramite.tareas) que un stub no reproduce fielmente.
 
 El documento PRODUCIDO del ELABORAR es un .odt real en el almacén de pruebas (fixture
-`fs_tmp`, que trae `almacen_tmp`): la extracción de texto
+`almacen_tmp`): la extracción de texto
 (`extraccion_texto_documento.extraer_texto`) lee el contenido de verdad, no se
 mockea — es justo lo que hay que probar (#182 embebe el código como texto, no
 como metadato, R10).
@@ -91,7 +91,7 @@ def _montar_cadena(resultado_anterior='desfavorable', codigo_tramite_anterior='A
 
 class TestHook717Derivacion:
 
-    def test_segunda_vuelta_consume_el_diagnostico_de_la_primera_no_el_original(self, app_ctx, fs_tmp):
+    def test_segunda_vuelta_consume_el_diagnostico_de_la_primera_no_el_original(self, app_ctx, almacen_tmp):
         """Encadenamiento real: el ELABORAR de la vuelta 2 consume el ANALIZAR
         de la vuelta 1 (REQUERIMIENTO_SUBSANACION anterior), no el de
         ANÁLISIS_DOCUMENTAL — mismo criterio que ContextoSubsanacion."""
@@ -129,7 +129,7 @@ class TestHook717Derivacion:
 
 class TestIntegracionEditarTarea:
 
-    def test_primer_guardado_del_producido_deriva_el_consumido(self, app_ctx, fs_tmp):
+    def test_primer_guardado_del_producido_deriva_el_consumido(self, app_ctx, almacen_tmp):
         from app.services import mutaciones_arbol as svc
         from app.services.codigo_seguimiento import componer_codigo
 

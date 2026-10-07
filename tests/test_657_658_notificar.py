@@ -10,8 +10,8 @@ crea la fila con cualquier canal (no solo el parseable) y **nunca escribe
 propios de #928 (previos, sede, desvincular, rol incoherente) están en
 test_928_hook_notificar.py.
 
-Contra la BD de tests (app_ctx con rollback por SAVEPOINT) + fs_tmp (#674), que trae
-el almacén de pruebas donde los documentos guardan su contenido.
+Contra la BD de tests (app_ctx con rollback por SAVEPOINT) + almacen_tmp (#674,
+ADR-050), el almacén de pruebas donde los documentos guardan su contenido.
 El PDF es sintético (reportlab), misma receta que
 test_655_parser_justificante_notifica.py — no se comitea ningún justificante
 real de terceros. Los avisos del hook quedan en bitácora (D17), que necesita un
@@ -105,7 +105,7 @@ def _producir(tarea, doc):
 
 class TestHookNotificarProducido:
 
-    def test_justificante_notifica_reconocido_crea_fila_sin_resultado(self, con_usuario, fs_tmp):
+    def test_justificante_notifica_reconocido_crea_fila_sin_resultado(self, con_usuario, almacen_tmp):
         """El parseo solo aporta la remesa: el resultado lo fija el usuario (D2)."""
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
@@ -123,7 +123,7 @@ class TestHookNotificarProducido:
         assert notif.resultado is None
         assert notif.documento_id == doc.id
 
-    def test_sir_sin_fila_previa_crea_fila(self, con_usuario, fs_tmp):
+    def test_sir_sin_fila_previa_crea_fila(self, con_usuario, almacen_tmp):
         """Antes (#657) SIR no podía crear la fila: faltaba la fecha NOT NULL."""
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
@@ -135,7 +135,7 @@ class TestHookNotificarProducido:
         assert notif.canal == 'SIR'
         assert notif.documento_id == doc.id
 
-    def test_tipo_doc_sin_canal_no_crea_fila(self, con_usuario, fs_tmp):
+    def test_tipo_doc_sin_canal_no_crea_fila(self, con_usuario, almacen_tmp):
         """Producido de un tipo ajeno a los justificantes con canal: el hook no
         registra nada (la fila sigue sin canal), ni siquiera intenta parsear."""
         tarea = _tarea_notificar()
@@ -148,7 +148,7 @@ class TestHookNotificarProducido:
         assert notif.canal is None
         assert not notif.registrada
 
-    def test_con_fila_previa_no_toca_resultado_ni_remesa(self, con_usuario, fs_tmp):
+    def test_con_fila_previa_no_toca_resultado_ni_remesa(self, con_usuario, almacen_tmp):
         """Con fila previa, el hook solo sigue al producido (documento_id)."""
         tarea = _tarea_notificar()
         exp_id = tarea.tramite.fase.solicitud.expediente_id
@@ -167,7 +167,7 @@ class TestHookNotificarProducido:
 
 class TestHookNotificarCotejo:
 
-    def test_remesa_no_coincide_advierte_sin_bloquear(self, con_usuario, fs_tmp):
+    def test_remesa_no_coincide_advierte_sin_bloquear(self, con_usuario, almacen_tmp):
         """El riesgo real que motivó #658: justificante de otro expediente
         asociado a esta tarea. No bloquea — aviso, y la remesa no se pisa."""
         tarea = _tarea_notificar()
@@ -185,7 +185,7 @@ class TestHookNotificarCotejo:
         db.session.refresh(notif)
         assert notif.identificador_envio == 'REMESA-DISTINTA'
 
-    def test_canal_no_coincide_sin_parser_tambien_avisa(self, con_usuario, fs_tmp):
+    def test_canal_no_coincide_sin_parser_tambien_avisa(self, con_usuario, almacen_tmp):
         """El cotejo de canal no depende de que haya parser — el canal se deriva
         del tipo de documento, siempre disponible."""
         tarea = _tarea_notificar()

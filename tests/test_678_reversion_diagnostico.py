@@ -124,8 +124,8 @@ class TestRevertirDiagnosticoCircuito:
         nueva, así que dos llamadas nunca coinciden— pero se conserva para no
         tocar a los llamadores.
 
-        Requiere `fs_tmp` en el test: el expediente nace por la vía real y esa
-        escribe el documento de solicitud a disco.
+        Requiere `almacen_tmp` en el test: el expediente nace por la vía real y esa
+        sube el documento de solicitud al almacén.
         """
         from app import db as _db
         from tests.conftest import ArbolESFTT
@@ -151,7 +151,7 @@ class TestRevertirDiagnosticoCircuito:
             Documento.query.filter_by(id=doc_id).delete()
         db.session.commit()
 
-    def test_revertir_borra_diagnostico_documento_y_vinculo(self, app_ctx, fs_tmp):
+    def test_revertir_borra_diagnostico_documento_y_vinculo(self, app_ctx, almacen_tmp):
         from app.services.diagnosticos import crear_diagnostico, revertir_diagnostico
         from app.models.diagnosticos import Diagnostico
         from app.models.documentos import Documento
@@ -172,7 +172,7 @@ class TestRevertirDiagnosticoCircuito:
         finally:
             self._limpiar(tarea.id, doc_id, diag_id)
 
-    def test_revertir_consumido_no_borra_nada(self, app_ctx, fs_tmp):
+    def test_revertir_consumido_no_borra_nada(self, app_ctx, almacen_tmp):
         """Puerta cerrada (escalón 3): si otra tarea consumió el documento, la
         reversión no toca nada — ni el diagnóstico ni el vínculo PRODUCIDO."""
         from app import db

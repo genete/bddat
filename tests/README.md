@@ -6,7 +6,7 @@ donde nacieron —aquí se resumen y se enlazan—:
 | Qué | Fuente de verdad |
 |---|---|
 | Dónde busca `pytest` a secas (`testpaths`) | [`pytest.ini`](../pytest.ini) |
-| Fixtures, aislamiento por SAVEPOINT, `fs_tmp`, `almacen_tmp`, `ArbolESFTT` | docstrings de [`conftest.py`](conftest.py) |
+| Fixtures, aislamiento por SAVEPOINT, `almacen_tmp`, `ArbolESFTT` | docstrings de [`conftest.py`](conftest.py) |
 | Construcción y semilla de la BD de tests | [`scripts/preparar_bd_test.py`](../scripts/preparar_bd_test.py), [`scripts/semilla_test.py`](../scripts/semilla_test.py) |
 | Variables de entorno | [`.env.example`](../.env.example) |
 | Convención de smoke tests | [`REGLAS_DESARROLLO.md` §Tests](../docs/guias/REGLAS_DESARROLLO.md) · [ADR-019](../docs/decisiones/ADR-019-tests-ui-estrategia-fases.md) |
@@ -20,8 +20,8 @@ donde nacieron —aquí se resumen y se enlazan—:
 La suite corre contra **su propia base de datos**, nunca la de desarrollo (#849):
 
 ```bash
-# .env: TEST_DATABASE_URL, TEST_FILESYSTEM_BASE, TEST_PLANTILLAS_BASE,
-#       TEST_ALMACEN_BASE, TEST_MANIFIESTOS_BASE (ver .env.example)
+# .env: TEST_DATABASE_URL, TEST_PLANTILLAS_BASE, TEST_ALMACEN_BASE,
+#       TEST_MANIFIESTOS_BASE (ver .env.example)
 python scripts/preparar_bd_test.py --recrear   # migraciones + semilla; repetir tras cada migración nueva
 pytest                                         # suite completa (~30 s)
 pytest tests/smoke                             # solo smoke
@@ -312,10 +312,6 @@ y ninguno decía cuál, así que el test no podía cumplir su papel de aviso.
 4. **Aislamiento:**
    - BD: `app_ctx` (o `arbol_esftt` / `arbol_aislado`, que lo traen) — todo se
      revierte al acabar, aunque la aplicación haga `commit()`.
-   - Disco: `fs_tmp` queda hasta el PR 5 de #1007 y solo porque pide además
-     `almacen_tmp`: tras el corte ninguna ruta del código escribe ficheros en
-     `FILESYSTEM_BASE` (alta, escritos, certificados y pool van al almacén). El
-     SAVEPOINT no revierte el disco.
    - Almacén de documentos (ADR-050): `almacen_tmp` en cuanto el código suba un
      documento (`contenido.subir`) o escriba un manifiesto. Redirige `ALMACEN_BASE` y
      `MANIFIESTOS_BASE` a un temporal ya inicializado (los dos con su marca de raíz:

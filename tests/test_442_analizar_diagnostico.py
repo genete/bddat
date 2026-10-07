@@ -238,8 +238,8 @@ class TestCrearDiagnosticoCircuito:
         nueva, así que dos llamadas nunca coinciden— pero se conserva para no
         tocar a los llamadores.
 
-        Requiere `fs_tmp` en el test: el expediente nace por la vía real y esa
-        escribe el documento de solicitud a disco.
+        Requiere `almacen_tmp` en el test: el expediente nace por la vía real y esa
+        sube el documento de solicitud al almacén.
         """
         from app import db as _db
         from tests.conftest import ArbolESFTT
@@ -270,7 +270,7 @@ class TestCrearDiagnosticoCircuito:
             Bitacora.query.filter_by(id=bid).delete()
         db.session.commit()
 
-    def test_crea_documento_bddat_y_diagnostico(self, app_ctx, fs_tmp):
+    def test_crea_documento_bddat_y_diagnostico(self, app_ctx, almacen_tmp):
         from app.services.diagnosticos import crear_diagnostico
         from app.models.diagnosticos import Diagnostico
 
@@ -296,7 +296,7 @@ class TestCrearDiagnosticoCircuito:
         finally:
             self._limpiar(tarea.id, doc_id, diag_id)
 
-    def test_justificacion_registra_bitacora_de_escape(self, app_ctx, fs_tmp):
+    def test_justificacion_registra_bitacora_de_escape(self, app_ctx, almacen_tmp):
         from unittest.mock import patch
         from app.models.usuarios import Usuario
         from app.services.diagnosticos import crear_diagnostico

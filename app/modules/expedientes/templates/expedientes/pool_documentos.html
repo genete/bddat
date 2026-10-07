@@ -303,8 +303,6 @@
         <td>
           {% if item.extension %}
           <span class="badge border border-secondary text-secondary">.{{ item.extension }}</span>
-          {% elif doc.tipo_contenido %}
-          <span class="badge bg-secondary small">{{ doc.tipo_contenido }}</span>
           {% else %}
           <span class="text-secondary">—</span>
           {% endif %}
@@ -466,8 +464,7 @@
         <div id="subir-paso-elegir">
           <p class="text-secondary small">
             Selecciona uno o varios ficheros de tu equipo. Se copian al pool del
-            expediente — indiferente a si el origen es tu disco local o una carpeta
-            de red ya montada.
+            expediente.
           </p>
           <input type="file" class="form-control" id="subir-input-ficheros" multiple>
           <div id="subir-error-elegir" class="alert alert-danger d-none mt-2"></div>

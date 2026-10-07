@@ -39,7 +39,7 @@
 
 | Modelo | Tabla | Propósito |
 |---|---|---|
-| Documento | `documentos` | Pool puro de archivos del expediente. URL puede ser ruta local, http(s) o `bddat://` (ADR-006); desde #1007 es nullable (NULL = contenido propio en el almacén, tras el corte del PR 4). Único FK de dominio = `expediente_id`. `tipo_doc_id`, `fecha_administrativa` (nullable), `prioridad`. Desde #1007 también `nombre_fichero`, `fichero_ref` (FK a `ficheros`, §10.6.4) y `fecha_modificacion_fichero`; el nombre que se enseña sale de `nombre_visible()` |
+| Documento | `documentos` | Pool puro de archivos del expediente. Contenido propio en el almacén (`fichero_ref`, `url` NULL) o una URL `http(s)://` / `bddat://` (ADR-006), nunca las dos cosas (CHECK, #1007); la ruta local se retiró con el modelo de rutas (#1007), y con ella `hash_md5` y `tipo_contenido`. Único FK de dominio = `expediente_id`. `tipo_doc_id`, `fecha_administrativa` (nullable), `prioridad`. Desde #1007 también `nombre_fichero`, `fichero_ref` (FK a `ficheros`, §10.6.4) y `fecha_modificacion_fichero`; el nombre que se enseña sale de `nombre_visible()` |
 | Fichero | `ficheros` | Una fila por contenido distinto guardado en el almacén (ADR-050 §B, §C; #1007): `ref` (PK, opaca), `contenido_sha256` (único), `tamano`, `formato` (MIME detectado por el contenido), `estado` (OK / CORRUPTO / AUSENTE), `fecha_creacion`, `fecha_verificacion`, `fecha_sin_referencias`. Solo la lee y la escribe el subsistema de almacenamiento |
 | ReformadoProyecto | `reformados_proyecto` | El corte que parte el proyecto en versiones: `documento_id` (UNIQUE, el ancla) + `origen` VOLUNTARIO/REQUERIDO. Una versión es el tramo entre cortes (ADR-044 §C) |
 | DocumentoTarea | `documentos_tarea` | Vínculo N:M con rol (ver §1.1) |
@@ -406,7 +406,7 @@ TRAMITADOR puede editar cualquier expediente, no solo el asignado. La traza qued
 | 003 | ELABORAR fusiona REDACTAR+FIRMAR | Una sola tarea atómica para borrador+firma. Documento producido = el firmado | Implementado (#370) |
 | 004 | Eliminación de INCORPORAR | ESPERAR_PLAZO recibe el documento externo directamente | Implementado (#370) |
 | 005 | ANALIZAR siempre produce DIAGNOSTICO | Documento interno `bddat://diagnosticos/<id>` con resultado favorable/condicionado/desfavorable | Decidida — implementada en #392 |
-| 006 | URI `bddat://` para documentos internos | `documentos.url` admite ruta local / http(s) / bddat://. `resolver_url()` devuelve dict ORM | Implementada (#365, enmendada #425) |
+| 006 | URI `bddat://` para documentos internos | `documentos.url` admite http(s) / bddat:// (la ruta local la retiró ADR-050, #1007). `resolver_url()` devuelve dict ORM | Implementada (#365, enmendada #425) |
 | 007 | Eliminar whitelists E-S-F-T | Eliminadas 3 tablas whitelist. Verbos INICIAR/FINALIZAR retirados del motor — invariantes los cubren | Adoptada (#387) |
 | 008 | `notificaciones` como documento vitaminado | Tabla con `resultado`/`numero_intento`/`fecha_intento` para tarea NOTIFICAR | Adoptada (#418) |
 | 009 | Imágenes en plantillas | Logotipos incrustados de fábrica; imágenes dinámicas con `img()` en Jinja2 | Implementada (#297) |
@@ -575,7 +575,7 @@ Dependencias principales (de `package.json`): React 18, `@xyflow/react`, `d3-dis
 | `app/services/almacenamiento/manifiestos.py` | Manifiesto por expediente (ADR-050 §H, N009) en `MANIFIESTOS_BASE/<número entre mil>/AT-N.json`: de cada documento, id, nombre, carpeta ESFTT, `ref` y hash. Solo se reescribe si cambia. `inicializar(raiz)` crea la marca `MANIFIESTOS.txt`, sin la cual no escribe nada. Lo lanza `flask manifiestos [AT-N]` (`app/cli/manifiestos.py`); la programación llega en la fase 2b (#1008) |
 | `exportador/` (raíz del repo) | Reconstruye el árbol de carpetas legible a partir de los manifiestos, sin BDDAT: biblioteca estándar y la librería del almacén, nada de `app/`. Recibe de quien lo llama cómo leer el almacén. Comprueba el hash al copiar, sanea nombres, resuelve choques y longitud de ruta. Línea de órdenes: `python -m exportador --almacen … --destino … MANIFIESTO…` |
 
-Configuración: `ALMACEN_BASE` y `MANIFIESTOS_BASE` (y sus `TEST_*`), en `app/config.py` y `.env.example`. Tests: `tests/test_1007_*.py`, con la fixture `almacen_tmp` y el test permanente `test_1007_subsistema_almacenamiento.py` (solo este subsistema ve `ficheros` y la `ref`). Hasta el corte del PR 4 ningún escritor de documentos usa el módulo de contenido, así que los manifiestos listan los documentos de ruta local sin `ref` y el exportador los informa como «sin contenido en el almacén»; el modelo de rutas sigue vivo hasta el PR 5.
+Configuración: `ALMACEN_BASE` y `MANIFIESTOS_BASE` (y sus `TEST_*`), en `app/config.py` y `.env.example`. Tests: `tests/test_1007_*.py`, con la fixture `almacen_tmp` y el test permanente `test_1007_subsistema_almacenamiento.py` (solo este subsistema ve `ficheros` y la `ref`). Desde el corte (PR 4) todos los escritores de documentos usan el módulo de contenido, y el modelo de rutas se retiró en el PR 5: `rutas_esftt.py` conserva solo `ruta_esftt_documento`, la carpeta que el manifiesto da a cada documento.
 
 ---
 

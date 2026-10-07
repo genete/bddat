@@ -1,14 +1,9 @@
-import os
-import re
+import io
 
 from sqlalchemy import event
 from sqlalchemy.orm import validates
 
 from app import db
-
-# Letra de unidad de Windows, con barra o sin ella (`C:/…`, `C:doc.pdf`): en
-# ningún caso es relativa a FILESYSTEM_BASE (#953).
-_PREFIJO_UNIDAD = re.compile(r'^[A-Za-z]:')
 
 
 class Documento(db.Model):
@@ -35,7 +30,7 @@ class Documento(db.Model):
 
     CAMPO TIPO_DOC_ID:
         - FK a TIPOS_DOCUMENTOS. Clasificación semántica de negocio del documento.
-        - Distinta del tipo MIME (tipo_contenido): indica qué ES el documento, no su formato.
+        - Distinta del formato del fichero (ficheros.formato): indica qué ES el documento.
         - Ejemplos: INFORME_ORGANISMO, RESOLUCION, PODER_REPRESENTACION, ALEGACION…
         - OTROS (id=1) es el cajón de sastre por defecto (server_default='1').
         - Usado por el motor de reglas con el criterio EXISTE_DOCUMENTO_TIPO.
@@ -60,23 +55,18 @@ class Documento(db.Model):
           fecha la porta el justificante de notificación, que es otro documento.
 
     CAMPO URL:
-        Admite tres esquemas:
-        - Ruta local (sin '://'): fichero en el servidor de archivos, SIEMPRE
-          relativa a FILESYSTEM_BASE, nunca absoluta (ADR-032, corrección de
-          la regresión de #180). @validates('url') rechaza ruta absoluta o
-          que escape de FILESYSTEM_BASE, con el mismo veredicto en cualquier
-          sistema, y guarda '/' como separador (#953). ruta_absoluta()
-          resuelve al momento de uso.
+        Solo para los documentos sin contenido propio (ADR-006, ADR-050 §C):
         - 'http://' / 'https://': recurso externo.
         - 'bddat://<recurso>/<id>': registro interno de BD sin fichero físico.
           Tablas activas: diagnosticos, certificados.
           fecha_administrativa es independiente del esquema de url: la fija
           la naturaleza jurídica del documento, no el mecanismo de
           almacenamiento (#574).
-        El helper resolver_url() despacha al mecanismo correcto según el esquema.
-        NULLABLE desde ADR-050 (#1007): un documento con contenido propio en el
-        almacén no tiene url, sino fichero_ref. Hasta el corte (#1007, PR 4)
-        todos siguen teniéndola.
+        NULL en un documento con contenido propio en el almacén, que tiene
+        fichero_ref (CHECK: una cosa o la otra, nunca las dos ni ninguna). La
+        ruta local a una carpeta de red se retiró con el modelo de rutas (#1007,
+        PR 5): @validates('url') rechaza cualquier otro esquema.
+        El helper resolver_url() despacha según lo que tenga el documento.
 
     CAMPOS DEL ALMACÉN (ADR-050 §B, §C — #1007):
         - nombre_fichero: nombre visible y de descarga. Del fichero que viene de
@@ -88,15 +78,6 @@ class Documento(db.Model):
         - fecha_modificacion_fichero: cuándo cambió por última vez el fichero del
           documento (subida, regeneración, sustitución, guardado desde
           LibreOffice). No cambia al editar los datos del documento.
-
-    CAMPO HASH_MD5:
-        - Verificación de integridad del archivo
-        - Detección de duplicados
-        - Ingesta multipart al pool (#666, ADR-032 §4): se calcula ANTES de
-          almacenar — determina el nombre de fichero en AT-N/pool/
-          (<prefijo-hash>_<nombre-original>).
-        - NULLABLE: documentos que no entraron por subida multipart
-          (registro in situ, URL externa) no lo tienen calculado.
 
     CAMPO PRIORIDAD:
         - 0 = no prioritario (defecto)
@@ -137,7 +118,6 @@ class Documento(db.Model):
     __table_args__ = (
         db.Index('idx_documentos_expediente', 'expediente_id'),
         db.Index('idx_documentos_fecha_administrativa', 'fecha_administrativa'),
-        db.Index('idx_documentos_hash', 'hash_md5'),
         db.Index('idx_documentos_tipo_doc', 'tipo_doc_id'),
         db.Index('idx_documentos_fichero_ref', 'fichero_ref'),
         {'schema': 'public'}
@@ -169,7 +149,7 @@ class Documento(db.Model):
     url = db.Column(
         db.Text,
         nullable=True,
-        comment='http(s):// o bddat://<recurso>/<id> (ADR-006); ruta local hasta el corte de ADR-050 (#1007). NULL si tiene contenido propio (fichero_ref)'
+        comment='http(s):// o bddat://<recurso>/<id> (ADR-006). NULL si tiene contenido propio (fichero_ref)'
     )
 
     nombre_fichero = db.Column(
@@ -191,12 +171,6 @@ class Documento(db.Model):
         comment='Cuándo cambió por última vez el fichero del documento (getlastmodified del WebDAV, ADR-050 §D)'
     )
 
-    tipo_contenido = db.Column(
-        db.Text,
-        nullable=True,
-        comment='Tipo MIME del archivo (ej: application/pdf; algunos MIME modernos como .docx superan 50 caracteres, #804)'
-    )
-
     fecha_administrativa = db.Column(
         db.Date,
         nullable=True,
@@ -216,12 +190,6 @@ class Documento(db.Model):
         comment='0 = no prioritario. >0 = prioritario (recurso, respuesta desfavorable, alegación urgente). Validación de rango solo en frontend.'
     )
 
-    hash_md5 = db.Column(
-        db.String(32),
-        nullable=True,
-        comment='Hash MD5 para verificación de integridad y detección de duplicados'
-    )
-    
     observaciones = db.Column(
         db.String(2000),
         nullable=True,
@@ -234,28 +202,21 @@ class Documento(db.Model):
 
     @validates('url')
     def _validar_url(self, key, value):
-        """Mismo veredicto en Windows y en Linux (#953): no usa `os.path`, cuyas
-        reglas dependen del sistema del servidor (en Linux, `C:/…` no es absoluta
-        y `..\\` no es un ascenso).
+        """Solo `http(s)://` y `bddat://` (ADR-006); `None` en un documento con
+        contenido propio.
 
-        La ruta local se guarda con `/`, el formato que ya usan todos los que
-        escriben `url`: una `\\` se convierte en `/` en vez de rechazarse, así
-        quien pega una ruta relativa copiada de Windows la ve guardada bien."""
+        Rechaza cualquier otra cosa, y en particular una ruta local: el modelo de
+        rutas se retiró (ADR-050, #1007 PR 5) y un documento que apuntara a una
+        carpeta no tendría contenido que leer ni servir. Vive en el modelo porque
+        es la única puerta por la que pasan todos los que escriben `url`."""
         if value is None:
             return value
-        if '://' in value:
-            if not value.startswith(('http://', 'https://', 'bddat://')):
-                raise ValueError(f'Esquema de URL no admitido: {value!r}')
-            return value
-        # Esquema local (ADR-032): siempre relativa a FILESYSTEM_BASE, nunca absoluta.
-        canonica = value.replace('\\', '/')
-        if canonica.startswith('/') or _PREFIJO_UNIDAD.match(canonica):
+        if not value.startswith(('http://', 'https://', 'bddat://')):
             raise ValueError(
-                f'Ruta local debe ser relativa a FILESYSTEM_BASE, no absoluta: {value!r}'
+                f'Esquema de URL no admitido: {value!r}. Solo http(s):// o bddat://; '
+                'el fichero de un documento se guarda en el almacén, no se apunta por su ruta.'
             )
-        if '..' in canonica.split('/'):
-            raise ValueError(f'Ruta local no puede salir de FILESYSTEM_BASE: {value!r}')
-        return canonica
+        return value
 
     @validates('fecha_administrativa')
     def _validar_fecha_administrativa(self, key, value):
@@ -276,27 +237,16 @@ class Documento(db.Model):
             )
         return value
 
-    def ruta_absoluta(self) -> str:
-        """Resuelve la ruta local (relativa a FILESYSTEM_BASE) en ruta absoluta (ADR-032).
-
-        Solo válido para el esquema local (sin '://').
-        """
-        from flask import current_app
-        base = current_app.config.get('FILESYSTEM_BASE', '')
-        if not base:
-            raise RuntimeError('FILESYSTEM_BASE no está configurado')
-        base_norm = os.path.normpath(os.path.abspath(base))
-        ruta_abs = os.path.normpath(os.path.join(base_norm, (self.url or '').replace('/', os.sep)))
-        if ruta_abs != base_norm and not ruta_abs.startswith(base_norm + os.sep):
-            raise ValueError(f'Ruta fuera de FILESYSTEM_BASE: {self.url!r}')
-        return ruta_abs
-
     def resolver_url(self):
-        """Despacha según el esquema de url (ADR-006).
+        """Despacha según lo que tenga el documento (ADR-006, ADR-050 §B).
 
-        - Ruta local  → file object abierto en modo binario (ruta resuelta vía ruta_absoluta(), ADR-032)
-        - http(s)://  → requests.Response
-        - bddat://    → dict completo del registro ORM destino
+        - bddat://        → dict completo del registro ORM destino
+        - http(s)://      → la respuesta de `urllib.request.urlopen`
+        - contenido propio → flujo binario con el contenido, leído por el módulo de
+          contenido (`contenido.leer`, que comprueba el hash). Lanza lo que lanza
+          `leer`: `ContenidoNoUtilizable` o `AlmacenNoDisponible`.
+
+        Lanza `ValueError` si el documento no tiene ni url ni contenido propio.
         """
         url = self.url or ''
         if url.startswith('bddat://'):
@@ -304,7 +254,10 @@ class Documento(db.Model):
         if url.startswith(('http://', 'https://')):
             import urllib.request
             return urllib.request.urlopen(url)
-        return open(self.ruta_absoluta(), 'rb')
+        from app.services.almacenamiento import contenido
+        if not contenido.tiene_contenido_propio(self):
+            raise ValueError(f'El documento {self.id} no tiene url ni contenido propio')
+        return io.BytesIO(contenido.leer(self).datos)
 
     def _resolver_bddat(self, url: str) -> dict:
         partes = url[len('bddat://'):].split('/')
@@ -344,11 +297,10 @@ class Documento(db.Model):
         Un único sitio para lo que antes calculaban nueve (listados, JSON, inspector,
         huérfanos…), cada uno con su variante. Orden:
 
-        1. `nombre_fichero`, si lo tiene (el original saneado, sin el prefijo MD5 del
-           pool).
+        1. `nombre_fichero`, si lo tiene (el original saneado).
         2. `bddat://`: no hay fichero al que dar nombre (el último tramo sería solo
            el id, «16»): el nombre del tipo de documento.
-        3. El último tramo de la url, sin `?` ni `#`.
+        3. El último tramo de la url `http(s)://`, sin `?` ni `#`.
         4. `Documento <id>`.
 
         Es método del modelo, y no una función suelta, para usarlo también desde
@@ -359,7 +311,7 @@ class Documento(db.Model):
         url = self.url or ''
         if url.startswith('bddat://'):
             return self.tipo_doc.nombre if self.tipo_doc else f'Documento {self.id}'
-        filename = url.replace('\\', '/').rsplit('/', 1)[-1]
+        filename = url.rsplit('/', 1)[-1]
         filename = filename.split('?')[0].split('#')[0]
         return filename or f'Documento {self.id}'
 

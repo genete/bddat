@@ -13,8 +13,8 @@ Tests #928 (N1, 928c) — el acto de notificar sin fechas en la fila: hook de
   - PDF polivalente (§9): el mismo fichero como DISPOSICION y como NOTIFICA.
   - Sin N+1 en el árbol con varias NOTIFICAR (#907).
 
-BD de tests con rollback por SAVEPOINT (app_ctx) + fs_tmp, que trae el almacén de
-pruebas donde los documentos guardan su contenido. Los endpoints HTTP están en
+BD de tests con rollback por SAVEPOINT (`arbol_aislado`, que trae `almacen_tmp`: el
+almacén de pruebas donde los documentos guardan su contenido). Los endpoints HTTP están en
 test_928_api_notificar.py.
 """
 import pytest
@@ -52,7 +52,7 @@ def _tarea_notificar(arbol, codigo_tramite='NOTIFICACION'):
 
 
 def _doc(tarea, codigo, nombre=None, contenido=b'%PDF-1.4 justificante'):
-    """Documento del pool con fichero real (mover_a_esftt lo mueve al vincular)."""
+    """Documento del pool con contenido real en el almacén (vincularlo no mueve nada)."""
     tipo = TipoDocumento.query.filter_by(codigo=codigo).first()
     assert tipo is not None, f'la semilla debe traer el tipo de documento {codigo}'
     return documento_con_contenido_de_prueba(
@@ -87,7 +87,7 @@ def _fila(tarea):
     ('JUSTIFICANTE_SIR', 'PRODUCIDO', 'SIR'),
 ])
 def test_hook_registra_sin_resultado_con_cada_tipo_con_canal(
-        con_usuario, arbol_aislado, fs_tmp, codigo, rol, canal):
+        con_usuario, arbol_aislado, codigo, rol, canal):
     tarea = _tarea_notificar(arbol_aislado)
     doc = _doc(tarea, codigo)
     assert not _fila(tarea).registrada
@@ -105,7 +105,7 @@ def test_hook_registra_sin_resultado_con_cada_tipo_con_canal(
     assert notif.documento_id == (doc.id if rol == 'PRODUCIDO' else None)
 
 
-def test_hook_sede_no_registra(con_usuario, arbol_aislado, fs_tmp):
+def test_hook_sede_no_registra(con_usuario, arbol_aislado):
     """La sede no es una notificación (ADR-052 §E): no fija el canal; lo fija
     el primer acuse postal."""
     tarea = _tarea_notificar(arbol_aislado)
@@ -118,7 +118,7 @@ def test_hook_sede_no_registra(con_usuario, arbol_aislado, fs_tmp):
     assert not _fila(tarea).registrada
 
 
-def test_hook_anuncio_solo_es_edicto_directo(con_usuario, arbol_aislado, fs_tmp):
+def test_hook_anuncio_solo_es_edicto_directo(con_usuario, arbol_aislado):
     """Sin ningún intento previo, el anuncio publicado da canal EDICTO (#568,
     ADR-052 §E); tras intentos postales el canal se queda POSTAL.
 
@@ -137,7 +137,7 @@ def test_hook_anuncio_solo_es_edicto_directo(con_usuario, arbol_aislado, fs_tmp)
     assert _fila(tras_intentos).canal == 'POSTAL'
 
 
-def test_hook_previo_y_final_mismo_canal_una_sola_fila(con_usuario, arbol_aislado, fs_tmp):
+def test_hook_previo_y_final_mismo_canal_una_sola_fila(con_usuario, arbol_aislado):
     """Disposición (consumido) y justificante final (producido): el canal lo da
     el producido; la fila, una, con documento_id del producido."""
     tarea = _tarea_notificar(arbol_aislado)
@@ -158,7 +158,7 @@ def test_hook_previo_y_final_mismo_canal_una_sola_fila(con_usuario, arbol_aislad
 # ---------------------------------------------------------------------------
 
 def test_desvincular_ultimo_justificante_sin_resultado_vacia_la_fila(
-        con_usuario, arbol_aislado, fs_tmp):
+        con_usuario, arbol_aislado):
     """D16, desde #967: la fila no se borra —nace y muere con la tarea—, pero
     vuelve a estar como sin justificante: sin canal, documento ni remesa."""
     tarea = _tarea_notificar(arbol_aislado)
@@ -176,7 +176,7 @@ def test_desvincular_ultimo_justificante_sin_resultado_vacia_la_fila(
 
 
 def test_desvincular_ultimo_justificante_con_resultado_conserva_la_fila(
-        con_usuario, arbol_aislado, fs_tmp):
+        con_usuario, arbol_aislado):
     tarea = _tarea_notificar(arbol_aislado)
     doc = _doc(tarea, 'JUSTIFICANTE_POSTAL_1ER')
     assert _guardar(tarea, consumidos=[doc]).ok
@@ -192,7 +192,7 @@ def test_desvincular_ultimo_justificante_con_resultado_conserva_la_fila(
     assert _fila(tarea).canal == 'POSTAL'
 
 
-def test_desvincular_uno_de_dos_justificantes_conserva_la_fila(con_usuario, arbol_aislado, fs_tmp):
+def test_desvincular_uno_de_dos_justificantes_conserva_la_fila(con_usuario, arbol_aislado):
     tarea = _tarea_notificar(arbol_aislado)
     disposicion = _doc(tarea, 'JUSTIFICANTE_NOTIFICA_DISPOSICION')
     final = _doc(tarea, 'JUSTIFICANTE_NOTIFICA')
@@ -217,7 +217,7 @@ def _ultima_advertencia_bitacora(tarea_id):
     ), {'tid': tarea_id}).scalar()
 
 
-def test_previo_vinculado_como_producido_avisa_y_deja_bitacora(con_usuario, arbol_aislado, fs_tmp):
+def test_previo_vinculado_como_producido_avisa_y_deja_bitacora(con_usuario, arbol_aislado):
     tarea = _tarea_notificar(arbol_aislado)
     doc = _doc(tarea, 'JUSTIFICANTE_NOTIFICA_DISPOSICION')
 
@@ -233,7 +233,7 @@ def test_previo_vinculado_como_producido_avisa_y_deja_bitacora(con_usuario, arbo
     assert 'sujeto' in detalle
 
 
-def test_final_vinculado_como_consumido_avisa(con_usuario, arbol_aislado, fs_tmp):
+def test_final_vinculado_como_consumido_avisa(con_usuario, arbol_aislado):
     tarea = _tarea_notificar(arbol_aislado)
     doc = _doc(tarea, 'JUSTIFICANTE_SIR')
 
@@ -244,7 +244,7 @@ def test_final_vinculado_como_consumido_avisa(con_usuario, arbol_aislado, fs_tmp
     assert 'producido' in res.advertencia['motivo']
 
 
-def test_anuncio_consumido_no_avisa(con_usuario, arbol_aislado, fs_tmp):
+def test_anuncio_consumido_no_avisa(con_usuario, arbol_aislado):
     """El anuncio publicado lo consumen las esperas de IP: no es rol incoherente."""
     tarea = _tarea_notificar(arbol_aislado)
     doc = _doc(tarea, 'ANUNCIO_PUBLICADO')
@@ -255,7 +255,7 @@ def test_anuncio_consumido_no_avisa(con_usuario, arbol_aislado, fs_tmp):
     assert res.advertencia is None
 
 
-def test_canales_distintos_entre_previos_avisa(con_usuario, arbol_aislado, fs_tmp):
+def test_canales_distintos_entre_previos_avisa(con_usuario, arbol_aislado):
     tarea = _tarea_notificar(arbol_aislado)
     disposicion = _doc(tarea, 'JUSTIFICANTE_NOTIFICA_DISPOSICION')
     primer_intento = _doc(tarea, 'JUSTIFICANTE_POSTAL_1ER')
@@ -382,7 +382,7 @@ def test_huerfanos_ofrece_el_previo_aunque_la_tarea_este_ejecutada(app_ctx, arbo
 # ---------------------------------------------------------------------------
 
 def test_pdf_polivalente_cada_fecha_la_suya(
-        con_usuario, arbol_aislado, fs_tmp):
+        con_usuario, arbol_aislado):
     from datetime import timedelta
     from app.services.notificaciones import fecha_cumplimiento, fecha_efectos
 

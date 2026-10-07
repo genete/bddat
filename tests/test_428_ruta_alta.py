@@ -9,9 +9,9 @@ aplicación por petición, con su propia sesión, así que no ve el SAVEPOINT y 
 commits llegan a la base de verdad (#836). El único test que llega a crear algo
 limpia lo que creó; los demás terminan en rechazo y no persisten nada.
 
-`fs_tmp` sí funciona con el cliente, porque redirige `app.config` sobre la misma
-instancia de aplicación que atiende la petición: los ficheros del alta van al
-directorio temporal y no al servidor de ficheros de desarrollo.
+`almacen_tmp` sí funciona con el cliente, porque redirige `app.config` sobre la
+misma instancia de aplicación que atiende la petición: el escrito del alta va al
+almacén temporal y no al de desarrollo.
 """
 import io
 
@@ -150,7 +150,7 @@ def test_get_devuelve_el_formulario(usuario_supervisor):
 
 class TestRechazos:
 
-    def test_sin_fichero_no_crea_el_expediente(self, usuario_supervisor, app, fs_tmp):
+    def test_sin_fichero_no_crea_el_expediente(self, usuario_supervisor, app, almacen_tmp):
         cat = _catalogo(app)
         r = usuario_supervisor.post(
             RUTA, data=_formulario(app, cat, con_fichero=False),
@@ -159,7 +159,7 @@ class TestRechazos:
         assert r.status_code == 422
         assert 'adjuntar el escrito de solicitud'.encode() in r.data
 
-    def test_sin_fecha_de_registro_tampoco(self, usuario_supervisor, app, fs_tmp):
+    def test_sin_fecha_de_registro_tampoco(self, usuario_supervisor, app, almacen_tmp):
         cat = _catalogo(app)
         r = usuario_supervisor.post(
             RUTA, data=_formulario(app, cat, fecha_registro=''),
@@ -168,7 +168,7 @@ class TestRechazos:
         assert r.status_code == 422
         assert 'fecha de registro de entrada'.encode() in r.data
 
-    def test_fecha_de_registro_futura_rechazada(self, usuario_supervisor, app, fs_tmp):
+    def test_fecha_de_registro_futura_rechazada(self, usuario_supervisor, app, almacen_tmp):
         """La valida el modelo (#824) y la ruta la repinta en vez de reventar."""
         from datetime import timedelta
 
@@ -181,7 +181,7 @@ class TestRechazos:
         assert r.status_code == 422
         assert 'no puede ser futura'.encode() in r.data
 
-    def test_sin_municipios_no_crea_el_expediente(self, usuario_supervisor, app, fs_tmp):
+    def test_sin_municipios_no_crea_el_expediente(self, usuario_supervisor, app, almacen_tmp):
         cat = _catalogo(app)
         datos = _formulario(app, cat)
         del datos['municipios_ids[]']
@@ -190,7 +190,7 @@ class TestRechazos:
         assert r.status_code == 422
         assert 'al menos un municipio'.encode() in r.data
 
-    def test_el_rechazo_no_consume_numero_de_expediente(self, usuario_supervisor, app, fs_tmp):
+    def test_el_rechazo_no_consume_numero_de_expediente(self, usuario_supervisor, app, almacen_tmp):
         from app import db
 
         cat = _catalogo(app)
@@ -219,7 +219,7 @@ class TestRepintado:
     fichero, y la plantilla lo dice en vez de fingir que sigue puesto.
     """
 
-    def test_conserva_los_campos_de_texto(self, usuario_supervisor, app, fs_tmp):
+    def test_conserva_los_campos_de_texto(self, usuario_supervisor, app, almacen_tmp):
         cat = _catalogo(app)
         r = usuario_supervisor.post(
             RUTA,
@@ -231,7 +231,7 @@ class TestRepintado:
         assert 'Un título que no se debe perder'.encode() in r.data
         assert 'Alta enviada por la suite para probar la ruta.'.encode() in r.data
 
-    def test_conserva_el_municipio_elegido(self, usuario_supervisor, app, fs_tmp):
+    def test_conserva_el_municipio_elegido(self, usuario_supervisor, app, almacen_tmp):
         """El formulario solo manda el id; la ruta resuelve el nombre para repintarlo."""
         with app.app_context():
             from app.models.municipios import Municipio
@@ -247,7 +247,7 @@ class TestRepintado:
         assert r.status_code == 422
         assert nombre.encode() in r.data
 
-    def test_avisa_de_que_hay_que_reseleccionar_el_fichero(self, usuario_supervisor, app, fs_tmp):
+    def test_avisa_de_que_hay_que_reseleccionar_el_fichero(self, usuario_supervisor, app, almacen_tmp):
         cat = _catalogo(app)
         r = usuario_supervisor.post(
             RUTA, data=_formulario(app, cat, con_fichero=False),
@@ -260,7 +260,7 @@ class TestRepintado:
 # Camino feliz — el único que persiste, y limpia lo suyo
 # ---------------------------------------------------------------------------
 
-def test_alta_completa_crea_el_expediente_anclado(usuario_supervisor, app, fs_tmp):
+def test_alta_completa_crea_el_expediente_anclado(usuario_supervisor, app, almacen_tmp):
     """Un solo alta para todo lo que hay que comprobar del camino feliz.
 
     No se parte en varios tests a propósito: el cliente HTTP commitea de verdad, así
@@ -319,7 +319,7 @@ def test_alta_completa_crea_el_expediente_anclado(usuario_supervisor, app, fs_tm
         _borrar_expediente(app, siguiente)
 
 
-def test_la_suite_devuelve_el_numero_de_expediente_que_gasta(usuario_supervisor, app, fs_tmp):
+def test_la_suite_devuelve_el_numero_de_expediente_que_gasta(usuario_supervisor, app, almacen_tmp):
     """El contador queda como estaba tras un alta completa y su limpieza.
 
     Es el criterio 5 de #849 —la base de desarrollo no cambia— aplicado al único

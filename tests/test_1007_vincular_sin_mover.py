@@ -34,7 +34,7 @@ def _documento_sin_contenido(almacen_tmp, expediente_id):
     return doc
 
 
-def test_editar_tarea_no_vincula_un_contenido_ausente(app_ctx, fs_tmp, almacen_tmp):
+def test_editar_tarea_no_vincula_un_contenido_ausente(app_ctx, almacen_tmp):
     from tests.conftest import ArbolESFTT
 
     tarea = ArbolESFTT(db).tarea_propia('ANALIZAR')
@@ -47,7 +47,7 @@ def test_editar_tarea_no_vincula_un_contenido_ausente(app_ctx, fs_tmp, almacen_t
     assert 'no está en el almacén' in resultado.error
 
 
-def test_sincronizar_consumido_no_vincula_un_contenido_ausente(app_ctx, fs_tmp, almacen_tmp):
+def test_sincronizar_consumido_no_vincula_un_contenido_ausente(app_ctx, almacen_tmp):
     from tests.conftest import ArbolESFTT
 
     tarea = ArbolESFTT(db).tarea_propia('ANALIZAR')

@@ -29,9 +29,9 @@ from unittest.mock import patch
 
 
 @pytest.fixture(autouse=True)
-def _fs_tmp(fs_tmp):
-    """FILESYSTEM_BASE redirigido a tmp_path (#674) — precaución, mismo patrón
-    que los demás tests que crean Expediente con numero_at de prueba."""
+def _almacen_tmp(almacen_tmp):
+    """Almacén de pruebas — precaución, mismo patrón que los demás tests que
+    crean Expediente con numero_at de prueba (#674, ADR-050)."""
     pass
 
 

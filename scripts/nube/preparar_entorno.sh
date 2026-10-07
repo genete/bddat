@@ -121,9 +121,9 @@ existe "SELECT 1 FROM pg_database WHERE datname='bddat'" \
     || fallo "crear la base bddat"
 
 # ── 4. .env ───────────────────────────────────────────────────────────────────
-# Las ocho rutas dentro del repo, las mismas carpetas que el PC; están en
+# Las seis rutas dentro del repo, las mismas carpetas que el PC; están en
 # .gitignore. Un .env que ya exista no se toca. El almacén y los manifiestos
-# (ADR-050) van aparte de docs_prueba/, como en el PC. Sin las cuatro variables nuevas
+# (ADR-050) van aparte de docs_prueba/, como en el PC. Sin sus cuatro variables
 # la semilla de tests no arranca.
 paso "4. .env"
 if [ -f "$REPO/.env" ]; then
@@ -132,9 +132,7 @@ else
     {
         echo "DATABASE_URL=postgresql://bddat_admin:$PG_PASSWORD@127.0.0.1:5432/bddat"
         echo "TEST_DATABASE_URL=postgresql://bddat_admin:$PG_PASSWORD@127.0.0.1:5432/bddat_test"
-        echo "FILESYSTEM_BASE=$REPO/docs_prueba/expedientes"
         echo "PLANTILLAS_BASE=$REPO/docs_prueba/plantillas_escritos"
-        echo "TEST_FILESYSTEM_BASE=$REPO/docs_prueba_test/expedientes"
         echo "TEST_PLANTILLAS_BASE=$REPO/docs_prueba_test/plantillas_escritos"
         echo "ALMACEN_BASE=$REPO/almacen_dev"
         echo "MANIFIESTOS_BASE=$REPO/manifiestos_dev"
@@ -147,8 +145,7 @@ else
     } > "$REPO/.env"
     nota ".env de la nube generado"
 fi
-mkdir -p "$REPO/docs_prueba/expedientes" "$REPO/docs_prueba/plantillas_escritos" \
-         "$REPO/docs_prueba_test/expedientes" "$REPO/docs_prueba_test/plantillas_escritos" \
+mkdir -p "$REPO/docs_prueba/plantillas_escritos" "$REPO/docs_prueba_test/plantillas_escritos" \
          "$REPO/manifiestos_dev"
 # El almacén de desarrollo y la carpeta de manifiestos necesitan su marca de raíz
 # (sin ella no escriben nada). En el PC se inicializan a mano una vez; aquí, el

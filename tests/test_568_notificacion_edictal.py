@@ -13,8 +13,8 @@ Lo demás del edicto lo cubren tests existentes, ajustados en #568: la escalada
 por acuses (test_558), el canal EDICTO del edicto directo (test_928_hook) y las
 fechas de cumplimiento y efectos (test_928_notificaciones_fechas).
 
-BD de tests con rollback por SAVEPOINT (app_ctx) + fs_tmp, que trae el almacén de
-pruebas donde los documentos guardan su contenido.
+BD de tests con rollback por SAVEPOINT (`arbol_aislado`, que trae `almacen_tmp`: el
+almacén de pruebas donde los documentos guardan su contenido).
 """
 import pytest
 
@@ -53,7 +53,7 @@ def _guardar(tarea, consumidos=(), producido=None):
     return res
 
 
-def test_el_anuncio_se_aplica_con_su_fecha_a_cada_notificacion(con_usuario, arbol_aislado, fs_tmp):
+def test_el_anuncio_se_aplica_con_su_fecha_a_cada_notificacion(con_usuario, arbol_aislado):
     """Dos notificaciones de la fase —una postal agotada, otra sin ningún
     justificante (edicto directo)— se cierran con el mismo anuncio publicado.
     Una tercera con un solo intento fallido no se ofrece ni se admite."""

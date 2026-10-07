@@ -19,7 +19,7 @@ Cada test protege un fallo que pasaría en silencio:
     resolución sin destinatario y el escrito bloqueado si nadie lo eligió.
   - Rendimiento: el cálculo es por solicitud, no por trámite (§M).
 
-BD de tests con rollback por SAVEPOINT (`arbol_aislado`) + `fs_tmp`.
+BD de tests con rollback por SAVEPOINT (`arbol_aislado`, que trae `almacen_tmp`).
 """
 import pytest
 from flask_login import login_user

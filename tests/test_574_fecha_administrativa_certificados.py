@@ -27,9 +27,9 @@ from app.models.tareas import Tarea
 
 
 @pytest.fixture(autouse=True)
-def _fs_tmp(fs_tmp):
-    """FILESYSTEM_BASE redirigido a tmp_path — este módulo genera certificados
-    internos que pueden tocar el servidor de ficheros de desarrollo (#674)."""
+def _almacen_tmp(almacen_tmp):
+    """Almacén de pruebas — este módulo genera certificados internos, y el alta de
+    sus expedientes sube el escrito de solicitud (#674, ADR-050)."""
     pass
 
 
@@ -100,7 +100,7 @@ def _crear_fase_finalizada(db, solicitud, codigo_fase, fecha_fin):
 
     doc = Documento(
         expediente=solicitud.expediente,
-        url=f'test-doc-{codigo_fase}-{time.time()}',
+        url=f'https://ejemplo.invalid/test-doc-{codigo_fase}-{time.time()}',
         fecha_administrativa=fecha_fin,
     )
     db.session.add(doc)
@@ -156,7 +156,7 @@ class TestCertFinIpConsultasFechaAdministrativa:
         tipo_fase = TipoFase.query.filter_by(codigo='CONSULTAS').first()
         assert tipo_fase is not None
         doc_sin_fecha = Documento(
-            expediente=exp, url=f'test-doc-sin-fecha-{time.time()}',
+            expediente=exp, url=f'https://ejemplo.invalid/test-doc-sin-fecha-{time.time()}',
             fecha_administrativa=None,
         )
         db.session.add(doc_sin_fecha)
@@ -191,7 +191,8 @@ class TestCrearCertFechaAdministrativa:
         para REQUERIMIENTO_SUBSANACION/ESPERAR_PLAZO, art. 68.1 LPACAP), con
         fecha muy anterior al plazo de 10 días hábiles: vencido con holgura.
 
-        Requiere `fs_tmp`: el expediente nace por la vía real, que escribe a disco.
+        Requiere `almacen_tmp`: el expediente nace por la vía real, que sube el
+        documento de solicitud al almacén.
         """
         from datetime import timedelta
 
@@ -215,7 +216,7 @@ class TestCrearCertFechaAdministrativa:
         assert ep.fecha_limite is not None
         return tarea, ep
 
-    def test_crea_documento_con_fecha_administrativa_no_nula(self, app_ctx, fs_tmp):
+    def test_crea_documento_con_fecha_administrativa_no_nula(self, app_ctx, almacen_tmp):
         from app.services.certificados import crear_cert
         from app.models.documentos import Documento
 
@@ -242,15 +243,15 @@ class TestDiagnosticoSigueNulo:
     def _tarea_analizar_libre(self):
         """Tarea ANALIZAR sin documento producido, fabricada por el test (#428).
 
-        Requiere `fs_tmp`: el expediente nace por la vía real, que escribe el
-        documento de solicitud a disco.
+        Requiere `almacen_tmp`: el expediente nace por la vía real, que sube el
+        documento de solicitud al almacén.
         """
         from app import db as _db
         from tests.conftest import ArbolESFTT
 
         return ArbolESFTT(_db).tarea_propia('ANALIZAR')
 
-    def test_diagnostico_fecha_administrativa_sigue_nula(self, app_ctx, fs_tmp):
+    def test_diagnostico_fecha_administrativa_sigue_nula(self, app_ctx, almacen_tmp):
         from app import db
         from app.services.diagnosticos import crear_diagnostico
         from app.models.diagnosticos import Diagnostico

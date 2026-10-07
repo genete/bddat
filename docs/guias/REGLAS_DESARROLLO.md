@@ -141,7 +141,7 @@ ahí el criterio se sostiene con la revisión y esta regla.
 El contenido de un documento vive en el **almacén** (ADR-050), no en una ruta de una
 carpeta de red, y solo lo ve el **subsistema de almacenamiento**
 (`app/services/almacenamiento/`). Hay dos reglas: una permanente y otra que dura hasta
-que el PR 5 de #1007 retire el modelo de rutas.
+que las plantillas pasen al almacén (fase 4 de ADR-050, #1009).
 
 ### Permanente: solo el subsistema ve `ficheros` y la `ref`
 
@@ -167,23 +167,20 @@ que el PR 5 de #1007 retire el modelo de rutas.
 Lo vigila `tests/test_1007_subsistema_almacenamiento.py`. **Si falla, el arreglo es pedir
 el contenido al módulo de contenido, no añadir el fichero a la lista de permitidos.**
 
-### Hasta el PR 5: no entran consumidores nuevos del modelo de rutas
+### Hasta la fase 4: no entran consumidores nuevos de las plantillas por ruta
 
-Mientras los escritores sigan escribiendo por ruta (hasta el corte del PR 4), nada
-nuevo lee ni escribe un fichero por su ruta en disco. Lo que necesite el contenido de
-un documento lo pide por el documento, con `documento.resolver_url()`, que sobrevive y
-pasará a leer del almacén. Cada consumidor nuevo es deuda que el corte tendría que
-deshacer (ADR-050 §I).
+El modelo de rutas de los documentos se retiró en #1007 (PR 5): ya no existen
+`ruta_absoluta()`, `FILESYSTEM_BASE`, `hash_md5`, `ruta_pdf` ni las funciones de
+`rutas_esftt.py` que movían o nombraban ficheros. Quedan las plantillas y los
+fragmentos, que siguen leyéndose de una carpeta hasta la fase 4 de ADR-050 (#1009):
+nada nuevo los lee por su ruta. Cada consumidor nuevo es deuda que esa fase tendría
+que deshacer (ADR-050 §I).
 
-Símbolos congelados: `ruta_absoluta()`, `FILESYSTEM_BASE`, `PLANTILLAS_BASE`,
-`hash_md5`, `ruta_plantilla`, `ruta_pdf` y los de `rutas_esftt.py` que mueven o
-nombran ficheros (`mover_a_esftt`, `mover_a_pool`, `nombre_pool_unico`,
-`ruta_pool_documento`, `ruta_destino_esftt_fichero`).
+Símbolos congelados: `PLANTILLAS_BASE` y `ruta_plantilla`.
 
 Lo vigila `tests/test_1001_consumidores_modelo_rutas.py`, con el número de
-apariciones permitido en cada fichero de `app/`. **Si falla, el arreglo es pedir el
-contenido por el documento, no subir el número ni añadir el fichero.** Cada fase de
-ADR-050 lo baja; cuando no quede ninguno, el test se borra.
+apariciones permitido en cada fichero de `app/`. **Si falla, el arreglo no es subir
+el número ni añadir el fichero.** La fase 4 lo baja a cero y entonces el test se borra.
 
 ### Estilos ODT
 

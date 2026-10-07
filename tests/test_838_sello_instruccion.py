@@ -1,9 +1,9 @@
 """
 Tests #838 — el sello de la instrucción y el acto que lo retira (ADR-043 §F).
 
-Con SQL real (fixture `arbol_esftt`, #715) y `fs_tmp` (#674): las pruebas que
-consolidan y deshacen generan PDFs de verdad, que van al almacén de pruebas
-(`fs_tmp` pide `almacen_tmp`) y no al de desarrollo.
+Con SQL real (fixture `arbol_esftt`, #715) y `almacen_tmp` (#674, ADR-050): las
+pruebas que consolidan y deshacen generan PDFs de verdad, que van al almacén de
+pruebas y no al de desarrollo.
 
 Cinco bloques:
   A) El sello al CREAR: con el certificado emitido no se abre una fase de instrucción
@@ -20,9 +20,9 @@ from flask_login import login_user
 
 
 @pytest.fixture(autouse=True)
-def _fs_tmp(fs_tmp):
-    """Almacén de pruebas (y FILESYSTEM_BASE al tmp del test) — aquí se emiten y se
-    deshacen certificados reales, cuyo PDF se guarda en el almacén."""
+def _almacen_tmp(almacen_tmp):
+    """Almacén de pruebas — aquí se emiten y se deshacen certificados reales, cuyo
+    PDF se guarda en el almacén."""
     pass
 
 

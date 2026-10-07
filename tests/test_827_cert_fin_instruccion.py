@@ -1,9 +1,9 @@
 """
 Tests #827 — la bisagra instrucción/resolución (ADR-043, §E reescrita).
 
-Con SQL real (fixture `arbol_esftt`, #715) y `fs_tmp` (#674): la consolidación
-genera un PDF de verdad, que va al almacén de pruebas (`fs_tmp` pide `almacen_tmp`) y
-no al de desarrollo.
+Con SQL real (fixture `arbol_esftt`, #715) y `almacen_tmp` (#674, ADR-050): la
+consolidación genera un PDF de verdad, que va al almacén de pruebas y no al de
+desarrollo.
 
 El gesto dejó de ser una puerta que concede o deniega y pasó a ser una revisión que
 a veces se consolida, así que la mitad de estos tests cambió de premisa: «falta
@@ -24,9 +24,9 @@ from flask_login import login_user
 
 
 @pytest.fixture(autouse=True)
-def _fs_tmp(fs_tmp):
-    """Almacén de pruebas (y FILESYSTEM_BASE al tmp del test) — este módulo emite
-    certificados reales, cuyo PDF se guarda en el almacén."""
+def _almacen_tmp(almacen_tmp):
+    """Almacén de pruebas — este módulo emite certificados reales, cuyo PDF se
+    guarda en el almacén."""
     pass
 
 

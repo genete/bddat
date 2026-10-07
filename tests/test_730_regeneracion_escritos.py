@@ -41,7 +41,7 @@ def _tipo(codigo: str) -> int:
     return tipo.id
 
 
-def test_regenerar_reutiliza_el_borrador_no_crea_otro(app_ctx, fs_tmp):
+def test_regenerar_reutiliza_el_borrador_no_crea_otro(app_ctx, almacen_tmp):
     """Fallo silencioso que evita: que regenerar cree una segunda fila (la tarea quedaría con dos
     borradores y el anterior vinculado con contenido desactualizado) o pise otro documento consumido
     de la tarea, sin que nada lo avise."""

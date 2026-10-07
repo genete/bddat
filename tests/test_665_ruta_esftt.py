@@ -1,6 +1,7 @@
 """
-Tests #665 — cálculo de rutas ESFTT (Expediente-Solicitud-Fase-Trámite-Tarea) y
-carpeta pool/ (ADR-032 §4).
+Tests #665 — cálculo de rutas ESFTT (Expediente-Solicitud-Fase-Trámite-Tarea),
+la carpeta en la que el exportador reconstruye cada documento (ADR-050 §H). La
+carpeta pool/ en disco salió con el modelo de rutas (#1007, PR 5).
 
 Fase/trámite/solicitud/expediente se representan con stubs (SimpleNamespace) para
 no depender de la BD real, siguiendo el patrón de test_365_bddat_uri.py y
@@ -17,7 +18,7 @@ import pytest
 
 from app.models.documentos import Documento
 from app.models.tareas import Tarea
-from app.services.rutas_esftt import ruta_esftt_documento, ruta_pool_documento
+from app.services.rutas_esftt import ruta_esftt_documento
 
 
 def _tarea_stub(
@@ -194,35 +195,3 @@ class TestRutaDesdeDocumento:
         doc.vinculos_tarea = []
         with pytest.raises(ValueError, match='no tiene ninguna tarea vinculada'):
             ruta_esftt_documento(doc)
-
-
-# ---------------------------------------------------------------------------
-# ruta_pool_documento(expediente) — ruta absoluta + makedirs (ADR-032 §1)
-# ---------------------------------------------------------------------------
-
-class TestRutaPoolDocumento:
-
-    def test_devuelve_ruta_absoluta_y_crea_directorio(self, tmp_path, app):
-        import os
-        expediente = SimpleNamespace(numero_at=9)
-        base_original = app.config.get('FILESYSTEM_BASE')
-        app.config['FILESYSTEM_BASE'] = str(tmp_path)
-        try:
-            with app.app_context():
-                resultado = ruta_pool_documento(expediente)
-            esperado = os.path.normpath(os.path.join(str(tmp_path), 'AT-9', 'pool'))
-            assert resultado == esperado
-            assert os.path.isdir(esperado)
-        finally:
-            app.config['FILESYSTEM_BASE'] = base_original
-
-    def test_sin_filesystem_base_lanza_runtime_error(self, app):
-        expediente = SimpleNamespace(numero_at=9)
-        base_original = app.config.get('FILESYSTEM_BASE')
-        app.config['FILESYSTEM_BASE'] = ''
-        try:
-            with app.app_context():
-                with pytest.raises(RuntimeError, match='FILESYSTEM_BASE'):
-                    ruta_pool_documento(expediente)
-        finally:
-            app.config['FILESYSTEM_BASE'] = base_original
