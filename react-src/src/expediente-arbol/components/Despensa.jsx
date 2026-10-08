@@ -7,6 +7,7 @@ import React from 'react'
 import { useArbolStore } from '../store.js'
 import { getTiposDocumento } from '../api.js'
 import { quitarComprimidos } from '../../shared/subida.js'
+import { AvisoYaExiste, useAvisoYaExiste } from '../../shared/avisoYaExiste.jsx'
 import { estaSellado } from '../sellado.js'
 import { FilaTipoCreable, BloqueoForzar } from './TiposCreablesCompartido.jsx'
 
@@ -356,10 +357,12 @@ function AnclaSolicitud() {
 function SubidaAncla({ onHecho }) {
   const subiendoDocumento   = useArbolStore((s) => s.subiendoDocumento)
   const subirAnclaSolicitud = useArbolStore((s) => s.subirAnclaSolicitud)
+  const expedienteId        = useArbolStore((s) => s.expedienteId)
 
   const [fichero, setFichero]   = React.useState(null)
   const [fecha, setFecha]       = React.useState('')
   const [tipoDocId, setTipoDocId] = React.useState(null)
+  const aviso = useAvisoYaExiste(expedienteId)    // ¿ya está en el expediente? (#1007, ADR-050 §H)
 
   React.useEffect(() => {
     getTiposDocumento()
@@ -392,12 +395,17 @@ function SubidaAncla({ onHecho }) {
           type="file"
           id="ancla-solicitud-file"
           className="visually-hidden"
-          onChange={(e) => setFichero(quitarComprimidos(e.target)[0] || null)}
+          onChange={(e) => {
+            const elegido = quitarComprimidos(e.target)[0] || null
+            setFichero(elegido)
+            aviso.comprobar(elegido)
+          }}
         />
         <span className="small text-truncate text-muted">
           {fichero ? fichero.name : 'Ningún archivo seleccionado'}
         </span>
       </div>
+      <AvisoYaExiste aviso={aviso} />
       <input
         type="date"
         className="form-control form-control-sm"
@@ -409,7 +417,7 @@ function SubidaAncla({ onHecho }) {
         <button
           type="button"
           className="btn btn-sm btn-primary flex-grow-1"
-          disabled={!fichero || !fecha || subiendoDocumento}
+          disabled={!fichero || !fecha || subiendoDocumento || aviso.bloqueaSubida}
           onClick={enviar}
         >
           {subiendoDocumento ? '…' : 'Subir'}
@@ -437,9 +445,11 @@ function SubidaInline({ tareaId }) {
   const subiendoDocumento      = useArbolStore((s) => s.subiendoDocumento)
   const sugerenciaSubida       = useArbolStore((s) => s.sugerenciaSubida)
   const subirDocumentoDespensa = useArbolStore((s) => s.subirDocumentoDespensa)
+  const expedienteId           = useArbolStore((s) => s.expedienteId)
 
   const [abierto, setAbierto]     = React.useState(false)
   const [fichero, setFichero]     = React.useState(null)
+  const aviso = useAvisoYaExiste(expedienteId)    // ¿ya está en el expediente? (#1007, ADR-050 §H)
   const [tipoDocId, setTipoDocId] = React.useState('')
   const [asunto, setAsunto]       = React.useState('')
   const [fecha, setFecha]         = React.useState('')
@@ -481,6 +491,7 @@ function SubidaInline({ tareaId }) {
     })
     if (ok) {
       setAbierto(false); setFichero(null); setTipoDocId(''); setAsunto(''); setFecha(''); setPrioridad(false)
+      aviso.reiniciar()
     }
   }
 
@@ -502,12 +513,17 @@ function SubidaInline({ tareaId }) {
           type="file"
           id={`despensa-subida-file-${tareaId}`}
           className="visually-hidden"
-          onChange={(e) => setFichero(quitarComprimidos(e.target)[0] || null)}
+          onChange={(e) => {
+            const elegido = quitarComprimidos(e.target)[0] || null
+            setFichero(elegido)
+            aviso.comprobar(elegido)
+          }}
         />
         <span className="small text-truncate text-muted">
           {fichero ? fichero.name : 'Ningún archivo seleccionado'}
         </span>
       </div>
+      <AvisoYaExiste aviso={aviso} />
       <select
         className="form-select form-select-sm"
         value={tipoDocId}
@@ -546,7 +562,7 @@ function SubidaInline({ tareaId }) {
         <button
           type="button"
           className="btn btn-sm btn-primary flex-grow-1"
-          disabled={!fichero || subiendoDocumento}
+          disabled={!fichero || subiendoDocumento || aviso.bloqueaSubida}
           onClick={enviar}
         >
           {subiendoDocumento ? 'Subiendo…' : 'Subir y vincular'}
