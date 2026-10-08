@@ -42,7 +42,8 @@ from app.services.almacenamiento.adaptador import (
     AlmacenNoDisponible, ErrorAlmacenamiento, MENSAJE_ALMACEN_NO_DISPONIBLE,
 )
 from app.services.almacenamiento.contenido import (
-    ContenidoNoUtilizable, servir_descarga, sustituir_con_motivo, tiene_contenido_propio,
+    ContenidoNoUtilizable, documentos_con_contenido, servir_descarga, sustituir_con_motivo,
+    tiene_contenido_propio,
 )
 from app.services.almacenamiento.formatos import FormatoNoAdmitido
 from app.services.ingesta_pool import (
@@ -803,6 +804,51 @@ def pool_subir_documento(id):
             }
             for d in creados_docs
         ],
+    })
+
+
+@bp.route('/<int:id>/documentos/ya-existe', methods=['POST'])
+@login_required
+def pool_documentos_ya_existentes(id):
+    """¿Ya tiene el expediente estos ficheros? — el aviso antes de subir (ADR-050 §H, N077; #1007).
+
+    JSON: `{"hashes": ["<SHA-256 en hexadecimal>", ...]}` (a lo sumo 200). El navegador calcula
+    la huella de cada fichero que el usuario elige, con una librería que sirve BDDAT, y
+    pregunta aquí antes de enviar los bytes. Respuesta: `{ok, coincidencias: {huella: [{id,
+    nombre, tipo, fecha}]}}`, solo con las huellas que el expediente ya tiene (los documentos
+    más recientes primero); nunca una `ref`. Mira solo este expediente.
+
+    Es informativo: la huella del navegador nunca es el `contenido_sha256` de nada. Al subir, el
+    servidor calcula la suya y crea el documento si se le pide (ADR-032 §4); lo que decide qué
+    hacer con el aviso (no subir, o subir igualmente) es el navegador.
+
+    Permiso 'subir_documento', como la subida. 400 si el cuerpo no es lo esperado.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'subir_documento')
+    if resultado:
+        return resultado
+
+    datos = request.get_json(silent=True) or {}
+    try:
+        encontrados = documentos_con_contenido(id, datos.get('hashes'))
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+
+    return jsonify({
+        'ok': True,
+        'coincidencias': {
+            huella: [
+                {
+                    'id':     d.id,
+                    'nombre': d.nombre_visible(),
+                    'tipo':   d.tipo_doc.nombre if d.tipo_doc else None,
+                    'fecha':  d.fecha_administrativa.isoformat() if d.fecha_administrativa else None,
+                }
+                for d in documentos
+            ]
+            for huella, documentos in encontrados.items()
+        },
     })
 
 

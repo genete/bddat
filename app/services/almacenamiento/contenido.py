@@ -8,6 +8,8 @@ resto trabaja con `documentos.id` y pide el contenido por aquí:
 - `leer`: el contenido entero con su formato, comprobando el hash.
 - `tiene_contenido_propio`: si el documento guarda su contenido en el almacén (y no es un enlace
   externo ni un documento virtual).
+- `documentos_con_contenido`: qué documentos de un expediente ya tienen un contenido, por su
+  SHA-256 (el aviso antes de subir, N077).
 - `comprobar_para_vincular`: un contenido ausente o corrupto no sostiene ningún acto.
 - `servir_descarga`: la respuesta HTTP con las cabeceras de §E.
 - `cambiar_contenido`: el documento se conserva (mismo `id`, mismos vínculos) y apunta a otro
@@ -36,6 +38,7 @@ contenidos como ausentes los daría por perdidos a todos.
 from __future__ import annotations
 
 import hashlib
+import re
 import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -61,6 +64,10 @@ from app.services.almacenamiento.nombres import sanear_nombre
 
 _TROZO = 1024 * 1024
 _T = Fichero.__table__
+
+# Cuántas huellas admite una consulta del aviso antes de subir (una subida son pocos ficheros).
+_MAX_HUELLAS_POR_CONSULTA = 200
+_RE_SHA256 = re.compile(r'[0-9a-f]{64}')
 
 # Lo que fija el módulo al subir: quien llama no lo pasa (si pudiera, saltaría el saneado
 # del nombre o la comprobación del contenido).
@@ -297,6 +304,49 @@ def tiene_contenido_propio(documento: Documento) -> bool:
     Es la pregunta que se le hace al módulo en vez de mirar `fichero_ref` desde fuera: la `ref`
     solo la ve el subsistema de almacenamiento (ADR-050 §B)."""
     return documento.fichero_ref is not None
+
+
+def documentos_con_contenido(expediente_id: int, sha256s: Sequence[str]) -> dict[str, list[Documento]]:
+    """Los documentos del expediente que ya tienen alguno de estos contenidos, por SHA-256
+    (en minúsculas), los más recientes primero. Solo salen los hashes que coinciden.
+
+    Contesta al aviso antes de subir (ADR-050 §H, N077): el navegador calcula la huella de cada
+    fichero que el usuario elige y pregunta si el expediente ya lo tiene. Mira **solo ese
+    expediente**: «ya está en otro expediente» espera a «Aportar desde otro expediente».
+    No hace nada con los documentos; no devuelve ninguna `ref`.
+
+    Un contenido ausente o dañado no cuenta: volver a subir el original lo repara (§G), y
+    decir «ya está» lo dejaría sin subir. La huella del navegador solo sirve para avisar:
+    nunca es el `contenido_sha256` de un documento nuevo, que calcula el servidor al subir.
+
+    Lanza `ValueError` (mensaje para el usuario) si `sha256s` no es una lista de a lo sumo
+    200 huellas de 64 caracteres hexadecimales.
+    """
+    if not isinstance(sha256s, (list, tuple)):
+        raise ValueError('Se esperaba una lista de huellas SHA-256.')
+    if len(sha256s) > _MAX_HUELLAS_POR_CONSULTA:
+        raise ValueError(f'Demasiadas huellas: el máximo es {_MAX_HUELLAS_POR_CONSULTA}.')
+    huellas = set()
+    for huella in sha256s:
+        if not isinstance(huella, str) or not _RE_SHA256.fullmatch(huella.lower()):
+            raise ValueError('Cada huella debe ser un SHA-256 de 64 caracteres hexadecimales.')
+        huellas.add(huella.lower())
+    if not huellas:
+        return {}
+
+    filas = (
+        db.session.query(Documento, Fichero.contenido_sha256)
+        .join(Fichero, Documento.fichero_ref == Fichero.ref)
+        .filter(Documento.expediente_id == expediente_id,
+                Fichero.contenido_sha256.in_(huellas),
+                Fichero.estado == OK)
+        .order_by(Documento.id.desc())
+        .all()
+    )
+    encontrados: dict[str, list[Documento]] = {}
+    for documento, huella in filas:
+        encontrados.setdefault(huella, []).append(documento)
+    return encontrados
 
 
 def comprobar_para_vincular(documento: Documento) -> None:
