@@ -3,6 +3,9 @@
 Uso:
     python scripts/vendorizar_jda.py
 
+(Para volver a bajar solo `js-sha256`, que no es de la Junta: importar el módulo y llamar a
+`vendorizar_sha256()`.)
+
 Vuelve a generar TODO app/static/vendor/ desde el CDN de la Junta de Andalucía y desde
 npm (jsdelivr). Es la vía para actualizar de versión: cambiar las constantes de abajo,
 ejecutar, comparar las capturas y commitear. No se edita a mano nada de esa carpeta.
@@ -24,6 +27,7 @@ JDA_VERSION = '1.2.5'
 BOOTSTRAP_ICONS = '1.11.1'
 BOOTSTRAP = '5.3.3'          # licencia del núcleo del tema (cabecera de custom-jda-bootstrap.css)
 FONT_AWESOME = '6.5.1'       # licencia de all.css (cabecera del propio fichero)
+JS_SHA256 = '0.11.0'         # huella SHA-256 en el navegador (ADR-050 §H, #1007)
 
 JDA = f'https://cdn.juntadeandalucia.es/components/sass/{JDA_VERSION}/'
 NPM = 'https://cdn.jsdelivr.net/npm/'
@@ -80,6 +84,20 @@ def con_nota(texto, origen):
             f'Ver ../LEEME.md. */\n') + texto
 
 
+def vendorizar_sha256():
+    """`js-sha256`: la huella SHA-256 que el navegador calcula antes de subir un fichero
+    (ADR-050 §H, #1007). Copia literal. Hace falta una librería porque `crypto.subtle` no
+    admite calcularla a trozos (un fichero de 300 MB entero en memoria) y no existe fuera de
+    un contexto seguro (HTTPS), y la intranet va por HTTP hasta el certificado corporativo.
+    La licencia no viene en el paquete de npm: se toma del repositorio, en la misma versión.
+    """
+    total = guardar('sha256/sha256.min.js',
+                    descargar(NPM + f'js-sha256@{JS_SHA256}/build/sha256.min.js'))
+    total += guardar('licencias/js-sha256-MIT.txt',
+                     descargar(GH + f'emn178/js-sha256@v{JS_SHA256}/LICENSE.txt'))
+    return total
+
+
 def main():
     total = 0
 
@@ -106,6 +124,9 @@ def main():
                      con_nota(nuevo, bi + 'bootstrap-icons.css').encode('utf-8'))
     print(f'          bootstrap-icons.css: {tocados} declaraciones src reducidas a woff2')
     total += guardar('bootstrap-icons/fonts/bootstrap-icons.woff2', descargar(bi + 'fonts/bootstrap-icons.woff2'))
+
+    # --- js-sha256 (npm/jsdelivr) ---
+    total += vendorizar_sha256()
 
     # --- Textos de licencia ---
     for nombre, url in LICENCIAS.items():

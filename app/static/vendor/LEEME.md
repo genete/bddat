@@ -5,7 +5,7 @@ lo genera `scripts/vendorizar_jda.py`, que es también la vía para actualizar d
 
 ## Qué hay y de dónde viene
 
-Descargado el **2026-09-29**.
+Descargado el **2026-09-29**, salvo `sha256/` (**2026-10-08**, #1007).
 
 | Ruta | Componente | Origen | Licencia |
 |---|---|---|---|
@@ -17,7 +17,17 @@ Descargado el **2026-09-29**.
 | `jda/fonts/sourceSansPro/` | Source Sans Pro (12 variantes) | ídem | OFL 1.1 |
 | `jda/fonts/fa-webfonts/` | Webfonts de Font Awesome Free 6.5.1 | ídem | OFL 1.1 |
 | `bootstrap-icons/` | Bootstrap Icons 1.11.1 | `https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/` | MIT |
+| `sha256/sha256.min.js` | js-sha256 0.11.0, la huella SHA-256 que el navegador calcula a trozos antes de subir un fichero (ADR-050 §H). Se carga a demanda (Despensa) o con la página del pool; no va en la base de la app | `https://cdn.jsdelivr.net/npm/js-sha256@0.11.0/build/` | MIT |
 | `licencias/` | Textos de licencia de lo anterior | npm y GitHub (ver el script) | — |
+
+## Por qué una librería para la huella
+
+`crypto.subtle.digest` no sirve: no calcula a trozos (un fichero de 300 MB tendría que
+caber entero en memoria) y solo existe en un contexto seguro (HTTPS o `localhost`), y
+BDDAT se sirve por HTTP en la intranet hasta que llegue el certificado corporativo
+(ADR-050 §D, fase 5). `js-sha256` no tiene dependencias, ni WASM, ni pide cambiar la CSP.
+El paquete de npm no trae su licencia: `licencias/js-sha256-MIT.txt` sale del repositorio,
+en la misma versión.
 
 ## Qué es literal y qué no
 
