@@ -154,7 +154,7 @@ software libre: cero euros en licencias.**
 **Almacenamiento de expedientes:** la vía B **no elimina** la dependencia del
 share corporativo (§6) — también aquí hay que montarlo por CIFS. La diferencia
 es de robustez, no de fondo: en Linux nativo el montaje es ciudadano de primera
-(`fstab`/unidad systemd con `_netdev`, fichero de credenciales protegido,
+(`fstab`/unidad systemd con `_netdev`, modo `soft` —§6—, fichero de credenciales protegido,
 reintento automático), sin la capa VM de por medio.
 
 **Rendimiento:** para decenas de usuarios sobre el hardware de §7 ambas vías
@@ -167,15 +167,15 @@ ficheros, que acelera Postgres.
 
 ## 6. El almacenamiento de expedientes es del servidor de archivos corporativo (invariante, común a ambas vías)
 
-> **Nota (2026-10-07, #1007):** lo que sigue describe el share corporativo como el lugar donde
-> viven los documentos. Esa premisa la sustituye [ADR-050](../decisiones/ADR-050-almacen-documental-privado-por-contenido.md):
+> **Actualizado (2026-10-08, #1007):** esta sección describía el share corporativo como el lugar
+> donde viven los documentos y donde los usuarios los tocan. Desde [ADR-050](../decisiones/ADR-050-almacen-documental-privado-por-contenido.md)
 > el contenido vive en un almacén privado al que solo accede BDDAT, y las carpetas legibles se
-> reconstruyen a partir de los manifiestos con el exportador. Esta sección se reescribirá cuando
-> se decida el despliegue del almacén.
+> reconstruyen a partir de los manifiestos con el exportador. Lo que sigue es lo que eso implica para
+> el despliegue; lo decidido está en ADR-050 §A, §B, §E, §G y §K. Lo que infiere este análisis y no
+> está decidido va marcado como *interpretación* o como *por decidir*.
 
-Los expedientes se guardan y **custodian** en el servidor de archivos
-corporativo (`\\HACACL0102\energia\ALTA TENSION\...`, ver comentario en
-`config.py`), que ya tiene su sistema de copias de seguridad montado. Llevarlos
+Los expedientes se siguen **custodiando** en el servidor de archivos
+corporativo, que ya tiene su sistema de copias de seguridad montado. Llevarlos
 al disco del PC dedicado ni es posible ni es conveniente: se perdería la
 custodia y el backup institucional a cambio de eliminar una dependencia de red.
 **No es una debilidad a eliminar — es la arquitectura correcta**, y además es
@@ -184,21 +184,76 @@ corre la aplicación y la que sirve los datos son (y seguirán siendo) máquinas
 distintas, también si algún día la app pasa a un servidor mantenido por
 informática.
 
-Consecuencias permanentes, independientes de la vía elegida:
+### Tres zonas, tres permisos (ADR-050 §A; pedidas a Informática en #151)
+
+| Zona | Variable | Escribe | Lee | Contenido |
+|---|---|---|---|---|
+| **Almacén** | `ALMACEN_BASE` | solo la cuenta de servicio de BDDAT | solo la cuenta de servicio | el contenido de cada fichero, una sola vez, con su SHA-256 por nombre |
+| **Manifiestos** | `MANIFIESTOS_BASE` | solo BDDAT | la cuenta de servicio y quien reconstruya los expedientes | un manifiesto por expediente (id, nombre, carpeta, `ref` y hash) |
+| **Archivo** | `ARCHIVO_BASE` | solo BDDAT | los usuarios, solo lectura | exportación legible de los expedientes finalizados (fase 2b, #1008: todavía no existe) |
+
+Los usuarios dejan de necesitar acceso de escritura a los ficheros de los expedientes. Las rutas son
+de despliegue (variables de entorno): no se cambian desde la aplicación (ADR-050 §K). Un buzón por
+usuario en el share se valoró y se aparca hasta que haya datos que lo justifiquen (§A).
+
+Si la política del servidor de ficheros no permite una carpeta sin acceso de usuarios, la alternativa
+que recoge ADR-050 §A es el almacén en el disco del servidor de la aplicación, con réplica nocturna
+al share: funciona igual para BDDAT, pero saca la custodia de donde está hoy. Solo cambiaría código
+(un adaptador nuevo, no el resto de BDDAT) si ofrecieran S3 o un gestor documental (§I).
+
+### Consecuencias permanentes, independientes de la vía elegida
 
 - La app depende de **dos máquinas**: caída del servidor de archivos ≠ caída de
-  BDDAT, pero las operaciones documentales (subir, descargar, generar escritos)
-  fallarán mientras dure. Conviene verificar que la app **degrada con mensaje
-  claro** en ese escenario en lugar de romperse entera (misma filosofía
-  defensiva que ya se aplica al catálogo).
-- Montaje CIFS con **cuenta de servicio de dominio** (no credenciales
-  personales) y disponible en el arranque, en cualquiera de las dos vías.
-- El rendimiento de escritura sobre SMB es peor que disco local, pero los
-  ficheros son pequeños (docx/pdf de KB–pocos MB) y el patrón de acceso es
-  esporádico: asumible. Verificar empíricamente al desplegar, no optimizar
-  antes.
+  BDDAT, pero las operaciones documentales (subir, descargar, sustituir, generar escritos)
+  fallarán mientras dure. **La app degrada con mensaje claro** en ese escenario en lugar de romperse
+  entera: un almacén que no contesta, o que no está montado, da «inténtalo en unos minutos» (503) y no
+  se pierde nada (ADR-050 §G).
+- Montaje CIFS con **cuenta de servicio de dominio** (no credenciales personales), disponible en el
+  arranque, en cualquiera de las dos vías, y **en modo `soft`**: el tiempo límite de una petición al
+  almacén no se puede poner desde Python, y con un montaje `hard` un almacén colgado agota los workers
+  (ADR-050 §B; [ANALISIS_ESCALABILIDAD §3.3](ANALISIS_ESCALABILIDAD.md), #852).
+- **Marca de raíz.** Cada raíz se inicializa una vez y lleva su marca (`ALMACEN.txt` en el almacén,
+  `MANIFIESTOS.txt` en los manifiestos): sin ella BDDAT responde «no disponible» y no escribe nada. Así,
+  con el share sin montar, no escribe en el disco local que queda debajo —fuera de la copia de seguridad—
+  ni toma una carpeta vacía por un almacén vacío. Inicializar las raíces es un paso del despliegue
+  (ADR-050 §B).
+- **Restaurar: primero el almacén y después la BD.** Si sobran ficheros, son huérfanos y los recoge la
+  limpieza; nunca faltan (ADR-050 §G). La `ref` dice qué fichero exacto pedir a Informática de la copia.
 - `PLANTILLAS_BASE` es caso aparte: casi solo lectura y sin requisito de
-  custodia — puede vivir en local si simplifica.
+  custodia — puede vivir en local si simplifica. Hasta la fase 4 de ADR-050 (#1009); después las
+  plantillas y los fragmentos pasan al almacén y la variable desaparece.
+
+### Subidas grandes: el proxy y el límite de 300 MB (ADR-050 §B, §E, §K)
+
+El rendimiento de escritura sobre SMB es peor que disco local, y los ficheros ya no son «pequeños»: el
+PDF mayor de los expedientes actuales mide 188 MB, y los ficheros mayores son ZIP de hasta 2,2 GB, que
+BDDAT no admite (medición del share, 2026-10-02). El **tope es de 300 MB por fichero**, comprobado fichero
+a fichero por la aplicación al recibirlo (`formatos.TAMANO_MAXIMO`).
+
+Una subida no debe agotar los workers. Lo que decide ADR-050 §B:
+
+- **El proxy de delante recibe la petición entera antes de pasarla a BDDAT** (nginx; Waitress si el
+  servidor es Windows), con su límite de tamaño en 300 MB. Mientras el fichero viaja del navegador al
+  servidor no se ocupa ningún worker.
+- Lo que sí ocupa uno —calcular el hash y enviar el fichero al almacén— lleva un **tiempo límite por
+  petición** (30 s por defecto) y un **semáforo** de transferencias simultáneas (4 por proceso por
+  defecto), en `app/services/almacenamiento/adaptador.py`; y los workers con hilos (#851) dan el margen.
+
+*Interpretación* (no está en el ADR; a comprobar al desplegar):
+
+- En nginx son `client_max_body_size` y, por defecto, `proxy_request_buffering on`; en Waitress,
+  `max_request_body_size`. Contrastarlo con la versión que se despliegue.
+- **El límite del proxy es por petición, no por fichero.** La ventana de subida del pool envía varios
+  ficheros en una sola petición, y la aplicación comprueba el tope fichero a fichero: un lote de más de
+  300 MB en total lo rechazaría el proxy (413) antes de que la aplicación lo vea, aunque cada fichero esté
+  bajo el tope. *Por decidir:* subir el límite del proxy por encima de lo que se admita en un lote, o
+  aceptar que el lote grande se sube en tandas.
+- **Que un fichero de 300 MB quepa en el tiempo límite** (30 s, es decir, escribir al share a unos
+  10 MB/s o más): medirlo con un fichero real al desplegar. El tiempo límite y las transferencias
+  simultáneas son valores por defecto del código: solo existen como claves de configuración
+  (`ALMACEN_TIEMPO_LIMITE`, `ALMACEN_TRANSFERENCIAS_SIMULTANEAS`), que usan los tests, y no como variables de
+  entorno. Si no caben, hay que cambiarlos en el código. *Por decidir* si se exponen como variables de
+  despliegue.
 
 ## 7. Hardware de destino (primera instancia)
 
@@ -237,8 +292,8 @@ Segunda instancia posible: servidor del edificio (SO desconocido — ver §7).
 
 - `Dockerfile` + `.dockerignore` (base `python:3.x-slim`, gunicorn como CMD)
 - `docker-compose.yml` — servicios `app` + `db`, volumen de datos Postgres,
-  montaje CIFS del share de expedientes (§6), `PLANTILLAS_BASE` local o CIFS,
-  variables de entorno
+  montaje CIFS de las zonas del almacén (§6: `ALMACEN_BASE`, `MANIFIESTOS_BASE`), `PLANTILLAS_BASE`
+  local o CIFS (hasta la fase 4 de ADR-050), variables de entorno
 - `wsgi.py` + configuración de producción endurecida (§3.1–3.2, con #45)
 - Entrypoint que ejecute `flask db upgrade` al arrancar (la sustitución del
   contenedor aplica sola las migraciones pendientes)
@@ -246,8 +301,8 @@ Segunda instancia posible: servidor del edificio (SO desconocido — ver §7).
   del contenedor) (#178). Los documentos no entran: su backup ya lo da el
   servidor de archivos corporativo (§6)
 - Ya recogidos en #330 y previos al contenedor: `Documento.url` a ruta
-  relativa, separador de rutas en `admin_plantillas`, auditoría de scripts de
-  poblado
+  relativa (superado: ADR-050 retira la ruta local de `Documento.url`),
+  separador de rutas en `admin_plantillas`, auditoría de scripts de poblado
 - Copiar las tres plantillas base canónicas (#727) desde `app/data/plantillas_base/`
   (repo) a `PLANTILLAS_BASE/plantillas/` en la instalación real. La descarga desde
   el admin no depende de ello (sirve directo del repo), pero Carlos confirmó que
