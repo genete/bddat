@@ -358,6 +358,15 @@
                   data-doc-url="{{ (doc.url or '') | e }}">
             <i class="fas fa-pencil-alt"></i>
           </button>
+          {% if item.puede_sustituir %}
+          <button type="button" class="btn btn-sm btn-outline-secondary"
+                  title="Sustituir fichero"
+                  onclick="abrir_modal_sustituir(this)"
+                  data-doc-id="{{ doc.id }}"
+                  data-doc-nombre="{{ item.nombre_display | e }}">
+            <i class="fas fa-file-import"></i>
+          </button>
+          {% endif %}
           {% if item.es_referenciado %}
           <button type="button" class="btn btn-sm btn-outline-secondary" disabled
                   data-bs-toggle="tooltip"
@@ -614,6 +623,52 @@
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-primary" onclick="guardar_edicion()">
           <i class="fas fa-save me-1"></i> Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Modal: Sustituir fichero (ADR-050 §F, #1007)                  -->
+<!-- ============================================================ -->
+<div class="modal fade" id="modal-sustituir" tabindex="-1" aria-labelledby="modal-sustituir-label">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-sustituir-label">
+          <i class="fas fa-file-import me-1"></i> Sustituir fichero
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="sustituir-doc-id">
+        <p class="mb-2">Documento: <strong id="sustituir-nombre"></strong></p>
+        <p class="text-secondary small">
+          Para cuando se subió el fichero equivocado. El documento conserva sus datos y sus
+          vínculos; solo cambia el fichero, y su nombre pasa a ser el del fichero nuevo.
+          Queda anotado en la bitácora, con el motivo.
+        </p>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="sustituir-fichero">
+            Fichero nuevo <span class="text-danger">*</span>
+          </label>
+          <input type="file" class="form-control" id="sustituir-fichero">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="sustituir-motivo">
+            Motivo <span class="text-danger">*</span>
+          </label>
+          <textarea class="form-control" id="sustituir-motivo" rows="3" maxlength="500"
+                    placeholder="Por qué se sustituye el fichero"></textarea>
+        </div>
+        <div id="sustituir-error" class="alert alert-danger d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-sustituir"
+                onclick="enviar_sustitucion()" disabled>
+          <i class="fas fa-file-import me-1"></i> Sustituir
         </button>
       </div>
     </div>
@@ -1358,6 +1413,71 @@
     })
     .catch(function () {
       mostrar_toast('danger', 'Error de red al borrar.');
+    });
+  };
+
+  // ================================================================
+  // SUSTITUIR FICHERO (ADR-050 §F, #1007)
+  // ================================================================
+  var _modal_sustituir_bs = null;
+
+  window.actualizar_boton_sustituir = function () {
+    var hay_fichero = document.getElementById('sustituir-fichero').files.length > 0;
+    var hay_motivo  = document.getElementById('sustituir-motivo').value.trim() !== '';
+    document.getElementById('btn-sustituir').disabled = !(hay_fichero && hay_motivo);
+  };
+
+  window.abrir_modal_sustituir = function (btn) {
+    document.getElementById('sustituir-doc-id').value       = btn.dataset.docId;
+    document.getElementById('sustituir-nombre').textContent = btn.dataset.docNombre;
+    document.getElementById('sustituir-fichero').value      = '';
+    document.getElementById('sustituir-motivo').value       = '';
+    document.getElementById('sustituir-error').classList.add('d-none');
+    window.actualizar_boton_sustituir();
+
+    if (!_modal_sustituir_bs) {
+      _modal_sustituir_bs = new bootstrap.Modal(document.getElementById('modal-sustituir'));
+      document.getElementById('sustituir-fichero').addEventListener('change', function (e) {
+        quitar_comprimidos(e.target);
+        window.actualizar_boton_sustituir();
+      });
+      document.getElementById('sustituir-motivo')
+        .addEventListener('input', window.actualizar_boton_sustituir);
+    }
+    _modal_sustituir_bs.show();
+  };
+
+  window.enviar_sustitucion = function () {
+    var doc_id   = document.getElementById('sustituir-doc-id').value;
+    var fichero  = document.getElementById('sustituir-fichero').files[0];
+    var error    = document.getElementById('sustituir-error');
+    var boton    = document.getElementById('btn-sustituir');
+    if (!fichero) return;
+
+    var formData = new FormData();
+    formData.append('fichero', fichero);
+    formData.append('motivo', document.getElementById('sustituir-motivo').value.trim());
+
+    boton.disabled = true;
+    error.classList.add('d-none');
+    fetch(URL_BASE_DOCS.replace(/\/documentos$/, '/documentos/') + doc_id + '/sustituir',
+          { method: 'POST', body: formData })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.ok) {
+        _modal_sustituir_bs.hide();
+        mostrar_toast('success', 'Fichero sustituido: el documento ahora es «' + data.nombre + '».');
+        setTimeout(function () { window.location.reload(); }, 1500);
+      } else {
+        error.textContent = data.error || 'No se pudo sustituir el fichero.';
+        error.classList.remove('d-none');
+        boton.disabled = false;
+      }
+    })
+    .catch(function () {
+      error.textContent = 'Error de red.';
+      error.classList.remove('d-none');
+      boton.disabled = false;
     });
   };
 
