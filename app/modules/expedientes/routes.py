@@ -38,9 +38,12 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
-from app.services.almacenamiento.adaptador import AlmacenNoDisponible, MENSAJE_ALMACEN_NO_DISPONIBLE
+from app.services.almacenamiento.adaptador import (
+    AlmacenNoDisponible, ErrorAlmacenamiento, MENSAJE_ALMACEN_NO_DISPONIBLE,
+)
 from app.services.almacenamiento.contenido import (
-    ContenidoNoUtilizable, servir_descarga, tiene_contenido_propio,
+    ContenidoNoUtilizable, documentos_con_contenido, servir_descarga, sustituir_con_motivo,
+    tiene_contenido_propio,
 )
 from app.services.almacenamiento.formatos import FormatoNoAdmitido
 from app.services.ingesta_pool import (
@@ -650,6 +653,7 @@ def pool_documentos(id):
             'nombre_display':  nombre,
             'extension':       extension,
             'es_url_externa':  es_url_externa,
+            'puede_sustituir': tiene_contenido_propio(doc),
             'es_referenciado': _documento_es_referenciado(doc),
             'apertura':        info_apertura_documento(id, doc, estricto=False),
             'reformado':       corte,
@@ -800,6 +804,51 @@ def pool_subir_documento(id):
             }
             for d in creados_docs
         ],
+    })
+
+
+@bp.route('/<int:id>/documentos/ya-existe', methods=['POST'])
+@login_required
+def pool_documentos_ya_existentes(id):
+    """¿Ya tiene el expediente estos ficheros? — el aviso antes de subir (ADR-050 §H, N077; #1007).
+
+    JSON: `{"hashes": ["<SHA-256 en hexadecimal>", ...]}` (a lo sumo 200). El navegador calcula
+    la huella de cada fichero que el usuario elige, con una librería que sirve BDDAT, y
+    pregunta aquí antes de enviar los bytes. Respuesta: `{ok, coincidencias: {huella: [{id,
+    nombre, tipo, fecha}]}}`, solo con las huellas que el expediente ya tiene (los documentos
+    más recientes primero); nunca una `ref`. Mira solo este expediente.
+
+    Es informativo: la huella del navegador nunca es el `contenido_sha256` de nada. Al subir, el
+    servidor calcula la suya y crea el documento si se le pide (ADR-032 §4); lo que decide qué
+    hacer con el aviso (no subir, o subir igualmente) es el navegador.
+
+    Permiso 'subir_documento', como la subida. 400 si el cuerpo no es lo esperado.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'subir_documento')
+    if resultado:
+        return resultado
+
+    datos = request.get_json(silent=True) or {}
+    try:
+        encontrados = documentos_con_contenido(id, datos.get('hashes'))
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+
+    return jsonify({
+        'ok': True,
+        'coincidencias': {
+            huella: [
+                {
+                    'id':     d.id,
+                    'nombre': d.nombre_visible(),
+                    'tipo':   d.tipo_doc.nombre if d.tipo_doc else None,
+                    'fecha':  d.fecha_administrativa.isoformat() if d.fecha_administrativa else None,
+                }
+                for d in documentos
+            ]
+            for huella, documentos in encontrados.items()
+        },
     })
 
 
@@ -1203,6 +1252,63 @@ def pool_editar_documento(id, doc_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
     return jsonify({'ok': True})
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/sustituir', methods=['POST'])
+@login_required
+def pool_sustituir_documento(id, doc_id):
+    """Sustituye el fichero de un documento del pool, con motivo — devuelve JSON (ADR-050 §F, #1007).
+
+    Para «subí el fichero equivocado»: el documento se conserva (datos y vínculos) y cambia
+    su contenido; su nombre pasa a ser el del fichero nuevo. Multipart: `fichero` (el nuevo)
+    y `motivo` (obligatorio). La bitácora guarda el motivo y los hashes y nombres anteriores
+    y nuevos.
+
+    Solo lo bloquea un sello, siempre con salida: un certificado (se deshace) o una fase
+    cerrada (se reabre); el mensaje del 422 la nombra. Lo notificado no se bloquea por
+    estarlo. Tampoco se sustituye un enlace externo ni un registro interno: el 422 lo dice.
+    Todas las comprobaciones viven en `contenido.sustituir_con_motivo`; aquí queda lo que
+    solo tiene sentido hablando HTTP: el permiso, el multipart y el código de estado
+    (422 lo que el usuario puede arreglar, 503 si el almacén no contesta).
+
+    Permiso 'editar', como editar y borrar del pool: cambiar el contenido de un documento
+    del expediente no es aportar uno nuevo ('subir_documento').
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return resultado
+
+    doc = Documento.query.get_or_404(doc_id)
+    if doc.expediente_id != id:
+        abort(404)
+
+    fichero = request.files.get('fichero')
+    if not fichero or not fichero.filename:
+        return jsonify({'ok': False, 'error': 'Ningún fichero recibido'}), 400
+
+    try:
+        sustituir_con_motivo(doc, fichero.stream, fichero.filename,
+                             request.form.get('motivo'), usuario_id=current_user.id)
+        db.session.commit()
+    except AlmacenNoDisponible:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': MENSAJE_ALMACEN_NO_DISPONIBLE}), 503
+    except ValueError as e:
+        # El motivo, el sello, el formato y el mismo contenido: mensaje para el usuario
+        # (FormatoNoAdmitido y SustitucionBloqueada son ValueError).
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 422
+    except ErrorAlmacenamiento:
+        # El texto de estos errores puede llevar una `ref`, que la API nunca devuelve (§B).
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': 'No se ha podido sustituir el fichero: '
+                        'avisa al administrador.'}), 500
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    return jsonify({'ok': True, 'nombre': doc.nombre_visible()})
 
 
 @bp.route('/<int:id>/documentos/<int:doc_id>/anclar-principal', methods=['POST'])

@@ -151,8 +151,8 @@ que las plantillas pasen al almacén (fase 4 de ADR-050, #1009).
   plantillas nunca devuelven una `ref` ni una ruta.
 - Lo que necesite el contenido de un documento lo pide al módulo de contenido
   (`app.services.almacenamiento.contenido`): `subir`, `leer`, `comprobar_para_vincular`,
-  `servir_descarga`. Ahí viven las comprobaciones que dan coherencia al contenido (hoy,
-  el hash y el estado; con la sustitución del PR 6, el sellado y la bitácora): quien
+  `servir_descarga`, `sustituir_con_motivo`. Ahí viven las comprobaciones que dan coherencia
+  al contenido (el hash y el estado; el sellado y la bitácora de un cambio): quien
   escribiera `fichero_ref` por su cuenta se las saltaría.
 - `subir` valida todos los ficheros antes de enviar el primero y devuelve los `Documento`
   **sin añadirlos a la sesión**: el llamador los añade y hace el commit. La fila de

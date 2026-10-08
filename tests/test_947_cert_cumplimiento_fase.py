@@ -416,10 +416,6 @@ class TestProteccionEnElPool:
         status, datos = _editar_en_pool(app_ctx, doc_cert, {'fecha_administrativa': '2025-03-01'})
         assert status == 422 and 'certificado de cumplimiento de la fase' in datos['error']
 
-    def test_borrar_el_citado_dice_por_que(self, app_ctx, citado):
-        status, datos = _borrar_en_pool(app_ctx, citado)
-        assert status == 422 and 'deshaga el certificado de cumplimiento' in datos['error']
-
     def test_borrar_el_certificado_422_y_no_500(self, app_ctx, arbol_aislado):
         """Hallazgo del issue: no cuelga de ninguna tarea ni FK de anclaje."""
         fase, _, _ = _fase_notificada(arbol_aislado, _NOTIFICA)

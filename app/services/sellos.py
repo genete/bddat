@@ -174,7 +174,7 @@ def motivo_sellado(documento) -> Optional[str]:
             f'Este documento acredita la notificación al solicitante de la fase '
             f'«{_nombre_fase(certificado.fase)}», y así lo hace constar su certificado '
             f'de cumplimiento, emitido el {_fecha_emision(certificado)}: no puede '
-            f'cambiarse su fecha, su tipo ni su fichero, ni desvincularse de la tarea, '
+            f'cambiarse su fecha, su tipo ni su contenido, ni desvincularse de la tarea, '
             f'ni borrarse. Si no es el documento correcto, deshaga el certificado de '
             f'cumplimiento desde el inspector de la fase y vuelva a emitirlo.'
         )
@@ -228,6 +228,34 @@ def motivo_vinculo_sellado(tarea, documento) -> Optional[str]:
     if certificado is None or tarea.tramite.fase_id != certificado.fase_id:
         return None
     return motivo_sellado(documento)
+
+
+def motivo_fase_cerrada(documento) -> Optional[str]:
+    """Por qué no se puede cambiar el contenido de `documento` si cuelga de una fase
+    cerrada (ADR-036), y cuál es la salida, o `None`.
+
+    Cuelga de una fase cerrada el documento vinculado a una tarea de una fase con
+    `documento_resultado_id` (`Fase.finalizada`, el mismo criterio que `_check_mutar`) o
+    el que es el documento de resultado de una fase, aunque no cuelgue de ninguna tarea.
+    La sustitución de un fichero con motivo lo consulta junto a `motivo_sellado` (ADR-050
+    §F): es el sello de ADR-036, y su salida es reabrir la fase, que el mensaje nombra.
+    """
+    if documento is None:
+        return None
+    fase = next(
+        (v.tarea.tramite.fase for v in documento.vinculos_tarea
+         if v.tarea.tramite.fase.finalizada),
+        None,
+    )
+    if fase is None:
+        fase = next((f for f in documento.fases_resultado if f.finalizada), None)
+    if fase is None:
+        return None
+    return (
+        f'Este documento forma parte de la fase «{_nombre_fase(fase)}», que está cerrada: '
+        f'con la fase sellada no se cambia su contenido. Para sustituirlo, reabra antes '
+        f'la fase desde su inspector.'
+    )
 
 
 # ---------------------------------------------------------------------------

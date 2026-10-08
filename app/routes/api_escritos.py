@@ -2,7 +2,7 @@
 
 ENDPOINTS:
     1. GET  /api/escritos/plantillas?tarea_id=X — Plantillas ESFTT compatibles
-    2. GET  /api/escritos/preview?plantilla_id=X&tarea_id=Y — Preview del contexto
+    2. GET  /api/escritos/preview?plantilla_id=X&tarea_id=Y — Campos del contexto del escrito
     3. POST /api/escritos/generar — Genera el escrito (.odt, o .docx heredado), lo guarda en el
        almacén y lo vincula como consumido de la tarea
 """
@@ -119,7 +119,11 @@ def listar_plantillas():
 @api_escritos_bp.route('/preview')
 @login_required
 def preview():
-    """Devuelve campos del contexto base y nombre propuesto."""
+    """Devuelve los campos del contexto base: lo que el escrito va a decir de este expediente.
+
+    No propone un nombre de fichero: lo pone el sistema al generar (`componer_nombre_documento`,
+    ADR-050 §C) y el usuario no lo elige ni lo cambia.
+    """
     plantilla_id = request.args.get('plantilla_id', type=int)
     tarea_id = request.args.get('tarea_id', type=int)
     if not plantilla_id or not tarea_id:
@@ -137,8 +141,7 @@ def preview():
     ctx = ContextoBaseExpediente(expediente, solicitud_de(tarea)).get_contexto()
     ctx.update(variables_destinatario(tarea))
 
-    nombre = componer_nombre_documento(tarea, plantilla)
-    return jsonify(ok=True, campos=ctx, nombre_propuesto=nombre)
+    return jsonify(ok=True, campos=ctx)
 
 
 # ------------------------------------------------------------------

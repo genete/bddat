@@ -275,8 +275,8 @@ export function getEscritosPlantillas(tareaId) {
   return api.get(`/api/escritos/plantillas?tarea_id=${tareaId}`)
 }
 
-// Preview de campos + nombre propuesto antes de generar.
-// Respuesta: {ok, campos, nombre_propuesto}.
+// Preview de campos antes de generar. Respuesta: {ok, campos}. El nombre del fichero lo pone el
+// sistema al generar (ADR-050 §C): el preview no lo propone.
 export function getEscritosPreview(plantillaId, tareaId) {
   return api.get(`/api/escritos/preview?plantilla_id=${plantillaId}&tarea_id=${tareaId}`)
 }

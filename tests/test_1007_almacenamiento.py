@@ -21,10 +21,12 @@ from sqlalchemy import text
 
 from app import db
 from app.models.bitacora import Bitacora
+from app.models.certificados import Certificado
 from app.services.almacenamiento.adaptador import AdaptadorAlmacen, AlmacenNoDisponible
 from app.services.almacenamiento.contenido import (
-    VIA_REGENERACION, ContenidoNoUtilizable, EntradaSubida, cambiar_contenido,
-    comprobar_para_vincular, leer, servir_descarga, subir,
+    VIA_REGENERACION, ContenidoNoUtilizable, EntradaSubida, SustitucionBloqueada,
+    cambiar_contenido, comprobar_para_vincular, leer, servir_descarga, subir,
+    sustituir_con_motivo,
 )
 from app.services.almacenamiento.formatos import FormatoNoAdmitido
 
@@ -294,6 +296,64 @@ def test_cambiar_el_contenido_anota_en_la_bitacora_los_dos_hashes(
     assert (entradas[0].usuario_id, entradas[0].operacion) == (primer_usuario_id, 'ALTERAR')
     assert entradas[0].detalle == {
         'via': 'REGENERACION', 'sha256_anterior': _sha(antes), 'sha256_nuevo': _sha(despues)}
+
+
+# --- sustituir con motivo (ADR-050 §F) -------------------------------------------------------
+
+@pytest.mark.parametrize('sello', ['certificado', 'fase_cerrada'])
+def test_sustituir_un_documento_sellado_se_rechaza_y_no_cambia_nada(
+        app_ctx, arbol_aislado, primer_usuario_id, sello):
+    """Fallo silencioso que evita: un documento que cita un certificado, o que cuelga de una
+    fase cerrada, cambia de contenido y el sello deja de decir la verdad sin que nada lo avise."""
+    solicitud = arbol_aislado.solicitud_propia()
+    original = _pdf('el sellado')
+    documento = _documento(solicitud.expediente_id, original)
+    if sello == 'certificado':
+        fase = arbol_aislado.fase('RESOLUCION', solicitud=solicitud)
+        certificado = arbol_aislado.documento(solicitud.expediente_id, 'CERT_CUMPLIMIENTO_FASE', 'sust-cert')
+        db.session.add(Certificado(documento_id=certificado.id, tipo='CERT_CUMPLIMIENTO_FASE',
+                                   fase_id=fase.id, datos={'documento_id': documento.id}))
+        salida = 'deshaga el certificado'
+    else:
+        fase = arbol_aislado.fase('ANALISIS_SOLICITUD', solicitud=solicitud)
+        tarea = arbol_aislado.tarea(arbol_aislado.tramite(fase, 'ANALISIS_DOCUMENTAL'), 'ELABORAR')
+        arbol_aislado.vincular(tarea, documento, 'CONSUMIDO')       # antes de cerrar: cerrada, no se vincula
+        cierre = arbol_aislado.documento(solicitud.expediente_id, 'RESOLUCION', 'sust-cierre')
+        fase.documento_resultado_id = cierre.id
+        salida = 'reabra antes la fase'
+    db.session.flush()
+    db.session.expire(documento, ['vinculos_tarea'])
+
+    with pytest.raises(SustitucionBloqueada, match=salida):
+        sustituir_con_motivo(documento, io.BytesIO(_pdf('el equivocado')), 'nuevo.pdf',
+                             'subí el fichero equivocado', usuario_id=primer_usuario_id)
+
+    assert leer(documento).datos == original
+    assert documento.nombre_fichero == 'informe.pdf'
+    assert _cambios_en_bitacora(documento) == []
+
+
+def test_sustituir_permitido_deja_hash_y_nombre_anteriores_en_la_bitacora(
+        app_ctx, arbol_aislado, primer_usuario_id):
+    """Fallo silencioso que evita: una sustitución se hace sin rastro de cuál era el contenido
+    y el nombre anteriores (el motivo, el hash y el nombre), y el expediente no puede explicar
+    por qué el documento ya no es el que se subió."""
+    solicitud = arbol_aislado.solicitud_propia()
+    antes, despues = _pdf('el equivocado'), _pdf('el bueno')
+    documento = _documento(solicitud.expediente_id, antes, nombre='equivocado.pdf')
+
+    sustituir_con_motivo(documento, io.BytesIO(despues), 'bueno.pdf', '  subí el fichero equivocado ',
+                         usuario_id=primer_usuario_id)
+    db.session.flush()
+
+    assert leer(documento).datos == despues
+    assert documento.nombre_fichero == 'bueno.pdf'
+    [entrada] = _cambios_en_bitacora(documento)
+    assert (entrada.usuario_id, entrada.operacion) == (primer_usuario_id, 'ALTERAR')
+    assert entrada.detalle == {
+        'via': 'SUSTITUCION', 'motivo': 'subí el fichero equivocado',
+        'sha256_anterior': _sha(antes), 'sha256_nuevo': _sha(despues),
+        'nombre_anterior': 'equivocado.pdf', 'nombre_nuevo': 'bueno.pdf'}
 
 
 # --- el adaptador ----------------------------------------------------------------------
