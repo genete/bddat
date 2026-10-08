@@ -680,12 +680,15 @@
 
 {% block extra_js %}{{ super() }}
 <script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
+{# La huella SHA-256 del aviso «este fichero ya está en el expediente» (ADR-050 §H, #1007). #}
+<script src="{{ url_for('static', filename='vendor/sha256/sha256.min.js') }}"></script>
 <script>
 (function () {
   'use strict';
 
   var URL_BASE_DOCS  = '{{ url_for('expedientes.pool_documentos', id=expediente.id) }}';
   var URL_PARSEAR_JUSTIFICANTE = '{{ url_for('expedientes.pool_parsear_justificante', id=expediente.id) }}';
+  var URL_YA_EXISTE  = '{{ url_for('expedientes.pool_documentos_ya_existentes', id=expediente.id) }}';
 
   // Qué se le pregunta a un DOC_PROYECTO que entre ahora (ADR-044 §C): el
   // discriminante es el estado del ancla del proyecto, calculado en el servidor.
@@ -1101,7 +1104,7 @@
       var tr    = document.createElement('tr');
       var ef_id = 'ef-subir-fecha-' + i;
       tr.innerHTML =
-        '<td class="small">' + escapar_html(f.name) + '</td>' +
+        '<td class="small">' + escapar_html(f.name) + '<div class="aviso-duplicado small mt-1"></div></td>' +
         '<td class="small text-secondary text-nowrap">' + formatear_bytes(f.size) + '</td>' +
         '<td><select class="form-select form-select-sm tipo-doc-select">' + tmpl_tipos + '</select></td>' +
         '<td><div id="' + ef_id + '"></div></td>' +
@@ -1122,13 +1125,137 @@
       });
     });
 
-    var n = _archivos_subir.length;
-    document.getElementById('subir-meta-contador').textContent =
-      n + ' fichero(s) listos para subir';
-    document.getElementById('btn-subir-texto').textContent =
-      'Subir ' + n + ' fichero(s)';
     document.getElementById('subir-meta-error').classList.add('d-none');
+    comprobar_ya_existentes();
   };
+
+  // ----------------------------------------------------------------
+  // Aviso «este fichero ya está en el expediente» (ADR-050 §H, N077; #1007)
+  // ----------------------------------------------------------------
+  // El navegador calcula el SHA-256 de cada fichero elegido, a trozos (con una librería que
+  // sirve BDDAT) y pregunta al servidor si el expediente ya lo tiene, antes de enviar los
+  // bytes. Los que ya están no se suben salvo que se marque «Subir igualmente». Es solo un
+  // aviso: el servidor sigue calculando su propia huella al subir, y si la comprobación
+  // falla por lo que sea, la subida sigue como siempre.
+  var _comprobacion = 0;          // identifica la comprobación en curso: una respuesta tardía se ignora
+  var _comprobando  = false;
+
+  function huella_de_fichero(fichero, al_progreso) {
+    return new Promise(function (resolve, reject) {
+      var TROZO = 4 * 1024 * 1024;
+      var hasher = window.sha256.create();
+      var pos = 0;
+      (function siguiente() {
+        if (pos >= fichero.size) { resolve(hasher.hex()); return; }
+        fichero.slice(pos, pos + TROZO).arrayBuffer().then(function (buf) {
+          hasher.update(new Uint8Array(buf));
+          pos += TROZO;
+          if (al_progreso) al_progreso(Math.min(100, Math.round(100 * pos / fichero.size)));
+          setTimeout(siguiente, 0);          // deja respirar a la interfaz entre trozo y trozo
+        }).catch(reject);
+      }());
+    });
+  }
+
+  function fecha_legible(iso) {
+    if (!iso) return 'sin fecha';
+    var p = iso.slice(0, 10).split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+
+  // «X» del aviso: nombre, tipo y fecha administrativa; con varios, hasta tres y «y N más».
+  function describir_coincidencias(docs) {
+    var vistos = docs.slice(0, 3).map(function (d) {
+      return '«' + escapar_html(d.nombre) + '» (' + escapar_html(d.tipo || 'sin tipo') + ', ' +
+             fecha_legible(d.fecha) + ')';
+    });
+    var resto = docs.length - vistos.length;
+    var texto = vistos.length > 1
+      ? vistos.slice(0, -1).join(', ') + (resto > 0 ? ', ' : ' y ') + vistos[vistos.length - 1]
+      : vistos[0];
+    return resto > 0 ? texto + ' y ' + resto + ' más' : texto;
+  }
+
+  function fila_incluida(tr) {
+    if (tr.dataset.duplicado !== '1') return true;
+    var marca = tr.querySelector('.subir-igualmente');
+    return !!(marca && marca.checked);
+  }
+
+  function actualizar_boton_subir() {
+    var filas = Array.prototype.slice.call(document.querySelectorAll('#subir-meta-tbody tr'));
+    var incluidas = filas.filter(fila_incluida).length;
+    var excluidas = filas.length - incluidas;
+    document.getElementById('subir-meta-contador').textContent =
+      filas.length + ' fichero(s) elegidos' +
+      (excluidas ? ' — ' + excluidas + ' ya está(n) en el expediente y no se subirá(n) si no marcas «Subir igualmente».'
+                 : ' — listos para subir.');
+    document.getElementById('btn-subir-texto').textContent =
+      incluidas ? 'Subir ' + incluidas + ' fichero(s)' : 'Nada que subir';
+    document.getElementById('btn-subir-registrar').disabled = _comprobando || incluidas === 0;
+  }
+
+  function marcar_ya_existente(tr, docs, i) {
+    tr.dataset.duplicado = '1';
+    tr.classList.add('table-warning');
+    tr.querySelector('.aviso-duplicado').innerHTML =
+      '<div class="text-warning-emphasis"><i class="fas fa-triangle-exclamation me-1"></i>' +
+      'Este fichero ya está en el expediente como ' + describir_coincidencias(docs) + '. ' +
+      'Si lo subes igualmente se creará otro documento con el mismo contenido, sin guardar ' +
+      'otra copia, y con sus propios datos, que deberás indicar.</div>' +
+      '<div class="form-check mt-1"><input type="checkbox" class="form-check-input subir-igualmente" ' +
+      'id="subir-igualmente-' + i + '">' +
+      '<label class="form-check-label fw-semibold" for="subir-igualmente-' + i + '">Subir igualmente</label></div>';
+    tr.querySelector('.subir-igualmente').addEventListener('change', actualizar_boton_subir);
+  }
+
+  function comprobar_ya_existentes() {
+    var token = ++_comprobacion;
+    var filas = Array.prototype.slice.call(document.querySelectorAll('#subir-meta-tbody tr'));
+    _comprobando = true;
+    actualizar_boton_subir();
+    if (!window.sha256) { _comprobando = false; actualizar_boton_subir(); return; }
+
+    var huellas = new Array(filas.length);
+    var nota = function (i, texto) {
+      if (token === _comprobacion) filas[i].querySelector('.aviso-duplicado').textContent = texto;
+    };
+
+    // Una a una: dos ficheros de 300 MB a la vez no caben en la memoria de un puesto.
+    var cadena = Promise.resolve();
+    _archivos_subir.forEach(function (f, i) {
+      cadena = cadena.then(function () {
+        if (token !== _comprobacion) return;
+        nota(i, 'Comprobando si ya está en el expediente… 0 %');
+        return huella_de_fichero(f, function (pct) {
+          nota(i, 'Comprobando si ya está en el expediente… ' + pct + ' %');
+        }).then(function (h) { huellas[i] = h; nota(i, ''); })
+          .catch(function () { nota(i, ''); });          // sin huella, esa fila se sube como siempre
+      });
+    });
+
+    cadena.then(function () {
+      if (token !== _comprobacion) return;
+      var lista = huellas.filter(Boolean);
+      if (!lista.length) return;
+      return fetch(URL_YA_EXISTE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hashes: lista }),
+      }).then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (token !== _comprobacion || !data.ok) return;
+          huellas.forEach(function (h, i) {
+            if (h && data.coincidencias[h]) marcar_ya_existente(filas[i], data.coincidencias[h], i);
+          });
+        });
+    }).catch(function () { /* aviso best-effort: si falla, se sube como siempre */ })
+      .then(function () {
+        if (token !== _comprobacion) return;
+        _comprobando = false;
+        actualizar_boton_subir();
+      });
+  }
 
   // Parseo transitorio (sin persistir nada, #657): sube el fichero suelto al
   // endpoint de preview y, si es un justificante NOTIFICA reconocido,
@@ -1148,6 +1275,8 @@
   }
 
   window.volver_a_elegir_subida = function () {
+    _comprobacion++;            // deja de comprobar lo elegido: se va a elegir otra vez
+    _comprobando = false;
     mostrar_paso_elegir_subida();
   };
 
@@ -1171,16 +1300,17 @@
 
   window.subir_ficheros = function (url_subir) {
     var metadatos = [];
+    var formData = new FormData();
     document.querySelectorAll('#subir-meta-tbody tr').forEach(function (tr, i) {
+      // Un fichero que ya está en el expediente no se envía salvo que se marque «Subir igualmente».
+      if (!fila_incluida(tr)) return;
       metadatos.push(Object.assign({
         tipo_doc_id:          tr.querySelector('.tipo-doc-select').value || '1',
         fecha_administrativa: _ef_subida[i] ? _ef_subida[i].getValue() : null,
         prioridad:            tr.querySelector('.prioridad-check').checked,
       }, datos_reformado(tr)));
+      formData.append('ficheros', _archivos_subir[i]);
     });
-
-    var formData = new FormData();
-    _archivos_subir.forEach(function (f) { formData.append('ficheros', f); });
     formData.append('metadatos', JSON.stringify(metadatos));
 
     var btn = document.getElementById('btn-subir-registrar');
@@ -1211,6 +1341,8 @@
   function resetear_modal_subir() {
     _archivos_subir = [];
     _ef_subida = [];
+    _comprobacion++;            // si había una comprobación en curso, su respuesta se ignora
+    _comprobando = false;
     document.getElementById('subir-input-ficheros').value = '';
     document.getElementById('subir-meta-tbody').innerHTML = '';
     document.getElementById('subir-error-elegir').classList.add('d-none');
