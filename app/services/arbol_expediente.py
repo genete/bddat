@@ -12,6 +12,10 @@ Decisiones de contrato (ADR-016 §16):
   cómputo depende del calendario hábil / suspensiones / catalogo_plazos, server-only.
 - Agregadores por nodo no-hoja: contadores del subárbol completo. El front muestra el
   badge solo cuando el nodo está colapsado (agregado total y fijo, sin recálculo).
+- El plazo de resolver es de cada ACTO (ADR-049 §E, #922): la solicitud lleva una barra por
+  acto con plazo (`plazos`) y la fase finalizadora, las de los actos que ella resuelve. Se
+  calcula una sola vez por solicitud en `plazos_solicitud` y se reparte a las fases; el
+  inspector lee ese mismo dato del nodo ya cargado, no lo recalcula.
 
 Defensivo ante catálogo no disponible (REGLAS_DESARROLLO §Servicios con catálogo):
 captura OperationalError / ProgrammingError y degrada sin propagar.
@@ -266,9 +270,12 @@ def _serializar_expediente(exp) -> dict:
 
 def _serializar_solicitud(sol) -> dict:
     agg = _agregados_vacios()
+    plazos = plazos_solicitud(sol)   # una vez por solicitud, no por fase (#922)
     fases_data = []
     for fase in sorted(sol.fases, key=lambda f: f.id):
-        fd = _serializar_fase(fase)
+        # Cada fase pinta solo los actos que ella resuelve; los de una fase aún sin
+        # crear (`fase_resolutora_id` None) corren solo en la caja de la solicitud.
+        fd = _serializar_fase(fase, [p for p in plazos if p['fase_resolutora_id'] == fase.id])
         fases_data.append(fd)
         _sumar_agregados(agg, fd['agregados'])
 
@@ -293,6 +300,7 @@ def _serializar_solicitud(sol) -> dict:
         'doc_producido': {'presente': False, 'count': 0, 'na': True},
         'semaforo': _semaforo(est, propio),
         'agregados': agg,
+        'plazos': plazos,
         'fases': fases_data,
         'versiones': _serializar_versiones(sol, fases_data),
     }
@@ -371,7 +379,10 @@ def _serializar_versiones(sol, fases_data: list[dict]) -> list[dict]:
     return resultado
 
 
-def _serializar_fase(fase) -> dict:
+def _serializar_fase(fase, plazos: list[dict]) -> dict:
+    """`plazos`: los de los actos que esta fase resuelve, ya calculados por la solicitud
+    (`plazos_solicitud`). Va sin valor por defecto a propósito: la fase no calcula nada,
+    así que no hay forma natural de pedir los plazos una vez por fase."""
     agg = _agregados_vacios()
     tramites_data = []
     for tr in sorted(fase.tramites, key=lambda t: t.id):
@@ -392,6 +403,7 @@ def _serializar_fase(fase) -> dict:
         'resultado': fase.resultado_fase.codigo if (fase.finalizada and fase.resultado_fase) else None,
         'semaforo': _semaforo(est, propio),
         'agregados': agg,
+        'plazos': plazos,
         'tramites': tramites_data,
         'organismos': _serializar_organismos_fase(fase, tramites_data),
     }
@@ -571,3 +583,54 @@ def plazo_tarea(tarea) -> Optional[dict]:
     except Exception as exc:  # noqa: BLE001 — un plazo no debe tumbar el árbol entero
         log.warning('arbol_expediente: plazo no disponible para tarea %s — %s', getattr(tarea, 'id', '?'), exc)
         return None
+
+
+def plazos_solicitud(solicitud) -> list[dict]:
+    """
+    Las barras del plazo de resolver de una solicitud, una por acto y en su orden (#922).
+
+    Análoga a `plazo_tarea`: vuelca `plazos.plazos_de_la_solicitud` a dicts con las fechas
+    en ISO. Una sola llamada por solicitud —el catálogo y el calendario se cargan una vez
+    para todos sus actos—; las fases reciben el reparto ya hecho (`_serializar_solicitud`).
+
+    Solo salen los actos con plazo: uno sin fila de catálogo (INTERESADO, RECURSO…) o sin
+    fecha de disparo es `SIN_PLAZO` y no tiene barra, como una tarea sin plazo.
+
+    Defensivo: cualquier fallo degrada a `[]` sin romper el árbol (las cajas salen sin
+    barras). Nada de esto se guarda: se calcula en cada lectura.
+    """
+    try:
+        from app.services.plazos import plazos_de_la_solicitud
+        return [_plazo_acto(p) for p in plazos_de_la_solicitud(solicitud)
+                if p.estado != 'SIN_PLAZO']
+    except Exception as exc:  # noqa: BLE001 — un plazo no debe tumbar el árbol entero
+        log.warning('arbol_expediente: plazos de actos no disponibles para solicitud %s — %s',
+                    getattr(solicitud, 'id', '?'), exc)
+        return []
+
+
+def _plazo_acto(p) -> dict:
+    """Un `EstadoPlazoActo` a dict: todo lo que pintan la barra y el inspector."""
+    def _iso(d):
+        return d.isoformat() if d else None
+
+    return {
+        'acto': p.acto,
+        'estado': p.estado,
+        'efecto': p.efecto,
+        'efecto_nombre': p.efecto_nombre,
+        'fase_resolutora': p.fase_resolutora,
+        'fase_resolutora_id': p.fase_resolutora_id,
+        'fecha_disparo': _iso(p.fecha_disparo),
+        'fecha_limite': _iso(p.fecha_limite),
+        'fecha_cumplimiento': _iso(p.fecha_cumplimiento),
+        'dias_restantes': p.dias_restantes,
+        'cumplido_fuera_de_plazo': p.cumplido_fuera_de_plazo,
+        'suspendido': p.suspendido,
+        'suspendido_desde': _iso(p.suspendido_desde),
+        'dias_suspendidos': p.dias_suspendidos,
+        'fecha_limite_sin_suspender': _iso(p.fecha_limite_sin_suspender),
+        'plazo_valor': p.plazo_valor,
+        'plazo_unidad': p.plazo_unidad,
+        'norma_origen': p.norma_origen,
+    }
