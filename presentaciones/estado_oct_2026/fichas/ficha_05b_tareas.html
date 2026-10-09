@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 5b · Las tareas: de 7 a 4</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --cambio:#0F6E56;   /* lo que ha cambiado o es nuevo desde mayo */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:1;transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha: de las 7 tareas de mayo a las 4 de ahora ===== */
+.cab{position:absolute;left:60px;right:60px;top:26px}
+.cab h1{font-size:40px;font-weight:600;line-height:1.1}
+
+/* Tablero: las posiciones van fijas (filas de 58 px) para alinear cada tarea con su destino */
+.tabla{position:absolute;left:60px;top:96px;width:1160px;height:600px}
+.col-t{position:absolute;top:0;font-size:15px;letter-spacing:.07em;text-transform:uppercase;color:var(--texto-2)}
+.col-t.nuevo{color:var(--cambio)}
+.chip{position:absolute;display:flex;align-items:center;padding:0 16px;border-radius:12px;font-size:21px;font-weight:600;
+  background:var(--tarjeta);border:2px solid var(--borde)}
+.antes{left:0;width:270px;height:46px}
+.ahora{left:370px;width:300px;border-color:var(--cambio);background:#fff;color:var(--cambio)}
+.ahora.igual{border-color:var(--borde-fuerte);color:var(--texto)}
+.ahora.fuera{border-style:dashed;border-color:var(--borde-fuerte);background:transparent;color:var(--texto-2);font-weight:400;font-size:19px}
+
+/* Flechas y llaves que unen cada tarea de mayo con su destino */
+.fl{position:absolute;height:3px;background:var(--cambio);border-radius:2px}
+.fl::after{content:"";position:absolute;right:-2px;top:-7px;border-left:14px solid var(--cambio);
+  border-top:8px solid transparent;border-bottom:8px solid transparent}
+.fl.igual{background:var(--borde-fuerte)}
+.fl.igual::after{border-left-color:var(--borde-fuerte)}
+.llave{position:absolute;left:280px;width:24px;border:3px solid var(--cambio);border-left:none;border-radius:0 12px 12px 0}
+
+/* Explicación a la derecha de cada cambio */
+.exp{position:absolute;left:710px;width:450px;display:flex;align-items:center;font-size:19px;line-height:1.3;color:var(--texto)}
+.exp b{font-weight:600}
+
+/* Vinculaciones al pie */
+.vinc{position:absolute;left:0;top:478px;width:1160px;height:96px;border:2px solid var(--cambio);border-radius:16px;background:#fff;
+  display:flex;align-items:center;gap:22px;padding:0 24px}
+.vinc .t{font-size:21px;font-weight:600;flex:none;width:300px;line-height:1.2}
+.vinc .chip{position:static;height:48px;border-color:var(--cambio);background:#fff;color:var(--cambio)}
+</style>
+</head>
+<body>
+
+<div id="escenario">
+  <div class="cab"><h1>Las tareas: de 7 a 4</h1></div>
+
+  <div class="tabla">
+    <div class="col-t paso" data-paso="1" style="left:0;top:8px">Mayo · 7 tareas</div>
+    <div class="col-t nuevo paso" data-paso="2" style="left:370px;top:8px">Ahora · 4 tareas</div>
+
+    <!-- Mayo: las siete tareas (filas de 58 px desde y=40) -->
+    <div class="chip antes paso" data-paso="1" style="top:40px">ANALIZAR</div>
+    <div class="chip antes paso" data-paso="1" style="top:98px">REDACTAR</div>
+    <div class="chip antes paso" data-paso="1" style="top:156px">FIRMAR</div>
+    <div class="chip antes paso" data-paso="1" style="top:214px">NOTIFICAR</div>
+    <div class="chip antes paso" data-paso="1" style="top:272px">PUBLICAR</div>
+    <div class="chip antes paso" data-paso="1" style="top:330px">ESPERAR PLAZO</div>
+    <div class="chip antes paso" data-paso="1" style="top:388px">INCORPORAR</div>
+
+    <!-- Paso 2: las que se quedan igual -->
+    <div class="fl igual paso" data-paso="2" style="left:282px;top:62px;width:84px"></div>
+    <div class="chip ahora igual paso" data-paso="2" style="top:40px;height:46px">ANALIZAR</div>
+    <div class="fl igual paso" data-paso="2" style="left:282px;top:352px;width:84px"></div>
+    <div class="chip ahora igual paso" data-paso="2" style="top:330px;height:46px">ESPERAR PLAZO</div>
+
+    <!-- Paso 3: REDACTAR y FIRMAR se funden en ELABORAR -->
+    <div class="llave paso" data-paso="3" style="top:121px;height:58px"></div>
+    <div class="fl paso" data-paso="3" style="left:304px;top:149px;width:62px"></div>
+    <div class="chip ahora paso" data-paso="3" style="top:98px;height:104px">ELABORAR</div>
+    <div class="exp paso" data-paso="3" style="top:98px;height:104px"><span><b>REDACTAR</b> y <b>FIRMAR</b> se funden en <b>ELABORAR</b>.</span></div>
+
+    <!-- Paso 4: PUBLICAR se absorbe en NOTIFICAR -->
+    <div class="llave paso" data-paso="4" style="top:237px;height:58px"></div>
+    <div class="fl paso" data-paso="4" style="left:304px;top:265px;width:62px"></div>
+    <div class="chip ahora paso" data-paso="4" style="top:214px;height:104px">NOTIFICAR</div>
+    <div class="exp paso" data-paso="4" style="top:214px;height:104px"><span><b>PUBLICAR</b> desaparece: era una especialización de <b>NOTIFICAR</b>.</span></div>
+
+    <!-- Paso 5: INCORPORAR desaparece -->
+    <div class="fl igual paso" data-paso="5" style="left:282px;top:410px;width:84px"></div>
+    <div class="chip ahora fuera paso" data-paso="5" style="top:388px;height:46px">desaparece</div>
+    <div class="exp paso" data-paso="5" style="top:380px;height:62px"><span><b>INCORPORAR</b> desaparece: como acto, es el que se realiza al vincular un documento a una tarea.</span></div>
+
+    <!-- Paso 6: las vinculaciones de documento -->
+    <div class="vinc paso" data-paso="6">
+      <div class="t">Las vinculaciones de documento son</div>
+      <div class="chip">CONSUMIDO (N)</div>
+      <div class="chip">PRODUCIDO (1)</div>
+    </div>
+  </div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var MAX = 6, paso = 1;
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var h = location.hash, m = h.match(/paso=(\d+)/);
+  if (h === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (m) paso = Math.max(1, Math.min(MAX, +m[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>

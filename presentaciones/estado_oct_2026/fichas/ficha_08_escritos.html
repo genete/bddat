@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 8 · Escritos</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --cambio:#0F6E56;   /* lo que ha cambiado o es nuevo desde mayo */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:1;transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,.fila,#ayuda{transition:none}}
+
+/* ===== Base de las fichas de repaso: izquierda lo dicho en mayo, derecha lo que cambia ===== */
+.cab{position:absolute;left:60px;right:60px;top:26px}
+.cab h1{font-size:40px;font-weight:600;line-height:1.1}
+.cols{position:absolute;left:60px;right:60px;top:92px;bottom:34px;display:grid;
+  grid-template-columns:1fr 430px;column-gap:40px}
+
+/* Frase de mayo. Las que cambian llevan un círculo numerado; al aparecer su nota se atenúan */
+.fila{display:flex;gap:12px;padding:6px 0;font-size:18px;line-height:1.3;transition:opacity .6s ease}
+.fila b{font-weight:600}
+.fila .m{flex:none;width:26px;height:26px;margin-top:-1px}
+.fila.cambia .m{border:2px solid var(--cambio);border-radius:50%;color:var(--cambio);
+  font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;
+  transition:background .4s,color .4s}
+.fila.atenuada{opacity:.38}
+.fila.atenuada .m{background:var(--cambio);color:#fff}
+
+/* Nota: lo que cambia (con el número de su frase) o lo nuevo (sin frase) */
+.nota{background:#fff;border:2px solid var(--cambio);border-radius:14px;padding:12px 16px;margin-bottom:12px;
+  font-size:19px;line-height:1.32}
+.nota .n{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--cambio);color:#fff;
+  font-size:14px;font-weight:600;align-items:center;justify-content:center;margin-right:8px;vertical-align:1px}
+.nota .tag{display:inline-block;font-size:13px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--cambio);border:2px solid var(--cambio);border-radius:8px;padding:0 8px;margin-right:8px}
+.nota p+p{margin-top:8px}
+.nota .ap{color:var(--texto-2)}
+
+/* ===== Propio de esta ficha: cinco frases y cuatro notas ===== */
+.cols{grid-template-columns:1fr 500px}
+.fila{font-size:19px;padding:9px 0}
+.fila .m{margin-top:1px}
+.nota{font-size:17.5px;padding:10px 16px;margin-bottom:9px}
+</style>
+</head>
+<body>
+
+<div id="escenario">
+  <div class="cab"><h1>Escritos</h1></div>
+
+  <div class="cols">
+    <div class="paso" data-paso="1">
+      <div class="fila cambia" data-corr="2"><span class="m">1</span><span><b>En una tarea REDACTAR, el sistema propone las plantillas disponibles para ese contexto</b> y genera el borrador con los datos del expediente ya rellenos</span></div>
+      <div class="fila cambia" data-corr="3"><span class="m">2</span><span><b>El documento se guarda con nombre sistematizado</b> y queda registrado en el pool, vinculado a la tarea que lo originó</span></div>
+      <div class="fila cambia" data-corr="4"><span class="m">3</span><span><b>El documento lleva un código estructurado de trazabilidad en el pie de página</b> — cuando vuelve firmado al pool, el sistema lo clasifica automáticamente</span></div>
+      <div class="fila"><span class="m"></span><span><b>Las plantillas admiten campos simples, campos calculados, tablas dinámicas y condiciones</b> — la plantilla ya sabe qué párrafo poner según el resultado</span></div>
+      <div class="fila cambia" data-corr="5"><span class="m">4</span><span><b>El documento generado es un .docx editable en LibreOffice Writer</b> — el tramitador puede ajustarlo si la situación lo requiere</span></div>
+    </div>
+
+    <div>
+      <div class="nota paso" data-paso="2">
+        <p><span class="n">1</span>La tarea que genera el escrito es <b>ELABORAR</b>.</p>
+      </div>
+      <div class="nota paso" data-paso="3">
+        <p><span class="n">2</span>El pool ya no es una carpeta: el <b>archivo físico</b> va al <b>almacén</b> y se crea una entrada lógica (el <b>fichero</b>) que vincula el documento con el archivo físico.</p>
+        <p>Se pueden crear dos documentos contra el mismo fichero físico, siempre que sean de distinto tipo.</p>
+      </div>
+      <div class="nota paso" data-paso="4">
+        <p><span class="n">3</span>El código va en el pie de página del escrito, pero la <b>clasificación automática</b> de lo que vuelve firmado <b>aún no está hecha</b>.</p>
+        <p>Hoy solo se usa para comprobar el vínculo en el requerimiento de subsanación.</p>
+      </div>
+      <div class="nota paso" data-paso="5">
+        <p><span class="n">4</span>El documento generado es <b>.odt</b>, editable en LibreOffice Writer.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var MAX = 5, paso = 1;
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var filas = [].slice.call(document.querySelectorAll('[data-corr]'));
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+    filas.forEach(function(e){ e.classList.toggle('atenuada', +e.getAttribute('data-corr') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var h = location.hash, m = h.match(/paso=(\d+)/);
+  if (h === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (m) paso = Math.max(1, Math.min(MAX, +m[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>
