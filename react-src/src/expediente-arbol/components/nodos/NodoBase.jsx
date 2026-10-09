@@ -1,12 +1,14 @@
 // NodoBase.jsx — caja común de los nodos no-tarea (#500, MODELO §6).
 //
 // Anatomía: cabecera [icono-tipo · TÍTULO MAYÚS centrado · círculo-semáforo] con raya
-// inferior; cuerpo (badge de estado + columna de documentos solo en solicitud, §8). Sin
-// rayas verticales. El nivel se distingue por el ICONO de tipo, no por forma ni color.
+// inferior; cuerpo (badge de estado + columna de documentos solo en solicitud, §8); y, en
+// solicitud y fase, un pie con una barra de plazo por acto (§9, #922). Sin rayas
+// verticales. El nivel se distingue por el ICONO de tipo, no por forma ni color.
 import React from 'react'
 import { Handle, Position } from '@xyflow/react'
 import Semaforo from './Semaforo.jsx'
 import Docs from './Docs.jsx'
+import BarraPlazo from './BarraPlazo.jsx'
 
 // Icono de tipo por nivel (MODELO §6). El estado lo da el semáforo, no el icono.
 const ICONO_TIPO = {
@@ -21,7 +23,7 @@ const ICONO_TIPO = {
 export default function NodoBase({ data }) {
   const {
     tipo, titulo, tituloCompleto, estado, seleccionado, colapsado,
-    agregados, semaforo, docConsumido, docProducido,
+    agregados, semaforo, docConsumido, docProducido, plazos,
   } = data
 
   // Relleno del círculo (MODELO §7): colapsado → color agregado del subárbol;
@@ -63,6 +65,14 @@ export default function NodoBase({ data }) {
           <Docs consumido={docConsumido} producido={docProducido} className="arbol-docs--col" />
         )}
       </div>
+
+      {/* Pie de plazos (§9, #922): la solicitud pinta los de todos sus actos; la fase, solo
+          los de los que ella resuelve. Sin barras no hay pie. El alto lo reserva layout.js. */}
+      {plazos && plazos.length > 0 && (
+        <div className="arbol-nodo__plazos">
+          {plazos.map((p) => <BarraPlazo key={p.acto} plazo={p} />)}
+        </div>
+      )}
 
       <Handle type="source" position={Position.Bottom} className="arbol-handle" />
     </div>

@@ -1,7 +1,7 @@
 # Modelo de estados-semáforo y decoradores del nodo ESFTT
 
 **Estado:** Vigente
-**Fecha:** 2026-05-30 (actualizado 2026-07-23 — nuevo estado `PENDIENTE_RESULTADO_NOTIFICACION`, ADR-034/#657/#658; 2026-09-23 — `RECHAZADA`, justificantes previos y nuevo estado `PENDIENTE_SEDE`, ADR-049/#928; 2026-09-27 — la fila de `Notificacion` nace con la tarea, ADR-051/#967; 2026-09-30 — la escalada de NOTIFICAR sale de los acuses postales fallidos e INCORRECTA se trata como pendiente, ADR-052/#568)
+**Fecha:** 2026-05-30 (actualizado 2026-07-23 — nuevo estado `PENDIENTE_RESULTADO_NOTIFICACION`, ADR-034/#657/#658; 2026-09-23 — `RECHAZADA`, justificantes previos y nuevo estado `PENDIENTE_SEDE`, ADR-049/#928; 2026-09-27 — la fila de `Notificacion` nace con la tarea, ADR-051/#967; 2026-09-30 — la escalada de NOTIFICAR sale de los acuses postales fallidos e INCORRECTA se trata como pendiente, ADR-052/#568; 2026-10-09 — barras del plazo de resolver por acto en solicitud y fase, #922)
 **Relacionado:** #500 (vista de árbol), #558 (núcleo unificado), ADR-016, ADR-034, ADR-049,
 `app/services/estado_dominio.py` (núcleo), `app/services/seguimiento.py`,
 mockup `docs/mockups/Mockup_Nodo_Arbol.html`.
@@ -251,6 +251,9 @@ inicio/fin), en el **footer** (raya superior), simple y sin adornos.
   | próximo a vencer | 🟠 naranja |
   | vencido | 🔴 rojo (barra al 100%) |
   | tarea completada | 🟢 verde, **congelada** a la fecha del documento producido |
+  | acto cumplido **en plazo** (#922) | 🟢 verde al 100% |
+  | acto cumplido **fuera de plazo** (#922) | 🔴 roja con la **punta verde**: es la evolución natural de la barra vencida (roja al 100%); al notificar solo cambia el final |
+  | acto con el **reloj parado** (suspensión viva, art. 22; #922) | el color de su estado, **rayado** |
 - **v1 (vigente): relleno SEMÁNTICO** — la longitud refleja el *estado* del plazo (en plazo:
   parcial gris · próximo: naranja · vencido: 100% rojo · ejecutada: verde congelado). Usa solo
   lo que ya computa el backend → **coste ≈ 0**.
@@ -262,9 +265,22 @@ inicio/fin), en el **footer** (raya superior), simple y sin adornos.
 - **Tarea NOTIFICAR**: plazo para **cursar** la notificación (art. 40.2 LPACAP, 10 días
   hábiles desde que se dicta el acto; fila `ANY/ANY/ANY/ANY/NOTIFICAR`) — no el de lectura
   (art. 43.2), que no tiene fila; **dos barras** si hay 2º intento.
-- **Solicitud**: una barra por **acto** (`plazos.plazos_de_la_solicitud`, #930, ADR-049 §E):
-  el plazo de resolver es de cada tipo atómico, no de la solicitud. La fase finalizadora
-  pinta las de los actos que ella resuelve (#922).
+- **Solicitud y fase finalizadora** (#922): una barra por **acto**
+  (`plazos.plazos_de_la_solicitud`, #930, ADR-049 §E): el plazo de resolver es de cada tipo
+  atómico, no de la solicitud. La solicitud pinta las de todos sus actos con plazo; la fase,
+  solo las de los actos que ella resuelve (`fase_resolutora_id`), así que una `RESOLUCION`
+  conjunta lleva las barras de AAP y AAC, y una partida, una cada fase. Mientras la fase
+  resolutora no existe, la barra corre igual en la solicitud. Un acto sin plazo
+  (INTERESADO, RECURSO…) no lleva barra.
+  - **Dónde:** un **pie** de la caja (raya superior): `ACTO ▬▬▬▬▬ dato`. A la derecha, los días
+    **hábiles** que quedan o de retraso (`4 d`, `−78 d`), la fecha de la notificación
+    (`✓ 18/08`) o `parado`; el detalle, en el tooltip. El pie suma 9 px fijos y 16 px por
+    barra al alto de la caja y `layout.js` lo reserva; el borde superior se ancla donde estaría
+    sin pie para que la caja siga alineada con sus hermanas.
+  - **Inspector:** un bloque «Plazo de resolver» con una tarjeta por acto (vencimiento o
+    notificación, plazo legal y norma, suspensión, efecto del vencimiento, fase que lo
+    resuelve). Lee el dato del nodo del árbol, no del detalle lazy.
+  - El dato lo vuelca `arbol_expediente.plazos_solicitud`, una vez por solicitud.
 
 ---
 
@@ -275,9 +291,9 @@ inicio/fin), en el **footer** (raya superior), simple y sin adornos.
   **tipos** de documento consumidos (ELABORAR → `BORRADOR_FIRMA`) y filas **`Notificacion`**
   (resultado) con los acuses postales fallidos (#568)— y propagar la mayor prioridad a los no-hoja, **reutilizando
   `seguimiento.py`** (hecho en #558 vía el núcleo `estado_dominio.py`).
-- **Plazo (barra):** la v1 semántica usa el `estado` de plazo ya disponible. La proporcional
-  (diferida) exigirá el progreso en días hábiles + plazo de cada **acto** y de **cursar la
-  notificación** por intento.
+- **Plazo (barra):** la v1 semántica usa el `estado` de plazo ya disponible; con ella van las
+  barras de las tareas y las de cada **acto** (#922). La proporcional (diferida) exigirá el
+  progreso en días hábiles y el plazo de **cursar la notificación** por intento.
 - **Documentos:** sin cambios de backend.
 
 **Deuda resuelta (#558):** unificada en el núcleo `estado_dominio`. `seguimiento.py` y la
@@ -290,6 +306,11 @@ queda desdoblado en `PENDIENTE_REDACTAR` (🔴) + `PENDIENTE_FIRMA` (🟡).
 
 - Tipo de documento `BORRADOR_FIRMA` en `tipos_documentos` (migración) — para el subestado FIRMA.
 - Scheduler + Playwright que envíe a firma las tareas en estado FIRMA.
-- Barra de plazo **proporcional** (progreso en días hábiles), plazo de cada **acto** y de
-  **cursar la notificación** por intento.
+- Barra de plazo **proporcional** (progreso en días hábiles) y plazo de **cursar la
+  notificación** por intento. (La barra semántica de cada **acto** ya está: #922.)
+- Hoy los plazos de resolver de los actos no entran en los contadores del árbol («venc /
+  próx»), que suman el KPI «plazos vencidos» del panel del supervisor: esos solo cuentan tareas
+  `ESPERAR_PLAZO`; y el semáforo de la solicitud (`estado_solicitud`) tampoco los mira.
+  Carlos (2026-10-09): el agregado del supervisor es otro asunto, relacionado con #922 pero
+  separado. *Interpretación:* en #922 tampoco se tocaron los contadores ni el semáforo.
 - ~~Refinar la prioridad numérica fina al unificar con `seguimiento.PRIORIDAD`.~~ Hecho en #558 (§5).

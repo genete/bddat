@@ -126,6 +126,87 @@
 .arbol-nodo__estado { font-size: 10px; color: #777; }
 .arbol-nodo__badges { font-size: 10px; color: #a30; }
 
+/* Pie de plazos (§9, #922): una barra por acto en solicitud y fase. Mismo relleno
+ * SEMÁNTICO que la barra de las tareas. Su alto (PLAZOS_PIE_H + n·PLAZOS_FILA_H en
+ * plazoActo.js) lo reserva layout.js: si cambian estas medidas, cambian allí. */
+.arbol-nodo__plazos {
+  border-top: 1px solid var(--nodo-raya);
+  padding: 6px 9px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.arbol-plazo { display: flex; align-items: center; gap: 7px; height: 11px; }
+.arbol-plazo__acto {
+  width: 34px;
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #555;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.arbol-plazo__track { flex: 1; height: 4px; border-radius: 2px; background: #e6e6e6; overflow: hidden; }
+.arbol-plazo__fill { display: block; height: 100%; background: var(--sem-gris); }
+.arbol-plazo__fill[data-color="naranja"] { background: var(--sem-naranja); }
+.arbol-plazo__fill[data-color="rojo"]    { background: var(--sem-rojo); }
+.arbol-plazo__fill[data-color="verde"]   { background: var(--sem-verde); }
+/* Reloj parado (suspensión viva, art. 22): el color del estado, rayado. */
+.arbol-plazo__fill.is-parado {
+  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0 2px, transparent 2px 5px);
+}
+/* Cumplido fuera de plazo: venció (roja al 100 %) y después se notificó → la punta verde. */
+.arbol-plazo__fill.is-tarde {
+  background: linear-gradient(90deg, var(--sem-rojo) 0 80%, var(--sem-verde) 80% 100%);
+}
+.arbol-plazo__dato {
+  width: 46px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 9.5px;
+  color: #555;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.arbol-plazo__dato.is-rojo { color: var(--sem-rojo); font-weight: 700; }
+.arbol-plazo__dato.is-parado { font-style: italic; }
+
+/* Bloque «Plazo de resolver» del inspector (#922): una tarjeta por acto con su barra y el
+ * detalle que la barra no cabe. La barra es la misma (BarraPlazo), sin la etiqueta del acto. */
+.arbol-plazo-acto {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 9px 11px;
+  margin-bottom: 9px;
+  background: #fcfcfc;
+}
+.arbol-plazo-acto .arbol-plazo { height: auto; margin-bottom: 7px; }
+.arbol-plazo-acto .arbol-plazo__track { background: #d9d9d9; }
+.arbol-plazo-acto__estado {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  padding: 0 9px;
+  border-radius: 10px;
+  color: #fff;
+  background: var(--sem-gris);
+}
+.arbol-plazo-acto__estado[data-color="naranja"] { background: var(--sem-naranja); }
+.arbol-plazo-acto__estado[data-color="rojo"]    { background: var(--sem-rojo); }
+.arbol-plazo-acto__estado[data-color="verde"]   { background: var(--sem-verde); }
+.arbol-plazo-acto__datos {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 3px 8px;
+  margin: 0;
+  font-size: 12px;
+}
+.arbol-plazo-acto__datos dt { font-weight: 400; color: #777; }
+.arbol-plazo-acto__datos dd { margin: 0; }
+
 /* Ancho FIJO por nivel (debe casar EXACTO con TAM de layout.js: flextree reserva ese
  * ancho; si la caja creciera con el texto invadiría a su vecina). El título recorta con
  * ellipsis. Alto mínimo (la caja puede crecer hacia abajo). */

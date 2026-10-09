@@ -10,6 +10,20 @@ const aggVacio = () => ({
 })
 const sem = (estado, color, propio) => ({ estado, color, propio })
 const doc = (presente, count, na = false) => ({ presente, count, na })
+// Plazo de resolver de un acto (#922): la forma de `arbol_expediente.plazos_solicitud`.
+const plazoActo = (o) => ({
+  efecto: 'SILENCIO_DESESTIMATORIO', efecto_nombre: 'Silencio administrativo desestimatorio',
+  fase_resolutora: 'RESOLUCION', fase_resolutora_id: null,
+  fecha_disparo: null, fecha_limite: null, fecha_cumplimiento: null, dias_restantes: null,
+  cumplido_fuera_de_plazo: false, suspendido: false, suspendido_desde: null,
+  dias_suspendidos: 0, fecha_limite_sin_suspender: null,
+  plazo_valor: 3, plazo_unidad: 'MESES', norma_origen: 'Art. 128 RD 1955/2000',
+  ...o,
+})
+const plazoAAP = plazoActo({
+  acto: 'AAP', estado: 'PROXIMO_VENCER', fase_resolutora_id: 202,
+  fecha_disparo: '2026-03-05', fecha_limite: '2026-06-05', dias_restantes: 4,
+})
 
 export const ARBOL_MOCK = {
   expediente: {
@@ -33,6 +47,7 @@ export const ARBOL_MOCK = {
       doc_producido: doc(false, 0, true),
       semaforo: sem('PENDIENTE_ESTUDIO', 'rojo', false),
       agregados: { plazos_vencidos: 1, plazos_proximos: 1, plazos_en_plazo: 0, pendientes_notificar: 1 },
+      plazos: [plazoAAP],
       fases: [
         {
           tipo: 'fase',
@@ -83,6 +98,7 @@ export const ARBOL_MOCK = {
           resultado: null,
           semaforo: sem('PENDIENTE_ESTUDIO', 'rojo', false),
           agregados: { plazos_vencidos: 1, plazos_proximos: 1, plazos_en_plazo: 0, pendientes_notificar: 1 },
+          plazos: [plazoAAP],
           tramites: [
             {
               tipo: 'tramite',

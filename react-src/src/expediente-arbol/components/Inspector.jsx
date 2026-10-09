@@ -11,6 +11,8 @@ import { showToast } from '../../shared/ui/toast.js'
 import { puedeEditarNodo } from '../../shared/auth.js'
 import { estaSellado } from '../sellado.js'
 import Semaforo from './nodos/Semaforo.jsx'
+import BarraPlazo from './nodos/BarraPlazo.jsx'
+import { barraDeActo, fechaLarga } from '../plazoActo.js'
 import Despensa from './Despensa.jsx'
 import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
 import AnalizarEditor from './AnalizarEditor.jsx'
@@ -163,6 +165,113 @@ function Plazo({ plazo }) {
       {dias !== null && dias !== undefined && (
         <div className="text-muted">Días restantes: {dias}</div>
       )}
+    </div>
+  )
+}
+
+// --- Plazo de resolver por acto (#922, ADR-049 §E) ------------------------------
+//
+// El dato sale del propio nodo del árbol (`nodo.plazos`, lo vuelca
+// `arbol_expediente.plazos_solicitud`), no del detalle lazy: el árbol ya lo trae, y así el
+// bloque no puede discrepar de las barras ni cuesta una petición más. La solicitud
+// enseña los de todos sus actos; la fase, solo los de los que ella resuelve.
+
+const UNIDAD_PLAZO = {
+  MESES:          ['mes', 'meses'],
+  DIAS_HABILES:   ['día hábil', 'días hábiles'],
+  DIAS_NATURALES: ['día natural', 'días naturales'],
+  ANOS:           ['año', 'años'],
+}
+
+const diasHabiles = (n) => `${n} ${Math.abs(n) === 1 ? 'día hábil' : 'días hábiles'}`
+
+// Las fases que resuelven un acto y que pueden aún no existir: se nombran por su código.
+// Los actos con plazo solo caen en RESOLUCION, RESOLUCION_AAP/AAC y RESOLUCION_DUP.
+function nombreFaseResolutora(codigo) {
+  if (codigo === 'RESOLUCION') return 'Resolución'
+  if (codigo && codigo.startsWith('RESOLUCION_')) return `Resolución ${codigo.slice('RESOLUCION_'.length)}`
+  return codigo
+}
+
+function filasPlazoActo(p, { enFase, nombreFase }) {
+  const filas = []
+  const tarde = !!p.cumplido_fuera_de_plazo
+  if (p.estado === 'CUMPLIDO') {
+    filas.push(['Notificada', `${fechaLarga(p.fecha_cumplimiento)}, ${tarde ? 'fuera de plazo' : 'en plazo'}`])
+    filas.push([tarde ? 'Venció' : 'Vencía', fechaLarga(p.fecha_limite)])
+  } else if (p.estado === 'VENCIDO') {
+    filas.push(['Venció', `${fechaLarga(p.fecha_limite)} (${diasHabiles(Math.abs(p.dias_restantes))} de retraso)`])
+  } else {
+    const resto = p.dias_restantes === null || p.dias_restantes === undefined
+      ? '' : ` (${diasHabiles(p.dias_restantes)})`
+    filas.push(['Vence', `${fechaLarga(p.fecha_limite)}${resto}`])
+  }
+
+  const [uno, varios] = UNIDAD_PLAZO[p.plazo_unidad] || [p.plazo_unidad, p.plazo_unidad]
+  filas.push(['Plazo legal',
+    `${p.plazo_valor} ${p.plazo_valor === 1 ? uno : varios} desde el ${fechaLarga(p.fecha_disparo)}`
+    + (p.norma_origen ? ` · ${p.norma_origen}` : '')])
+
+  // Suspensión (art. 22): el vencimiento de arriba ya viene desplazado.
+  if (p.suspendido || p.dias_suspendidos > 0) {
+    const sin = p.fecha_limite_sin_suspender
+      ? `; sin la suspensión vencería el ${fechaLarga(p.fecha_limite_sin_suspender)}` : ''
+    filas.push(['Suspensión', p.suspendido
+      ? `Reloj parado desde el ${fechaLarga(p.suspendido_desde)}. Hasta hoy, ${diasHabiles(p.dias_suspendidos)} suspendidos${sin}`
+      : `${diasHabiles(p.dias_suspendidos)} suspendidos${sin}`])
+  }
+
+  // El efecto del vencimiento: «Si vence» mientras corre; «Al vencer» si ya venció (aunque se
+  // notificara después). Cumplido en plazo no lo muestra: ya no puede ocurrir. Una fila de
+  // catálogo sin efecto llega sin `efecto_nombre` (el código es SIN_EFECTO_AUTOMATICO): sin
+  // efecto que contar no se pinta la fila, y nunca se enseña el código en bruto.
+  const cumplidoEnPlazo = p.estado === 'CUMPLIDO' && !tarde
+  if (p.efecto_nombre && p.efecto !== 'NINGUNO' && !cumplidoEnPlazo) {
+    const yaVencio = p.estado === 'VENCIDO' || tarde
+    filas.push([yaVencio ? 'Al vencer' : 'Si vence', p.efecto_nombre])
+  }
+  if (!enFase) {
+    filas.push(['Lo resuelve', nombreFase
+      ? nombreFase : `${nombreFaseResolutora(p.fase_resolutora)} (aún sin crear)`])
+  }
+  return filas
+}
+
+function PlazosActos({ nodo, tipo }) {
+  const plazos = nodo && nodo.plazos
+  if (!plazos || plazos.length === 0) return null
+  const enFase = tipo === 'fase'
+  // La fase de cada acto, si ya existe, con el nombre que le da el árbol.
+  const fases = (nodo.fases || [])
+  return (
+    <div className="mb-3">
+      <div className="text-muted fw-semibold small mb-1">
+        {enFase ? 'Plazo de resolver · actos que resuelve' : 'Plazo de resolver'}
+      </div>
+      {plazos.map((p) => {
+        const b = barraDeActo(p)
+        const etiqueta = b.tarde ? 'Cumplido fuera de plazo' : (ETIQUETA_PLAZO[p.estado] || p.estado)
+        const fase = fases.find((f) => f.id === p.fase_resolutora_id)
+        return (
+          <div key={p.acto} className="arbol-plazo-acto">
+            <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
+              <b className="small">{b.acto}</b>
+              <span className="arbol-plazo-acto__estado" data-color={b.tarde ? 'rojo' : b.color}>
+                {etiqueta}{b.parado ? ' · parado' : ''}
+              </span>
+            </div>
+            <BarraPlazo plazo={p} conActo={false} />
+            <dl className="arbol-plazo-acto__datos">
+              {filasPlazoActo(p, { enFase, nombreFase: fase ? fase.nombre : null }).map(([k, v]) => (
+                <React.Fragment key={k}>
+                  <dt>{k}</dt>
+                  <dd>{v}</dd>
+                </React.Fragment>
+              ))}
+            </dl>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -1269,6 +1378,7 @@ export default function Inspector() {
           <Campos campos={detalle.campos} />
           {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
           <Plazo plazo={detalle.plazo} />
+          <PlazosActos nodo={nodo} tipo={seleccion.tipo} />
           <Organismos organismos={detalle.organismos} seleccionar={seleccionar} />
           <Documentos documentos={detalle.documentos} />
         </>
