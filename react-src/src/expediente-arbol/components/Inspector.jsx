@@ -222,11 +222,13 @@ function filasPlazoActo(p, { enFase, nombreFase }) {
   }
 
   // El efecto del vencimiento: «Si vence» mientras corre; «Al vencer» si ya venció (aunque se
-  // notificara después). Cumplido en plazo no lo muestra: ya no puede ocurrir.
+  // notificara después). Cumplido en plazo no lo muestra: ya no puede ocurrir. Una fila de
+  // catálogo sin efecto llega sin `efecto_nombre` (el código es SIN_EFECTO_AUTOMATICO): sin
+  // efecto que contar no se pinta la fila, y nunca se enseña el código en bruto.
   const cumplidoEnPlazo = p.estado === 'CUMPLIDO' && !tarde
-  if (p.efecto && p.efecto !== 'NINGUNO' && !cumplidoEnPlazo) {
+  if (p.efecto_nombre && p.efecto !== 'NINGUNO' && !cumplidoEnPlazo) {
     const yaVencio = p.estado === 'VENCIDO' || tarde
-    filas.push([yaVencio ? 'Al vencer' : 'Si vence', p.efecto_nombre || p.efecto])
+    filas.push([yaVencio ? 'Al vencer' : 'Si vence', p.efecto_nombre])
   }
   if (!enFase) {
     filas.push(['Lo resuelve', nombreFase
