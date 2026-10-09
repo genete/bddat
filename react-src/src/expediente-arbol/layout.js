@@ -15,6 +15,7 @@
 // NOTA: tamaños base PROVISIONALES (andamiaje). El color es una fase aparte.
 
 import { flextree } from 'd3-flextree'
+import { altoPlazos } from './plazoActo.js'
 
 // --- dimensiones base por nivel (mínimos; el alto del bloque-tareas es variable) ---
 // Ajustados al contenido real (cabecera icono+título+círculo; solicitud lleva docs).
@@ -77,7 +78,10 @@ function tamano(dom) {
     const n = Math.max(1, (dom.tareas || []).length)
     return [TAREAS_W, TAREAS_PAD + n * FILA_TAREA_H]
   }
-  return TAM[dom.tipo] || [160, 48]
+  // Solicitud y fase llevan un pie con una barra de plazo por acto (#922): su alto crece
+  // con el número de barras. El resto de niveles no trae `plazos` y suma 0.
+  const [w, h] = TAM[dom.tipo] || [160, 48]
+  return [w, h + altoPlazos(dom.plazos)]
 }
 
 // Construye la jerarquía {ref, children, colapsado} aplicando el colapso.
@@ -207,8 +211,12 @@ export function construirGrafo(arbol, { colapsarFinalizados = false, seleccion =
   tree.each((n) => {
     const dom = n.data.ref
     const [w, h] = tamano(dom)
-    // flextree centra el nodo en (x, y); ReactFlow posiciona por la esquina.
-    let posY = n.y - h / 2
+    // flextree centra el nodo en (x, y); ReactFlow posiciona por la esquina. Una caja con
+    // pie de plazos (#922) es más alta que sus hermanas y centrada subiría su borde
+    // superior: dejaría de alinear con ellas y se acercaría a su padre. Se ancla el borde
+    // donde estaría sin pie; el pie crece hacia abajo y el alto reservado (h) ya lo
+    // incluye, así que sus hijos bajan lo mismo y el hueco de debajo no cambia.
+    let posY = n.y - (h - altoPlazos(dom.plazos)) / 2
     if (dom.tipo === 'tareas' && n.parent) {
       // Top-alinear los bloques-tarea primos: flextree los centra en la línea del
       // nivel, así que con alturas distintas (nº de tareas) sus topes se desalinean.
@@ -242,6 +250,8 @@ export function construirGrafo(arbol, { colapsarFinalizados = false, seleccion =
         docConsumido: dom.doc_consumido || null,
         docProducido: dom.doc_producido || null,
         agregados: dom.agregados || null,
+        // Plazo de resolver por acto (#922): solo solicitud y fase lo traen.
+        plazos: dom.plazos || null,
         colapsado: n.data.colapsado,
         seleccionado: seleccionado(dom),
         raw: dom,
