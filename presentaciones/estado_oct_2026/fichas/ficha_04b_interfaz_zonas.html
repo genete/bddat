@@ -45,10 +45,12 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
 .chip{display:inline-block;border:1.5px solid var(--borde-fuerte);border-radius:8px;padding:1px 8px;
   font-size:13px;color:var(--texto);background:#fff;margin:2px 4px 0 0}
 .z-cab{left:0;top:0;right:0;height:84px}
-.z-lat{left:0;top:84px;width:130px;bottom:116px}
-.z-cue{left:130px;top:84px;right:0;bottom:116px}
-.z-pan{left:0;right:0;bottom:0;height:116px}
-.z-ins{right:0;top:84px;width:240px;bottom:116px;background:#fff;border-style:dashed;border-color:var(--borde-fuerte);
+.z-lat{left:0;top:84px;width:130px;bottom:140px}
+.z-cue{left:130px;top:84px;right:0;bottom:140px}
+.z-pan{left:0;right:0;bottom:40px;height:100px}
+.z-pie{left:0;right:0;bottom:0;height:40px;padding:5px 14px;display:flex;align-items:center}
+.z-pie .nm{margin-bottom:0;font-size:17px}
+.z-ins{right:0;top:84px;width:240px;bottom:140px;background:#fff;border-style:dashed;border-color:var(--borde-fuerte);
   box-shadow:-8px 0 14px rgba(0,0,0,.08)}
 .z-ins.actual{background:#fff;border-color:var(--cambio)}
 .z-ins.paso{transform:translateX(50px)}
@@ -68,7 +70,7 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
   <div class="marco">
     <div class="z z-cab paso" data-paso="1" data-actual="1">
       <div class="nm"><span class="nz">1</span>Cabecera</div>
-      <span class="chip">Buscador global</span><span class="chip">Modo bloqueo</span><span class="chip">Alertas y mensajes</span><span class="chip">Perfil y salida</span>
+      <span class="chip">Buscador global</span><span class="chip">Modo del motor</span><span class="chip">Alertas y mensajes</span><span class="chip">Perfil y salida</span>
     </div>
     <div class="z z-lat paso" data-paso="2" data-actual="2">
       <div class="nm"><span class="nz">2</span></div>
@@ -86,14 +88,18 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
       <div class="nm"><span class="nz">5</span>Panel inferior</div>
       Bitácora y avisos (colapsable)
     </div>
+    <div class="z z-pie paso" data-paso="6" data-actual="6">
+      <div class="nm"><span class="nz">6</span>Pie de página</div>
+    </div>
   </div>
 
   <div class="desc">
-    <div class="zi paso" data-paso="1"><div class="t"><span class="nz">1</span>Cabecera</div>Buscador global, modo bloqueo, alertas y mensajes, y menú de perfil y salida.</div>
+    <div class="zi paso" data-paso="1"><div class="t"><span class="nz">1</span>Cabecera</div>Buscador global, modo del motor, alertas y mensajes, y menú de perfil y salida.</div>
     <div class="zi paso" data-paso="2"><div class="t"><span class="nz">2</span>Menú lateral izquierdo</div>Accesos directos a las principales áreas de trabajo.</div>
     <div class="zi paso" data-paso="3"><div class="t"><span class="nz">3</span>Cuerpo</div>Zona central de contenido principal: listados, formularios e islas React (el árbol del expediente, de momento).</div>
     <div class="zi paso" data-paso="4"><div class="t"><span class="nz">4</span>Inspector</div>Deslizable desde la derecha. Aparece cuando se selecciona algo en los listados o en el árbol. Al principio da la información de detalle, pero permite editar el elemento o más acciones según el caso.</div>
     <div class="zi paso" data-paso="5"><div class="t"><span class="nz">5</span>Panel inferior</div>Para la vista de bitácora y avisos. Colapsable.</div>
+    <div class="zi paso" data-paso="6"><div class="t"><span class="nz">6</span>Pie de página</div>Hoy solo lleva el «Acerca de», pero puede tener un papel en el futuro.</div>
   </div>
 </div>
 
@@ -101,7 +107,7 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
 
 <script>
 (function(){
-  var MAX = 5, paso = 1;
+  var MAX = 6, paso = 1;
   var els = [].slice.call(document.querySelectorAll('[data-paso]'));
   var zonas = [].slice.call(document.querySelectorAll('[data-actual]'));
   var esc = document.getElementById('escenario');

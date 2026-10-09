@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ficha 1 · Principios de diseño</title>
+<title>Ficha 6 · Entidades</title>
 <style>
 /* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
 :root{
@@ -52,36 +52,38 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
 .nota p+p{margin-top:8px}
 .nota .ap{color:var(--texto-2)}
 
-/* ===== Propio de esta ficha ===== */
+/* ===== Propio de esta ficha: seis frases largas, letra algo menor ===== */
+.cols{grid-template-columns:1fr 410px}
+.fila{font-size:17px;padding:5px 0;line-height:1.28}
+.nota{font-size:17.5px;padding:11px 15px;margin-bottom:10px}
 </style>
 </head>
 <body>
 
 <div id="escenario">
-  <div class="cab"><h1>Principios de diseño</h1></div>
+  <div class="cab"><h1>Entidades</h1></div>
 
   <div class="cols">
     <div class="paso" data-paso="1">
-      <div class="fila"><span class="m"></span><span><b>Abstracción del procedimiento</b> — Todo procedimiento administrativo es un conjunto de tareas que manejan documentos y fechas</span></div>
-      <div class="fila"><span class="m"></span><span><b>Minimalismo estructural</b> — La semántica vive en los tipos, no en la multiplicación de campos</span></div>
-      <div class="fila"><span class="m"></span><span><b>Una sola fuente de la verdad</b> — Cada dato existe en un único lugar; el resto apunta a él</span></div>
-      <div class="fila"><span class="m"></span><span><b>Separación datos / reglas</b> — Las tablas guardan hechos; las reglas viven separadas, no en código</span></div>
-      <div class="fila"><span class="m"></span><span><b>Motor configurable con escape</b> — Cambiar comportamiento es modificar registros, no reescribir código; ninguna regla crea un callejón sin salida</span></div>
-      <div class="fila"><span class="m"></span><span><b>Justificación normativa</b> — La cadena Ley → variables → reglas → tramitación garantiza trazabilidad y seguridad jurídica</span></div>
-      <div class="fila cambia" data-corr="2"><span class="m">1</span><span><b>Despliegue progresivo</b> — De la libertad total a la restricción, pasando por el aviso; los usuarios aprenden el sistema antes de que el sistema los controle</span></div>
-      <div class="fila"><span class="m"></span><span><b>Validación no obstructiva</b> — Avisos visuales discretos; nunca interrumpir el flujo de trabajo</span></div>
-      <div class="fila"><span class="m"></span><span><b>Mínimo privilegio y trazabilidad</b> — Cada rol tiene solo los permisos que necesita; toda acción queda ligada a un usuario</span></div>
+      <div class="fila"><span class="m"></span><span><b>En un expediente intervienen actores de naturaleza muy distinta:</b> el titular que promueve la instalación, los organismos que emiten condicionados, la Diputación que publica en el BOP, el Ayuntamiento afectado…</span></div>
+      <div class="fila"><span class="m"></span><span><b>La solución obvia es una tabla por tipo:</b> titulares, organismos, ayuntamientos… El problema: la misma organización puede actuar en varios roles a la vez y los datos de contacto se duplican. Al duplicarse divergen, y ya no hay una sola fuente de la verdad.</span></div>
+      <div class="fila cambia" data-corr="2"><span class="m">1</span><span><b>BDDAT usa una sola tabla entidades</b> con campos comunes (NIF, nombre, dirección, contacto) y tres roles booleanos que se activan según el contexto del trámite: rol_titular · rol_consultado · rol_publicador</span></div>
+      <div class="fila cambia" data-corr="3"><span class="m">2</span><span><b>El campo tipo_titular</b> permite filtrar y segmentar titulares por sus características propias — gran distribuidora, promotor privado, organismo público — y aplicar lógicas diferenciadas cuando el procedimiento lo requiere</span></div>
+      <div class="fila"><span class="m"></span><span><b>Una entidad puede además autorizar a otra para actuar en su nombre:</b> si una empresa gestora representa a un titular, el sistema lo registra. La autoautorización es implícita — el titular siempre puede actuar por sí mismo</span></div>
+      <div class="fila cambia" data-corr="4"><span class="m">3</span><span><b>Cada entidad puede tener además distintas direcciones de notificación según el rol que desempeña:</b> e-distribución como titular recibe los escritos en su departamento de tramitaciones; como empresa consultada, en su área técnica. El sistema sabe siempre a quién dirigirse — y en qué canal.</span></div>
     </div>
 
     <div>
       <div class="nota paso" data-paso="2">
-        <p><span class="n">1</span>El motor de reglas pasa a ser <b>previo a producción</b>.</p>
-        <p>Se añade poder cambiar su modo: <b>Bloquear</b>, <b>Solo advertir</b> o <b>Inactivo</b>.</p>
+        <p><span class="n">1</span>Las <b>direcciones de notificación</b> ya no son un campo de la entidad: cada entidad tiene las suyas y cada una sirve a uno o varios roles.</p>
+        <p>La ficha conserva una dirección general.</p>
       </div>
       <div class="nota paso" data-paso="3">
-        <p><span class="tag">Nuevo</span><b>Invariantes</b></p>
-        <p>El motor de reglas cubre la normativa, que puede cambiar. La integridad estructural de BDDAT se cubre con un conjunto de invariantes, para lo que el motor no puede cubrir.</p>
-        <p>En general se pueden saltar con escape, pero algunos no: una evidencia irreversible (notificado al exterior) no tiene escape; se arregla con actos posteriores.</p>
+        <p><span class="n">2</span>El tipo de titular hoy solo sirve para <b>filtrar y segmentar</b> (en el seguimiento). Aún no se aplica ninguna lógica diferenciada por tipo.</p>
+      </div>
+      <div class="nota paso" data-paso="4">
+        <p><span class="n">3</span>Al <b>solicitante</b> no se le busca dirección por rol: se usa la <b>sede indicada en su solicitud</b> o, si no hay, la ficha.</p>
+        <p>El <b>canal</b> no lo elige el sistema: se deduce del justificante que se vincula después.</p>
       </div>
     </div>
   </div>
@@ -91,7 +93,7 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
 
 <script>
 (function(){
-  var MAX = 3, paso = 1;
+  var MAX = 4, paso = 1;
   var els = [].slice.call(document.querySelectorAll('[data-paso]'));
   var filas = [].slice.call(document.querySelectorAll('[data-corr]'));
   var esc = document.getElementById('escenario');
