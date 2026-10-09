@@ -7,6 +7,6 @@
 
 ---
 
-**Hecho:** **#1007** (2026-10-08, PR #1029): completado, con sus seis PR y los commits de ADR-050 (fase 1). El alcance está en los commits y en los PR. «Aportar desde otro expediente» queda diferido.
+**Hecho:** **#922** (2026-10-09, PR #1035): barras del plazo de resolver por acto en el árbol y el inspector. El alcance y las decisiones están en el PR y en [`MODELO_ESTADOS_SEMAFORO.md`](referencia/MODELO_ESTADOS_SEMAFORO.md) §9. Los plazos de los actos siguen sin entrar en los contadores del árbol, el semáforo de la solicitud ni el KPI del supervisor: otro asunto, anotado en §11.
 
-**Próximo:** **#922** y **#929**, encolados. #929 es un issue escoba y podría dar lugar a un plan más detallado en varios issues. Ver [`ESTADO_ADR049.md`](diseño/ESTADO_ADR049.md).
+**Próximo:** **#929**, encolado. Es un issue escoba y podría dar lugar a un plan más detallado en varios issues. Ver [`ESTADO_ADR049.md`](diseño/ESTADO_ADR049.md).
