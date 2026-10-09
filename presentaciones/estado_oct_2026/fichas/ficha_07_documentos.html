@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ficha 5 · Expediente y procedimiento</title>
+<title>Ficha 7 · Documentos</title>
 <style>
 /* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
 :root{
@@ -52,41 +52,38 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
 .nota p+p{margin-top:8px}
 .nota .ap{color:var(--texto-2)}
 
-/* ===== Propio de esta ficha: notas más anchas y letra algo menor ===== */
+/* ===== Propio de esta ficha: cuatro frases, la primera nota es larga ===== */
 .cols{grid-template-columns:1fr 500px}
-.fila{font-size:20px;padding:9px 0}
-.fila .m{margin-top:1px}
-.fila.sub{padding-left:38px;padding-top:0}
+.fila{font-size:21px;padding:12px 0}
+.fila .m{margin-top:2px}
 .nota{font-size:18px;padding:11px 16px;margin-bottom:10px}
 </style>
 </head>
 <body>
 
 <div id="escenario">
-  <div class="cab"><h1>Expediente y procedimiento</h1></div>
+  <div class="cab"><h1>Documentos</h1></div>
 
   <div class="cols">
     <div class="paso" data-paso="1">
-      <div class="fila"><span class="m"></span><span><b>Un expediente es siempre un proyecto.</b> La estructura refleja el procedimiento legal real: la semántica del procedimiento vive en los tipos, no en los campos.</span></div>
-      <div class="fila"><span class="m"></span><span><b>Estructura en capas:</b></span></div>
-      <div class="fila sub cambia" data-corr="2"><span class="m">1</span><span><b>Expediente → Solicitud → Fase → Trámite → Tarea.</b></span></div>
-      <div class="fila cambia" data-corr="3"><span class="m">2</span><span><b>El sistema muestra en todo momento</b> en qué punto está cada solicitud y qué acción toca a continuación</span></div>
-      <div class="fila"><span class="m"></span><span><b>Varias fases del mismo expediente pueden avanzar en paralelo</b> — siempre que sean compatibles</span></div>
-      <div class="fila"><span class="m"></span><span><b>Si la situación lo requiere, el tramitador puede salirse del flujo estándar justificadamente</b> — quedará registro en el cuaderno de bitácora</span></div>
+      <div class="fila cambia" data-corr="2"><span class="m">1</span><span><b>Todos los documentos de un expediente enlazados a su número de AT</b> — BDDAT sabe la ruta en el servidor y permite localizarlos de inmediato</span></div>
+      <div class="fila"><span class="m"></span><span><b>Cada documento tiene una fecha administrativa</b> — la que cuenta legalmente, no la del archivo en disco</span></div>
+      <div class="fila cambia" data-corr="3"><span class="m">2</span><span><b>Los documentos se vinculan a las tareas que los generan o consumen:</b> el sistema sabe qué borrador produjo qué resolución firmada</span></div>
+      <div class="fila cambia" data-corr="4"><span class="m">3</span><span><b>El administrativo puede cargar documentos al pool pendiente y marcarlos como prioritarios</b> — el tramitador los incorpora al flujo cuando toca</span></div>
     </div>
 
     <div>
       <div class="nota paso" data-paso="2">
-        <p><span class="n">1</span>Las <b>tareas pasan de 7 a 4</b>: ANALIZAR, ELABORAR, NOTIFICAR y ESPERAR PLAZO.</p>
+        <p><span class="n">1</span>Los documentos se guardan en un <b>almacén externo</b>, independiente de BDDAT. Los usuarios ya no acceden a él directamente, solo mediante BDDAT, que <b>indexa</b> los documentos hacia el almacén.</p>
+        <p>Cada expediente tiene un <b>manifiesto</b> de sus documentos: si BDDAT fallara, se recuperaría la organización anterior en carpetas y subcarpetas, basada en la estructura de BDDAT.</p>
+        <p>En nuestra implementación el almacén es el servidor de red, con acceso solo para un grupo de usuarios. Podría ser un tercer sistema (<b>Alfresco</b>).</p>
       </div>
       <div class="nota paso" data-paso="3">
-        <p><span class="n">2</span>La acción que toca a continuación se muestra mediante <b>petición (certificados)</b>.</p>
-        <p>El usuario puede moverse por el expediente como quiera, siempre que los <b>invariantes</b> o las <b>reglas</b> no lo impidan.</p>
-        <p>Tablas de tareas y documentos por trámite, <b>configurables</b>. La de trámites por fase existe, pero <b>aún no se puede editar</b>.</p>
+        <p><span class="n">2</span>Cada <b>tipo de documento</b> tiene definido a qué tarea se vincula y con qué tipo de vínculo, según a qué trámite pertenezca la tarea.</p>
       </div>
       <div class="nota paso" data-paso="4">
-        <p><span class="tag">Nuevo</span><b>El expediente es el conjunto de documentos vinculados.</b></p>
-        <p>Los documentos no vinculados no forman parte del expediente. Aun así, un documento podría estar vinculado por operatividad y marcado como que no forma parte del expediente.</p>
+        <p><span class="n">3</span>El pool ya no es una carpeta, pero existe como concepto: son los <b>documentos sin vincular</b>.</p>
+        <p>Vinculado o no, el fichero siempre está en el almacén.</p>
       </div>
     </div>
   </div>
