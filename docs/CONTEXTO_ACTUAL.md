@@ -7,6 +7,6 @@
 
 ---
 
-**Hecho:** **#1014** (2026-10-05): un solo sitio de `conftest.py` monta los documentos con contenido, las notificaciones y las solicitudes de los tests, y el guard de asserts exige nombrar la decisión que cambia un `assert` ajeno. En el corte de #1007 cambia el helper, no los tests.
+**Hecho:** **#1007** (2026-10-08, PR #1029): completado, con sus seis PR y los commits de ADR-050 (fase 1). El alcance está en los commits y en los PR. «Aportar desde otro expediente» queda diferido.
 
-**Próximo:** **#1007** (ADR-050, fase 1), PR 4: el corte. El frontend de notificaciones (#929) solo espera ya a ella.
+**Próximo:** **#922** y **#929**, encolados. #929 es un issue escoba y podría dar lugar a un plan más detallado en varios issues. Ver [`ESTADO_ADR049.md`](diseño/ESTADO_ADR049.md).
