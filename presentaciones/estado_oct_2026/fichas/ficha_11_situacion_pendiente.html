@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ficha 8b · Plantillas y borradores</title>
+<title>Ficha 11 · Situación: pendiente</title>
 <style>
 /* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
 :root{
   --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
   --texto:#2C2C2A; --texto-2:#5F5E5A;
   --cambio:#0F6E56;   /* lo que ha cambiado o es nuevo desde mayo */
-  --plan:#854F0B;     /* lo decidido que aún no está construido */
+  --plan:#854F0B;     /* lo que está a medias o pendiente */
 }
 *{box-sizing:border-box;margin:0}
 html,body{height:100%;background:var(--fondo);overflow:hidden}
@@ -27,52 +27,49 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
   transition:opacity .4s}
 @media (prefers-reduced-motion:reduce){.paso,#ayuda{transition:none}}
 
-/* ===== Propio de esta ficha: la novedad de las plantillas y el borrador, en cuatro tarjetas ===== */
-.cab{position:absolute;left:60px;right:60px;top:26px;display:flex;align-items:center;gap:16px}
+/* ===== Propio de esta ficha: lo pendiente de completar, en seis tarjetas ===== */
+.cab{position:absolute;left:60px;right:60px;top:26px;display:flex;align-items:baseline;gap:18px}
 .cab h1{font-size:40px;font-weight:600;line-height:1.1}
-.tag{display:inline-block;font-size:13px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
-  color:var(--cambio);border:2px solid var(--cambio);border-radius:8px;padding:0 8px;white-space:nowrap}
-.tag.plan{color:var(--plan);border-color:var(--plan)}
 .cab .sub{font-size:22px;color:var(--texto-2)}
 
-.lista{position:absolute;left:60px;right:60px;top:110px;display:flex;flex-direction:column;gap:16px}
-.card{display:flex;align-items:center;gap:20px;background:var(--tarjeta);border:2px solid var(--cambio);
-  border-radius:16px;padding:18px 24px;font-size:23px;line-height:1.3}
-.card .nz{flex:none;display:inline-flex;width:34px;height:34px;border-radius:50%;background:var(--cambio);color:#fff;
-  font-size:17px;font-weight:600;align-items:center;justify-content:center}
-.card b{font-weight:600}
-.card .txt{flex:1}
-.card .st{flex:none}
+.rejilla{position:absolute;left:60px;right:60px;top:96px;display:grid;grid-template-columns:1fr 1fr;
+  gap:18px 24px}
+.pend{background:var(--tarjeta);border:2px solid var(--plan);border-radius:16px;padding:16px 22px 18px;min-height:150px}
+.pend .nz{display:inline-flex;width:28px;height:28px;border-radius:50%;border:2px solid var(--plan);color:var(--plan);
+  font-size:15px;font-weight:600;align-items:center;justify-content:center;margin-right:10px;vertical-align:2px}
+.pend h2{font-size:23px;font-weight:600;line-height:1.2;margin-bottom:6px}
+.pend p{font-size:19px;line-height:1.35;color:var(--texto-2)}
 </style>
 </head>
 <body>
 
 <div id="escenario">
-  <div class="cab"><h1>Escritos</h1><span class="tag">Nuevo</span><span class="sub">Plantillas y borradores</span></div>
+  <div class="cab"><h1>Situación</h1><span class="sub">Pendiente de completar</span></div>
 
-  <div class="lista">
-    <div class="card paso" data-paso="1">
-      <span class="nz">1</span>
-      <span class="txt">Las <b>plantillas</b> se crean a mano a partir de unas <b>plantillas base</b> versionadas en el código.</span>
+  <div class="rejilla">
+    <div class="pend paso" data-paso="1">
+      <h2><span class="nz">1</span>Resto de fases y sus particularizaciones</h2>
+      <p>Repaso de las demás fases del procedimiento y de lo particular de cada una.</p>
     </div>
-    <div class="card paso" data-paso="2">
-      <span class="nz">2</span>
-      <span class="txt">Las plantillas se custodian en el <b>almacén</b>, pero <b>no son documentos</b>.</span>
-      <span class="st tag plan">Decidido · aún sin implementar</span>
+    <div class="pend paso" data-paso="2">
+      <h2><span class="nz">2</span>Importación de expedientes de Access</h2>
+      <p>Traer los expedientes de la base de datos anterior.</p>
     </div>
-    <div class="card paso" data-paso="3">
-      <span class="nz">3</span>
-      <span class="txt">El documento generado también se guarda en el <b>almacén</b>.</span>
+    <div class="pend paso" data-paso="3">
+      <h2><span class="nz">3</span>Almacén: lo que queda</h2>
+      <p>Exportar el expediente en ZIP, plantillas al almacén, botón Editar, PDF para firma, papelera y limpieza.</p>
     </div>
-    <div class="card paso" data-paso="4">
-      <span class="nz">4</span>
-      <span class="txt"><b>Hasta que se firma se puede editar</b>: se guarda sobre el anterior, <b>no se versiona</b>.</span>
-      <span class="st tag plan">Decidido · aún sin implementar</span>
+    <div class="pend paso" data-paso="4">
+      <h2><span class="nz">4</span>Puesta en producción</h2>
+      <p>HTTPS y certificado digital, Esquema Nacional de Seguridad, copias de seguridad, configuración del servidor y migraciones limpias.</p>
     </div>
-    <div class="card paso" data-paso="5">
-      <span class="nz">5</span>
-      <span class="txt">El <b>borrador que va a firma</b> también se custodia.</span>
-      <span class="st tag plan">Decidido · aún sin implementar</span>
+    <div class="pend paso" data-paso="5">
+      <h2><span class="nz">5</span>Plazos a la vista</h2>
+      <p>Mostrar el plazo de resolver de cada acto en el árbol, y la proyección de plazos.</p>
+    </div>
+    <div class="pend paso" data-paso="6">
+      <h2><span class="nz">6</span>Revisión de coherencia y ergonomía del interfaz</h2>
+      <p>Cumplimiento de estilos de la Junta y mejorar el acceso a los documentos desde distintos sitios.</p>
     </div>
   </div>
 </div>
@@ -81,7 +78,7 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
 
 <script>
 (function(){
-  var MAX = 5, paso = 1;
+  var MAX = 6, paso = 1;
   var els = [].slice.call(document.querySelectorAll('[data-paso]'));
   var esc = document.getElementById('escenario');
   var ayuda = document.getElementById('ayuda');

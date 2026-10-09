@@ -30,4 +30,14 @@ base.PAGINA = base.PAGINA.replace(
     '<title>Estado BDDAT octubre 2026</title>')
 
 if __name__ == '__main__':
-    base.main()
+    # A veces el visor de la aplicación tiene index.html abierto justo al escribir y el
+    # sistema devuelve «Invalid argument»: se reintenta un par de veces antes de fallar.
+    import time
+    for intento in range(3):
+        try:
+            base.main()
+            break
+        except OSError:
+            if intento == 2:
+                raise
+            time.sleep(0.5)

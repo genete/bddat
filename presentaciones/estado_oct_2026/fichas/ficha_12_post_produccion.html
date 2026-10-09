@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 12 · Post producción</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --cambio:#0F6E56;   /* lo que ha cambiado o es nuevo desde mayo */
+  --plan:#854F0B;     /* lo que está a medias o pendiente */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:1;transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha: mejoras que no hacen falta para funcionar, en tarjetas sin color de urgencia ===== */
+.cab{position:absolute;left:60px;right:60px;top:26px;display:flex;align-items:baseline;gap:18px}
+.cab h1{font-size:40px;font-weight:600;line-height:1.1}
+.cab .sub{font-size:22px;color:var(--texto-2)}
+
+/* Tres columnas; cada clic muestra una fila de tres tarjetas */
+.rejilla{position:absolute;left:60px;right:60px;top:96px;display:grid;grid-template-columns:repeat(3,1fr);
+  gap:18px 20px}
+.post{background:var(--tarjeta);border:2px solid var(--borde-fuerte);border-radius:16px;padding:16px 20px 18px;min-height:168px}
+.post .nz{display:inline-flex;width:26px;height:26px;border-radius:50%;border:2px solid var(--borde-fuerte);color:var(--texto-2);
+  font-size:14px;font-weight:600;align-items:center;justify-content:center;margin-right:8px;vertical-align:2px}
+.post h2{font-size:21px;font-weight:600;line-height:1.2;margin-bottom:6px}
+.post p{font-size:17.5px;line-height:1.35;color:var(--texto-2)}
+</style>
+</head>
+<body>
+
+<div id="escenario">
+  <div class="cab"><h1>Post producción</h1><span class="sub">Mejoras no necesarias para funcionar</span></div>
+
+  <div class="rejilla">
+    <div class="post paso" data-paso="1">
+      <h2><span class="nz">1</span>Notificaciones: la pantalla</h2>
+      <p>La interfaz de notificaciones, y la automatización de BandeJA, Notifica-PNT y Port@firmas.</p>
+    </div>
+    <div class="post paso" data-paso="1">
+      <h2><span class="nz">2</span>Sistema de mensajería</h2>
+      <p>Avisos con destinatario y delegar tareas al administrativo, más allá de la bandeja de peticiones al supervisor, que ya existe.</p>
+    </div>
+    <div class="post paso" data-paso="1">
+      <h2><span class="nz">3</span>Activos de proyecto</h2>
+      <p>Editar los elementos técnicos del proyecto (líneas, centros de transformación, subestaciones…) y relacionarlos con el estado del expediente.</p>
+    </div>
+
+    <div class="post paso" data-paso="2">
+      <h2><span class="nz">4</span>PostGIS</h2>
+      <p>Visualización cartográfica de las instalaciones.</p>
+    </div>
+    <div class="post paso" data-paso="2">
+      <h2><span class="nz">5</span>Manual de usuario y ayuda</h2>
+      <p>Documentación y ayuda contextual dentro de la aplicación.</p>
+    </div>
+    <div class="post paso" data-paso="2">
+      <h2><span class="nz">6</span>Exportación a Excel o CSV</h2>
+      <p>Sacar el listado de expedientes y los datos agregados a una hoja de cálculo.</p>
+    </div>
+
+    <div class="post paso" data-paso="3">
+      <h2><span class="nz">7</span>Informes y alertas de vencimientos</h2>
+      <p>Panel de alertas de plazos e informes de situación bajo demanda para los servicios centrales.</p>
+    </div>
+    <div class="post paso" data-paso="3">
+      <h2><span class="nz">8</span>Cambio masivo de titularidad</h2>
+      <p>Cambiar el titular de varios expedientes a la vez en las agrupaciones (solares).</p>
+    </div>
+    <div class="post paso" data-paso="3">
+      <h2><span class="nz">9</span>Expediente para remisión</h2>
+      <p>Generar el expediente completo, con foliado e índice, para enviarlo al exterior.</p>
+    </div>
+  </div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var MAX = 3, paso = 1;
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var h = location.hash, m = h.match(/paso=(\d+)/);
+  if (h === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (m) paso = Math.max(1, Math.min(MAX, +m[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>
