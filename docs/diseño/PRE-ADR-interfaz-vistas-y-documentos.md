@@ -7,8 +7,9 @@
 > **Origen:** la revisión de #929 contra el código (09/10) destapó que el tratamiento de documentos
 > está repartido; de ahí se pasó a inventariar el inspector y las vistas, su acceso por ruta y el
 > código muerto. Con ello el alcance ya no es solo «estandarizar el listado o el inspector».
-> **Relación con los planes:** `ESTADO_ADR049.md` y `ESTADO_ADR050.md` **siguen igual**. Cómo encajan
-> en ellos los issues que salgan de este ADR se fija en el hilo que lo redacte.
+> **Relación con los planes:** el registro de issues de este ADR (qué tiene issue, qué está pendiente y
+> en qué orden) se lleva en [`ESTADO_ADR053.md`](ESTADO_ADR053.md) (D19). `ESTADO_ADR049.md` y
+> `ESTADO_ADR050.md` siguen siendo los de sus cadenas, con las líneas de cruce que les añade el 11/10.
 > **Convención:** `[VERIFICADO]` = leído en código, ADR o issue. `[LECTURA]` = deducido de leer código,
 > **sin reproducir en el navegador** ni ejecutar tests. `[ABIERTO]` = pregunta que el ADR tiene que
 > resolver. `[PROVISIONAL]` = indicación de unificación dada durante la sesión, **no decidida**: se
@@ -46,7 +47,7 @@
    más (§2, P1–P6).
 5. Se inventarió el estándar de listado e inspector y cada vista (§3, §4, §5).
 6. Se añadió el acceso por ruta y el código muerto (§7).
-7. **11/10.** Hilo de posiciones (nube, sin BD local). Se fijan las posiciones de §2 (D5–D14), se
+7. **11/10.** Hilo de posiciones (nube, sin BD local). Se fijan las posiciones de §2 (D5–D19), se
    inventarían los documentos dentro de los inspectores (§6.12) y se verifica cómo está montado el marco
    del inspector (§5.1).
 
@@ -64,12 +65,17 @@
 | D6 | **Los mini-listados de documentos son un concepto distinto del listado general** y tienen su propia definición. *(11/10, P2 y P3)* |
 | D7 | **Se descartan P4 y P5:** serían salirse del estándar en un listado sin necesidad y complicarían el código adaptando uno a otro con distintas funcionalidades. *(11/10)* |
 | D8 | **`Cola.jsx` pasa a listado de scroll infinito** —listado Jinja, por simplicidad— y su inspector se adapta al estándar de inspector que se defina aquí. Su detalle ya es Jinja (`_inspector_cola.html`), lo que evita una migración. Concreta D2 (#1039). *(11/10)* |
-| D9 | **El inspector es el primer estándar, para todos los casos:** la isla del árbol (por ahora la única) y el resto. Se monta **un marco** que estandariza los comportamientos ver / editar y cancelar / cerrar. *(11/10)* *Interpretación:* el marco lo pinta el shell (opción A del hilo) y no dos implementaciones con un contrato visual común (opción B): Carlos habló de «un marco». |
+| D9 | **El inspector es el primer estándar, para todos los casos:** la isla del árbol (por ahora la única) y el resto. Se monta **un marco** que estandariza los comportamientos ver / editar y cancelar / cerrar. El marco lo pinta el shell, una sola vez: el árbol deja de pintar su barra y pasa a alimentar al shell con su estado de borrador (el «puente», §8.15). *(11/10, confirmado)* |
 | D10 | **El marco tiene visibilidad garantizada con todos los anchos posibles:** en modo edición siempre se ve, al menos, «Cerrar». Motivo: en edición el clic exterior está bloqueado, y que «Cerrar» se oculte es un problema para el usuario. *(11/10)* |
 | D11 | **El interior se deja como lo necesite cada caso, flexible al ancho.** Cada caso solo define un ancho mínimo para su visibilidad; por debajo de él, scroll horizontal. El usuario lo verá como señal y ampliará el inspector. Simplifica el montaje de cada caso particular. *(11/10)* Hoy el cuerpo del shell tiene `overflow-x: hidden` (§5.1). |
-| D12 | **Cerrar en modo vista:** la cruz no existe en la mayoría de los inspectores; se cierra con clic exterior, `Escape` o clic en la barra de redimensionado. *(11/10)* *Interpretación:* se mantiene así; Carlos lo dijo describiendo el estado actual, como respuesta a si el marco debía llevar cruz en vista. |
-| D13 | **Contrato único y dos renderizadores** (resuelve P6). El contrato es la forma que tiene el editor del inspector de pasar la información al poseedor del dato y viceversa (el poseedor pasa el dato para pintarlo); es el trabajo de fondo que permite la estandarización. Habrá como mínimo dos tipos de mini-listado de documentos —uno por renderizador— y se asume: un futuro listado de scroll infinito puede necesitar listar documentos en el interior de su inspector. *(11/10)* *Interpretación:* el cuerpo del inspector del árbol sigue en React y el de los demás en Jinja; lo deduzco de «nos quedamos de momento solo en el árbol» y de aceptar «dos renderizadores». |
-| D14 | **Mini-listado: una definición de fila común con dos modos (interacción).** Si el origen del dato difiere, el que lo entrega se adapta al contrato único. De todas formas se estudia caso a caso si permite unificación. *(11/10)* *Interpretación:* los dos modos son «lista de vinculados» (M1–M3 de §6.12) y «selector del pool» (M4 y S1–S5). |
+| D12 | **Cerrar en modo vista:** la cruz no existe en la mayoría de los inspectores; se cierra con clic exterior, `Escape` o clic en la barra de redimensionado. *(11/10, confirmado)* |
+| D13 | **Contrato único y dos renderizadores** (resuelve P6). El contrato es la forma que tiene el editor del inspector de pasar la información al poseedor del dato y viceversa (el poseedor pasa el dato para pintarlo); es el trabajo de fondo que permite la estandarización. Habrá como mínimo dos tipos de mini-listado de documentos —uno por renderizador— y se asume: un futuro listado de scroll infinito puede necesitar listar documentos en el interior de su inspector. El cuerpo del inspector del árbol sigue en React y el de los demás en Jinja. *(11/10, confirmado)* Precisión de Carlos (11/10): no hace falta ese nivel de generalización en la forma del contrato; estudio previo y decidir si cabe estandarizar (§8.16). |
+| D14 | **Mini-listado: una definición de fila común con tres modos (interacción).** Los modos son «lista de vinculados» (M1–M3 de §6.12), «selector del pool» (M4 y S1–S5) y «edición del documento» (D17). Si el origen del dato difiere, el que lo entrega se adapta al contrato único. De todas formas se estudia caso a caso si permite unificación. *(11/10)* |
+| D15 | **Lectura ≈ edición, también en el inspector del árbol.** Lo que se ve antes de editar debe ser casi lo mismo que lo que se ve en modo edición; cambian ligeramente los componentes del formulario, para indicar que se está editando. Es lo que Carlos viene pidiendo en todos los formularios (usuarios, etc.) y busca coherencia visual. *(11/10)* Hoy se cumple en los fragmentos Jinja y no en el árbol (§5.1). |
+| D16 | **Listados: salvo excepciones, el listado normal es el de scroll infinito.** Los que hoy se desvían del estándar se tratan en **un issue** y se decide **uno a uno** si adoptan el estándar —incluida una base de listado con varias listas por página— y, si no lo adoptan, el motivo. *(11/10)* Verificado el 11/10 (§4.2): cuatro de las cinco páginas con `[PROVISIONAL]` ya usan `ScrollInfinito`; lo que se desvía es el marco copiado a mano. La única sin scroll infinito es Delegación Territorial. |
+| D17 | **Un documento tiene un único sitio donde se edita** (editar, no crear: crear tiene varias entradas, §6.4). *(11/10)* |
+| D18 | **El modal grande sirve también para ver documentos generados** (certificados, informes, diagnósticos). No es otra capa. Cierra §8.7. *(11/10)* |
+| D19 | **El ADR (nuevo, ADR-053) lleva un `ESTADO_ADR053.md`** que controla qué tiene issue y qué no, qué está pendiente y en qué orden, coordinado con `ESTADO_ADR049.md` y `ESTADO_ADR050.md`. *(11/10)* |
 
 ### Posiciones y reflexiones (no son decisiones)
 
@@ -121,7 +127,9 @@ descubrimiento. El menú lo construye `ModuleRegistry.get_navigation()` leyendo
 ## 4. Inventario de vistas con inspector
 
 Leyenda: ✅ cumple el estándar · ⚠ no lo cumple. Las indicaciones **`[PROVISIONAL] →`** dentro de las
-celdas son las dadas en la sesión del 10/10: no están decididas.
+celdas son las dadas en la sesión del 10/10: no están decididas. Las que siguen `[PROVISIONAL]` y se
+refieren a listados (tablas maestras, normas y variables, seguimiento y huérfanos, configuración del motor,
+Delegación Territorial) se deciden una a una en el issue de D16.
 
 ### 4.1 Listados que siguen el estándar `[VERIFICADO]`
 
@@ -142,10 +150,10 @@ Jinja (E1–E4).
 |---|---|---|---|---|
 | ⚠ | **Tablas maestras** | Jinja, extiende `base_app` y no `lista_v2_base`; marco copiado a mano; `ScrollInfinito` con selección por pestaña. `[PROVISIONAL] →` una base de listado que admita varias listas por página (`lista_v2_base` asume una; el «volver arriba» queda muerto, #755) | Fragmento `/<tipo>/<id>/fragmento` + `editar-fragmento`, un molde parametrizado por `TIPOS` (`config.py`) | 5 tipos: expediente, solicitud, fase, trámite, tarea. Editor de pasos con `tablas-maestras-pasos.js` |
 | ⚠ | **Normas y variables** | Idéntico: `base_app`, 2 pestañas, marco copiado. `[PROVISIONAL] →` misma base multi-lista | Dos pares de fragmentos (norma / variable) | 2 tipos |
-| ⚠ | **Seguimiento y huérfanos** (hub del tramitador) | Idéntico: `base_app`, 2 pestañas. Tiene su propio «volver arriba» y su propio «abrir documento» en JS. `[PROVISIONAL] →` base multi-lista y pintado común de documentos | `_inspector_seguimiento` (por solicitud) y `_inspector_huerfano`. El huérfano lleva un `<script>` en línea que el overlay no ejecuta (§7.3). `[PROVISIONAL] →` ese JS a un fichero global con delegación | 2 fragmentos distintos |
+| ⚠ | **Seguimiento y huérfanos** (hub del tramitador) | Idéntico: `base_app`, 2 pestañas. Tiene su propio «volver arriba» y su propio «abrir documento» en JS. `[PROVISIONAL] →` base multi-lista; pintado común de documentos: `[DECIDIDO]` (D13, D14) | `_inspector_seguimiento` (por solicitud) y `_inspector_huerfano`. El huérfano lleva un `<script>` en línea que el overlay no ejecuta (§7.3). → `[DECIDIDO]` (§8.8): se arregla como fallo de código, en un issue pequeño | 2 fragmentos distintos |
 | ⚠ | **Configuración del motor** | `base_app`; la sección Reglas reproduce a mano la cabecera y tabla de `lista_v2_base`; sin «volver arriba». `[PROVISIONAL] →` misma base multi-lista | Fragmento `reglas/<id>/fragmento` + `editar-fragmento` | Modal grande «Gestionar excepciones» con sus propios fragmentos (alta y edición por `fetch` dentro del modal; es el patrón E5) |
 | ⚠ justificado | **Delegación Territorial** (`organo_propio.index`) | Jinja, `base_app`, tablas fijas (1 + 8 filas) sin `ScrollInfinito` (lo declara su cabecera). `[PROVISIONAL] →` mantener la tabla fija y abrir el inspector por atributo `data-inspector-sel` con delegación, sin `onclick` en línea | `unidades/<id>/fragmento` + `editar-fragmento`, abierto con `onclick="AppInspector.open(...)"` en la fila | Ninguna |
-| ⚠ | **Cola de Mi trabajo** (`tareas_y_subidas.index`) | React (isla `mi-trabajo`, `Cola.jsx`). Reutiliza las **clases CSS** del marco, pero implementa por su cuenta el scroll infinito por cursor y los filtros (un `useState` por filtro con debounce), y no tiene «volver arriba» (caso 4 de #755). → `[DECIDIDO]` listado estándar Jinja (D8, #1039) | Fragmento Jinja de solo lectura `_inspector_cola`. Ignora `abrir_en` y `puede_abrir` de los documentos. `[PROVISIONAL] →` pintado común de documentos | Ninguna |
+| ⚠ | **Cola de Mi trabajo** (`tareas_y_subidas.index`) | React (isla `mi-trabajo`, `Cola.jsx`). Reutiliza las **clases CSS** del marco, pero implementa por su cuenta el scroll infinito por cursor y los filtros (un `useState` por filtro con debounce), y no tiene «volver arriba» (caso 4 de #755). → `[DECIDIDO]` listado estándar Jinja (D8, #1039) | Fragmento Jinja de solo lectura `_inspector_cola`. Ignora `abrir_en` y `puede_abrir` de los documentos. → `[DECIDIDO]` pintado común de documentos: macro Jinja del mini (D13, D14) | Ninguna |
 | ⚠ | **Pool de documentos** (`expedientes.pool_documentos`) | Jinja, `base_app`, ~1.550 líneas. Tabla entera desde el servidor y filtros en el cliente. → `[DECIDIDO]` listado estándar con inspector (D5, #881) | **Sin inspector:** 4 modales Bootstrap propios (subir, URL externa, editar, sustituir), alimentados con 12 atributos `data-*` | Ninguna por tipo. Para `DOC_PROYECTO`, lógica de principal y reformado (ADR-044) |
 
 ### 4.3 El árbol del expediente (E6, excepción prevista) `[VERIFICADO]`
@@ -181,10 +189,10 @@ montado por portal en `#arbol-inspector-slot`; el overlay se abre con `AppInspec
   `esElaborar`, `esNotificar`, `esEsperarPlazo`, `esFaseConsultas`, `esSolicitud`, `esFase`).
   `GUIA_REACT_ISLAS.md` («Excepciones de los editores de tarea») dice que a la segunda excepción por la
   misma causa raíz hay que señalarla como patrón a factorizar y no seguir apilando condicionales.
-  `[PROVISIONAL] →` un registro de editores por tipo.
+  `[DECIDIDO]` (§8.11): issue de refactor, interno del árbol.
 - **El pintado de documentos está repetido** en `Documentos` (Inspector), `AccionesApertura` y
   `FichaDoc` (Despensa), `ItemDoc` (menú contextual) y los desplegables de elegir documento.
-  `[PROVISIONAL] →` componente común de mini-lista de documentos.
+  `[DECIDIDO]` (D13, D14): componente React de la fila común del mini-listado.
 
 ### 4.4 El alta (lo que el estándar no define) `[VERIFICADO]`
 
@@ -238,8 +246,8 @@ Verificado el 11/10 en código; el ancho y el apilamiento no se han visto en pan
 
 | Aspecto | Estado |
 |---|---|
-| Barra superior fija de edición (ADR-023 §5 bis: «en cualquier nodo… la salida pertenece al marco») | **Solo en el árbol, y la pinta React** (`BarraEdicion`: cabecera con `min-w-0` que trunca y botones `flex-shrink-0`, así que a poco ancho se pierde la cabecera y no los botones). El `aside` del shell (`base_app.html`) no pinta ninguna barra |
-| Edición en los inspectores Jinja | 17 fragmentos de edición con su propio bloque «Cancelar / Guardar» **dentro del scroll** (grep de `data-inspector-cancel-edit`: 17). La salida viaja con el contenido, lo que §5 bis prohíbe |
+| Barra superior fija de edición (ADR-023 §5 bis, rev. 2026-07-18: «en cualquier nodo… la salida pertenece al marco»; la implementaron #676 y #688 solo para los nodos del árbol) | **Solo en el árbol, y la pinta React** (`BarraEdicion`: cabecera con `min-w-0` que trunca y botones `flex-shrink-0`, así que a poco ancho se pierde la cabecera y no los botones). El `aside` del shell (`base_app.html`) no pinta ninguna barra |
+| Edición en los inspectores Jinja | 17 fragmentos de edición con su propio bloque «Cancelar / Guardar» **dentro del scroll** (grep de `data-inspector-cancel-edit`: 17). La salida viaja con el contenido: los fragmentos son de #544, anteriores a §5 bis, y #676 y #688 no los alcanzaron |
 | Botón «Editar» | `btn btn-primary btn-sm` con icono en 16 de los 17 fragmentos Jinja de lectura; `btn-success` en `_inspector_expediente.html`; el árbol usa `btn-outline-primary` con emoji |
 | Cerrar en lectura | `Escape`, clic exterior (no en otra fila: cambia la selección) y clic sin arrastre en la franja de redimensionado de 6 px. La cruz (`data-app-inspector-close`) solo la pinta un fragmento: `_inspector_cola.html` |
 | Cerrar en edición | Backdrop bloqueante y light-dismiss desactivado (ADR-023 §5): la única salida es el control del marco |
@@ -537,46 +545,58 @@ Los redirects de compatibilidad: `GET /<id>` y `GET /<id>/editar` de cada módul
 Preguntas, no respuestas, salvo las que llevan `[DECIDIDO]` (con su decisión de §2). Cada una se revisa
 por separado.
 
-1. `[ABIERTO]` **Listados con varias tablas por página.** `lista_v2_base` asume una sola. Cuatro
-   páginas copian el marco a mano (tablas maestras, normas y variables, seguimiento y huérfanos,
-   configuración del motor) y comparten problemas (#755).
-2. `[DECIDIDO]` para la Cola (D8): listado Jinja. **Tecnología de los listados.** Hoy el estándar es
-   Jinja; `Cola.jsx` lo reproduce en React. Sin decisión de principio para el resto de listados de la
-   aplicación.
+Revisadas una a una por Carlos el 11/10. Salvo lo que sigue marcado `[ABIERTO]`, están resueltas.
+
+1. `[DECIDIDO]` (D16) **Listados con varias tablas por página.** Dentro del alcance. `lista_v2_base`
+   asume una sola. Cuatro páginas copian el marco a mano (tablas maestras, normas y variables,
+   seguimiento y huérfanos, configuración del motor) y comparten problemas (#755). Se decide una a una
+   en el issue de D16.
+2. `[DECIDIDO]` (D8, D16) **Tecnología de los listados.** La Cola pasa a listado Jinja; la norma es el
+   scroll infinito, salvo excepciones.
 3. `[DECIDIDO]` (D6, D7, D14) **Listado general de documentos frente a mini-listados:** dos conceptos con
-   definición propia; los mini-listados, una fila común con dos modos. Queda por estudiar, caso a caso,
+   definición propia; los mini-listados, una fila común con tres modos. Queda por estudiar, caso a caso,
    qué sitios admiten la unificación (§6.12).
-4. `[DECIDIDO]` en lo esencial (D13) **Qué contenedor pinta cada contenido:** el cuerpo del inspector del
-   árbol en React y el de los demás en Jinja, con un contrato único. Queda por definir qué más se comparte
-   (clases CSS, otros) y el contenido del contrato (5 y 16).
-5. `[ABIERTO]` **Contrato único del dato de documento** frente a los seis serializadores actuales, y
-   qué hacer con el pool cargado una vez por vida de la isla. D13 lo amplía: el contrato es el protocolo
-   editor ↔ poseedor del dato, y el del documento es una parte (poseedor → pintor).
-6. `[ABIERTO]` **El alta.** Tres variantes y ningún ADR que diga cuál vale (§4.4).
-7. `[ABIERTO]` **Uso del modal grande para ver documentos generados** (§4.5): ¿se amplía E5, o es otra
-   capa?
-8. `[ABIERTO]` **Scripts en fragmentos del inspector.** Regla para el JS de un fragmento (hoy se
-   documenta en cuatro ficheros, y el huérfano la incumple).
-9. `[ABIERTO]` **Menú frente a hub.** Solo 8 módulos tienen entrada de menú y 12 viven en el hub. ¿Qué
-   regla decide cuándo una vista entra al menú?
-10. `[ABIERTO]` **Edición de un documento desde el árbol.** Hoy exige salir a la página del pool.
-11. `[ABIERTO]` **Despacho de editores por tipo en el árbol** (§4.3, 7 banderas) y su relación con el
-    criterio de `GUIA_REACT_ISLAS.md`.
-12. `[ABIERTO]` **Código muerto y rutas sin consumidor** (§7.2): qué se retira y cómo se evita que
-    vuelva a acumularse. En particular `generar_cert`, que es una función de negocio sin interfaz y no
-    un resto de limpieza, y `demo.diagrama`, que es pública.
-13. `[ABIERTO]` **Documentación obsoleta** (`AUDITORIA_UI.md`) y dónde queda el mapa vivo de vistas.
-14. `[ABIERTO]` **Alcance.** Qué entra en el ADR (listados, inspector, documentos, altas, menú, código
-    muerto) y qué va a otro. El marco del inspector se ha tratado en el hilo del 11/10 (D9–D12).
-15. `[ABIERTO]` **Montaje del marco del inspector** (D9–D12). Dónde se pinta (*interpretación*: el shell);
-    el puente con el estado del borrador del árbol (`hayCambios`, `guardando`, `guardar`, hoy en el store);
-    qué declara cada fragmento Jinja (título, URL de edición, formulario); cómo se garantiza «Cerrar» con
-    el ancho mínimo de 320 px; cómo se declara el ancho mínimo de cada caso y que el scroll horizontal
-    afecte solo al cuerpo y no al marco; evitar un doble scroll vertical entre el cuerpo del shell y el
-    contenedor que el árbol ya tiene en edición (`InspectorEdicion`).
-16. `[ABIERTO]` **Forma del contrato editor ↔ poseedor del dato** (D13). El árbol tiene un esquema
-    declarativo de campos; los 17 fragmentos Jinja son HTML a mano (§5.1). No se ha comprobado cuántos
-    cabrían en un esquema declarativo ni si el esquema sirve para los editores propios del árbol.
+4. `[DECIDIDO]` (D13) **Qué contenedor pinta cada contenido:** el cuerpo del inspector del árbol en React
+   y el de los demás en Jinja, con un contrato único. `[ABIERTO]` qué más se comparte entre los dos
+   renderizadores (clases CSS, otros).
+5. `[DECIDIDO]` en principio (D13, D14), `[ABIERTO]` en su forma. **Contrato único del dato de
+   documento** frente a los seis serializadores actuales: quien entrega el dato se adapta a un contrato
+   único. Falta su forma y qué hacer con el pool cargado una vez por vida de la isla.
+6. `[DECIDIDO]` **El alta:** fuera del ADR. Issue propio y, si al estudiarlo lo merece, ADR (Carlos,
+   11/10). Tres variantes y ningún ADR que diga cuál vale (§4.4). Ya existe #793 (modales de alta): al
+   abrir el issue, buscar los existentes y decidir qué pasa con él.
+7. `[DECIDIDO]` (D18) **Uso del modal grande para ver documentos generados:** sin problema, no es otra
+   capa. (Los planes de Carlos sobre el tamaño del modal, un máximo fijo y un mínimo definido por quien lo
+   use, son otro asunto y quedan fuera.)
+8. `[DECIDIDO]` **Scripts en fragmentos del inspector** (Carlos, 11/10): el ADR ratifica la regla (el JS de
+   un fragmento va a un fichero global con delegación de eventos; el modal grande sí ejecuta los scripts de
+   su fragmento) y el huérfano se arregla como fallo de código, en un issue pequeño (§7.3).
+9. `[DECIDIDO]` **Menú frente a hub:** fuera, es otro asunto.
+10. `[DECIDIDO]` (D14, D17) **Edición de un documento desde el árbol:** tercer modo del mini; un único
+    sitio donde se edita el documento. `[ABIERTO]` qué contenedor lo aloja: el inspector del pool o, desde
+    otros sitios, el modal grande; depende del marco (15) y de que el formulario quepa en el inspector
+    (§10).
+11. `[DECIDIDO]` **Despacho de editores por tipo en el árbol** (§4.3, 7 banderas): issue de refactor,
+    interno del árbol, con mención en el ADR. Su relación con el criterio de `GUIA_REACT_ISLAS.md` queda
+    para ese issue.
+12. `[DECIDIDO]` **Código muerto y rutas sin consumidor** (§7.2): fuera del ADR, a issues de limpieza.
+    `generar_cert` (función de negocio sin interfaz) y `demo.diagrama` (pública) son decisiones aparte.
+13. `[DECIDIDO]` **Documentación obsoleta** (`AUDITORIA_UI.md`): fuera del ADR, salvo decir dónde vive el
+    mapa vivo de vistas.
+14. `[DECIDIDO]` **Alcance:** dentro, el inspector (marco y contrato), los listados estándar y los
+    documentos en listados e inspectores. Fuera: 6, 9, 12 y 13.
+15. `[DECIDIDO]` el enfoque, `[ABIERTO]` el detalle. **Montaje del marco del inspector** (D9–D12): el ADR
+    fija los principios (quién lo pinta, qué declara cada caso, mínimo del marco ≤ 320 px, cuerpo con
+    scroll propio, ancho mínimo por caso) y el puente con el estado del borrador del árbol se resuelve
+    prototipando, en el primer issue. Lo que el ADR tiene que escribir: qué declara cada fragmento Jinja
+    (título, URL de edición, formulario); cómo se garantiza «Cerrar» en 320 px; cómo se declara el ancho
+    mínimo de cada caso y que el scroll horizontal afecte solo al cuerpo y no al marco; y cómo se evita un
+    doble scroll vertical entre el cuerpo del shell y el contenedor que el árbol ya tiene en edición
+    (`InspectorEdicion`). El puente trabaja con `hayCambios`, `guardando` y `guardar`, hoy en el store.
+16. `[DECIDIDO]` estudio previo. **Forma del contrato editor ↔ poseedor del dato** (D13): Carlos (11/10)
+    no ve necesario ese nivel de generalización; estudio previo y decidir si cabe estandarizar. El árbol
+    tiene un esquema declarativo de campos (10 campos en 6 tipos de nodo; los tres editores propios no lo
+    usan) y los 17 fragmentos Jinja son HTML a mano (§5.1). No se ha comprobado cuántos cabrían.
 
 ## 9. Relación con issues y planes `[VERIFICADO]`
 
@@ -589,14 +609,15 @@ por separado.
 | #1039 | Abierto | `Cola.jsx` al listado estándar (D2); listado Jinja y su inspector al estándar de inspector (D8). *Interpretación:* con el listado en Jinja, `SubirDocumento` (las dos pestañas de la viewbar de la isla) sería lo único que quedaría en la isla `mi-trabajo`; se resuelve al profundizar el issue |
 | #881 | Abierto | Conversión del listado del pool al listado estándar (D5). Escrito contra el estándar de entonces; se queda como está y no se reforma ahora. Cuando haya ADR se le añade una mención. Cita la columna de usos y el N+1 de `_documento_es_referenciado` |
 | #958 | Abierto | Nombre legible de `bddat://`; en buena parte resuelto por `nombre_visible()` (§6.8) |
-| #755 | Abierto | «Volver arriba» roto o ausente en 4 listados; el caso 4 es `Cola.jsx` |
+| #755 | Abierto | «Volver arriba» roto o ausente en 4 listados; el caso 4 es `Cola.jsx`. Cubre las cuatro páginas multi-lista de D16 y propone un componente reutilizable. Su «caso de referencia» está desfasado: la pestaña Huérfanos ya existe y lleva su propio botón. El issue de D16 lo absorbe o lo reescribe; se decide al abrirlo |
+| #676, #688 | Cerrados | Marco de edición del árbol (barra fija; Guardar/Cancelar de los campos directos en la barra). Base de D9–D11 en el árbol; no alcanzaron los fragmentos Jinja |
 | #793 | Abierto (M5) | Modales de alta con recarga completa en 10 módulos (§4.4) |
 | #935 | Abierto | `sugerencia_subida` pierde la sugerencia con varias `ENTRADA`; afecta a los pasos `NOTIFICAR` |
 | #1009, #1010 | Abiertos | Tocan `ElaborarEditor.jsx` (aviso de plantilla desfasada; botón «Editar» por WebDAV) |
 
-`ESTADO_ADR049.md` (zonas A–E de #929) y `ESTADO_ADR050.md` (fases 4–7 y diferidos) no cambian con este
-documento. Cómo encajan los issues que salgan de este ADR en esos dos planes se fija en el hilo que lo
-redacte.
+`ESTADO_ADR049.md` (zonas A–E de #929) y `ESTADO_ADR050.md` (fases 4–7 y diferidos) siguen siendo los
+registros de sus cadenas. El encaje con este ADR se lleva en [`ESTADO_ADR053.md`](ESTADO_ADR053.md) (D19),
+y cada uno de los otros dos lleva solo sus líneas de cruce.
 
 ## 10. No comprobado
 
