@@ -18,6 +18,7 @@ import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
 import AnalizarEditor from './AnalizarEditor.jsx'
 import ElaborarEditor from './ElaborarEditor.jsx'
 import NotificarEditor from './NotificarEditor.jsx'
+import BloqueNotificacionesTramite from './notificar/BloqueNotificacionesTramite.jsx'
 import ModalConfirmacionFrase from './ModalConfirmacionFrase.jsx'
 
 const ETIQUETA_TIPO = {
@@ -1239,6 +1240,7 @@ function BarraEdicion({ tipo, nodo }) {
 // borde+sombra de edición (arbol-inspector--lock, CSS) porque editar bloquea el resto
 // de la UI desde que se entra; el inspector NUNCA se atenúa (es la zona interactiva).
 function InspectorEdicion({ nodo }) {
+  const expedienteId          = useArbolStore((s) => s.expedienteId)
   const seleccion             = useArbolStore((s) => s.seleccion)
   const borrarPendienteConfirm = useArbolStore((s) => s.borrarPendienteConfirm)
   const seccionesExtendidas   = useArbolStore((s) => s.analizarSeccionesExtendidas)
@@ -1282,11 +1284,18 @@ function InspectorEdicion({ nodo }) {
   // decide el backend (`cert_cumplimiento`/`cert_cierre` solo vienen en las
   // finalizadoras).
   const esFase = seleccion.tipo === 'fase'
+  // Notificaciones del trámite (#929, ADR-051 §D): a quién falta notificar y el botón de
+  // añadirlas. Mismo emplazamiento que las acciones de fase: junto al Editor. Si el
+  // trámite no notifica a nadie según el catálogo, el bloque no se pinta.
+  const esTramite = seleccion.tipo === 'tramite'
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
       <BarraEdicion tipo={seleccion.tipo} nodo={nodo} />
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} className="p-3">
         {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
+        {!borrarPendienteConfirm && esTramite && (
+          <BloqueNotificacionesTramite expedienteId={expedienteId} tramiteId={seleccion.id} />
+        )}
         {!borrarPendienteConfirm && esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
         {!borrarPendienteConfirm && esSolicitud && <CertFinInstruccion />}
         {!borrarPendienteConfirm && esSolicitud && <CierreSolicitud />}
