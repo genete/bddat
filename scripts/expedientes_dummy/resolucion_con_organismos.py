@@ -337,8 +337,7 @@ def _crear_expediente(cat, fecha_base):
         DatosAlta, DocumentoSolicitud, alta_expediente,
     )
 
-    with open(os.path.join(_comun.FIXTURES_DIR, 'modelo_solicitud.pdf'), 'rb') as f:
-        contenido = f.read()
+    contenido = _comun.pdf_de_tipo('MODELO_SOLICITUD')
 
     resultado = alta_expediente(DatosAlta(
         tipo_expediente_id=cat['tipo_expediente'].id,
@@ -481,12 +480,9 @@ def main(app=None, *, efectos_desarrollo=True):
         for codigo in _comun.requisitos_aplicables(solicitud, fase_analisis):
             if codigo not in docs:
                 tipo_doc = _comun.tipo_documento(codigo)
-                fichero = os.path.join(_comun.FIXTURES_DIR, f'{codigo.lower()}.pdf')
-                if tipo_doc is None or not os.path.isfile(fichero):
+                if tipo_doc is None:
                     print(f"ABORTADO: el requisito {codigo} aplica a esta solicitud y "
-                          f"no hay documento dummy para cubrirlo "
-                          f"({os.path.basename(fichero)}). Generarlo con "
-                          f"scripts/generar_documentos_dummy.py.")
+                          f"el catálogo no tiene ese tipo de documento.")
                     sys.exit(1)
                 docs[codigo] = _comun.subir(client, exp_id, codigo, tipo_doc.id,
                                             fecha_base, f'{tipo_doc.nombre} (presentación)')

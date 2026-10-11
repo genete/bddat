@@ -186,7 +186,6 @@ def _expediente_sin_asignar(app):
     tests de aislamiento entre expedientes, y uno «sin asignar» para la
     asignación masiva—. Por `alta_expediente()`, como todo lo demás.
     """
-    import os
     from datetime import timedelta
 
     from app.models.entidad import Entidad
@@ -198,6 +197,7 @@ def _expediente_sin_asignar(app):
         DatosAlta, DocumentoSolicitud, alta_expediente,
     )
     from app.services.reloj_simulado import hoy
+    from scripts.expedientes_dummy import _comun
 
     marca = '[SEMILLA] expediente sin responsable'
     with app.app_context():
@@ -216,11 +216,7 @@ def _expediente_sin_asignar(app):
             if valor is None:
                 raise RuntimeError(f'Falta {nombre} para el expediente de semilla')
 
-        ruta_pdf = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            'tests', 'fixtures', 'documentos_dummy', 'modelo_solicitud.pdf')
-        with open(ruta_pdf, 'rb') as f:
-            contenido = f.read()
+        contenido = _comun.pdf_de_tipo('MODELO_SOLICITUD')
 
         resultado = alta_expediente(DatosAlta(
             tipo_expediente_id=tipo_exp.id,

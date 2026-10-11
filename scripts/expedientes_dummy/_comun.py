@@ -11,17 +11,14 @@ que hace, porque cada uno viene de un fallo real; no repetirlos en cada script.
 """
 import io
 import json
-import os
 import sys
 from datetime import date, timedelta
 
-RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Banco de documentos dummy (#814 parte 1). Vive bajo tests/ porque la semilla de
-# la base de tests también lo usa — ver README.md de esta carpeta.
-FIXTURES_DIR = os.path.join(RAIZ, 'tests', 'fixtures', 'documentos_dummy')
-
 from app import db  # noqa: E402
+
+# Los documentos dummy ya no se leen de una carpeta versionada: los construye
+# `pdf_dummy` en el momento (#929; ver `tests/fixtures/documentos_dummy/README.md`).
+from scripts.generar_documentos_dummy import nombre_fichero, pdf_dummy  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -118,12 +115,28 @@ def abrir_cliente(app, usuario):
 # Subida de documentos dummy (multipart real, ADR-032)
 # ---------------------------------------------------------------------------
 
-def subir(client, expediente_id, codigo_tipo_doc, tipo_doc_id, fecha_admin, asunto,
-          fichero=None, *, es_principal=False, abre_reformado=False, origen_reformado=None):
-    """Sube un documento del banco dummy por la ruta real de ingesta.
+def pdf_de_tipo(codigo, variante=None):
+    """Bytes del PDF dummy del tipo de documento `codigo`.
 
-    `fichero`: nombre dentro de FIXTURES_DIR; por defecto `<codigo en minúsculas>.pdf`,
-    que es como está nombrado el banco.
+    Para quien entrega el contenido a otro servicio en vez de subirlo con `subir`: el alta
+    de expediente lleva dentro el escrito de solicitud (`DocumentoSolicitud(contenido=…)`).
+    Aborta si el catálogo no tiene el tipo."""
+    tipo = tipo_documento(codigo)
+    if tipo is None:
+        print(f"ABORTADO: el catálogo no tiene el tipo de documento {codigo}.")
+        sys.exit(1)
+    return pdf_dummy(tipo, variante)
+
+
+def subir(client, expediente_id, codigo_tipo_doc, tipo_doc_id, fecha_admin, asunto,
+          variante=None, *, es_principal=False, abre_reformado=False, origen_reformado=None):
+    """Sube un documento dummy por la ruta real de ingesta.
+
+    El PDF no se lee de ningún sitio: lo construye `pdf_dummy` a partir del tipo
+    (`scripts/generar_documentos_dummy.py`, #929). `variante` pide el otro contenido de un
+    tipo que lo tenga —`'reformado'` para el segundo `DOC_PROYECTO`, #903—. Aborta si
+    `tipo_doc_id` no es el tipo `codigo_tipo_doc`: un id equivocado subiría un documento de
+    un tipo con el nombre de otro, y la semilla seguiría pareciendo buena.
 
     `es_principal`/`abre_reformado`/`origen_reformado` (ADR-044 §C/§D, #896/#903): mismas
     claves que lee `declarar_desde_metadatos` del dict de metadatos de un `DOC_PROYECTO` —
@@ -131,9 +144,15 @@ def subir(client, expediente_id, codigo_tipo_doc, tipo_doc_id, fecha_admin, asun
     cuando el proyecto ya tiene ancla, o `abre_reformado=True` cuando todavía no la tiene,
     simplemente no hace nada (ver `rama_de_la_ingesta`).
     """
-    nombre = fichero or f'{codigo_tipo_doc.lower()}.pdf'
-    with open(os.path.join(FIXTURES_DIR, nombre), 'rb') as f:
-        contenido = f.read()
+    from app.models.tipos_documentos import TipoDocumento
+
+    tipo = db.session.get(TipoDocumento, tipo_doc_id)
+    if tipo is None or tipo.codigo != codigo_tipo_doc:
+        print(f"ABORTADO: el tipo de documento {tipo_doc_id} no es {codigo_tipo_doc} "
+              f"({tipo.codigo if tipo else 'no existe'}).")
+        sys.exit(1)
+    nombre = nombre_fichero(tipo, variante)
+    contenido = pdf_dummy(tipo, variante)
     metadato = {
         'tipo_doc_id': tipo_doc_id,
         'fecha_administrativa': fecha_admin.isoformat(),

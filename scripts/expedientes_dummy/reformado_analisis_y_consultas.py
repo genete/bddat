@@ -265,8 +265,7 @@ def _crear_expediente(cat, fecha_base):
         DatosAlta, DocumentoSolicitud, alta_expediente,
     )
 
-    with open(os.path.join(_comun.FIXTURES_DIR, 'modelo_solicitud.pdf'), 'rb') as f:
-        contenido = f.read()
+    contenido = _comun.pdf_de_tipo('MODELO_SOLICITUD')
 
     resultado = alta_expediente(DatosAlta(
         tipo_expediente_id=cat['tipo_expediente'].id,
@@ -392,11 +391,9 @@ def main(app=None, *, efectos_desarrollo=True):
         for codigo in _comun.requisitos_aplicables(solicitud, fase1_analisis):
             if codigo not in docs:
                 tipo_doc = _comun.tipo_documento(codigo)
-                fichero = os.path.join(_comun.FIXTURES_DIR, f'{codigo.lower()}.pdf')
-                if tipo_doc is None or not os.path.isfile(fichero):
+                if tipo_doc is None:
                     print(f"ABORTADO: el requisito {codigo} aplica a esta solicitud y "
-                          f"no hay documento dummy para cubrirlo "
-                          f"({os.path.basename(fichero)}).")
+                          f"el catálogo no tiene ese tipo de documento.")
                     sys.exit(1)
                 docs[codigo] = _comun.subir(client, exp_id, codigo, tipo_doc.id,
                                             fecha_base, f'{tipo_doc.nombre} (presentación)')
@@ -506,7 +503,7 @@ def main(app=None, *, efectos_desarrollo=True):
             client, exp_id, 'DOC_PROYECTO', cat['doc_proyecto'].id, fecha_vencido_v1,
             'Reformado de proyecto: reencauce del tramo final para evitar '
             'servidumbres de vuelo, cruzando ahora la línea de ferrocarril',
-            fichero='doc_proyecto_reformado.pdf',
+            variante='reformado',
             abre_reformado=True, origen_reformado='VOLUNTARIO')
 
         from app.services.reformados import ultimo_reformado

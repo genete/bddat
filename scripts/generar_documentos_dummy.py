@@ -1,58 +1,68 @@
-"""Banco de documentos dummy reutilizables + catálogo de uso (#814).
+"""Documentos dummy para los expedientes-tipo y la semilla + catálogo de uso (#814, #929).
 
-Produce dos salidas en tests/fixtures/documentos_dummy/:
+Tiene tres usos:
 
-    <codigo_minuscula>.pdf   Uno por cada tipo de tipos_documentos, sin
-        excepción. Los EXTERNO simulan aportación de terceros (BDDAT no los
-        genera, solo los recibe). Los INTERNO simulan lo que en tramitación
-        real produce el motor de escritos (ELABORAR/NOTIFICAR +
-        generador_escritos) — sirven para avanzar expedientes de prueba sin
-        pasar por el generador real, pero NO sustituyen probarlo de verdad;
-        el propio PDF lo deja dicho en su aviso.
+1. `pdf_dummy(tipo, variante=None)`: devuelve los bytes de un PDF dummy de un tipo de
+   documento. Es lo que importan `scripts/expedientes_dummy/_comun.py` y la semilla de
+   tests para subir un documento por la vía real. **Los PDF ya no se versionan**: se
+   construyen en el momento a partir del nombre y el origen del tipo (ver
+   `tests/fixtures/documentos_dummy/README.md` para el porqué). Con `invariant=1` de
+   reportlab el resultado es idéntico byte a byte en cada ejecución, así que su hash es
+   estable y el aviso «este fichero ya está en el expediente» (ADR-050) se comporta
+   igual que con ficheros fijos.
 
-    catalogo_uso.csv         Catálogo completo: dónde se usa cada tipo de
-        documento, cruzando dos fuentes de catálogo —
-        tramites_tareas_documentos (tipo de documento como ENTRADA/SALIDA de
-        una tarea de un trámite) y requisitos_documentales (requisito legal
-        de aportación). Formato "long": una fila por combinación tipo×uso;
-        un tipo sin ningún uso registrado en ninguna de las dos fuentes deja
-        una fila con fuente_uso vacío, visible como hueco de catálogo.
+   Los EXTERNO simulan aportación de terceros (BDDAT no los genera, solo los recibe). Los
+   INTERNO simulan lo que en tramitación real produce el motor de escritos
+   (ELABORAR/NOTIFICAR + generador_escritos): sirven para avanzar expedientes de prueba
+   sin pasar por el generador real, pero NO sustituyen probarlo de verdad; el propio PDF
+   lo deja dicho en su aviso.
 
-Reejecutable sin dejar vestigios: borra el directorio destino entero antes
-de regenerar, así un tipo renombrado o dado de baja en el catálogo no deja
-PDF huérfano ni fila fantasma en el CSV.
+2. Sin argumentos: regenera `tests/fixtures/documentos_dummy/catalogo_uso.csv`, lo único
+   que sigue versionado de aquella carpeta. Es documentación: dónde se usa cada tipo de
+   documento, cruzando dos fuentes de catálogo —tramites_tareas_documentos (tipo de
+   documento como ENTRADA/SALIDA de una tarea de un trámite) y requisitos_documentales
+   (requisito legal de aportación)—. Formato «long»: una fila por combinación tipo×uso; un
+   tipo sin ningún uso registrado en ninguna de las dos fuentes deja una fila con
+   fuente_uso vacío, visible como hueco de catálogo. **Regenerarlo desde el PC**: el orden
+   de clasificación de Postgres en Linux cambia unas 200 líneas respecto al de Windows.
 
-Standalone: conecta a BD con psycopg2 directo (mismo patrón que
-scripts/reloj_dev.py, #820), sin bootstrap de Flask. No hardcodea la lista
-de tipos — si el catálogo cambia, basta con reejecutar.
+3. `--volcar [RUTA]`: escribe en disco un PDF por cada tipo de documento (y por cada
+   variante), para cuando una persona necesita un fichero real que subir a mano en el
+   navegador. Sin RUTA, a `docs_prueba/documentos_dummy/` (ya ignorada por git); la RUTA
+   puede ser absoluta o relativa al directorio desde el que se ejecuta. Siempre
+   sobrescribe y nunca borra nada de la carpeta: una ruta mal puesta no destruye ficheros
+   ajenos.
+
+Standalone: conecta a BD con psycopg2 directo (mismo patrón que scripts/reloj_dev.py,
+#820), sin bootstrap de Flask; las dos salidas leen la lista de tipos del catálogo, nada
+está escrito a mano. Importarlo no tiene efectos: reportlab y psycopg2 se importan dentro
+de las funciones que los usan.
 
 Uso:
-    python scripts/generar_documentos_dummy.py
-    python scripts/generar_documentos_dummy.py --solo-csv
-    python scripts/generar_documentos_dummy.py --solo-faltan
-    python scripts/generar_documentos_dummy.py --solo-faltan JUSTIFICANTE_SEDE JUSTIFICANTE_EDICTO
-
-`--solo-csv` regenera solo catalogo_uso.csv y no toca la carpeta (#964): es lo
-que pide un cambio de tramites_tareas_documentos. El modo completo reescribe
-todos los PDF —cambian aunque su contenido no, por la fecha de creación que
-lleva el PDF— y borra también los fixtures que no genera este script, como
-doc_proyecto_reformado.pdf (#903), que hay que recuperar de git.
-
-`--solo-faltan` es el modo para cuando se añade un tipo de documento al catálogo
-(#929): genera el PDF de los tipos que aún no lo tienen —de los que se nombren,
-si se nombra alguno— y no borra ni reescribe ninguno de los que hay, así que el
-resto de la carpeta no cambia en git. Refresca también catalogo_uso.csv.
+    python scripts/generar_documentos_dummy.py                  # catalogo_uso.csv
+    python scripts/generar_documentos_dummy.py --volcar         # PDF a docs_prueba/documentos_dummy/
+    python scripts/generar_documentos_dummy.py --volcar /tmp/pdf_dummy
 """
 import argparse
 import csv
+import io
 import os
-import shutil
 import sys
+from collections import namedtuple
 
 # La raíz del repositorio, no una ruta fija: el script tiene que poder correr
 # también en la nube (Linux), donde no existe D:\BDDAT. En el PC es la misma.
 BDDAT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Donde vive el catálogo de uso (lo único versionado) y su README.
 DESTINO_DIR = os.path.join(BDDAT_DIR, "tests", "fixtures", "documentos_dummy")
+
+# Adonde va `--volcar` sin ruta: ignorado por git, nunca versionado.
+VOLCADO_POR_DEFECTO = os.path.join(BDDAT_DIR, "docs_prueba", "documentos_dummy")
+
+# Lo único que `pdf_dummy` necesita de un tipo. En los consumidores es el `TipoDocumento`
+# de la BD (tiene los tres atributos); aquí, una fila del catálogo.
+TipoDummy = namedtuple('TipoDummy', 'codigo nombre origen')
 
 
 def _conectar():
@@ -175,12 +185,48 @@ _AVISOS_ORIGEN = {
 }
 
 
-def _generar_pdfs(tipos, destino_dir):
+# Variantes de un tipo (#903): el mismo tipo con otro contenido, para el escenario que
+# necesita dos documentos distintos del mismo tipo —el reformado del proyecto técnico—.
+# {(código de tipo, variante): (título, línea que sigue al código)}.
+VARIANTES = {
+    ('DOC_PROYECTO', 'reformado'): (
+        'REFORMADO DE PROYECTO TÉCNICO',
+        'Segunda versión del proyecto técnico presentada por el titular.',
+    ),
+}
+
+
+def nombre_fichero(tipo, variante=None):
+    """Nombre del fichero de un documento dummy: `<codigo>.pdf`, o
+    `<codigo>_<variante>.pdf`. Es el que ve el expediente al subirlo y el que escribe
+    `--volcar`."""
+    sufijo = f'_{variante}' if variante else ''
+    return f'{tipo.codigo.lower()}{sufijo}.pdf'
+
+
+def pdf_dummy(tipo, variante=None):
+    """Bytes del PDF dummy de un tipo de documento.
+
+    `tipo` es cualquier objeto con `codigo`, `nombre` y `origen` (el `TipoDocumento` de la
+    BD, o `TipoDummy`). `variante` pide el otro contenido de un tipo de `VARIANTES`; una
+    variante que el tipo no tiene lanza `ValueError` en vez de devolver el PDF normal,
+    porque el escenario que la pide necesita dos documentos distintos y uno repetido
+    pasaría por bueno.
+
+    Determinista: el mismo tipo da los mismos bytes en cada ejecución (`invariant=1` fija
+    las fechas y el identificador que reportlab, si no, cambia en cada PDF)."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+
+    titulo, linea_variante = tipo.nombre.upper(), None
+    if variante is not None:
+        if (tipo.codigo, variante) not in VARIANTES:
+            raise ValueError(f'El tipo {tipo.codigo} no tiene la variante «{variante}» '
+                             f'(las hay: {sorted(v for (c, v) in VARIANTES if c == tipo.codigo)}).')
+        titulo, linea_variante = VARIANTES[(tipo.codigo, variante)]
 
     estilos = getSampleStyleSheet()
     estilo_subtitulo = ParagraphStyle('Subtitulo', parent=estilos['Heading2'], fontSize=10, spaceAfter=4)
@@ -188,85 +234,77 @@ def _generar_pdfs(tipos, destino_dir):
     estilo_normal = ParagraphStyle('Normal', parent=estilos['Normal'], fontSize=9, spaceAfter=3)
     estilo_pie = ParagraphStyle('Pie', parent=estilos['Normal'], fontSize=7, textColor=colors.grey)
 
-    os.makedirs(destino_dir, exist_ok=True)
-    for _tipo_id, codigo, nombre, origen in tipos:
-        ruta = os.path.join(destino_dir, f'{codigo.lower()}.pdf')
-        doc = SimpleDocTemplate(
-            ruta, pagesize=A4,
-            leftMargin=2 * cm, rightMargin=2 * cm,
-            topMargin=2.5 * cm, bottomMargin=2.5 * cm,
-        )
-        contenido = [
-            Paragraph('Consejería de Industria, Energía y Minas', estilo_subtitulo),
-            Paragraph('Junta de Andalucía', estilo_subtitulo),
-            Spacer(1, 0.5 * cm),
-            Paragraph(nombre.upper(), estilo_titulo),
-            Spacer(1, 0.2 * cm),
-            Paragraph(f'Código de tipo: {codigo} ({origen})', estilo_normal),
-            Spacer(1, 1 * cm),
-            Paragraph(_AVISOS_ORIGEN.get(origen, _AVISOS_ORIGEN['AMBOS']), estilo_normal),
-            Spacer(1, 2 * cm),
-            Paragraph(
-                'Este documento no tiene validez alguna fuera del entorno de pruebas de BDDAT.',
-                estilo_pie,
-            ),
-        ]
-        doc.build(contenido)
-    print(f"{len(tipos)} PDFs generados en {destino_dir}")
+    contenido = [
+        Paragraph('Consejería de Industria, Energía y Minas', estilo_subtitulo),
+        Paragraph('Junta de Andalucía', estilo_subtitulo),
+        Spacer(1, 0.5 * cm),
+        Paragraph(titulo, estilo_titulo),
+        Spacer(1, 0.2 * cm),
+        Paragraph(f'Código de tipo: {tipo.codigo} ({tipo.origen})', estilo_normal),
+    ]
+    if linea_variante:
+        contenido.append(Paragraph(linea_variante, estilo_normal))
+    contenido += [
+        Spacer(1, 1 * cm),
+        Paragraph(_AVISOS_ORIGEN.get(tipo.origen, _AVISOS_ORIGEN['AMBOS']), estilo_normal),
+        Spacer(1, 2 * cm),
+        Paragraph(
+            'Este documento no tiene validez alguna fuera del entorno de pruebas de BDDAT.',
+            estilo_pie,
+        ),
+    ]
+    buffer = io.BytesIO()
+    SimpleDocTemplate(
+        buffer, pagesize=A4,
+        leftMargin=2 * cm, rightMargin=2 * cm,
+        topMargin=2.5 * cm, bottomMargin=2.5 * cm,
+        invariant=1,
+    ).build(contenido)
+    return buffer.getvalue()
 
 
-def _tipos_sin_pdf(tipos, destino_dir, pedidos):
-    """Los tipos de `tipos` cuyo PDF no existe en `destino_dir`; si se nombran
-    códigos (`pedidos`), solo esos. Un código que no es un tipo de documento del
-    catálogo aborta: casi siempre es una errata, y callarlo dejaría el banco sin
-    el PDF que se creía añadido."""
-    conocidos = {codigo for _id, codigo, _nombre, _origen in tipos}
-    desconocidos = sorted(pedidos - conocidos)
-    if desconocidos:
-        print(f"ERROR: no son tipos de documento del catálogo: {', '.join(desconocidos)}",
-              file=sys.stderr)
-        raise SystemExit(1)
-    sin_pdf = [t for t in tipos
-               if not os.path.isfile(os.path.join(destino_dir, f'{t[1].lower()}.pdf'))]
-    ya_estan = sorted(pedidos - {t[1] for t in sin_pdf})
-    if ya_estan:
-        print(f"Ya tienen PDF y no se tocan: {', '.join(ya_estan)}")
-    return [t for t in sin_pdf if not pedidos or t[1] in pedidos]
+def _volcar(tipos, destino):
+    """Escribe en `destino` el PDF de cada tipo y de cada una de sus variantes.
+
+    Siempre sobrescribe y nunca borra: es seguro repetirlo (la salida es determinista) y
+    una ruta mal puesta no se lleva por delante lo que hubiera en ella."""
+    os.makedirs(destino, exist_ok=True)
+    escritos = 0
+    for tipo in tipos:
+        variantes = [None] + sorted(v for (codigo, v) in VARIANTES if codigo == tipo.codigo)
+        for variante in variantes:
+            with open(os.path.join(destino, nombre_fichero(tipo, variante)), 'wb') as f:
+                f.write(pdf_dummy(tipo, variante))
+            escritos += 1
+    print(f"{escritos} PDF escritos en {destino}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Banco de documentos dummy y catálogo de uso (#814).')
-    modo = parser.add_mutually_exclusive_group()
-    modo.add_argument('--solo-csv', action='store_true',
-                      help='regenera solo catalogo_uso.csv, sin borrar ni reescribir los PDF')
-    modo.add_argument('--solo-faltan', nargs='*', metavar='CODIGO', default=None,
-                      help='genera solo el PDF de los tipos que no lo tienen (o de los CODIGO '
-                           'nombrados) y refresca el CSV; no borra ni reescribe ningún PDF')
+    parser = argparse.ArgumentParser(
+        description='Documentos dummy y catálogo de uso (#814, #929). Sin argumentos regenera '
+                    'catalogo_uso.csv.')
+    parser.add_argument(
+        '--volcar', nargs='?', const=VOLCADO_POR_DEFECTO, default=None, metavar='RUTA',
+        help='escribe en disco un PDF por cada tipo de documento (y variante), en RUTA o, sin '
+             'ella, en docs_prueba/documentos_dummy/. Sobrescribe y nunca borra; no toca el CSV')
     args = parser.parse_args()
 
     conn = _conectar()
     try:
         with conn.cursor() as cur:
             tipos = _obtener_tipos_documentos(cur)
-            usos_tt = _obtener_usos_tramite_tarea(cur)
-            usos_rl = _obtener_usos_requisito_legal(cur)
+            if args.volcar is None:
+                usos_tt = _obtener_usos_tramite_tarea(cur)
+                usos_rl = _obtener_usos_requisito_legal(cur)
     finally:
         conn.close()
 
-    if args.solo_faltan is not None:
-        faltan = _tipos_sin_pdf(tipos, DESTINO_DIR, {c.upper() for c in args.solo_faltan})
-        if faltan:
-            _generar_pdfs(faltan, DESTINO_DIR)
-            print("PDF nuevos: " + ', '.join(f'{t[1].lower()}.pdf' for t in faltan))
-        else:
-            print("No falta ningún PDF (de los pedidos).")
-    elif not args.solo_csv:
-        shutil.rmtree(DESTINO_DIR, ignore_errors=True)
-        os.makedirs(DESTINO_DIR, exist_ok=True)
-        _generar_pdfs(tipos, DESTINO_DIR)
+    if args.volcar is not None:
+        _volcar([TipoDummy(codigo, nombre, origen) for _id, codigo, nombre, origen in tipos],
+                os.path.abspath(args.volcar))
+        return
 
-    ruta_csv = os.path.join(DESTINO_DIR, 'catalogo_uso.csv')
-    _escribir_csv(tipos, usos_tt, usos_rl, ruta_csv)
+    _escribir_csv(tipos, usos_tt, usos_rl, os.path.join(DESTINO_DIR, 'catalogo_uso.csv'))
 
 
 if __name__ == '__main__':
