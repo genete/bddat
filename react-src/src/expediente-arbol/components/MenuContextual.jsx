@@ -6,7 +6,7 @@ import { useArbolStore } from '../store.js'
 import { showToast } from '../../shared/ui/toast.js'
 import { puedeEditarNodo, puedeCrearHijoDe } from '../../shared/auth.js'
 import { estaSellado } from '../sellado.js'
-import { FilaTipoCreable, BloqueoForzar } from './TiposCreablesCompartido.jsx'
+import { FilaTipoCreable, BloqueoForzar, pideFuenteNotificar } from './TiposCreablesCompartido.jsx'
 
 async function copiarReferencia(ref) {
   try {
@@ -36,6 +36,8 @@ export default function MenuContextual() {
   const cancelarCrear         = useArbolStore((s) => s.cancelarCrear)
   const setJustificacionForzar = useArbolStore((s) => s.setJustificacionForzar)
   const crearHijo             = useArbolStore((s) => s.crearHijo)
+  const creacionPadre         = useArbolStore((s) => s.creacionPadre)
+  const setFuenteCrear        = useArbolStore((s) => s.setFuenteCrear)
 
   const menuRef = useRef(null)
   const [submenuActivo, setSubmenuActivo] = useState(null) // 'crear-hijo' | 'consumidos' | null
@@ -102,9 +104,23 @@ export default function MenuContextual() {
   // por eso se espera la respuesta antes de decidir si cierra (ADR-037 §D).
   const handleCrearTipo = async (tipo) => {
     seleccionarTipoCrear({ tipo_id: tipo.tipo_id, codigo: tipo.codigo, nombre: tipo.nombre }, sel)
+    // Una NOTIFICAR en un trámite con varias fuentes no se crea de inmediato: queda en
+    // el submenú pidiendo a quién se notifica (#929), y se crea con `handleCrearPendiente`.
+    if (pideFuenteNotificar(tipo, tiposCreables)) return
     await crearHijo()
     if (!useArbolStore.getState().bloqueoActual) cerrarMenu()
   }
+
+  const handleCrearConFuente = async (fuente) => {
+    setFuenteCrear(fuente)
+    await crearHijo()
+    if (!useArbolStore.getState().bloqueoActual) cerrarMenu()
+  }
+
+  // El tipo en espera de fuente es de ESTE nodo (la Despensa puede tener otro staged).
+  const esperaFuente = !!tipoCreacionPendiente && !bloqueoActual
+    && pideFuenteNotificar(tipoCreacionPendiente, tiposCreables)
+    && creacionPadre?.tipo === sel.tipo && creacionPadre?.id === sel.id
 
   const handleCopiarRef = () => {
     if (menuDetalle?.referencia) copiarReferencia(menuDetalle.referencia)
@@ -157,6 +173,24 @@ export default function MenuContextual() {
                       onCancelar={cancelarCrear}
                     />
                   </div>
+                ) : esperaFuente ? (
+                  <>
+                    {/* Segundo nivel del submenú, sin <select>: su desplegable nativo saca el
+                        ratón del submenú y lo cerraría. Elegir la fuente crea la NOTIFICAR. */}
+                    <div className="arbol-menu__item" style={{ opacity: .7, cursor: 'default' }}>
+                      {tipoCreacionPendiente.codigo} · ¿a quién se notifica?
+                    </div>
+                    {tiposCreables.fuentes_notificar.map((f) => (
+                      <div key={f.codigo} className="arbol-menu__item"
+                           onClick={() => handleCrearConFuente(f.codigo)}>
+                        {f.etiqueta.charAt(0).toUpperCase() + f.etiqueta.slice(1)}
+                      </div>
+                    ))}
+                    <div className="arbol-menu__sep" />
+                    <div className="arbol-menu__item" style={{ opacity: .7 }} onClick={cancelarCrear}>
+                      Cancelar
+                    </div>
+                  </>
                 ) : (
                   <>
                     {tiposCreablesCargando && (

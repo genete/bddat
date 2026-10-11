@@ -9,7 +9,9 @@ import { getTiposDocumento } from '../api.js'
 import { quitarComprimidos } from '../../shared/subida.js'
 import { AvisoYaExiste, useAvisoYaExiste } from '../../shared/avisoYaExiste.jsx'
 import { estaSellado } from '../sellado.js'
-import { FilaTipoCreable, BloqueoForzar } from './TiposCreablesCompartido.jsx'
+import {
+  FilaTipoCreable, BloqueoForzar, SelectorFuenteNotificar, pideFuenteNotificar,
+} from './TiposCreablesCompartido.jsx'
 
 // ─── Modo tipos-creables (S3b-2) ────────────────────────────────────────────
 
@@ -34,10 +36,14 @@ function DespensaTipos() {
   const setJustificacionForzar = useArbolStore((s) => s.setJustificacionForzar)
   const crearHijo              = useArbolStore((s) => s.crearHijo)
   const anclaSolicitudId       = useArbolStore((s) => s.anclaSolicitudId)
+  const fuenteCrear            = useArbolStore((s) => s.fuenteCrear)
+  const setFuenteCrear         = useArbolStore((s) => s.setFuenteCrear)
 
   // Lo que se crea bajo un expediente es siempre una solicitud, y esa necesita
   // ancla documental (#428).
   const creaSolicitud = tiposCreables?.tipo_hijo === 'solicitud'
+  // Una NOTIFICAR en un trámite con varias fuentes pide elegir a quién se notifica (#929).
+  const pideFuente = pideFuenteNotificar(tipoCreacionPendiente, tiposCreables)
 
   const [mostrarResto, setMostrarResto] = React.useState(false)
   const [draggingOver, setDraggingOver] = React.useState(false)
@@ -142,6 +148,12 @@ function DespensaTipos() {
               escrito (#428): el selector va aquí, antes del botón, para que no se
               pueda pulsar Crear sin haberlo elegido. */}
           {creaSolicitud && <AnclaSolicitud />}
+          {/* Lo mismo con la fuente de una NOTIFICAR (#929): el servidor la exige si el
+              trámite tiene varias, y es mejor preguntarla que devolver un 422. */}
+          {pideFuente && (
+            <SelectorFuenteNotificar fuentes={tiposCreables.fuentes_notificar} valor={fuenteCrear}
+                                     onChange={setFuenteCrear} disabled={creando} />
+          )}
           <div className="d-flex align-items-center gap-2">
             <span className="small flex-grow-1 text-truncate">
               <strong>{tipoCreacionPendiente.nombre}</strong>
@@ -149,7 +161,7 @@ function DespensaTipos() {
             <button
               type="button"
               className="btn btn-sm btn-primary"
-              disabled={creando || (creaSolicitud && !anclaSolicitudId)}
+              disabled={creando || (creaSolicitud && !anclaSolicitudId) || (pideFuente && !fuenteCrear)}
               onClick={crearHijo}
             >
               {creando ? '…' : 'Crear'}

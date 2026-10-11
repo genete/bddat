@@ -40,6 +40,33 @@ export function FilaTipoCreable({ tipo, variante, seleccionado, onClick, draggab
   )
 }
 
+// Fuente de una NOTIFICAR que se va a crear (#929, ADR-051 §B): por qué se le notifica
+// al destinatario. El servidor la exige si el trámite tiene varias (o ninguna declarada),
+// así que la pantalla la pregunta antes de intentar. Las opciones llegan de tipos-creables
+// (`fuentes_notificar`), la misma lista que valida el servidor. Compartido por la Despensa
+// y el menú contextual, como el resto de esta pieza.
+export function SelectorFuenteNotificar({ fuentes, valor, onChange, disabled }) {
+  return (
+    <select className="form-select form-select-sm" value={valor} disabled={disabled}
+            title="A quién y por qué se notifica"
+            onChange={(e) => onChange(e.target.value)}>
+      <option value="">— ¿A quién se notifica? —</option>
+      {fuentes.map((f) => (
+        <option key={f.codigo} value={f.codigo}>
+          {f.etiqueta.charAt(0).toUpperCase() + f.etiqueta.slice(1)}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+// Una NOTIFICAR en un trámite con más de una fuente posible (o sin declarar) no se puede
+// crear sin elegir cuál: lo usan la Despensa y el menú para decidir si preguntar.
+export function pideFuenteNotificar(tipo, tiposCreables) {
+  return !!tipo && tipo.codigo === 'NOTIFICAR'
+    && (tiposCreables?.fuentes_notificar || []).length > 1
+}
+
 // Bloque de bloqueo revelado tras un intento real de creación (ADR-037 §D).
 // Con puede_escapar ofrece forzar con justificación (#616/#723, misma bitácora
 // que un escape de motor); sin él, solo informa — no hay vía de escape.
