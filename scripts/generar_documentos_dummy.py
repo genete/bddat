@@ -29,12 +29,19 @@ de tipos — si el catálogo cambia, basta con reejecutar.
 Uso:
     python scripts/generar_documentos_dummy.py
     python scripts/generar_documentos_dummy.py --solo-csv
+    python scripts/generar_documentos_dummy.py --solo-faltan
+    python scripts/generar_documentos_dummy.py --solo-faltan JUSTIFICANTE_SEDE JUSTIFICANTE_EDICTO
 
 `--solo-csv` regenera solo catalogo_uso.csv y no toca la carpeta (#964): es lo
 que pide un cambio de tramites_tareas_documentos. El modo completo reescribe
 todos los PDF —cambian aunque su contenido no, por la fecha de creación que
 lleva el PDF— y borra también los fixtures que no genera este script, como
 doc_proyecto_reformado.pdf (#903), que hay que recuperar de git.
+
+`--solo-faltan` es el modo para cuando se añade un tipo de documento al catálogo
+(#929): genera el PDF de los tipos que aún no lo tienen —de los que se nombren,
+si se nombra alguno— y no borra ni reescribe ninguno de los que hay, así que el
+resto de la carpeta no cambia en git. Refresca también catalogo_uso.csv.
 """
 import argparse
 import csv
@@ -42,7 +49,9 @@ import os
 import shutil
 import sys
 
-BDDAT_DIR = r"D:\BDDAT"
+# La raíz del repositorio, no una ruta fija: el script tiene que poder correr
+# también en la nube (Linux), donde no existe D:\BDDAT. En el PC es la misma.
+BDDAT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DESTINO_DIR = os.path.join(BDDAT_DIR, "tests", "fixtures", "documentos_dummy")
 
 
@@ -206,10 +215,33 @@ def _generar_pdfs(tipos, destino_dir):
     print(f"{len(tipos)} PDFs generados en {destino_dir}")
 
 
+def _tipos_sin_pdf(tipos, destino_dir, pedidos):
+    """Los tipos de `tipos` cuyo PDF no existe en `destino_dir`; si se nombran
+    códigos (`pedidos`), solo esos. Un código que no es un tipo de documento del
+    catálogo aborta: casi siempre es una errata, y callarlo dejaría el banco sin
+    el PDF que se creía añadido."""
+    conocidos = {codigo for _id, codigo, _nombre, _origen in tipos}
+    desconocidos = sorted(pedidos - conocidos)
+    if desconocidos:
+        print(f"ERROR: no son tipos de documento del catálogo: {', '.join(desconocidos)}",
+              file=sys.stderr)
+        raise SystemExit(1)
+    sin_pdf = [t for t in tipos
+               if not os.path.isfile(os.path.join(destino_dir, f'{t[1].lower()}.pdf'))]
+    ya_estan = sorted(pedidos - {t[1] for t in sin_pdf})
+    if ya_estan:
+        print(f"Ya tienen PDF y no se tocan: {', '.join(ya_estan)}")
+    return [t for t in sin_pdf if not pedidos or t[1] in pedidos]
+
+
 def main():
     parser = argparse.ArgumentParser(description='Banco de documentos dummy y catálogo de uso (#814).')
-    parser.add_argument('--solo-csv', action='store_true',
-                        help='regenera solo catalogo_uso.csv, sin borrar ni reescribir los PDF')
+    modo = parser.add_mutually_exclusive_group()
+    modo.add_argument('--solo-csv', action='store_true',
+                      help='regenera solo catalogo_uso.csv, sin borrar ni reescribir los PDF')
+    modo.add_argument('--solo-faltan', nargs='*', metavar='CODIGO', default=None,
+                      help='genera solo el PDF de los tipos que no lo tienen (o de los CODIGO '
+                           'nombrados) y refresca el CSV; no borra ni reescribe ningún PDF')
     args = parser.parse_args()
 
     conn = _conectar()
@@ -221,7 +253,14 @@ def main():
     finally:
         conn.close()
 
-    if not args.solo_csv:
+    if args.solo_faltan is not None:
+        faltan = _tipos_sin_pdf(tipos, DESTINO_DIR, {c.upper() for c in args.solo_faltan})
+        if faltan:
+            _generar_pdfs(faltan, DESTINO_DIR)
+            print("PDF nuevos: " + ', '.join(f'{t[1].lower()}.pdf' for t in faltan))
+        else:
+            print("No falta ningún PDF (de los pedidos).")
+    elif not args.solo_csv:
         shutil.rmtree(DESTINO_DIR, ignore_errors=True)
         os.makedirs(DESTINO_DIR, exist_ok=True)
         _generar_pdfs(tipos, DESTINO_DIR)
