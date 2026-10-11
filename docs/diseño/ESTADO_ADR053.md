@@ -28,7 +28,7 @@ al hub, el código muerto y la documentación obsoleta.
 |---|---|---|---|---|
 | 0 | — | **Redactar ADR-053** a partir del PRE-ADR. *Propuesta de forma:* ADR nuevo, con cabeceras «Enmendado por» en ADR-023 (§5 bis, §8 y §9) | Diseño | Pendiente; hilo propio |
 | 1 | **#1042** | **Marco del inspector** (D9–D12, §8.15): el shell pinta la barra (cabecera, Editar, Guardar/Cancelar, Cerrar) con «Cerrar» visible a cualquier ancho; el árbol la alimenta con su estado de borrador (el puente); cuerpo con scroll y ancho mínimo por caso, con scroll horizontal por debajo. Primer paso: prototipar el puente. Un solo issue en cinco fases (prototipo del puente; marco en el shell y el árbol; fragmentos Jinja; ancho mínimo y scroll horizontal; documentación) | Frontend | Abierto (11/10/2026), con el análisis de impacto en el cuerpo; fase 1 sin empezar. Base previa: #676 y #688 (cerrados; marco del árbol) |
-| 2 | **por abrir** | **Inspector del árbol: lectura ≈ edición** (D15) | Frontend | **Sin issue.** Se mira junto al marco: toca la lectura de `Inspector.jsx` y el `Editor` genérico |
+| 2 | **#1043** | **Inspector del árbol: lectura ≈ edición** (D15) | Frontend | Abierto (11/10/2026), en cinco fases; la fase 1 es de definición, sin código, y no ha empezado. Se mira junto al marco: toca la lectura de `Inspector.jsx` y el `Editor` genérico |
 | 3 | **#1041** | **Listados fuera del estándar** (D16): un issue y decisión una a una de cinco páginas —tablas maestras, normas y variables, seguimiento y huérfanos, configuración del motor, Delegación Territorial—: adoptan el estándar (incluida una base con varias listas por página) o se justifica el motivo | Frontend | Abierto (11/10/2026); las decisiones por página, sin tomar. Independiente del marco. Absorbió #755 y #644 (cerrados); la causa raíz de #644 es su primera tarea |
 | 4 | **#1039** | Cola de Mi trabajo al listado estándar Jinja (D8). Su inspector se adapta al marco | Frontend | Abierto, sin profundizar. El listado puede ir antes que el marco; el inspector, después (*propuesta*) |
 | 5 | **#881** | Listado del pool al listado estándar con inspector (D5); edición del documento con un único sitio (D17) | Frontend | Abierto, **sin reescribir** (D5): cuando haya ADR se le añade una mención. Después del marco (*propuesta*) |
@@ -98,3 +98,7 @@ hasta que se decida.
 - **11/10/2026** — Cerrados, con Carlos, #644 (absorbido por #1041) y #281 (hecho). Creado **#1042** (marco
   del inspector): un solo issue en cinco fases, con el análisis de impacto previo en el cuerpo (consumidores
   de shell, fragmentos Jinja, React, tests, scripts y documentación; ningún test referencia el marco).
+- **11/10/2026** — Creado **#1043** (lectura ≈ edición en el inspector del árbol, D15): cinco fases, la
+  primera de definición sin código, con el análisis de impacto previo en el cuerpo. Al levantarlo salió que
+  la edición hace desaparecer los campos de solo lectura, los plazos, los documentos y los organismos, y
+  que lectura y edición salen de dos serializadores distintos para el mismo nodo.
