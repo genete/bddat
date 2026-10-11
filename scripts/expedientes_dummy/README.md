@@ -19,7 +19,7 @@ Cada uno tiene doble vida (#849):
 | `ANALISIS_DOC_DOS_VUELTAS` | Análisis documental con respuesta del titular dentro de plazo y dos vueltas de subsanación | Termina con `ANALISIS_SOLICITUD` completa y pendiente de cierre |
 | `CONSULTAS_VARIOS_ESTADOS` | Fase de consultas con las tres separatas enviadas y cada organismo en un estado distinto | Termina con `CONSULTAS` abierta — expediente incompleto a propósito |
 | `REFORMADO_ANALISIS_Y_CONSULTAS` | Dos versiones de proyecto (ADR-044): `ANALISIS_SOLICITUD` y `CONSULTAS` cortadas por el mismo reformado | Un organismo enquistado en la `CONSULTAS` de la v1 (hueco vivo, §I) que ninguna fase posterior salda; la v2 (reformado) repite ese organismo y añade uno nuevo, ambas fases limpias (§F) |
-| `RESOLUCION_CON_ORGANISMOS` | Consultas cerradas (favorable, condicionado con traslado aceptado, silencio reconocido), resolución notificada a solicitante representado y a los tres organismos | Único que llega a cerrar `RESOLUCION`: `CERT_FIN_INSTRUCCION`, botón «añadir los que faltan», `CERT_CUMPLIMIENTO_FASE` y `CERT_CIERRE_FASE` |
+| `RESOLUCION_CON_ORGANISMOS` | Consultas cerradas (favorable, condicionado con traslado aceptado, silencio reconocido), resolución notificada a solicitante representado y a los tres organismos | Único que llega a cerrar `RESOLUCION`: `CERT_FIN_INSTRUCCION`, botón «añadir los que faltan», `CERT_CUMPLIMIENTO_FASE` y `CERT_CIERRE_FASE`. Con `--sin-notificar-resolucion` se detiene antes de notificar (`RESOLUCION` abierta, cuatro `NOTIFICAR` sin enviar) |
 
 ### ANALISIS_DOC_DOS_VUELTAS
 
@@ -188,12 +188,35 @@ del silencio), y los dos certificados de fase (`CERT_CUMPLIMIENTO_FASE`,
 Al terminar **borra el reloj de desarrollo**, como `CONSULTAS_VARIOS_ESTADOS`: la
 resolución queda notificada y cerrada «a fecha de hoy».
 
-**No sirve para tramitar una `NOTIFICAR` en el navegador** (#929, zona A): termina con
-`RESOLUCION` cerrada, y una fase cerrada no admite edición, que es donde viven el
-registro y el destinatario de la `NOTIFICAR`. Los otros tres expedientes-tipo tienen sus
-`NOTIFICAR` ya hechas. Para tramitar una hace falta una abierta (y para ver el
-desplegable de fuente, un trámite con varias, como `NOTIFICACION` en una resolución sin
-cerrar).
+**El expediente completo no sirve para tramitar una `NOTIFICAR` en el navegador** (#929, zona
+A): termina con `RESOLUCION` cerrada, y una fase cerrada no admite edición, que es donde viven
+el registro y el destinatario de la `NOTIFICAR`. Los otros tres expedientes-tipo tienen sus
+`NOTIFICAR` ya hechas. Para eso está la variante.
+
+#### Variante `--sin-notificar-resolucion`
+
+```bash
+venv/Scripts/python.exe scripts/expedientes_dummy/resolucion_con_organismos.py --sin-notificar-resolucion
+```
+
+Hace todos los pasos menos el de notificar: se detiene justo después de poblar `NOTIFICACION`
+con el botón. Quedan **cuatro `NOTIFICAR` planificadas y ya dirigidas, sin enviar** —el
+solicitante, a su representante, y los tres organismos—, `RESOLUCION` en curso y ninguno de
+los dos certificados de fase (exigen la notificación). No hay justificantes ni resultados en
+el pool: se suben desde el navegador (con `generar_documentos_dummy.py --volcar` se tienen
+ficheros a mano) o por la subida de `_comun.subir`.
+
+Es lo que permite tramitar en el navegador lo de #929: el registro de la notificación
+(canal que fija el primer justificante, resultados que admite cada canal, fechas de
+cumplimiento y de efectos), el rótulo «notificación al solicitante», el bloque de
+notificaciones del trámite y el desplegable de fuente al crear otra `NOTIFICAR` en
+`NOTIFICACION`, que tiene cuatro. No es un script aparte: es el mismo, con un argumento, así
+que no hay nada que mantener por duplicado (`main(..., sin_notificar_resolucion=True)` para
+quien lo llame desde código). La semilla de tests no lo pasa y no cambia.
+
+Lleva marca propia, `[DUMMY:RESOLUCION_CON_ORGANISMOS_SIN_NOTIFICAR]`, y convive con el
+completo: repetir la variante recicla la anterior (`[RECICLAR]`) sin tocar al completo, y al
+revés.
 
 ```bash
 venv/Scripts/python.exe scripts/expedientes_dummy/resolucion_con_organismos.py
