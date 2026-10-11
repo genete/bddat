@@ -55,6 +55,10 @@ export const useArbolStore = create((set, get) => ({
   justificacionForzar: '',    // texto del bypass cuando bloqueoActual.puede_escapar (#616)
   anclaSolicitudId: '',       // documento del pool elegido como escrito de la solicitud que se
                               // crea bajo expediente (#428). Vacío en cualquier otro nivel
+  fuenteCrear: '',            // fuente de la NOTIFICAR que se crea (#929, ADR-051 §B): a quién y por
+                              // qué se notifica. Solo bajo trámite y solo para NOTIFICAR; con una
+                              // única fuente posible se preselecciona, con varias la elige el usuario
+                              // (el servidor la exige). Vacía en cualquier otro caso
   bloqueoGuardar: null,        // {motivo, url_norma} del 422 FORZABLE del Guardar del inspector
                                 // (#765): el equivalente de bloqueoActual para el PATCH del nodo.
                                 // Hasta ahora el escape solo existía al CREAR — los tres bloqueos
@@ -187,7 +191,7 @@ export const useArbolStore = create((set, get) => ({
     if (!sel) return
     set({ seleccion: sel, modoEdicion: true, edicionCargando: true,
           editableCampos: [], borrador: {}, borradorInicial: {},
-          tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '',
+          tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '', fuenteCrear: '',
           bloqueoGuardar: null,
           docVinculandoPendiente: null, analizarSeccionesExtendidas: null,
           menuCtx: null, menuDetalle: null, borrarPendienteConfirm: false })
@@ -219,7 +223,7 @@ export const useArbolStore = create((set, get) => ({
     const { seleccion } = get()
     const habiaCambios = selectHayCambios(get())
     set({ modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {}, edicionCargando: false,
-          tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '',
+          tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '', fuenteCrear: '',
           bloqueoGuardar: null,
           docVinculandoPendiente: null,
           borrarPendienteConfirm: false,
@@ -315,7 +319,7 @@ export const useArbolStore = create((set, get) => ({
         borrando: false, borrarPendienteConfirm: false,
         seleccion: null,
         modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {},
-        edicionCargando: false, tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '',
+        edicionCargando: false, tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '', fuenteCrear: '',
         docVinculandoPendiente: null,
         detalle: null, detalleCargando: false, detalleError: null, _detalleCache: {},
       })
@@ -638,7 +642,18 @@ export const useArbolStore = create((set, get) => ({
     } catch { /* el menú sigue siendo útil sin documentos/referencia */ }
   },
 
-  cerrarMenu: () => set({ menuCtx: null, menuDetalle: null }),
+  cerrarMenu: () => {
+    const { menuCtx, creacionPadre, modoEdicion } = get()
+    // Un tipo a medio crear desde el menú (esperando la fuente de una NOTIFICAR, #929) o
+    // bloqueado no sobrevive a cerrarlo: al reabrirlo se vería el paso anterior. Con el
+    // inspector en edición el staging es de la Despensa y no se toca.
+    const delMenu = !modoEdicion && menuCtx && creacionPadre
+      && creacionPadre.tipo === menuCtx.sel.tipo && creacionPadre.id === menuCtx.sel.id
+    set(delMenu
+      ? { menuCtx: null, menuDetalle: null, tipoCreacionPendiente: null, creacionPadre: null,
+          bloqueoActual: null, justificacionForzar: '', fuenteCrear: '' }
+      : { menuCtx: null, menuDetalle: null })
+  },
 
   // --- acciones de creación (S3b-2) ---
 
@@ -674,18 +689,26 @@ export const useArbolStore = create((set, get) => ({
   // `padre` es opcional: la Despensa lo omite (crea siempre bajo la selección actual, que
   // coincide con el nodo en edición); el menú contextual lo pasa explícito porque abrirMenu
   // ya no selecciona el nodo (clic derecho no debe montar el inspector, ver abrirMenu).
-  seleccionarTipoCrear: (tipo, padre) => set({
-    tipoCreacionPendiente: tipo,
-    creacionPadre: padre ?? get().seleccion,
-    bloqueoActual: null,
-    justificacionForzar: '',
-    anclaSolicitudId: '',
-  }),
+  seleccionarTipoCrear: (tipo, padre) => {
+    // Una NOTIFICAR con una sola fuente posible nace con ella elegida: no hay nada que
+    // preguntar. Con varias (o sin declarar) queda vacía hasta que el usuario elija.
+    const fuentes = get().tiposCreables?.fuentes_notificar || []
+    set({
+      tipoCreacionPendiente: tipo,
+      creacionPadre: padre ?? get().seleccion,
+      bloqueoActual: null,
+      justificacionForzar: '',
+      anclaSolicitudId: '',
+      fuenteCrear: tipo?.codigo === 'NOTIFICAR' && fuentes.length === 1 ? fuentes[0].codigo : '',
+    })
+  },
 
   cancelarCrear: () => set({
     tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null,
-    justificacionForzar: '', anclaSolicitudId: '',
+    justificacionForzar: '', anclaSolicitudId: '', fuenteCrear: '',
   }),
+
+  setFuenteCrear: (fuente) => set({ fuenteCrear: fuente }),
 
   // Escrito de solicitud elegido del pool para la solicitud que se está creando
   // (#428). Solo aplica bajo expediente; el resto de niveles no lo usa.
@@ -694,7 +717,7 @@ export const useArbolStore = create((set, get) => ({
   setJustificacionForzar: (texto) => set({ justificacionForzar: texto }),
 
   crearHijo: async () => {
-    const { expedienteId, creacionPadre, tipoCreacionPendiente, tiposCreables, bloqueoActual, justificacionForzar, anclaSolicitudId } = get()
+    const { expedienteId, creacionPadre, tipoCreacionPendiente, tiposCreables, bloqueoActual, justificacionForzar, anclaSolicitudId, fuenteCrear } = get()
     if (!creacionPadre || !tipoCreacionPendiente || !expedienteId) return
 
     // Reintento tras bloqueo (ADR-037 §D): bloqueoActual solo existe si un intento
@@ -715,6 +738,8 @@ export const useArbolStore = create((set, get) => ({
       // escrito (#428). Se manda tal cual: quien decide si vale es el servicio, no
       // esta isla — y el bypass del motor no lo exime, porque es integridad.
       if (esMulti) body.documento_solicitud_id = anclaSolicitudId || null
+      // La fuente de una NOTIFICAR (#929): el servidor la exige si el trámite tiene varias.
+      if (tipoCreacionPendiente.codigo === 'NOTIFICAR' && fuenteCrear) body.fuente = fuenteCrear
       if (forzando) {
         body.bypass = true
         body.justificacion = justificacionForzar.trim()
@@ -723,7 +748,7 @@ export const useArbolStore = create((set, get) => ({
       const nuevoTipo = tiposCreables?.tipo_hijo   // 'solicitud', 'fase', 'tramite', 'tarea'
       const nuevoId = (data.ids || [])[0]
 
-      set({ creando: false, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '' })
+      set({ creando: false, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '', fuenteCrear: '' })
       showToast(forzando ? 'Elemento creado (forzado, registrado en bitácora)' : 'Elemento creado', 'success')
       if (data.advertencia) {
         const a = data.advertencia

@@ -19,7 +19,7 @@ Cada uno tiene doble vida (#849):
 | `ANALISIS_DOC_DOS_VUELTAS` | Análisis documental con respuesta del titular dentro de plazo y dos vueltas de subsanación | Termina con `ANALISIS_SOLICITUD` completa y pendiente de cierre |
 | `CONSULTAS_VARIOS_ESTADOS` | Fase de consultas con las tres separatas enviadas y cada organismo en un estado distinto | Termina con `CONSULTAS` abierta — expediente incompleto a propósito |
 | `REFORMADO_ANALISIS_Y_CONSULTAS` | Dos versiones de proyecto (ADR-044): `ANALISIS_SOLICITUD` y `CONSULTAS` cortadas por el mismo reformado | Un organismo enquistado en la `CONSULTAS` de la v1 (hueco vivo, §I) que ninguna fase posterior salda; la v2 (reformado) repite ese organismo y añade uno nuevo, ambas fases limpias (§F) |
-| `RESOLUCION_CON_ORGANISMOS` | Consultas cerradas (favorable, condicionado con traslado aceptado, silencio reconocido), resolución notificada a solicitante representado y a los tres organismos | Único que llega a cerrar `RESOLUCION`: `CERT_FIN_INSTRUCCION`, botón «añadir los que faltan», `CERT_CUMPLIMIENTO_FASE` y `CERT_CIERRE_FASE` |
+| `RESOLUCION_CON_ORGANISMOS` | Consultas cerradas (favorable, condicionado con traslado aceptado, silencio reconocido), resolución notificada a solicitante representado y a los tres organismos | Único que llega a cerrar `RESOLUCION`: `CERT_FIN_INSTRUCCION`, botón «añadir los que faltan», `CERT_CUMPLIMIENTO_FASE` y `CERT_CIERRE_FASE`. Con `--sin-notificar-resolucion` se detiene antes de notificar (`RESOLUCION` abierta, cuatro `NOTIFICAR` sin enviar) |
 
 ### ANALISIS_DOC_DOS_VUELTAS
 
@@ -125,11 +125,12 @@ servidumbre de vuelo y el nuevo trazado pasa a cruzar la línea de ferrocarril.
 | `HABILES_HASTA_TRASLADO` | 2 | De recibir la respuesta del organismo a notificar el traslado al titular |
 | `MARGEN_RESPUESTA_TITULAR_HABILES` | 5 | Respuesta del titular al traslado, en las dos rondas de la v2 |
 
-Necesitó un fixture nuevo, `doc_proyecto_reformado.pdf` (además del banco generado por
-`scripts/generar_documentos_dummy.py`): con el modelo de carpetas, el pool no duplicaba un
-fichero con el mismo contenido (ver el hallazgo de arriba sobre `DOC_SEPARATA`), y para
-cuando se subía el segundo `DOC_PROYECTO` el primero ya se había movido a su carpeta ESFTT.
-Desde ADR-050 (#1007) eso ya no pasa; el fixture se queda para no cambiar la semilla.
+Necesitó un segundo documento distinto del mismo tipo `DOC_PROYECTO`: con el modelo de
+carpetas, el pool no duplicaba un fichero con el mismo contenido (ver el hallazgo de arriba
+sobre `DOC_SEPARATA`), y para cuando se subía el segundo el primero ya se había movido a su
+carpeta ESFTT. Desde ADR-050 (#1007) eso ya no pasa, y desde #929 ya no es un fichero: se
+sube con `variante='reformado'` (ver «Documentos dummy», más abajo), que da otro contenido
+del mismo tipo.
 
 Al terminar **borra el reloj de desarrollo**: el organismo enquistado de la v1 sigue
 vencido se mire desde la fecha que se mire, y las fechas ya cerradas de la v2 no
@@ -186,6 +187,36 @@ del silencio), y los dos certificados de fase (`CERT_CUMPLIMIENTO_FASE`,
 
 Al terminar **borra el reloj de desarrollo**, como `CONSULTAS_VARIOS_ESTADOS`: la
 resolución queda notificada y cerrada «a fecha de hoy».
+
+**El expediente completo no sirve para tramitar una `NOTIFICAR` en el navegador** (#929, zona
+A): termina con `RESOLUCION` cerrada, y una fase cerrada no admite edición, que es donde viven
+el registro y el destinatario de la `NOTIFICAR`. Los otros tres expedientes-tipo tienen sus
+`NOTIFICAR` ya hechas. Para eso está la variante.
+
+#### Variante `--sin-notificar-resolucion`
+
+```bash
+venv/Scripts/python.exe scripts/expedientes_dummy/resolucion_con_organismos.py --sin-notificar-resolucion
+```
+
+Hace todos los pasos menos el de notificar: se detiene justo después de poblar `NOTIFICACION`
+con el botón. Quedan **cuatro `NOTIFICAR` planificadas y ya dirigidas, sin enviar** —el
+solicitante, a su representante, y los tres organismos—, `RESOLUCION` en curso y ninguno de
+los dos certificados de fase (exigen la notificación). No hay justificantes ni resultados en
+el pool: se suben desde el navegador (con `generar_documentos_dummy.py --volcar` se tienen
+ficheros a mano) o por la subida de `_comun.subir`.
+
+Es lo que permite tramitar en el navegador lo de #929: el registro de la notificación
+(canal que fija el primer justificante, resultados que admite cada canal, fechas de
+cumplimiento y de efectos), el rótulo «notificación al solicitante», el bloque de
+notificaciones del trámite y el desplegable de fuente al crear otra `NOTIFICAR` en
+`NOTIFICACION`, que tiene cuatro. No es un script aparte: es el mismo, con un argumento, así
+que no hay nada que mantener por duplicado (`main(..., sin_notificar_resolucion=True)` para
+quien lo llame desde código). La semilla de tests no lo pasa y no cambia.
+
+Lleva marca propia, `[DUMMY:RESOLUCION_CON_ORGANISMOS_SIN_NOTIFICAR]`, y convive con el
+completo: repetir la variante recicla la anterior (`[RECICLAR]`) sin tocar al completo, y al
+revés.
 
 ```bash
 venv/Scripts/python.exe scripts/expedientes_dummy/resolucion_con_organismos.py
@@ -283,19 +314,47 @@ real.
 | **Catálogo por clave natural**, nunca PK hardcodeada | Las PK cambian entre bases; los códigos no |
 | **Doble vida**: `main(app=None, *, efectos_desarrollo=True)` | `efectos_desarrollo=False` deja fuera lo que solo tiene sentido en la máquina de desarrollo (fijar el reloj simulado, que escribe en `instance/`). El escenario construido es el mismo |
 | **Cerrar cada NOTIFICAR con `_comun.notificar()`**, que asegura el destinatario antes de vincular (`fijar_destinatario_de`) | Desde #967 una `NOTIFICAR` sin destinatario no admite vínculos (ADR-051 §B). Desde #968 nace ya con él cuando el servicio de destinatarios lo sabe (el solicitante —o su representante— o el organismo del trámite) y aquí solo se refresca; si el destinatario se elige a mano y nadie lo eligió, el script aborta en vez de adivinarlo |
+| **Los documentos, por `_comun.subir(...)` o `_comun.pdf_de_tipo(...)`**, nunca abriendo un fichero | Desde #929 no hay PDF versionados: los construye `pdf_dummy` en el momento, así que cualquier tipo del catálogo —también uno añadido mañana— ya tiene documento. Un script que leyera un fichero a mano volvería a depender de una carpeta que nadie mantiene |
 | **Engancharlo a la semilla**: añadir el módulo a `_modulos_expediente_tipo()` en `scripts/semilla_test.py` | Es lo que impide que el escenario se pudra en silencio: si un cambio de la aplicación lo rompe, `preparar_bd_test.py --recrear` falla, en vez de esperar a que alguien lo ejecute a mano. De paso queda disponible para los tests que lo necesiten |
 
 ---
 
-## Banco de documentos dummy
+## Documentos dummy (ya no hay banco de PDF)
 
-Los PDF que suben estos scripts viven en `tests/fixtures/documentos_dummy/`, generados por
-`scripts/generar_documentos_dummy.py` (#814 parte 1) junto a `catalogo_uso.csv`, que documenta
-dónde se usa cada tipo. Tras cambiar `tramites_tareas_documentos` basta con
-`--solo-csv`: el modo completo reescribe todos los PDF y borra `doc_proyecto_reformado.pdf`,
-que no genera él (#964).
+**Cambio interior de #929.** Hasta entonces los PDF que subían estos scripts eran 65 ficheros
+versionados en `tests/fixtures/documentos_dummy/`, y cada script los leía de allí. Ya no
+existen: se construyen en el momento con `pdf_dummy(tipo, variante=None)`, que vive en
+`scripts/generar_documentos_dummy.py`. Es determinista (los mismos bytes en cada ejecución,
+así que el hash también), cuesta ~1,4 ms y sirve para cualquier tipo del catálogo. El porqué
+(cada regeneración cambiaba todos los PDF y el banco se desfasó: 82 tipos, 65 PDF) está en
+[`tests/fixtures/documentos_dummy/README.md`](../../tests/fixtures/documentos_dummy/README.md).
 
-Están bajo `tests/` a propósito: `scripts/semilla_test.py` los usa para construir la base de
-tests, así que ahí sí son fixture. El pool no distingue cómo entró un fichero —solo
-`tipos_documentos.origen` clasifica externo/interno—, de modo que los documentos `INTERNO`
-simulados entran por la misma subida multipart que los externos.
+Lo que significa al escribir o leer un expediente-tipo:
+
+- **Subir un documento:** `_comun.subir(client, exp_id, codigo, tipo_doc_id, fecha, asunto)`,
+  igual que antes. Por dentro ya no abre ningún fichero: pide el PDF a `pdf_dummy`. Aborta si
+  `tipo_doc_id` no es el tipo `codigo`.
+- **Entregar el contenido a otro servicio** (el alta de expediente lleva dentro el escrito de
+  solicitud): `_comun.pdf_de_tipo('MODELO_SOLICITUD')` devuelve los bytes.
+- **Dos documentos distintos del mismo tipo:** el parámetro `variante` de `subir`.
+  `variante='reformado'` en `DOC_PROYECTO` da el segundo proyecto de un reformado
+  (`reformado_analisis_y_consultas`). Una variante que el tipo no tiene lanza `ValueError`.
+- **Requisitos del checklist:** ya no se comprueba que exista un PDF. Un requisito solo hace
+  abortar si el catálogo no tiene su tipo de documento.
+- **`_comun.FIXTURES_DIR` desaparece.** La semilla de tests (`scripts/semilla_test.py`) usa lo
+  mismo para su segundo expediente.
+
+Para tener un fichero real a mano —subirlo desde el navegador—:
+
+```bash
+venv/Scripts/python.exe scripts/generar_documentos_dummy.py --volcar          # docs_prueba/documentos_dummy/
+venv/Scripts/python.exe scripts/generar_documentos_dummy.py --volcar <ruta>   # otra carpeta
+```
+
+Sin argumentos, ese mismo script regenera `catalogo_uso.csv` (dónde se usa cada tipo de
+documento; documentación, y conviene regenerarlo desde el PC). Ya no existe `--solo-csv`: el
+CSV es lo único que genera sin argumentos.
+
+El pool no distingue cómo entró un fichero —solo `tipos_documentos.origen` clasifica
+externo/interno—, de modo que los documentos `INTERNO` simulados entran por la misma subida
+multipart que los externos.

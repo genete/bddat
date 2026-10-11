@@ -42,6 +42,14 @@ fila en `organismos_expediente`) y se cierra cada una con su justificante;
 `CERT_CUMPLIMIENTO_FASE` y `CERT_CIERRE_FASE` (con la frase de confirmación)
 cierran la fase y resuelven la solicitud.
 
+Variante `--sin-notificar-resolucion` (#929): los mismos pasos menos el de notificar.
+Se detiene tras poblar `NOTIFICACION` con el botón, así que quedan cuatro `NOTIFICAR`
+—el solicitante, a su representante, y los tres organismos— ya dirigidas y sin enviar, y
+la fase `RESOLUCION` abierta. Los certificados de fase no se emiten: exigen la
+notificación. Es el caso para tramitar una `NOTIFICAR` en el navegador, que el
+expediente completo no permite porque termina con la fase cerrada. Lleva su propia marca
+(`[DUMMY:RESOLUCION_CON_ORGANISMOS_SIN_NOTIFICAR]`) y convive con el completo.
+
 Circuito real — nunca INSERT SQL directo (ver README.md de esta carpeta):
     - Alta expediente/proyecto/solicitud: `app.services.alta_expediente`.
     - Representante: `mutaciones_arbol.editar_solicitud` (#967, ADR-051 §K).
@@ -65,6 +73,7 @@ de esta carpeta (ver README.md).
 
 Uso:
     venv/Scripts/python.exe scripts/expedientes_dummy/resolucion_con_organismos.py
+    venv/Scripts/python.exe scripts/expedientes_dummy/resolucion_con_organismos.py --sin-notificar-resolucion
 """
 import os
 import sys
@@ -83,6 +92,20 @@ PROPOSITO = (
 )
 MARCA = f'[DUMMY:{CODIGO}]'
 OBSERVACIONES = f'{MARCA} {PROPOSITO}'
+
+# Variante `--sin-notificar-resolucion` (#929): el mismo escenario sin el paso de notificar. Marca
+# propia para que conviva con el expediente completo: la marca del completo es
+# `[DUMMY:RESOLUCION_CON_ORGANISMOS]` y no es prefijo de esta, así que reciclar uno no toca al otro.
+CODIGO_SIN_NOTIFICAR = f'{CODIGO}_SIN_NOTIFICAR'
+PROPOSITO_SIN_NOTIFICAR = (
+    'Expediente que llega hasta la notificación de la resolución sin darla: consultas todas '
+    'cerradas, resolución elaborada y trámite NOTIFICACION poblado con el botón (solicitante '
+    'representado y tres organismos, con su destinatario), pero sin justificantes, sin '
+    'resultados y sin certificados de fase. La fase RESOLUCION queda abierta para tramitar '
+    'las NOTIFICAR en el navegador.'
+)
+MARCA_SIN_NOTIFICAR = f'[DUMMY:{CODIGO_SIN_NOTIFICAR}]'
+OBSERVACIONES_SIN_NOTIFICAR = f'{MARCA_SIN_NOTIFICAR} {PROPOSITO_SIN_NOTIFICAR}'
 
 # Ancla del escenario: hoy es el día hábil nº 60 desde que se notificaron las
 # separatas — igual que en CONSULTAS_VARIOS_ESTADOS, pero con más margen: aquí
@@ -332,13 +355,12 @@ def _autorizar_representante(client, titular_id, representante):
 # Alta expediente/proyecto/solicitud — por el servicio real (#428)
 # ---------------------------------------------------------------------------
 
-def _crear_expediente(cat, fecha_base):
+def _crear_expediente(cat, fecha_base, observaciones):
     from app.services.alta_expediente import (
         DatosAlta, DocumentoSolicitud, alta_expediente,
     )
 
-    with open(os.path.join(_comun.FIXTURES_DIR, 'modelo_solicitud.pdf'), 'rb') as f:
-        contenido = f.read()
+    contenido = _comun.pdf_de_tipo('MODELO_SOLICITUD')
 
     resultado = alta_expediente(DatosAlta(
         tipo_expediente_id=cat['tipo_expediente'].id,
@@ -358,7 +380,7 @@ def _crear_expediente(cat, fecha_base):
         municipios_ids=[cat['municipio'].id],
         titular_id=cat['entidad'].id,
         tipo_solicitud_id=cat['tipo_solicitud'].id,
-        observaciones=OBSERVACIONES,
+        observaciones=observaciones,
         proyecto_extra={
             'es_modificacion': False,
             'sin_linea_aerea': False,
@@ -391,13 +413,22 @@ def _editar_conservando_consumidos(tarea, nuevos_ids, producido_id, etiqueta):
         etiqueta)
 
 
-def main(app=None, *, efectos_desarrollo=True):
+def main(app=None, *, efectos_desarrollo=True, sin_notificar_resolucion=False):
     """Construye el expediente-tipo sobre la app que se le pase.
 
     `efectos_desarrollo=False` es como lo invoca la semilla de la base de
     tests (#849): deja fuera lo que solo tiene sentido en la máquina de
     desarrollo (mover el reloj simulado). El escenario que se construye es
     el mismo.
+
+    `sin_notificar_resolucion=True` (`--sin-notificar-resolucion`, #929) hace todos
+    los pasos menos el de notificar: se detiene tras poblar `NOTIFICACION` con el
+    botón, así que no hay justificantes ni resultados, y sin la notificación no
+    pueden emitirse los dos certificados de fase (los exigen). La fase `RESOLUCION`
+    queda abierta, con una `NOTIFICAR` por destinatario ya dirigida y sin enviar:
+    lo que hace falta para tramitarlas en el navegador. Lleva su propia marca
+    (`MARCA_SIN_NOTIFICAR`): convive con el expediente completo, y la semilla de
+    tests —que no pasa este argumento— no cambia.
     """
     from flask_login import login_user
     from app.services import mutaciones_arbol as svc
@@ -417,9 +448,12 @@ def main(app=None, *, efectos_desarrollo=True):
         if efectos_desarrollo:
             reloj_simulado.fijar(fecha)
 
+    marca, observaciones = ((MARCA_SIN_NOTIFICAR, OBSERVACIONES_SIN_NOTIFICAR)
+                            if sin_notificar_resolucion else (MARCA, OBSERVACIONES))
+
     with app.test_request_context():
         cat = _cargar_catalogo()
-        _comun.reciclar_si_existe(MARCA)
+        _comun.reciclar_si_existe(marca)
 
         login_user(cat['usuario'])
         client = _comun.abrir_cliente(app, cat['usuario'])
@@ -438,7 +472,7 @@ def main(app=None, *, efectos_desarrollo=True):
 
         _fijar_reloj(fecha_base)
 
-        alta = _crear_expediente(cat, fecha_base)
+        alta = _crear_expediente(cat, fecha_base, observaciones)
         expediente, solicitud = alta.expediente, alta.solicitud
         exp_id = expediente.id
 
@@ -481,12 +515,9 @@ def main(app=None, *, efectos_desarrollo=True):
         for codigo in _comun.requisitos_aplicables(solicitud, fase_analisis):
             if codigo not in docs:
                 tipo_doc = _comun.tipo_documento(codigo)
-                fichero = os.path.join(_comun.FIXTURES_DIR, f'{codigo.lower()}.pdf')
-                if tipo_doc is None or not os.path.isfile(fichero):
+                if tipo_doc is None:
                     print(f"ABORTADO: el requisito {codigo} aplica a esta solicitud y "
-                          f"no hay documento dummy para cubrirlo "
-                          f"({os.path.basename(fichero)}). Generarlo con "
-                          f"scripts/generar_documentos_dummy.py.")
+                          f"el catálogo no tiene ese tipo de documento.")
                     sys.exit(1)
                 docs[codigo] = _comun.subir(client, exp_id, codigo, tipo_doc.id,
                                             fecha_base, f'{tipo_doc.nombre} (presentación)')
@@ -807,6 +838,19 @@ def main(app=None, *, efectos_desarrollo=True):
         print(f"NOTIFICACION: el botón creó {len(res_boton.creadas)} notificaciones "
               f"({', '.join(str(i) for i in res_boton.creadas)}).")
 
+        if sin_notificar_resolucion:
+            # Aquí termina la variante (#929): lo que sigue es notificar —justificante y
+            # resultado de cada una— y, ya notificado, los dos certificados de fase, que
+            # sin notificación no se pueden emitir.
+            if efectos_desarrollo:
+                reloj_simulado.borrar()
+            db.session.expire(fase_resolucion)
+            print(f"\nExpediente AT-{expediente.numero_at} (id={exp_id}) completado SIN notificar "
+                  f"la resolución — RESOLUCION abierta, con {len(res_boton.creadas)} "
+                  f"notificaciones ya dirigidas y sin enviar (el solicitante, a su representante, "
+                  f"y {len(oe_por_clave)} organismos).")
+            return expediente.numero_at, exp_id
+
         from app.models.entidad import Entidad
 
         for tarea_id in res_boton.creadas:
@@ -863,4 +907,14 @@ def main(app=None, *, efectos_desarrollo=True):
 
 
 if __name__ == '__main__':
-    numero_at, exp_id = main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description=f'Expediente-tipo {CODIGO} (#971).')
+    parser.add_argument(
+        '--sin-notificar-resolucion', '--sin_notificar_resolucion',
+        dest='sin_notificar_resolucion', action='store_true',
+        help='hace todos los pasos menos el de notificar: se detiene tras poblar NOTIFICACION '
+             'con el botón (sin justificantes, resultados ni certificados de fase), con la fase '
+             'RESOLUCION abierta para tramitar las NOTIFICAR en el navegador (#929)')
+    args = parser.parse_args()
+    numero_at, exp_id = main(sin_notificar_resolucion=args.sin_notificar_resolucion)

@@ -281,48 +281,77 @@ export function getEscritosPreview(plantillaId, tareaId) {
   return api.get(`/api/escritos/preview?plantilla_id=${plantillaId}&tarea_id=${tareaId}`)
 }
 
-// Contenedor de la tarea NOTIFICAR (#657/#658, ADR-034). Respuesta: {notificacion:
-// {canal, identificador_envio, fecha_puesta_disposicion, resultado, fecha_resultado,
-// numero_intento, observaciones, documento_id}|null, documento_producido:{id,nombre}|null}.
+// Contenedor de la tarea NOTIFICAR (#657/#658, ADR-034; rehecho en #928, #929). Respuesta:
+//   notificaciones: [] | [{id, canal, identificador_envio, resultado, intentos_fallidos,
+//     observaciones, documento_id, sede_justificacion, fuente, destinatario}]  (0 ó 1)
+//   destinatario: {fijado, escape_sin_destinatario, editable, bloquea, fuentes_del_tramite}
+//   eleccion_destinatario: {fuente, fuente_etiqueta, motivo, se_elige_en, entidades[]}
+//   documento_producido, justificantes_previos[]  (cada uno con id, nombre, enlace, abrir_en)
+//   fechas: {cumplimiento, efectos}  ({fecha, documento_id, documento}|null)
+//   es_notificacion_del_solicitante, sede: {aplica, estado}, estado, resultados_validos[]
 export function getNotificar(expedienteId, tareaId) {
   return api.get(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar`)
 }
 
-// "Registrar envío" (camino A, opcional): body {canal, identificador_envio?,
-// fecha_puesta_disposicion}. Upsert por tarea_id — no toca resultado/fecha_resultado.
-export function postNotificar(expedienteId, tareaId, body) {
-  return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar`, body)
-}
-
-// "Registrar notificación" (camino B manual): body {resultado, fecha_resultado,
-// numero_intento, observaciones?, documento_id?}. 422 si no hay puesta a disposición
-// registrada todavía. `documento_id` (#712, acto 3): vincula ese documento del pool
-// como Producido en el mismo acto — ver docstring del endpoint (sustituye al anterior
-// si lo había). Respuesta: {ok, notificacion, advertencia?} — advertencia si el cotejo
-// de remesa o canal no coincide con lo ya registrado (no bloqueante).
+// Registro de la notificación. Body, todas las claves opcionales (ausente conserva,
+// `null` vacía): {resultado, observaciones, identificador_envio (≤30), sede_justificacion,
+// documento_id, notificacion_id, bypass+justificacion}. `documento_id` (#712) vincula ese
+// documento del pool como Producido en el mismo acto; solo admite justificantes finales
+// (los previos se vinculan desde la Despensa). 422: `error` y, si es un bloqueo del
+// motor, `motivo`/`puede_escapar` (bloqueo forzable con `bypass`). Respuesta: el payload
+// de getNotificar + {ok, advertencia?}.
 export function patchNotificar(expedienteId, tareaId, body) {
   return api.patch(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar`, body)
 }
 
-// Parseo transitorio del justificante (multipart, sin persistir nada) para
-// autorrellenar "Registrar puesta a disposición" — el usuario verifica/corrige
-// antes de confirmar. Respuesta: el .to_dict() del parser (incluye `reconocido`, fechas ISO).
-export function postNotificarParsear(expedienteId, tareaId, fichero) {
-  const formData = new FormData()
-  formData.append('fichero', fichero)
-  return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar/parsear`, formData)
+// Destinatario de la NOTIFICAR (#967, #968). Body `{}` refresca el que tiene o toma el
+// primero de su fuente a quien falta notificar; `{entidad_id, en_nombre_de_entidad_id?,
+// direccion_id?}` lo elige (solo si la fuente se elige en la NOTIFICAR, no en el ELABORAR).
+// Respuesta: el payload de getNotificar + {ok}.
+export function putNotificarDestinatario(expedienteId, tareaId, body = {}) {
+  return api.put(
+    `/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar/destinatario`, body)
 }
 
-// Preview del justificante DEFINITIVO ya en el pool (#712, acto 1 — desplegable de
-// "Registrar notificación"): a diferencia de postNotificarParsear, aquí el documento
-// ya existe (se pasa documento_id, no fichero) y se lee de disco en el servidor. Sin
-// persistir nada. Respuesta: {reconocido:false, canal} si el canal no tiene parser
-// (BANDEJA/SIR/POSTAL) o el PDF no se reconoce; si no, el .to_dict() del parser + canal.
+// Preview del justificante DEFINITIVO ya en el pool (#712, acto 1): el documento ya
+// existe (se pasa documento_id) y se lee del almacén en el servidor. Sin persistir nada.
+// Respuesta: {reconocido, canal, resultado_sugerido, resultados_validos[]} + el .to_dict()
+// del parser si es Notifica y se reconoce. `resultado_sugerido` solo propone: decide el
+// usuario.
 export function postNotificarParsearDocumento(expedienteId, tareaId, documentoId) {
   return api.post(
     `/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar/parsear_documento`,
     { documento_id: documentoId },
   )
+}
+
+// Destinatario del trámite (#929, ADR-051 §H, §L): a quién va el escrito del ELABORAR y
+// entre quién se elige, sin generar el escrito. Respuesta: {aplica, fuente, fuente_etiqueta,
+// destinatario:{entidad_id,nombre,nif,en_nombre_de}|null, motivo, se_elige, se_elige_en,
+// entidades[], cambiable}.
+export function getDestinatarioTramite(expedienteId, tramiteId) {
+  return api.get(`/api/expedientes/${expedienteId}/nodo/tramite/${tramiteId}/destinatario`)
+}
+
+// Elige o cambia el destinatario del trámite. Body {entidad_id, representante_entidad_id?}.
+// Respuesta: lo mismo que getDestinatarioTramite + {ok}. 422 con `error`.
+export function putDestinatarioTramite(expedienteId, tramiteId, body) {
+  return api.put(`/api/expedientes/${expedienteId}/nodo/tramite/${tramiteId}/destinatario`, body)
+}
+
+// «¿A quién falta notificar?» de un trámite (#968, ADR-051 §D). Respuesta: {fuentes[],
+// faltan:[{fuente,entidad_id,nombre,motivo}], sobran:[tarea_id], completo, textos[]}.
+// `fuentes` vacío = el trámite no notifica a nadie según el catálogo.
+export function getNotificacionesTramite(expedienteId, tramiteId) {
+  return api.get(`/api/expedientes/${expedienteId}/nodo/tramite/${tramiteId}/notificaciones`)
+}
+
+// Botón «añadir las notificaciones que faltan» (#968): idempotente. Respuesta: {ok,
+// creadas, rellenadas, refrescadas (ids de tarea), pendientes (textos), estado} — `estado`
+// tiene la forma de getNotificacionesTramite. 422 con `error`.
+export function postAnadirFaltan(expedienteId, tramiteId) {
+  return api.post(
+    `/api/expedientes/${expedienteId}/nodo/tramite/${tramiteId}/notificaciones/anadir_faltan`, {})
 }
 
 // Genera el escrito, lo guarda en el almacén y lo vincula (#608: el escrito es un

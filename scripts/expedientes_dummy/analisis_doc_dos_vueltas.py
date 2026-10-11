@@ -26,7 +26,7 @@ Circuito real — nunca INSERT SQL directo:
       eso las tareas ANALIZAR no vinculan consumidos a mano — los deriva el
       propio casado de requisitos (ADR-033 §1, #677).
     - Documentos: subida multipart real a /expedientes/<id>/documentos/subir
-      (banco dummy de tests/fixtures/documentos_dummy/, #814 parte 1),
+      (PDF dummy construidos en el momento por `pdf_dummy`, #929),
       incluidos los INTERNO simulados — el pool no distingue cómo entró
       el fichero, solo tipos_documentos.origen clasifica externo/interno.
     - Plazos: reloj de desarrollo (#820), instance/reloj_simulado.txt. Las
@@ -165,8 +165,7 @@ def _crear_expediente(cat):
         DatosAlta, DocumentoSolicitud, alta_expediente,
     )
 
-    with open(os.path.join(_comun.FIXTURES_DIR, 'modelo_solicitud.pdf'), 'rb') as f:
-        contenido = f.read()
+    contenido = _comun.pdf_de_tipo('MODELO_SOLICITUD')
 
     resultado = alta_expediente(DatosAlta(
         tipo_expediente_id=cat['tipo_expediente'].id,

@@ -2412,19 +2412,71 @@ def _destinatario_json(notif: Notificacion) -> dict | None:
     }
 
 
-def _fecha_notificacion_json(fn) -> dict | None:
-    return {'fecha': fn.fecha.isoformat(), 'documento_id': fn.documento.id} if fn else None
+def _documento_notificar_json(expediente_id: int, doc) -> dict:
+    """Un documento de la `NOTIFICAR` con lo que hace falta para abrirlo
+    (`enlace`, `puede_abrir`, `abrir_en`: los mismos que el inspector en lectura
+    y el pool, #929)."""
+    return {
+        'id': doc.id,
+        'nombre': doc.nombre_visible(),
+        **info_apertura_documento(expediente_id, doc, estricto=False),
+    }
+
+
+def _fecha_notificacion_json(expediente_id: int, fn) -> dict | None:
+    """Una fecha derivada y el documento que la acredita, abrible (#929)."""
+    if not fn:
+        return None
+    return {'fecha': fn.fecha.isoformat(), 'documento_id': fn.documento.id,
+            'documento': _documento_notificar_json(expediente_id, fn.documento)}
+
+
+def _entidad_elegible_json(entidad) -> dict:
+    return {'id': entidad.id, 'nombre': entidad.nombre_completo, 'nif': entidad.nif}
+
+
+def _eleccion_destinatario_json(tarea) -> dict:
+    """Cómo se fija el destinatario de la `NOTIFICAR` y, si no sale solo, por qué
+    (#929, A2). Va aparte de `destinatario` a propósito: aquello es el estado
+    (fijado, editable, bloquea) y esto, lo que la pantalla necesita para ofrecer
+    cómo salir de él.
+
+    - `fuente` / `fuente_etiqueta`: por qué se notifica (ADR-051 §C).
+    - `motivo`: el hueco de la fuente («no se ha elegido el destinatario del
+      trámite…»), o `None` si la fuente tiene a quien notificar.
+    - `se_elige_en`: `'NOTIFICAR'` si el usuario lo elige en esta tarea,
+      `'ELABORAR'` si se elige al elaborar el escrito del trámite (§H), `None` si
+      lo resuelve el servicio desde los datos del expediente.
+    - `entidades`: entre quién elegir (rol de la fuente, §C). Solo si se elige.
+    """
+    notif = tarea.notificacion
+    fuente = notif.fuente if notif is not None else None
+    tramite = tarea.tramite
+    estado = dest_svc.estado_del_tramite(tramite)
+    se_elige_en = None
+    if fuente is not None and dest_svc.es_elegida_en_tramite(tramite, fuente):
+        se_elige_en = 'ELABORAR' if dest_svc.tiene_elaborar(tramite) else 'NOTIFICAR'
+    return {
+        'fuente': fuente,
+        'fuente_etiqueta': dest_svc.ETIQUETA_FUENTE.get(fuente, fuente),
+        'motivo': estado.huecos.get(fuente) if estado is not None else None,
+        'se_elige_en': se_elige_en,
+        'entidades': ([_entidad_elegible_json(e) for e in dest_svc.entidades_elegibles(fuente)]
+                      if se_elige_en else []),
+    }
 
 
 def _notificar_payload(tarea) -> dict:
     """Payload del contenedor NOTIFICAR (#928, «Huecos para el frontend»).
     `notificaciones` es una lista de 0 ó 1 elementos: una fila por tarea
     (ADR-051 §A), que desde #967 existe siempre. `destinatario` dice si se
-    puede fijar o cambiar y si la tarea está bloqueada por no tenerlo."""
+    puede fijar o cambiar y si la tarea está bloqueada por no tenerlo;
+    `eleccion_destinatario`, cómo se elige si no sale solo (#929)."""
     notif = tarea.notificacion
     doc = tarea.documento_producido
     sede = notif_svc.estado_sede(tarea)
     escape = notif_svc.tuvo_escape_sin_destinatario(tarea)
+    expediente_id = tarea.tramite.fase.solicitud.expediente_id
     return {
         'notificaciones': [_notificacion_json(notif)] if notif else [],
         'destinatario': {
@@ -2434,20 +2486,22 @@ def _notificar_payload(tarea) -> dict:
             'bloquea': notif_svc.falta_destinatario(tarea),
             'fuentes_del_tramite': list(dest_svc.fuentes_del_tramite(tarea.tramite) or []),
         },
-        'documento_producido': {'id': doc.id, 'nombre': doc.nombre_visible()} if doc else None,
+        'eleccion_destinatario': _eleccion_destinatario_json(tarea),
+        'documento_producido': _documento_notificar_json(expediente_id, doc) if doc else None,
         'justificantes_previos': [
             {
-                'id': d.id,
-                'nombre': d.nombre_visible(),
+                **_documento_notificar_json(expediente_id, d),
                 'tipo_doc_codigo': d.tipo_doc.codigo if d.tipo_doc else None,
+                'tipo_doc': d.tipo_doc.nombre if d.tipo_doc else None,
                 'fecha_administrativa': d.fecha_administrativa.isoformat()
                     if d.fecha_administrativa else None,
             }
             for d in notif_svc.justificantes_previos(tarea)
         ],
         'fechas': {
-            'cumplimiento': _fecha_notificacion_json(notif_svc.fecha_cumplimiento(tarea)),
-            'efectos': _fecha_notificacion_json(notif_svc.fecha_efectos(tarea)),
+            'cumplimiento': _fecha_notificacion_json(expediente_id,
+                                                     notif_svc.fecha_cumplimiento(tarea)),
+            'efectos': _fecha_notificacion_json(expediente_id, notif_svc.fecha_efectos(tarea)),
         },
         # La notificación de la resolución al solicitante (#930, D10; #969): el
         # mismo predicado que decide el cumplimiento del plazo del acto, una
@@ -2677,13 +2731,124 @@ def _resolver_tramite(expediente, tramite_id):
     return tramite
 
 
+def _destinatario_tramite_json(tramite) -> dict:
+    """A quién va el escrito del trámite y cómo se elige (#929, A2; ADR-051
+    §H, §L). Solo un trámite con una sola fuente tiene destinatario único
+    (`aplica`); el resto (la `NOTIFICACION` de la resolución, que notifica a
+    varios) se puebla con el botón y no se elige aquí.
+
+    - `destinatario`: el resuelto —nombre, NIF y en nombre de quién—, o `None`.
+    - `motivo`: por qué no hay destinatario, si no lo hay.
+    - `se_elige`: la fuente se elige en el trámite (boletín, ayuntamiento,
+      ministerio, órgano superior u órgano ambiental en su fase); si no, sale
+      de los datos del expediente y aquí solo se muestra.
+    - `entidades`: entre quién elegir. Se da también con destinatario ya
+      elegido, para poder cambiarlo.
+    - `cambiable`: ninguna `NOTIFICAR` de la fuente ha enviado ya algo. Desde el
+      primer justificante la elección queda fija (§D).
+    """
+    resuelto = dest_svc.destinatario_del_tramite(tramite)
+    destino = resuelto.destinatario
+    se_elige = resuelto.aplica and dest_svc.es_elegida_en_tramite(tramite, resuelto.fuente)
+    enviada = any(
+        ta.notificacion is not None and ta.notificacion.fuente == resuelto.fuente
+        and notif_svc.tiene_justificante(ta)
+        for ta in tramite.tareas if ta.tipo_tarea and ta.tipo_tarea.codigo == 'NOTIFICAR')
+    return {
+        'aplica': resuelto.aplica,
+        'fuente': resuelto.fuente,
+        'fuente_etiqueta': dest_svc.ETIQUETA_FUENTE.get(resuelto.fuente, resuelto.fuente),
+        'destinatario': {
+            'entidad_id': destino.entidad.id,
+            'nombre': destino.entidad.nombre_completo,
+            'nif': destino.entidad.nif,
+            'en_nombre_de': destino.en_nombre_de.nombre_completo if destino.en_nombre_de else None,
+        } if destino is not None else None,
+        'motivo': resuelto.motivo,
+        'se_elige': se_elige,
+        'se_elige_en': ('ELABORAR' if dest_svc.tiene_elaborar(tramite) else 'NOTIFICAR')
+                       if se_elige else None,
+        'entidades': ([_entidad_elegible_json(e) for e in dest_svc.entidades_elegibles(resuelto.fuente)]
+                      if se_elige else []),
+        'cambiable': se_elige and not enviada,
+    }
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tramite/<int:tramite_id>/destinatario',
+              methods=['GET'])
+@login_required
+def get_destinatario_tramite(expediente_id, tramite_id):
+    """
+    GET .../nodo/tramite/<id>/destinatario — a quién va el trámite y entre quién
+    se elige (#929, A2; ver `_destinatario_tramite_json`). Solo lee.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    denegado = verificar_acceso_expediente(expediente)
+    if denegado:
+        return denegado
+    try:
+        tramite = _resolver_tramite(expediente, tramite_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    return jsonify(_destinatario_tramite_json(tramite)), 200
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tramite/<int:tramite_id>/destinatario',
+              methods=['PUT'])
+@login_required
+def put_destinatario_tramite(expediente_id, tramite_id):
+    """
+    PUT .../nodo/tramite/<id>/destinatario — elige o cambia el destinatario del
+    trámite sin generar el escrito (#929, A2; ADR-051 §H, §L). Hasta ahora solo
+    se podía elegir al generarlo, así que sin plantilla, o con el escrito
+    subido a mano, la única salida era el escape de la `NOTIFICAR`, que es
+    irreversible; y una vez elegido no había cómo cambiarlo.
+
+    Body JSON: `{entidad_id, representante_entidad_id?}`. Lo hace
+    `mutaciones_arbol.registrar_destinatario_tramite`, que lo guarda en
+    `tramites_destinatario` y refresca las `NOTIFICAR` del trámite sin
+    justificante. 422 si la fuente no se elige en el trámite, la entidad no
+    tiene el rol o ya hay una notificación enviada a otro destinatario.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+    try:
+        tramite = _resolver_tramite(expediente, tramite_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    data = request.get_json(silent=True) or {}
+    entidad_id = data.get('entidad_id')
+    representante_id = data.get('representante_entidad_id')
+    if not isinstance(entidad_id, int) or isinstance(entidad_id, bool):
+        return jsonify({'error': 'Indica la entidad destinataria (entidad_id).'}), 422
+    if representante_id is not None and (not isinstance(representante_id, int)
+                                         or isinstance(representante_id, bool)):
+        return jsonify({'error': 'representante_entidad_id debe ser el id de una entidad.'}), 422
+    res = svc.registrar_destinatario_tramite(
+        tramite, entidad_id=entidad_id, representante_entidad_id=representante_id)
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    if not res.ok:
+        return jsonify({'error': res.error}), 422
+
+    cuerpo = _destinatario_tramite_json(tramite)
+    cuerpo['ok'] = True
+    return jsonify(cuerpo), 200
+
+
 def _notificaciones_tramite_json(tramite) -> dict:
     """«¿A quién falta notificar?» de un trámite (#968, ADR-051 §D): solo lee."""
     estado = dest_svc.estado_del_tramite(tramite)
     if estado is None:
-        return {'fuentes': [], 'faltan': [], 'sobran': [], 'completo': True, 'textos': []}
+        return {'fuentes': [], 'fuentes_etiquetas': {}, 'faltan': [], 'sobran': [],
+                'completo': True, 'textos': []}
     return {
         'fuentes': list(estado.fuentes),
+        # Cómo se nombra cada fuente en pantalla (#929): el mismo texto que usan
+        # `textos` y los mensajes de bloqueo.
+        'fuentes_etiquetas': {f: dest_svc.ETIQUETA_FUENTE.get(f, f) for f in estado.fuentes},
         'faltan': [{'fuente': f.fuente, 'entidad_id': f.titular_id, 'nombre': f.nombre,
                     'motivo': f.motivo} for f in estado.faltan],
         'sobran': [ta.id for ta in estado.sobran],
@@ -2824,14 +2989,15 @@ def post_notificar_parsear_documento(expediente_id, tarea_id):
         `CORRECTA` (recepción o publicación, sin rechazo posible; D1).
       - resto: `null`.
     Sin parser (todo salvo Notifica) responde `{reconocido: false, canal,
-    resultado_sugerido}` — el usuario rellena a mano.
+    resultado_sugerido}` — el usuario rellena a mano. Siempre lleva
+    `resultados_validos` (#929): los que admitirá el PATCH con ese documento.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
         return jsonify({'error': 'No tienes permiso para esta acción'}), 403
 
     try:
-        _resolver_tarea_notificar(expediente, tarea_id)
+        tarea = _resolver_tarea_notificar(expediente, tarea_id)
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
 
@@ -2846,9 +3012,20 @@ def post_notificar_parsear_documento(expediente_id, tarea_id):
     if canal is None and tipo_codigo != 'ANUNCIO_PUBLICADO':
         return jsonify({'error': 'El documento no es un justificante de notificación (JUSTIFICANTE_*)'}), 422
 
+    # Los resultados que admitirá el PATCH con este documento (#929): el canal es el
+    # del documento o, si es el anuncio y la notificación aún no tiene canal, el
+    # edicto directo (mismo criterio que `patch_notificar`). Así la pantalla ofrece
+    # las opciones antes de guardar sin repetir la regla del canal.
+    notif = tarea.notificacion
+    canal_efectivo = canal or (
+        notif_svc.CANAL_EDICTO if tipo_codigo == notif_svc.ANUNCIO_PUBLICADO
+        and (notif is None or notif.canal is None) else (notif.canal if notif else None))
+    resultados = list(notif_svc.resultados_validos(canal_efectivo)) if canal_efectivo else []
+
     sin_parseo = {
         'reconocido': False, 'canal': canal,
         'resultado_sugerido': _RESULTADO_SUGERIDO_SIN_PARSER.get(tipo_codigo),
+        'resultados_validos': resultados,
     }
     if canal != 'NOTIFICA':
         return jsonify(sin_parseo), 200
@@ -2862,6 +3039,7 @@ def post_notificar_parsear_documento(expediente_id, tarea_id):
 
     payload = resultado.to_dict()
     payload['canal'] = canal
+    payload['resultados_validos'] = resultados
     # La puesta a disposición no tiene desenlace: su parseo no propone resultado.
     payload['resultado_sugerido'] = (resultado.resultado if tipo_codigo == 'JUSTIFICANTE_NOTIFICA'
                                      else None)
