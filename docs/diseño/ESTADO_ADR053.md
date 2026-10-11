@@ -29,7 +29,7 @@ al hub, el código muerto y la documentación obsoleta.
 | 0 | — | **Redactar ADR-053** a partir del PRE-ADR. *Propuesta de forma:* ADR nuevo, con cabeceras «Enmendado por» en ADR-023 (§5 bis, §8 y §9) | Diseño | Pendiente; hilo propio |
 | 1 | **por abrir** | **Marco del inspector** (D9–D12, §8.15): el shell pinta la barra (cabecera, Editar, Guardar/Cancelar, Cerrar) con «Cerrar» visible a cualquier ancho; el árbol la alimenta con su estado de borrador (el puente); cuerpo con scroll y ancho mínimo por caso, con scroll horizontal por debajo. Primer paso: prototipar el puente. Se partirá al abrirlo (shell y puente / fragmentos Jinja al marco / ancho mínimo) | Frontend | **Sin issue.** Base previa: #676 y #688 (cerrados; marco del árbol) |
 | 2 | **por abrir** | **Inspector del árbol: lectura ≈ edición** (D15) | Frontend | **Sin issue.** Se mira junto al marco: toca la lectura de `Inspector.jsx` y el `Editor` genérico |
-| 3 | **por abrir** | **Listados fuera del estándar** (D16): un issue y decisión una a una de cinco páginas —tablas maestras, normas y variables, seguimiento y huérfanos, configuración del motor, Delegación Territorial—: adoptan el estándar (incluida una base con varias listas por página) o se justifica el motivo | Frontend | **Sin issue.** Independiente del marco. Relación con #755 (lo absorbe o se reescribe: se decide al abrirlo) |
+| 3 | **#1041** | **Listados fuera del estándar** (D16): un issue y decisión una a una de cinco páginas —tablas maestras, normas y variables, seguimiento y huérfanos, configuración del motor, Delegación Territorial—: adoptan el estándar (incluida una base con varias listas por página) o se justifica el motivo | Frontend | Abierto (11/10/2026); las decisiones por página, sin tomar. Independiente del marco. Absorbió #755 (cerrado). #644 sigue abierto y su causa raíz es la primera tarea |
 | 4 | **#1039** | Cola de Mi trabajo al listado estándar Jinja (D8). Su inspector se adapta al marco | Frontend | Abierto, sin profundizar. El listado puede ir antes que el marco; el inspector, después (*propuesta*) |
 | 5 | **#881** | Listado del pool al listado estándar con inspector (D5); edición del documento con un único sitio (D17) | Frontend | Abierto, **sin reescribir** (D5): cuando haya ADR se le añade una mención. Después del marco (*propuesta*) |
 | 6 | **por abrir** | **Mini-listados de documentos** (D6, D13, D14): fila común con tres modos (vinculados, selector, edición); macro Jinja y componente React; estudio caso a caso de los sitios de §6.12, incluido pintar `subrol` | Frontend + backend (contrato del dato) | **Sin issue** |
@@ -58,8 +58,10 @@ hasta que se decida.
   prototipando, en el primer issue (§8.15).
 - **Dónde se aloja la edición del documento:** el inspector del pool o, desde otros sitios, el modal grande.
   Depende del marco y de que el formulario de edición del pool quepa en el inspector (§8.10, PRE-ADR §10).
-- **#755 frente al issue de D16:** si lo absorbe o se reescribe. Su «caso de referencia» está desfasado (la
-  pestaña Huérfanos ya existe y lleva su propio botón de volver arriba).
+- ~~**#755 frente al issue de D16**~~ — resuelto: #1041 lo absorbió y #755 se cerró el 11/10. Quedan dos
+  cosas sin decidir: si #644 (filtros de tablas maestras, misma causa raíz) se cierra dentro de #1041 o
+  aparte, que se decide al diseñar el componente; y #281 (Plantillas y Usuarios a listado V2), cuya premisa
+  está desfasada porque ya extienden `lista_v2_base`: revisar o cerrar aparte.
 
 ## Relación con ESTADO_ADR049 y ESTADO_ADR050 `[VERIFICADO]` salvo lo marcado *propuesta*
 
@@ -92,3 +94,6 @@ hasta que se decida.
   les falta «volver arriba»: #755); la única sin scroll infinito es Delegación Territorial, que lo declara;
   y #676 y #688, que implementaron el marco de ADR-023 §5 bis, lo hicieron solo para los nodos del árbol,
   así que los 17 fragmentos Jinja nunca lo tuvieron. Corregida en `ESTADO_ADR049` la decisión 1 de #929.
+- **11/10/2026** — Creado **#1041** (listados fuera del estándar, D16) y cerrado #755 como absorbido, con
+  Carlos. Al buscar issues existentes salieron #644 (misma causa raíz, componentes de instancia única: sigue
+  abierto y es la primera tarea de #1041), #647 (aspecto de las pestañas) y #281 (premisa desfasada).
