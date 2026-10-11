@@ -41,12 +41,26 @@ Lo que ADR-050 necesita de fuera y está en otros issues: **#151** (infraestruct
 
 - **Regenerar un borrador sustituido a mano pierde los retoques sin avisar.** ADR-050 §F dice que hasta la fase 5 «no hay retoques que perder», pero la sustitución con motivo de #1007 permite el ciclo descargar, retocar y volver a subir, y `regeneracion_escritos` sustituye sin preguntar. La confirmación está ahora en #1010. Pendiente de decidir si se adelanta (la bitácora ya guarda las sustituciones con vía `SUSTITUCION`) o se acepta hasta la fase 5; la fase 5 puede llegar después de producción.
 - **Cierre documental de #1007** sin hacer: `MATRIZ_COBERTURA_BDDAT.md` (N009, N021, N077; con `/cobertura`) y las notas de los documentos «Actualizar al implementar» de ADR-050 §M que no se tocaron en los PR de #1007.
-- **Orden de las fases 4-7.** El ADR dice qué va antes de producción pero no el orden entre #1008, #1009, #1010, #1011 y #1012. Sin decidir.
+- **Orden de las fases 4-7.** El ADR dice qué va antes de producción pero no el orden entre #1008, #1009, #1010, #1011 y #1012. Sin decidir. El ADR de interfaz añade una restricción *(propuesta, sin confirmar)*: #1012 después de #881 (ver más abajo).
 
 ## Relación con la cadena de ADR-049
 
 #929 (frontend de las notificaciones) esperaba a «las fases 0-3 de ADR-050» (`ESTADO_ADR049`): cumplido con #1007. Del resto de la cadena solo se cruza con él `ElaborarEditor.jsx`: #929 le añade el selector de destinatario, #1009 el aviso de plantilla desfasada y #1010 el botón «Editar». #922 es independiente.
 
+## Relación con el ADR de interfaz (ADR-053)
+
+Su registro es [`ESTADO_ADR053.md`](ESTADO_ADR053.md); aquí solo los cruces con esta cadena.
+
+- **#1012** (papelera): «sigue en los listados, marcado». Consume el listado del pool (#881) y la guarda
+  `_documento_es_referenciado`, que #881 quiere convertir en lista de usos. *Propuesta:* #881 antes o junto.
+- **#1008**: el sitio del botón «Exportar expediente» no está fijado y cae en el pool o en el inspector del
+  expediente, ambos afectados por el ADR de interfaz. La señal junto a la bombilla de `base_app.html` no.
+- **#1033** (aparcado): su listado plano de documentos de todos los expedientes es el modo «selector» de la
+  fila común de mini-listado; se retoma sobre el listado estándar.
+- **#1009**: toca el inspector de Plantillas, hoy parcial frente al estándar: alinearlo con el marco.
+- **#1010**: el botón «Editar» (WebDAV) de `ElaborarEditor` convive con el «Editar» del inspector.
+
 ## Historial de esta tabla
 
 - **09/10/2026** — Creada tras cerrar #1007. Casado de fases e issues, y correcciones de tres issues: #1010 gana el congelado del borrador y la confirmación al regenerar (antes en ninguna fase, #1011 decía que el congelado era de la fase 1) y los nombres de columna del ADR; #1011 deja de atribuir el congelado del borrador a #1007; #1012 gana el paso 5 de §G (conciliación), el enganche de `fecha_borrado` con el manifiesto, el tamaño máximo de 300 MB (decía 500) y los nombres de columna del ADR. Creados #1033 y #1034 para lo diferido de la fase 1.
+- **11/10/2026** — Añadida la sección de cruces con el ADR de interfaz ([`ESTADO_ADR053.md`](ESTADO_ADR053.md)): #1012, #1008, #1033, #1009 y #1010. Sin cambios en las fases ni en los issues.
