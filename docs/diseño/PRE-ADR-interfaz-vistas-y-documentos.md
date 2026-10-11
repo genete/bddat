@@ -1,7 +1,10 @@
 # PRE-ADR — Interfaz: vistas, inspector, listados y tratamiento de documentos
 
-> **Estado:** Borrador. Material de partida de un ADR todavía sin redactar. Recoge hallazgos,
-> preguntas y, desde el 11/10, las **decisiones de Carlos** (§2); no contiene propuestas de diseño ni
+> **Estado:** **Congelado el 11/10/2026.** Es el material de trabajo de
+> [ADR-053](../decisiones/ADR-053-interfaz-inspector-listados-y-documentos.md) (propuesta): donde
+> difiera de él, manda el ADR. Se conserva por el inventario (§4 a §7), las decisiones tal como las
+> dijo Carlos (§2) y las alternativas; no se mantiene al día. Recoge hallazgos,
+> preguntas y las **decisiones de Carlos** (§2); no contiene propuestas de diseño ni
 > de planificación que él no haya tomado.
 > **Fecha:** 2026-10-11 (sesiones del 09, 10 y 11/10/2026).
 > **Origen:** la revisión de #929 contra el código (09/10) destapó que el tratamiento de documentos

@@ -1,8 +1,9 @@
 # Estado de la cadena de issues — ADR-053 (interfaz)
 
-> Registro vivo. Las decisiones de diseño están hoy en el
-> [`PRE-ADR`](PRE-ADR-interfaz-vistas-y-documentos.md) (§2, D1–D19); pasarán a ser **ADR-053** en
-> `docs/decisiones/` cuando se redacte (el último que existe es ADR-052). Aquí solo se lleva la cuenta de
+> Registro vivo. Las decisiones de diseño están en
+> [`ADR-053`](../decisiones/ADR-053-interfaz-inspector-listados-y-documentos.md) (propuesta, 11/10/2026),
+> redactado a partir del [`PRE-ADR`](PRE-ADR-interfaz-vistas-y-documentos.md) (§2, D1–D19), que queda
+> congelado. Aquí solo se lleva la cuenta de
 > qué tiene issue y qué no, qué está pendiente y en qué orden, para no perder el hilo entre sesiones. Se
 > actualiza a mano, sin issue ni rama propios (documento de diseño vivo), cada vez que se crea o cierra un
 > issue de la cadena. Mismo formato que [`ESTADO_ADR049.md`](ESTADO_ADR049.md) y
@@ -26,7 +27,7 @@ al hub, el código muerto y la documentación obsoleta.
 
 | Orden | Issue | Qué es | Capa | Estado (11/10/2026) |
 |---|---|---|---|---|
-| 0 | — | **Redactar ADR-053** a partir del PRE-ADR. *Propuesta de forma:* ADR nuevo, con cabeceras «Enmendado por» en ADR-023 (§5 bis, §8 y §9) | Diseño | Pendiente; hilo propio |
+| 0 | — | **ADR-053** redactado a partir del PRE-ADR, con cabeceras «Enmendado por» en ADR-023 (§5 bis, §6, §8 y §9) y en ADR-017 | Diseño | Redactado el 11/10/2026 como **Propuesta**; pendiente de revisión por Carlos (su paso a «Adoptada» no lo da este documento) |
 | 1 | **#1042** | **Marco del inspector** (D9–D12, §8.15): el shell pinta la barra (cabecera, Editar, Guardar/Cancelar, Cerrar) con «Cerrar» visible a cualquier ancho; el árbol la alimenta con su estado de borrador (el puente); cuerpo con scroll y ancho mínimo por caso, con scroll horizontal por debajo. Primer paso: prototipar el puente. Un solo issue en cinco fases (prototipo del puente; marco en el shell y el árbol; fragmentos Jinja; ancho mínimo y scroll horizontal; documentación) | Frontend | Abierto (11/10/2026), con el análisis de impacto en el cuerpo; fase 1 sin empezar. Base previa: #676 y #688 (cerrados; marco del árbol) |
 | 2 | **#1043** | **Inspector del árbol: lectura ≈ edición** (D15) | Frontend | Abierto (11/10/2026), en cinco fases; la fase 1 es de definición, sin código, y no ha empezado. Se mira junto al marco: toca la lectura de `Inspector.jsx` y el `Editor` genérico |
 | 3 | **#1041** | **Listados fuera del estándar** (D16): un issue y decisión una a una de cinco páginas —tablas maestras, normas y variables, seguimiento y huérfanos, configuración del motor, Delegación Territorial—: adoptan el estándar (incluida una base con varias listas por página) o se justifica el motivo | Frontend | Abierto (11/10/2026); las decisiones por página, sin tomar. Independiente del marco. Absorbió #755 y #644 (cerrados); la causa raíz de #644 es su primera tarea |
@@ -111,3 +112,7 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   (el alta), y los tres de fuera del ADR: **#1049** (código muerto), **#1050** (documentación obsoleta) y
   **#1051** (menú frente a hub). Antes se buscaron los existentes: ninguno decía lo mismo; relacionados #685,
   #915, #213, #958, #351, #793, #577, #275, #579, #709 y, en #1041, #1031.
+- **11/10/2026** — Redactado **ADR-053** como *Propuesta* (pieza 0) y congelado el PRE-ADR. Cabeceras
+  «Enmendado por» en ADR-023 y en ADR-017. Sin cambios en los issues ni en su orden. Las interpretaciones
+  del ADR (el puente del marco, el alcance del contrato, qué hace la isla `mi-trabajo` tras #1039) van
+  marcadas *Interpretación* en su texto, y falta que Carlos las confirme.
