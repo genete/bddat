@@ -24,11 +24,17 @@
 //
 // El par Guardar/Cancelar que persiste lo que la Despensa apila vive en la
 // cabecera fija (BarraEdicion, #688), no en el pie de este contenedor.
+//
+// Destinatario (#929, ADR-051 §H): encima de "Generar escrito", el bloque
+// `BloqueDestinatarioTramite` dice a quién va el escrito y, si el trámite lo elige el
+// usuario, deja elegirlo o cambiarlo sin generar nada. Sin destinatario el servidor no
+// genera (422 `elegir_destinatario`).
 import React from 'react'
 import { useArbolStore } from '../store.js'
 import { getEscritosPlantillas, getEscritosPreview, postEscritosGenerar } from '../api.js'
 import { showToast } from '../../shared/ui/toast.js'
 import BloqueNotas from './BloqueNotas.jsx'
+import BloqueDestinatarioTramite from './notificar/BloqueDestinatarioTramite.jsx'
 
 // Qué pasó al generar (#730, ADR-050): sin borrador se genera; con borrador, si el
 // contenido es el mismo no pasa nada y si es distinto se sustituye sin preguntar
@@ -51,7 +57,18 @@ const CAMPOS_PREVIEW = [
   ['fecha_hoy', 'Fecha'],
 ]
 
+// A quién va el escrito (#929, ADR-051 §H): las variables `destinatario_*` que el servidor
+// resuelve para el trámite. Solo se pintan si el trámite tiene destinatario: la
+// ELABORACION de la resolución no lo imprime y todas vienen vacías.
+const CAMPOS_DESTINATARIO = [
+  ['destinatario_nombre', 'Destinatario'],
+  ['destinatario_nif', 'NIF destinatario'],
+  ['destinatario_en_nombre_de', 'En nombre de'],
+  ['destinatario_representante', 'Representante'],
+]
+
 function PreviewCampos({ campos }) {
+  const conDestinatario = !!campos.destinatario_nombre
   return (
     <div className="row g-1 small mb-3">
       {CAMPOS_PREVIEW.map(([clave, etiqueta]) => (
@@ -59,14 +76,33 @@ function PreviewCampos({ campos }) {
           <span className="fw-semibold">{etiqueta}:</span> {campos[clave] || '—'}
         </div>
       ))}
+      {conDestinatario && CAMPOS_DESTINATARIO
+        .filter(([clave]) => clave === 'destinatario_nombre' || campos[clave])
+        .map(([clave, etiqueta]) => (
+          <div className="col-6" key={clave}>
+            <span className="fw-semibold">{etiqueta}:</span> {campos[clave] || '—'}
+          </div>
+        ))}
     </div>
   )
+}
+
+// Id del trámite al que pertenece la tarea, buscado en el árbol ya cargado.
+function tramiteIdDeTarea(arbol, tareaId) {
+  for (const sol of (arbol && arbol.solicitudes) || []) {
+    for (const fase of sol.fases || []) {
+      for (const tr of fase.tramites || []) {
+        if ((tr.tareas || []).some((ta) => ta.id === tareaId)) return tr.id
+      }
+    }
+  }
+  return null
 }
 
 // Núcleo: generar un escrito desde plantilla. Vive siempre en el Inspector de
 // edición de una tarea ELABORAR no ejecutada — no hay lista, es una acción
 // única por tarea (una tarea produce a lo sumo un documento).
-function GenerarEscrito({ tareaId, onGenerado }) {
+function GenerarEscrito({ tareaId, onGenerado, onFaltaDestinatario }) {
   const [plantillas, setPlantillas] = React.useState([])
   const [cargandoPlantillas, setCargandoPlantillas] = React.useState(true)
   const [plantillaId, setPlantillaId] = React.useState('')
@@ -107,7 +143,16 @@ function GenerarEscrito({ tareaId, onGenerado }) {
                 data.resultado === 'SIN_CAMBIOS' ? 'info' : 'success')
       await onGenerado(data.doc_id)
     } catch (e) {
-      showToast((e && e.message) || 'No se pudo generar el escrito', 'danger')
+      // 422 `elegir_destinatario` (#968, ADR-051 §H): sin destinatario no se genera. El
+      // bloque de destinatario de arriba ya ofrece elegirlo (se recarga para reflejarlo,
+      // por si cambió desde que se pintó); aquí solo se dice por qué no se generó.
+      const falta = e && e.payload && e.payload.elegir_destinatario
+      if (falta) {
+        showToast(e.message || `No se genera el escrito sin destinatario: ${falta.motivo}`, 'warning')
+        if (onFaltaDestinatario) onFaltaDestinatario()
+      } else {
+        showToast((e && e.message) || 'No se pudo generar el escrito', 'danger')
+      }
     } finally {
       setGenerando(false)
     }
@@ -187,6 +232,14 @@ function GenerarEscrito({ tareaId, onGenerado }) {
 
 export default function ElaborarEditor({ tareaId, nodo }) {
   const ejecutada = !!(nodo && nodo.doc_producido && nodo.doc_producido.presente)
+  const expedienteId = useArbolStore((s) => s.expedienteId)
+  const arbol = useArbolStore((s) => s.arbol)
+  const tramiteId = tramiteIdDeTarea(arbol, tareaId)
+  // Sube cuando cambia el destinatario del trámite (o falla un generar por no tenerlo):
+  // el bloque lo vuelve a pedir y el generador reinicia su preview, que lleva
+  // `destinatario_*` y se quedaría con el anterior.
+  const [version, setVersion] = React.useState(0)
+  const otraVersion = () => setVersion((v) => v + 1)
 
   // Vincula el .docx recién generado como CONSUMIDO y persiste de inmediato —
   // reutiliza el mismo circuito que la Despensa (borrador.documentos_consumidos_ids
@@ -204,6 +257,10 @@ export default function ElaborarEditor({ tareaId, nodo }) {
 
   return (
     <div>
+      {tramiteId != null && (
+        <BloqueDestinatarioTramite expedienteId={expedienteId} tramiteId={tramiteId}
+                                   version={version} onCambio={otraVersion} />
+      )}
       {ejecutada ? (
         <div className="card mb-3">
           <div className="card-header card-header-accent fw-semibold small">Generar escrito</div>
@@ -215,7 +272,8 @@ export default function ElaborarEditor({ tareaId, nodo }) {
           </div>
         </div>
       ) : (
-        <GenerarEscrito tareaId={tareaId} onGenerado={onGenerado} />
+        <GenerarEscrito key={version} tareaId={tareaId} onGenerado={onGenerado}
+                        onFaltaDestinatario={otraVersion} />
       )}
 
       <BloqueNotas />
