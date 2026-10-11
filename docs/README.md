@@ -22,10 +22,11 @@ Documentos vivos: se actualizan a medida que avanza el trabajo, no se congelan.
 - [MATRIZ_COBERTURA_BDDAT.md](diseño/MATRIZ_COBERTURA_BDDAT.md) — panorama de cobertura por necesidad; fuente de qué falta y dónde mirar para elegir el próximo foco (ADR-031)
 - [ESTADO_ADR049.md](diseño/ESTADO_ADR049.md) — cadena de issues de ADR-049 (fechas de notificación, cumplimiento del plazo, certificados de cierre): orden, capa y estado de cada uno
 - [ESTADO_ADR050.md](diseño/ESTADO_ADR050.md) — fases de ADR-050 (almacén documental) casadas con sus issues: estado, dependencias y huecos sin issue
+- [ESTADO_ADR053.md](diseño/ESTADO_ADR053.md) — cadena de issues de ADR-053 (interfaz: inspector, listados, documentos): qué tiene issue y qué no, qué está pendiente y en qué orden; con los cruces con ADR-049 y ADR-050
 - [DETALLE_NECESIDADES_BDDAT.md](diseño/DETALLE_NECESIDADES_BDDAT.md) — catálogo de necesidades: qué es cada una y quién la necesita
 - [DECISIONES_UI.md](diseño/DECISIONES_UI.md) — estado del revamping de interfaz
 - [INVENTARIO_BACKEND.md](diseño/INVENTARIO_BACKEND.md) — inventario de modelos, servicios y rutas
-- `PRE-ADR-*.md` — decisiones en borrador, todavía sin ADR (supervisor, workbench de listados, navegación administrativa, matriz de cobertura rol/motor)
+- `PRE-ADR-*.md` — decisiones en borrador, todavía sin ADR (supervisor, workbench de listados, navegación administrativa, matriz de cobertura rol/motor); el de interfaz de vistas y documentos ya tiene ADR-053 (propuesta) y queda congelado
 - `ANALISIS_CRITICO.md`, `AUDITORIA_UI.md`, `ESTUDIO_USUARIO.md` — análisis de partida del revamping de interfaz
 
 ## referencia/

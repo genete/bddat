@@ -8,6 +8,7 @@
 **Issue:** #534
 **Depende de:** ADR-022 (#533) — escala densa y tabla unificada.
 **Enmienda:** ADR-016 §14 (el inspector resizable se redefine como mecanismo de shell, ver §3).
+**Enmendado por:** ADR-053 (2026-10-11, propuesta, sin implementar): §5 bis, el marco de edición pasa a ser de **todos** los inspectores y lo pinta el shell, no cada fragmento ni el árbol; §6, el modal grande sirve también para **ver** documentos generados (ADR-053 §A y §E) · §8, el «mínimo de lectura» pasa a ser un ancho mínimo definido por cada caso, con scroll horizontal del cuerpo por debajo (ADR-053 §B) · §9, la «columna fluida» deja de ser la regla del interior (ADR-053 §B)
 **Origen:** PRE-ADR `docs/diseño/PRE-ADR-workbench-listados.md`.
 
 ---
