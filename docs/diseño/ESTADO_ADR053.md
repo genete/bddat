@@ -27,9 +27,9 @@ al hub, el código muerto y la documentación obsoleta.
 | Orden | Issue | Qué es | Capa | Estado (11/10/2026) |
 |---|---|---|---|---|
 | 0 | — | **Redactar ADR-053** a partir del PRE-ADR. *Propuesta de forma:* ADR nuevo, con cabeceras «Enmendado por» en ADR-023 (§5 bis, §8 y §9) | Diseño | Pendiente; hilo propio |
-| 1 | **por abrir** | **Marco del inspector** (D9–D12, §8.15): el shell pinta la barra (cabecera, Editar, Guardar/Cancelar, Cerrar) con «Cerrar» visible a cualquier ancho; el árbol la alimenta con su estado de borrador (el puente); cuerpo con scroll y ancho mínimo por caso, con scroll horizontal por debajo. Primer paso: prototipar el puente. Se partirá al abrirlo (shell y puente / fragmentos Jinja al marco / ancho mínimo) | Frontend | **Sin issue.** Base previa: #676 y #688 (cerrados; marco del árbol) |
+| 1 | **#1042** | **Marco del inspector** (D9–D12, §8.15): el shell pinta la barra (cabecera, Editar, Guardar/Cancelar, Cerrar) con «Cerrar» visible a cualquier ancho; el árbol la alimenta con su estado de borrador (el puente); cuerpo con scroll y ancho mínimo por caso, con scroll horizontal por debajo. Primer paso: prototipar el puente. Un solo issue en cinco fases (prototipo del puente; marco en el shell y el árbol; fragmentos Jinja; ancho mínimo y scroll horizontal; documentación) | Frontend | Abierto (11/10/2026), con el análisis de impacto en el cuerpo; fase 1 sin empezar. Base previa: #676 y #688 (cerrados; marco del árbol) |
 | 2 | **por abrir** | **Inspector del árbol: lectura ≈ edición** (D15) | Frontend | **Sin issue.** Se mira junto al marco: toca la lectura de `Inspector.jsx` y el `Editor` genérico |
-| 3 | **#1041** | **Listados fuera del estándar** (D16): un issue y decisión una a una de cinco páginas —tablas maestras, normas y variables, seguimiento y huérfanos, configuración del motor, Delegación Territorial—: adoptan el estándar (incluida una base con varias listas por página) o se justifica el motivo | Frontend | Abierto (11/10/2026); las decisiones por página, sin tomar. Independiente del marco. Absorbió #755 (cerrado). #644 sigue abierto y su causa raíz es la primera tarea |
+| 3 | **#1041** | **Listados fuera del estándar** (D16): un issue y decisión una a una de cinco páginas —tablas maestras, normas y variables, seguimiento y huérfanos, configuración del motor, Delegación Territorial—: adoptan el estándar (incluida una base con varias listas por página) o se justifica el motivo | Frontend | Abierto (11/10/2026); las decisiones por página, sin tomar. Independiente del marco. Absorbió #755 y #644 (cerrados); la causa raíz de #644 es su primera tarea |
 | 4 | **#1039** | Cola de Mi trabajo al listado estándar Jinja (D8). Su inspector se adapta al marco | Frontend | Abierto, sin profundizar. El listado puede ir antes que el marco; el inspector, después (*propuesta*) |
 | 5 | **#881** | Listado del pool al listado estándar con inspector (D5); edición del documento con un único sitio (D17) | Frontend | Abierto, **sin reescribir** (D5): cuando haya ADR se le añade una mención. Después del marco (*propuesta*) |
 | 6 | **por abrir** | **Mini-listados de documentos** (D6, D13, D14): fila común con tres modos (vinculados, selector, edición); macro Jinja y componente React; estudio caso a caso de los sitios de §6.12, incluido pintar `subrol` | Frontend + backend (contrato del dato) | **Sin issue** |
@@ -58,10 +58,8 @@ hasta que se decida.
   prototipando, en el primer issue (§8.15).
 - **Dónde se aloja la edición del documento:** el inspector del pool o, desde otros sitios, el modal grande.
   Depende del marco y de que el formulario de edición del pool quepa en el inspector (§8.10, PRE-ADR §10).
-- ~~**#755 frente al issue de D16**~~ — resuelto: #1041 lo absorbió y #755 se cerró el 11/10. Quedan dos
-  cosas sin decidir: si #644 (filtros de tablas maestras, misma causa raíz) se cierra dentro de #1041 o
-  aparte, que se decide al diseñar el componente; y #281 (Plantillas y Usuarios a listado V2), cuya premisa
-  está desfasada porque ya extienden `lista_v2_base`: revisar o cerrar aparte.
+- ~~**#755 frente al issue de D16**~~ — resuelto el 11/10: #1041 absorbió #755 y #644 (los dos cerrados), y
+  #281 (Plantillas y Usuarios a listado V2, con la premisa desfasada) se cerró como hecho.
 
 ## Relación con ESTADO_ADR049 y ESTADO_ADR050 `[VERIFICADO]` salvo lo marcado *propuesta*
 
@@ -97,3 +95,6 @@ hasta que se decida.
 - **11/10/2026** — Creado **#1041** (listados fuera del estándar, D16) y cerrado #755 como absorbido, con
   Carlos. Al buscar issues existentes salieron #644 (misma causa raíz, componentes de instancia única: sigue
   abierto y es la primera tarea de #1041), #647 (aspecto de las pestañas) y #281 (premisa desfasada).
+- **11/10/2026** — Cerrados, con Carlos, #644 (absorbido por #1041) y #281 (hecho). Creado **#1042** (marco
+  del inspector): un solo issue en cinco fases, con el análisis de impacto previo en el cuerpo (consumidores
+  de shell, fragmentos Jinja, React, tests, scripts y documentación; ningún test referencia el marco).

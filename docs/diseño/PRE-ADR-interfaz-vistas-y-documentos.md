@@ -65,7 +65,7 @@
 | D6 | **Los mini-listados de documentos son un concepto distinto del listado general** y tienen su propia definición. *(11/10, P2 y P3)* |
 | D7 | **Se descartan P4 y P5:** serían salirse del estándar en un listado sin necesidad y complicarían el código adaptando uno a otro con distintas funcionalidades. *(11/10)* |
 | D8 | **`Cola.jsx` pasa a listado de scroll infinito** —listado Jinja, por simplicidad— y su inspector se adapta al estándar de inspector que se defina aquí. Su detalle ya es Jinja (`_inspector_cola.html`), lo que evita una migración. Concreta D2 (#1039). *(11/10)* |
-| D9 | **El inspector es el primer estándar, para todos los casos:** la isla del árbol (por ahora la única) y el resto. Se monta **un marco** que estandariza los comportamientos ver / editar y cancelar / cerrar. El marco lo pinta el shell, una sola vez: el árbol deja de pintar su barra y pasa a alimentar al shell con su estado de borrador (el «puente», §8.15). *(11/10, confirmado)* |
+| D9 | **El inspector es el primer estándar, para todos los casos:** la isla del árbol (por ahora la única) y el resto. Se monta **un marco** que estandariza los comportamientos ver / editar y cancelar / cerrar. El marco lo pinta el shell, una sola vez: el árbol deja de pintar su barra y pasa a alimentar al shell con su estado de borrador (el «puente», §8.15). *(11/10, confirmado)* Issue: #1042. |
 | D10 | **El marco tiene visibilidad garantizada con todos los anchos posibles:** en modo edición siempre se ve, al menos, «Cerrar». Motivo: en edición el clic exterior está bloqueado, y que «Cerrar» se oculte es un problema para el usuario. *(11/10)* |
 | D11 | **El interior se deja como lo necesite cada caso, flexible al ancho.** Cada caso solo define un ancho mínimo para su visibilidad; por debajo de él, scroll horizontal. El usuario lo verá como señal y ampliará el inspector. Simplifica el montaje de cada caso particular. *(11/10)* Hoy el cuerpo del shell tiene `overflow-x: hidden` (§5.1). |
 | D12 | **Cerrar en modo vista:** la cruz no existe en la mayoría de los inspectores; se cierra con clic exterior, `Escape` o clic en la barra de redimensionado. *(11/10, confirmado)* |
@@ -611,8 +611,9 @@ Revisadas una a una por Carlos el 11/10. Salvo lo que sigue marcado `[ABIERTO]`,
 | #958 | Abierto | Nombre legible de `bddat://`; en buena parte resuelto por `nombre_visible()` (§6.8) |
 | #1041 | Abierto | Listados fuera del estándar: decidir una a una si adoptan el estándar y, si no, el motivo (D16). Abierto el 11/10 |
 | #755 | Cerrado (11/10) | «Volver arriba» roto o ausente en 4 listados. Absorbido por #1041; su «caso de referencia» estaba desfasado: la pestaña Huérfanos ya existe y lleva su propio botón |
-| #644 | Abierto | Filtros de tipo rotos en tablas maestras. Misma causa raíz que la base multi-lista (componentes de instancia única); es la primera tarea de #1041 y sigue abierto |
-| #281 | Abierto | Migrar Plantillas y Usuarios a listado V2. Premisa desfasada: ambos ya extienden `lista_v2_base`. Revisar o cerrar aparte |
+| #1042 | Abierto | Marco único del inspector (D9–D12): barra pintada por el shell y ancho mínimo por caso. Cinco fases; la primera, el prototipo del puente |
+| #644 | Cerrado (11/10) | Filtros de tipo rotos en tablas maestras. Absorbido por #1041: su causa raíz (componentes de instancia única) es la primera tarea |
+| #281 | Cerrado (11/10) | Migrar Plantillas y Usuarios a listado V2. Cerrado como hecho: ambos ya extienden `lista_v2_base` |
 | #676, #688 | Cerrados | Marco de edición del árbol (barra fija; Guardar/Cancelar de los campos directos en la barra). Base de D9–D11 en el árbol; no alcanzaron los fragmentos Jinja |
 | #793 | Abierto (M5) | Modales de alta con recarga completa en 10 módulos (§4.4) |
 | #935 | Abierto | `sugerencia_subida` pierde la sugerencia con varias `ENTRADA`; afecta a los pasos `NOTIFICAR` |
