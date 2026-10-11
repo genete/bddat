@@ -187,6 +187,17 @@ del silencio), y los dos certificados de fase (`CERT_CUMPLIMIENTO_FASE`,
 Al terminar **borra el reloj de desarrollo**, como `CONSULTAS_VARIOS_ESTADOS`: la
 resolución queda notificada y cerrada «a fecha de hoy».
 
+**No sirve para tramitar una `NOTIFICAR` en el navegador** (#929, zona A): termina con
+`RESOLUCION` cerrada, y una fase cerrada no admite edición, que es donde viven el
+registro y el destinatario de la `NOTIFICAR`. Los otros tres expedientes-tipo tienen sus
+`NOTIFICAR` ya hechas. Para tramitar una hace falta una abierta (y para ver el
+desplegable de fuente, un trámite con varias, como `NOTIFICACION` en una resolución sin
+cerrar). Hoy se monta a mano sobre cualquiera de ellos: en `INFORMACION_PUBLICA`, `ANUNCIO_BOP`
+(ELABORAR → NOTIFICAR, el boletín se elige al elaborar) y `ANUNCIO_BOJA` (sin ELABORAR, se
+elige en la propia `NOTIFICAR`). Un expediente-tipo propio para ese apartado está
+propuesto, no hecho: necesita decisión (entra en la semilla de tests) y fixtures de PDF
+que faltan en el banco (`JUSTIFICANTE_POSTAL_1ER`, `_2DO`, `SEDE`, `EDICTO`).
+
 ```bash
 venv/Scripts/python.exe scripts/expedientes_dummy/resolucion_con_organismos.py
 ```
