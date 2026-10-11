@@ -159,4 +159,20 @@ def _creables_tarea(expediente, tramite_id: int) -> dict:
             resto.append(item)
 
     return {'nodo': {'tipo': 'tramite', 'id': tramite_id}, 'tipo_hijo': 'tarea',
-            'canonicos': canonicos, 'resto': resto}
+            'canonicos': canonicos, 'resto': resto,
+            'fuentes_notificar': _fuentes_notificar(tramite)}
+
+
+def _fuentes_notificar(tramite) -> list:
+    """Las fuentes entre las que se elige al crear una `NOTIFICAR` en este
+    trámite (#929, ADR-051 §B): las del catálogo `notificacion_fuentes`, o todas
+    si el trámite no tiene ninguna declarada (una `NOTIFICAR` fuera de la
+    secuencia del catálogo). Con una sola, el servidor la toma solo
+    (`resolver_fuente`) y la pantalla no pregunta; con varias o sin declarar,
+    `crear_tarea` exige que se indique. Es la misma lista que valida
+    `resolver_fuente`, para que la pantalla no ofrezca lo que el servidor
+    rechazaría."""
+    from app.models.notificaciones import FUENTES
+    from app.services import destinatarios_notificacion as dest_svc
+    fuentes = dest_svc.fuentes_del_tramite(tramite) or FUENTES
+    return [{'codigo': f, 'etiqueta': dest_svc.ETIQUETA_FUENTE.get(f, f)} for f in fuentes]
