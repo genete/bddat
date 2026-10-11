@@ -32,20 +32,23 @@ al hub, el código muerto y la documentación obsoleta.
 | 3 | **#1041** | **Listados fuera del estándar** (D16): un issue y decisión una a una de cinco páginas —tablas maestras, normas y variables, seguimiento y huérfanos, configuración del motor, Delegación Territorial—: adoptan el estándar (incluida una base con varias listas por página) o se justifica el motivo | Frontend | Abierto (11/10/2026); las decisiones por página, sin tomar. Independiente del marco. Absorbió #755 y #644 (cerrados); la causa raíz de #644 es su primera tarea |
 | 4 | **#1039** | Cola de Mi trabajo al listado estándar Jinja (D8). Su inspector se adapta al marco | Frontend | Abierto, sin profundizar. El listado puede ir antes que el marco; el inspector, después (*propuesta*) |
 | 5 | **#881** | Listado del pool al listado estándar con inspector (D5); edición del documento con un único sitio (D17) | Frontend | Abierto, **sin reescribir** (D5): cuando haya ADR se le añade una mención. Después del marco (*propuesta*) |
-| 6 | **por abrir** | **Mini-listados de documentos** (D6, D13, D14): fila común con tres modos (vinculados, selector, edición); macro Jinja y componente React; estudio caso a caso de los sitios de §6.12, incluido pintar `subrol` | Frontend + backend (contrato del dato) | **Sin issue** |
-| 7 | **por abrir** | **Estudio de la forma del contrato** editor ↔ poseedor del dato (D13, §8.16) | Estudio | **Sin issue.** Sin urgencia; puede acabar en «no se estandariza» |
-| 8 | **por abrir** | **Huérfano: «Vincular aquí»** va en un `<script>` en línea dentro de un fragmento, que el overlay no ejecuta (§7.3, §8.8) | Frontend | **Sin issue.** Fallo de código por lectura, sin reproducir: reproducir antes de arreglar |
-| 9 | **por abrir** | **Refactor del despacho de editores por tipo** en el árbol, 7 banderas (§8.11) | Frontend | **Sin issue.** Mismos ficheros que #929: cuidado con el orden |
-| 10 | **por abrir** | **El alta** (§8.6): issue propio y, si al estudiarlo lo merece, ADR | Frontend | **Sin issue.** Existe #793 (modales de alta con recarga): decidir qué pasa con él al abrir |
+| 6 | **#1044** | **Mini-listados de documentos** (D6, D13, D14): fila común con tres modos (vinculados, selector, edición); macro Jinja y componente React; estudio caso a caso de los sitios de §6.12, incluido pintar `subrol` | Frontend + backend (contrato del dato) | Abierto (11/10/2026), en cinco fases; la fase 1 es de definición, sin código, y no ha empezado |
+| 7 | **#1045** | **Estudio de la forma del contrato** editor ↔ poseedor del dato (D13, §8.16) | Estudio | Abierto (11/10/2026), sin profundizar. Sin urgencia; puede acabar en «no se estandariza» |
+| 8 | **#1046** | **Huérfano: «Vincular aquí»** va en un `<script>` en línea dentro de un fragmento, que el overlay no ejecuta (§7.3, §8.8) | Frontend | Abierto (11/10/2026), sin profundizar. Fallo de código por lectura, sin reproducir: reproducir antes de arreglar |
+| 9 | **#1047** | **Refactor del despacho de editores por tipo** en el árbol, 7 banderas (§8.11) | Frontend | Abierto (11/10/2026), sin profundizar. Mismos ficheros que #929, #1010, #1042 y #1043: cuidado con el orden |
+| 10 | **#1048** | **El alta** (§8.6): issue propio y, si al estudiarlo lo merece, ADR | Frontend | Abierto (11/10/2026), sin profundizar. #793 (modales de alta con recarga) se mantiene abierto, condicionado a lo que se decida |
 
 Orden propuesto por dependencias, no por prioridad: 1 antes de 4 (inspector), 5 y 2 porque los tres usan
 el inspector; 3 es independiente de todos; 6 define la fila antes que sus renderizadores y se cruza con 4 y 5.
 
 ## Fuera del ADR (§8.9, §8.12, §8.13)
 
-Menú frente a hub; código muerto y rutas sin consumidor (con `generar_cert` y `demo.diagrama` como decisiones
-aparte); documentación obsoleta (`AUDITORIA_UI.md`), salvo decir dónde vive el mapa vivo de vistas. Sin issue
-hasta que se decida.
+Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
+
+- **#1049** — código muerto y rutas sin consumidor (con `generar_cert` y `demo.diagrama` como decisiones aparte).
+- **#1050** — documentos de la revisión de interfaz de mayo (`AUDITORIA_UI.md` y compañía) y dónde vive el mapa
+  vivo de vistas.
+- **#1051** — menú frente a hub.
 
 ## Sin issue a propósito
 
@@ -102,3 +105,9 @@ hasta que se decida.
   primera de definición sin código, con el análisis de impacto previo en el cuerpo. Al levantarlo salió que
   la edición hace desaparecer los campos de solo lectura, los plazos, los documentos y los organismos, y
   que lectura y edición salen de dos serializadores distintos para el mismo nodo.
+- **11/10/2026** — Creados con Carlos los demás issues de la cadena: **#1044** (mini-listados, en cinco fases
+  con definición primero, el único redactado con detalle) y, sin profundizar, **#1045** (estudio del
+  contrato), **#1046** («Vincular aquí» del huérfano), **#1047** (registro de editores del árbol), **#1048**
+  (el alta), y los tres de fuera del ADR: **#1049** (código muerto), **#1050** (documentación obsoleta) y
+  **#1051** (menú frente a hub). Antes se buscaron los existentes: ninguno decía lo mismo; relacionados #685,
+  #915, #213, #958, #351, #793, #577, #275, #579, #709 y, en #1041, #1031.

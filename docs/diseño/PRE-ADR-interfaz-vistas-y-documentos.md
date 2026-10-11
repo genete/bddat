@@ -545,7 +545,8 @@ Los redirects de compatibilidad: `GET /<id>` y `GET /<id>/editar` de cada módul
 Preguntas, no respuestas, salvo las que llevan `[DECIDIDO]` (con su decisión de §2). Cada una se revisa
 por separado.
 
-Revisadas una a una por Carlos el 11/10. Salvo lo que sigue marcado `[ABIERTO]`, están resueltas.
+Revisadas una a una por Carlos el 11/10. Salvo lo que sigue marcado `[ABIERTO]`, están resueltas. Los issues
+de cada pieza están en §9 y en [`ESTADO_ADR053.md`](ESTADO_ADR053.md).
 
 1. `[DECIDIDO]` (D16) **Listados con varias tablas por página.** Dentro del alcance. `lista_v2_base`
    asume una sola. Cuatro páginas copian el marco a mano (tablas maestras, normas y variables,
@@ -613,10 +614,18 @@ Revisadas una a una por Carlos el 11/10. Salvo lo que sigue marcado `[ABIERTO]`,
 | #755 | Cerrado (11/10) | «Volver arriba» roto o ausente en 4 listados. Absorbido por #1041; su «caso de referencia» estaba desfasado: la pestaña Huérfanos ya existe y lleva su propio botón |
 | #1042 | Abierto | Marco único del inspector (D9–D12): barra pintada por el shell y ancho mínimo por caso. Cinco fases; la primera, el prototipo del puente |
 | #1043 | Abierto | Inspector del árbol: lectura ≈ edición (D15). Cinco fases; la primera, de definición, sin código |
+| #1044 | Abierto | Mini-listados de documentos: fila común con tres modos y dos renderizadores (D6, D13, D14, D17). Cinco fases; la primera, de definición, sin código |
+| #1045 | Abierto | Estudio de la forma del contrato editor ↔ poseedor del dato (D13, §8.16). Sin profundizar |
+| #1046 | Abierto | «Vincular aquí» del inspector del huérfano (§7.3, §8.8). Por lectura: reproducir antes de arreglar. Sin profundizar |
+| #1047 | Abierto | Registro de editores por tipo en el árbol, en lugar de 7 banderas (§8.11). Sin profundizar |
+| #1048 | Abierto | El alta: variante estándar (§8.6). Sin profundizar; #793 queda condicionado a lo que se decida |
+| #1049 | Abierto | Código muerto y rutas sin consumidor (§7.2, §8.12). Sin profundizar; fuera del ADR |
+| #1050 | Abierto | Documentos de la revisión de interfaz de mayo y mapa vivo de vistas (§8.13). Sin profundizar; fuera del ADR |
+| #1051 | Abierto | Menú frente a hub (§8.9). Sin profundizar; fuera del ADR |
 | #644 | Cerrado (11/10) | Filtros de tipo rotos en tablas maestras. Absorbido por #1041: su causa raíz (componentes de instancia única) es la primera tarea |
 | #281 | Cerrado (11/10) | Migrar Plantillas y Usuarios a listado V2. Cerrado como hecho: ambos ya extienden `lista_v2_base` |
 | #676, #688 | Cerrados | Marco de edición del árbol (barra fija; Guardar/Cancelar de los campos directos en la barra). Base de D9–D11 en el árbol; no alcanzaron los fragmentos Jinja |
-| #793 | Abierto (M5) | Modales de alta con recarga completa en 10 módulos (§4.4) |
+| #793 | Abierto (M5) | Modales de alta con recarga completa en 10 módulos (§4.4). Lo condiciona #1048 |
 | #935 | Abierto | `sugerencia_subida` pierde la sugerencia con varias `ENTRADA`; afecta a los pasos `NOTIFICAR` |
 | #1009, #1010 | Abiertos | Tocan `ElaborarEditor.jsx` (aviso de plantilla desfasada; botón «Editar» por WebDAV) |
 
