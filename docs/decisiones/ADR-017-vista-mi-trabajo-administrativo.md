@@ -3,7 +3,7 @@
 **Estado:** Adoptada
 **Fecha:** 2026-05-28
 **Issue:** #501
-**Enmendado por:** ADR-053 (2026-10-11, propuesta, sin implementar; lo implementa #1039): «Cómo implementar», punto 4 — la cola deja de ser la isla React `<Cola>` y pasa a listado de scroll infinito en Jinja; su inspector, que ya es Jinja, se adapta al marco único (ADR-053 §F)
+**Enmendado por:** ADR-053 (2026-10-11, adoptado el 2026-10-13, sin implementar; lo implementa #1039): «Cómo implementar», punto 4 — la cola deja de ser la isla React `<Cola>` y pasa a listado de scroll infinito en Jinja; su inspector, que ya es Jinja, se adapta al marco único (ADR-053 §F)
 
 > **Revisión 2026-06-22 (#501, en implementación):**
 > 1. **Permiso "puerta abierta"** — `gestionar_tareas` habilita completar **cualquier tarea ya prevista** (no solo las que la cola ofrece); la frontera es **hoja / estructura**, no el tipo de tarea. Trazabilidad por bitácora. Ver §6.

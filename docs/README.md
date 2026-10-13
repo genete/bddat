@@ -26,7 +26,7 @@ Documentos vivos: se actualizan a medida que avanza el trabajo, no se congelan.
 - [DETALLE_NECESIDADES_BDDAT.md](diseño/DETALLE_NECESIDADES_BDDAT.md) — catálogo de necesidades: qué es cada una y quién la necesita
 - [DECISIONES_UI.md](diseño/DECISIONES_UI.md) — estado del revamping de interfaz
 - [INVENTARIO_BACKEND.md](diseño/INVENTARIO_BACKEND.md) — inventario de modelos, servicios y rutas
-- `PRE-ADR-*.md` — decisiones en borrador, todavía sin ADR (supervisor, workbench de listados, navegación administrativa, matriz de cobertura rol/motor); el de interfaz de vistas y documentos ya tiene ADR-053 (propuesta) y queda congelado
+- `PRE-ADR-*.md` — decisiones en borrador, todavía sin ADR (supervisor, workbench de listados, navegación administrativa, matriz de cobertura rol/motor); el de interfaz de vistas y documentos ya tiene ADR-053 (adoptado) y queda congelado
 - `ANALISIS_CRITICO.md`, `AUDITORIA_UI.md`, `ESTUDIO_USUARIO.md` — análisis de partida del revamping de interfaz
 
 ## referencia/

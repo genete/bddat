@@ -1,6 +1,6 @@
 # ADR-053 — Interfaz: marco único del inspector, listados estándar y mini-listados de documentos
 
-**Estado:** Propuesta — decisiones tomadas por Carlos el 11/10/2026 en el hilo de posiciones (D5–D19 del pre-ADR); redacción pendiente de revisión por Carlos
+**Estado:** Adoptada (2026-10-13) — decisiones tomadas por Carlos el 11/10/2026 en el hilo de posiciones (D5–D19 del pre-ADR); sin implementar (lo implementa la cadena #1041 a #1051). Lo marcado *Interpretación* en el texto sigue siéndolo hasta que Carlos lo confirme o lo fije la fase de un issue
 **Fecha:** 2026-10-11
 **Depende de:** ADR-015 (islas React sobre Jinja) · ADR-016 (el árbol del expediente como isla) · ADR-022 (sistema visual base) · ADR-023 (list-detail + inspector universal)
 **Enmienda:** ADR-023 §5 bis (el marco de edición pasa a ser de todos los inspectores y lo pinta el shell) · §6 (el modal grande también sirve para ver documentos generados) · §8 (el «mínimo de lectura» se sustituye por un ancho mínimo definido por cada caso) · §9 (la «columna fluida» deja de ser la regla del interior) · ADR-017 «Cómo implementar», punto 4 (la cola de Mi trabajo pasa a listado Jinja)
