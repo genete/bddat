@@ -1,19 +1,12 @@
 {# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #171).
    No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
    Genérico para las 5 tablas (config.py) — id_field siempre de solo lectura.
+   Marco único (ADR-053 §A, #1042): «Editar» lo pinta el shell a partir de data-edit-url.
+   El título es el del listado (el id_field es inmutable).
 #}
 
-<div class="p-3">
-
-<div class="d-flex justify-content-end gap-2 mb-3">
-    {% if puede_editar %}
-    <button type="button" class="btn btn-primary btn-sm"
-            data-inspector-edit
-            data-edit-url="{{ url_for('tablas_maestras.editar_fragmento', tipo=tipo, id=obj.id) }}">
-        <i class="fas fa-edit me-1"></i> Editar
-    </button>
-    {% endif %}
-</div>
+<div class="p-3" data-inspector-frame="ver"
+     {% if puede_editar %}data-edit-url="{{ url_for('tablas_maestras.editar_fragmento', tipo=tipo, id=obj.id) }}"{% endif %}>
 
 <div class="card mb-3">
     <div class="card-header card-header-accent fw-semibold">

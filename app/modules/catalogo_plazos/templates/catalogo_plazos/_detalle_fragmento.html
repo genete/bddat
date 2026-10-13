@@ -1,6 +1,8 @@
 {# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #632).
    No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
-   - "Editar" → fragmento de edición (data-inspector-edit).
+   - Marco único (ADR-053 §A, #1042): «Editar» lo pinta el shell a partir de data-edit-url.
+     data-title: nivel y hoja son editables, así que el fragmento declara el título
+     (el mismo que el del listado).
    - Activar/desactivar → form data-inspector-form (POST XHR → JSON → refresh).
    Sin botón "Eliminar" — baja física fuera de alcance del issue (#632); usar
    activar/desactivar como el resto de catálogos normativos del proyecto.
@@ -11,17 +13,9 @@
 {% set NIVEL_LABEL = {'ACTO': 'Acto', 'TAREA': 'Tarea'} %}
 {% set UNIDAD_LABEL = {'DIAS_HABILES': 'días hábiles', 'DIAS_NATURALES': 'días naturales', 'MESES': 'meses', 'ANOS': 'años'} %}
 
-<div class="p-3">
-
-<div class="d-flex justify-content-end gap-2 mb-3">
-    {% if puede_editar %}
-    <button type="button" class="btn btn-primary btn-sm"
-            data-inspector-edit
-            data-edit-url="{{ url_for('catalogo_plazos.editar_fragmento', id=item.id) }}">
-        <i class="fas fa-edit me-1"></i> Editar
-    </button>
-    {% endif %}
-</div>
+<div class="p-3" data-inspector-frame="ver"
+     data-title="{{ NIVEL_LABEL.get(item.tipo_elemento, item.tipo_elemento) }} · {{ item.hoja or '' }}"
+     {% if puede_editar %}data-edit-url="{{ url_for('catalogo_plazos.editar_fragmento', id=item.id) }}"{% endif %}>
 
 <!-- CARD 1 — Nivel ESFTT e inicio de cómputo -->
 <div class="card mb-3">

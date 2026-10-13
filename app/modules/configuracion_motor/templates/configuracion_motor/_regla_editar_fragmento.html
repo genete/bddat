@@ -1,29 +1,24 @@
 {# _regla_editar_fragmento.html — Parcial de edición para el inspector (ADR-023 / #170).
-   No extiende base_app.html. Inyectado por inspector-overlay.js vía data-inspector-edit.
+   No extiende base_app.html. Cargado por el shell al pulsar «Editar» del marco.
    Submit interceptado: POST XHR → JSON { ok, errors, message }.
+   Marco único (ADR-053 §A, #1042): «Guardar» y «Cancelar/Cerrar» los pinta el shell.
 
    Cascada de sujeto: ver _sujeto_cascada_macro.html y reglas-motor-cascada.js.
    Editor de condiciones: ver _condiciones_editor_macro.html y
-   requisitos-inspector.js (reutilizado tal cual).
+   requisitos-inspector.js (reutilizado tal cual; avisa con change al añadir o quitar
+   filas, que es lo que enciende «Guardar» en el marco).
 #}
 {% import 'configuracion_motor/_sujeto_cascada_macro.html' as sc %}
 {% import 'configuracion_motor/_condiciones_editor_macro.html' as ce %}
+{% set ACCION_LABEL = {'CREAR': 'Crear', 'BORRAR': 'Borrar'} %}
 
-<div class="p-3">
+<div class="p-3" data-inspector-frame="editar"
+     data-title="{{ ACCION_LABEL.get(item.accion, item.accion) }} · {{ item.sujeto }}">
 
 <form data-inspector-form class="form-regla-motor-editar"
       data-action="{{ url_for('configuracion_motor.regla_editar', id=item.id) }}">
 
 <div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
-
-<div class="d-flex justify-content-end gap-2 mb-3">
-    <button type="button" class="btn btn-outline-secondary btn-sm" data-inspector-cancel-edit>
-        <i class="fas fa-times me-1"></i> Cancelar
-    </button>
-    <button type="submit" class="btn btn-primary btn-sm">
-        <i class="fas fa-save me-1"></i> Guardar cambios
-    </button>
-</div>
 
 <!-- CARD 1 — Acción y sujeto -->
 <div class="card mb-3">

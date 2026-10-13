@@ -1,6 +1,8 @@
 {# _regla_detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #170).
    No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
-   - "Editar" → fragmento de edición (data-inspector-edit).
+   - Marco único (ADR-053 §A, #1042): «Editar» lo pinta el shell a partir de data-edit-url.
+     data-title: acción y sujeto son editables, así que el fragmento declara el título
+     (igual que el del listado) y la cabecera no queda desactualizada tras guardar.
    - Activar/desactivar → form data-inspector-form (POST XHR → JSON → refresh).
    - "Gestionar excepciones" → modal grande (data-modal-large-url, ADR-023 §6).
    Sin botón "Eliminar" — baja lógica únicamente (preserva trazabilidad).
@@ -9,17 +11,9 @@
 {% set ACCION_LABEL = {'CREAR': 'Crear', 'BORRAR': 'Borrar'} %}
 {% set EFECTO_LABEL = {'BLOQUEAR': 'Bloquear', 'ADVERTIR': 'Advertir'} %}
 
-<div class="p-3">
-
-<div class="d-flex justify-content-end gap-2 mb-3">
-    {% if puede_editar %}
-    <button type="button" class="btn btn-primary btn-sm"
-            data-inspector-edit
-            data-edit-url="{{ url_for('configuracion_motor.regla_editar_fragmento', id=item.id) }}">
-        <i class="fas fa-edit me-1"></i> Editar
-    </button>
-    {% endif %}
-</div>
+<div class="p-3" data-inspector-frame="ver"
+     data-title="{{ ACCION_LABEL.get(item.accion, item.accion) }} · {{ item.sujeto }}"
+     {% if puede_editar %}data-edit-url="{{ url_for('configuracion_motor.regla_editar_fragmento', id=item.id) }}"{% endif %}>
 
 <!-- CARD 1 — Acción y sujeto -->
 <div class="card mb-3">

@@ -1,12 +1,15 @@
 {# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 §9 / #545).
    No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
-   - "Editar" → fragmento de edición (data-inspector-edit).
+   - Marco único (ADR-053 §A, #1042): «Editar» lo pinta el shell a partir de data-edit-url.
+     data-title: el nombre es editable, así que el fragmento declara el título.
    - "Tokens disponibles" → modal grande global (data-modal-large-url).
    - Activar/desactivar → form data-inspector-form (POST XHR → JSON → refresh).
    El JS de copiar ruta vive en plantillas-inspector.js (el inspector no re-ejecuta <script>).
 #}
 
-<div class="p-3">
+<div class="p-3" data-inspector-frame="ver"
+     data-title="{{ plantilla.nombre }}"
+     {% if puede_editar %}data-edit-url="{{ url_for('admin_plantillas.editar_fragmento', id=plantilla.id) }}"{% endif %}>
 
 <div class="d-flex justify-content-end gap-2 mb-3">
     <button type="button" class="btn btn-outline-primary btn-sm"
@@ -14,13 +17,6 @@
             data-modal-large-title="Tokens disponibles">
         <i class="fas fa-tags me-1"></i> Tokens disponibles
     </button>
-    {% if puede_editar %}
-    <button type="button" class="btn btn-primary btn-sm"
-            data-inspector-edit
-            data-edit-url="{{ url_for('admin_plantillas.editar_fragmento', id=plantilla.id) }}">
-        <i class="fas fa-edit me-1"></i> Editar
-    </button>
-    {% endif %}
 </div>
 
 <!-- CARD 1 — Identificación -->
