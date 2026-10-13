@@ -20,6 +20,7 @@ import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
 import AnalizarEditor from './AnalizarEditor.jsx'
 import ElaborarEditor from './ElaborarEditor.jsx'
 import NotificarEditor from './NotificarEditor.jsx'
+import DatosExpediente from './DatosExpediente.jsx'
 import BloqueNotificacionesTramite from './notificar/BloqueNotificacionesTramite.jsx'
 import ModalConfirmacionFrase from './ModalConfirmacionFrase.jsx'
 
@@ -352,6 +353,28 @@ function Documentos({ documentos }) {
         ))}
       </ul>
     </div>
+  )
+}
+
+// Zona de datos del cuerpo: lo informativo del nodo, en el orden de siempre (#1043, ADR-053 §C).
+//
+// Es la misma en lectura y en edición: en edición lo informativo no desaparece, se pueda editar
+// o no. Hoy la pintan en los dos modos los nodos ya revisados (el expediente, el primero, como
+// ejemplo); los demás la pintan solo en lectura y su edición sigue siendo el `Editor`, hasta que
+// la revisión nodo a nodo los migre.
+function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
+  const esHoja = tipo === 'tarea'
+  return (
+    <>
+      {tipo === 'expediente'
+        ? <DatosExpediente campos={detalle.campos} />
+        : <Campos campos={detalle.campos} />}
+      {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
+      <Plazo plazo={detalle.plazo} />
+      <PlazosActos nodo={nodo} tipo={tipo} />
+      <Organismos organismos={detalle.organismos} seleccionar={seleccionar} />
+      <Documentos documentos={detalle.documentos} />
+    </>
   )
 }
 
@@ -1196,6 +1219,14 @@ function InspectorEdicion({ nodo }) {
   // Igual que ELABORAR, la Despensa NO se deshabilita — sigue siendo el mecanismo
   // genérico que vincula el documento producido (desacoplado de estos formularios).
   const esNotificar = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'NOTIFICAR'
+  // Expediente (#1043, nodo de ejemplo de lectura ≈ edición): sin campos editables en el árbol,
+  // así que en edición se ve la misma zona de datos que en lectura y se añade la Despensa de
+  // tipos de solicitud; «Copiar referencia» se queda al pie, como en lectura.
+  const esExpediente = seleccion.tipo === 'expediente'
+  const detalle      = useArbolStore((s) => s.detalle)
+  const cargandoDet  = useArbolStore((s) => s.detalleCargando)
+  const seleccionar  = useArbolStore((s) => s.seleccionar)
+  const hayDetalle   = !!detalle && !cargandoDet
   // ESPERAR_PLAZO (#766): sin editor bespoke — solo la ayuda de la Despensa sobre
   // qué documento es el producido cuando en la recepción llegan varios (regla de
   // #764). Es la única tarea cuyo producido es un documento recibido de fuera.
@@ -1229,7 +1260,12 @@ function InspectorEdicion({ nodo }) {
   // trámite no notifica a nadie según el catálogo, el bloque no se pinta.
   const esTramite = seleccion.tipo === 'tramite'
   return (
-    <div className="p-3">
+    // El expediente usa la misma columna que la lectura (alto completo, pie pegado abajo); el
+    // resto de nodos seguirá con `p-3` hasta que la revisión los migre.
+    <div className={esExpediente ? 'p-3 d-flex flex-column h-100' : 'p-3'}>
+      {esExpediente && hayDetalle && (
+        <ZonaDatos nodo={nodo} tipo={seleccion.tipo} detalle={detalle} seleccionar={seleccionar} />
+      )}
       {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
       {!borrarPendienteConfirm && esTramite && (
         <BloqueNotificacionesTramite expedienteId={expedienteId} tramiteId={seleccion.id} />
@@ -1249,7 +1285,9 @@ function InspectorEdicion({ nodo }) {
             ? <ElaborarEditor tareaId={seleccion.id} nodo={nodo} />
             : esNotificar
               ? <NotificarEditor tareaId={seleccion.id} />
-              : <Editor nodo={nodo} />
+              : esExpediente
+                ? null
+                : <Editor nodo={nodo} />
       }
       {!borrarPendienteConfirm && puedeBorrarTarea && <BotonBorrarTarea />}
       {!borrarPendienteConfirm && !ocultarDespensa && (
@@ -1257,6 +1295,7 @@ function InspectorEdicion({ nodo }) {
           <Despensa deshabilitarProducido={esAnalizar} esEsperarPlazo={esEsperarPlazo} />
         </div>
       )}
+      {esExpediente && hayDetalle && <Acciones referencia={detalle.referencia} />}
     </div>
   )
 }
@@ -1282,7 +1321,6 @@ export default function Inspector() {
 
   const nodo = buscarNodo(arbol, seleccion)
   if (modoEdicion) return <InspectorEdicion nodo={nodo} />
-  const esHoja = seleccion.tipo === 'tarea'
   // Sellado (#720, ADR-036): el botón Editar del marco sigue disponible sobre la propia fase
   // cerrada —es el único camino hasta el botón "Reabrir fase" del editor— pero no sobre un
   // trámite/tarea cuya fase está cerrada, donde el backend rechazaría el guardado (la
@@ -1307,14 +1345,7 @@ export default function Inspector() {
       )}
 
       {detalle && !cargando && (
-        <>
-          <Campos campos={detalle.campos} />
-          {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
-          <Plazo plazo={detalle.plazo} />
-          <PlazosActos nodo={nodo} tipo={seleccion.tipo} />
-          <Organismos organismos={detalle.organismos} seleccionar={seleccionar} />
-          <Documentos documentos={detalle.documentos} />
-        </>
+        <ZonaDatos nodo={nodo} tipo={seleccion.tipo} detalle={detalle} seleccionar={seleccionar} />
       )}
 
       {detalle && !cargando && (
