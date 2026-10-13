@@ -120,11 +120,43 @@ export const DISENO_FASE = {
   ],
 }
 
+// Los cinco datos del organismo salen en los dos modos y los cuatro editables son de solo lectura o
+// select vivo (criterio de Carlos, 13/10). No se corrige ninguna incoherencia de hoy: «Dirección de
+// notificación» enseña en lectura la dirección resuelta (payload) y en edición la descripción de la
+// opción (esquema), y «Vía» y «Resultado» llevan el código interno, sin rótulo legible.
+// Vía, Resultado y Dirección ocupan el ancho completo porque sus valores son largos
+// («cerrado_con_condicionados», «declaracion_responsable»); NIF y plazo, 6 + 6 (umbral de 110 px a 320 px).
+export const DISENO_ORGANISMO = {
+  ocultas: [],
+  tarjetas: [
+    {
+      titulo: 'Datos del organismo', icono: 'fa-landmark',
+      campos: [
+        { etiqueta: 'NIF', col: 6 },
+        { etiqueta: 'Plazo legal del oficio', col: 6 },
+        { etiqueta: 'Vía', campo: 'via', control: 'select' },
+        { etiqueta: 'Resultado', campo: 'resultado', control: 'select' },
+        { etiqueta: 'Dirección de notificación', campo: 'direccion_notificacion_id', control: 'select' },
+        {
+          // El esquema lo ofrece siempre, así que en lectura sale siempre, con «—» si no hay (decisión de
+          // Carlos). El payload lo trae solo como documento de la lista «Documentos» (CONSUMIDO).
+          etiqueta: 'Documento (declaración responsable)', campo: 'documento_id', control: 'select',
+          valorDe: ({ detalle }) => {
+            const doc = (detalle.documentos || []).find((d) => d.rol === 'CONSUMIDO')
+            return doc ? doc.nombre : undefined
+          },
+        },
+      ],
+    },
+  ],
+}
+
 const DISENOS = {
   expediente: DISENO_EXPEDIENTE,
   solicitud: DISENO_SOLICITUD,
   version: DISENO_VERSION,
   fase: DISENO_FASE,
+  organismo: DISENO_ORGANISMO,
 }
 
 // El diseño del nodo, o null si todavía no está migrado.
