@@ -20,7 +20,8 @@ import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
 import AnalizarEditor from './AnalizarEditor.jsx'
 import ElaborarEditor from './ElaborarEditor.jsx'
 import NotificarEditor from './NotificarEditor.jsx'
-import DatosExpediente from './DatosExpediente.jsx'
+import DatosNodo from './DatosNodo.jsx'
+import { disenoDeNodo } from '../disenosDatos.js'
 import BloqueNotificacionesTramite from './notificar/BloqueNotificacionesTramite.jsx'
 import ModalConfirmacionFrase from './ModalConfirmacionFrase.jsx'
 
@@ -359,15 +360,17 @@ function Documentos({ documentos }) {
 // Zona de datos del cuerpo: lo informativo del nodo, en el orden de siempre (#1043, ADR-053 §C).
 //
 // Es la misma en lectura y en edición: en edición lo informativo no desaparece, se pueda editar
-// o no. Hoy la pintan en los dos modos los nodos ya revisados (el expediente, el primero, como
-// ejemplo); los demás la pintan solo en lectura y su edición sigue siendo el `Editor`, hasta que
-// la revisión nodo a nodo los migre.
+// o no. Hoy la pintan en los dos modos los nodos ya revisados, que son los que tienen un diseño
+// en `disenosDatos.js` (el expediente y la solicitud); los demás la pintan solo en lectura, con
+// la lista de texto plano, y su edición sigue siendo el `Editor`, hasta que la revisión nodo a
+// nodo los migre.
 function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
   const esHoja = tipo === 'tarea'
+  const diseno = disenoDeNodo(tipo)
   return (
     <>
-      {tipo === 'expediente'
-        ? <DatosExpediente campos={detalle.campos} />
+      {diseno
+        ? <DatosNodo diseno={diseno} campos={detalle.campos} />
         : <Campos campos={detalle.campos} />}
       {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
       <Plazo plazo={detalle.plazo} />
@@ -381,7 +384,7 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
 function Acciones({ referencia }) {
   if (!referencia) return null
   return (
-    <div className="d-flex flex-wrap gap-2 border-top pt-3 mt-auto">
+    <div className="d-flex flex-wrap gap-2 border-top pt-2 mt-auto">
       <button
         type="button"
         className="btn btn-sm btn-outline-secondary"
@@ -1179,11 +1182,11 @@ function BloqueoGuardarForzable() {
 }
 
 // Control de borrado compartido por los tres editores bespoke de tarea (ANALIZAR/
-// ELABORAR/NOTIFICAR, #742): el Editor genérico lo integra en su propio form (arriba),
-// pero ninguno de los tres bespoke lo trae de fábrica — se hoistea aquí, al nivel de
-// InspectorEdicion, en vez de triplicarlo en cada uno (mismo criterio ya aplicado a
-// Despensa: es el contenedor común quien pone el "chrome" alrededor del editor bespoke).
-function BotonBorrarTarea() {
+// ELABORAR/NOTIFICAR, #742) y por los nodos con diseño de datos (#1043): el Editor genérico lo
+// integra en su propio form (arriba), pero ninguno de los tres bespoke lo trae de fábrica — se
+// hoistea aquí, al nivel de InspectorEdicion, en vez de triplicarlo en cada uno (mismo criterio
+// ya aplicado a Despensa: es el contenedor común quien pone el "chrome" alrededor del editor).
+function BotonBorrar() {
   const solicitarBorrado = useArbolStore((s) => s.solicitarBorrado)
   return (
     <div className="d-flex mt-3">
@@ -1219,14 +1222,13 @@ function InspectorEdicion({ nodo }) {
   // Igual que ELABORAR, la Despensa NO se deshabilita — sigue siendo el mecanismo
   // genérico que vincula el documento producido (desacoplado de estos formularios).
   const esNotificar = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'NOTIFICAR'
-  // Expediente (#1043, nodo de ejemplo de lectura ≈ edición): sin campos editables en el árbol,
-  // así que en edición se ve la misma zona de datos que en lectura y se añade la Despensa de
-  // tipos de solicitud; «Copiar referencia» se queda al pie, como en lectura.
-  const esExpediente = seleccion.tipo === 'expediente'
+  // Nodos con diseño de datos (#1043, lectura ≈ edición: el expediente y la solicitud): la
+  // edición pinta la misma zona de datos que la lectura y debajo las acciones y el pie.
   const detalle      = useArbolStore((s) => s.detalle)
   const cargandoDet  = useArbolStore((s) => s.detalleCargando)
   const seleccionar  = useArbolStore((s) => s.seleccionar)
   const hayDetalle   = !!detalle && !cargandoDet
+  const migrado      = !!disenoDeNodo(seleccion.tipo)
   // ESPERAR_PLAZO (#766): sin editor bespoke — solo la ayuda de la Despensa sobre
   // qué documento es el producido cuando en la recepción llegan varios (regla de
   // #764). Es la única tarea cuyo producido es un documento recibido de fuera.
@@ -1259,13 +1261,42 @@ function InspectorEdicion({ nodo }) {
   // añadirlas. Mismo emplazamiento que las acciones de fase: junto al Editor. Si el
   // trámite no notifica a nadie según el catálogo, el bloque no se pinta.
   const esTramite = seleccion.tipo === 'tramite'
+  // Nodos migrados (#1043): la misma columna que la lectura (alto completo, pie pegado abajo) y
+  // tres zonas en este orden: datos (la misma zona que en lectura), acciones y creación (solo
+  // en edición, debajo de los datos) y pie. En las acciones va primero la Despensa —lo
+  // frecuente, con su panel a la vista—, después las de la bisagra de la solicitud y, al
+  // fondo, «Borrar», por destructivo.
+  if (migrado) {
+    const puedeBorrar = seleccion.tipo !== 'expediente' && puedeEditarNodo(seleccion.tipo)
+    return (
+      <div className="p-3 d-flex flex-column h-100">
+        {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
+        {hayDetalle && (
+          <ZonaDatos nodo={nodo} tipo={seleccion.tipo} detalle={detalle} seleccionar={seleccionar} />
+        )}
+        {borrarPendienteConfirm
+          ? <ConfirmacionBorrado nodo={nodo} />
+          : (
+            <>
+              <div className="border-top mt-3 pt-3">
+                <Despensa />
+              </div>
+              {esSolicitud && (
+                <div className="border-top mt-3 pt-3">
+                  <CertFinInstruccion />
+                  <CierreSolicitud />
+                </div>
+              )}
+              {puedeBorrar && <BotonBorrar />}
+            </>
+          )}
+        {esSolicitud && <ModalInformeFinInstruccion />}
+        {hayDetalle && <Acciones referencia={detalle.referencia} />}
+      </div>
+    )
+  }
   return (
-    // El expediente usa la misma columna que la lectura (alto completo, pie pegado abajo); el
-    // resto de nodos seguirá con `p-3` hasta que la revisión los migre.
-    <div className={esExpediente ? 'p-3 d-flex flex-column h-100' : 'p-3'}>
-      {esExpediente && hayDetalle && (
-        <ZonaDatos nodo={nodo} tipo={seleccion.tipo} detalle={detalle} seleccionar={seleccionar} />
-      )}
+    <div className="p-3">
       {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
       {!borrarPendienteConfirm && esTramite && (
         <BloqueNotificacionesTramite expedienteId={expedienteId} tramiteId={seleccion.id} />
@@ -1285,17 +1316,14 @@ function InspectorEdicion({ nodo }) {
             ? <ElaborarEditor tareaId={seleccion.id} nodo={nodo} />
             : esNotificar
               ? <NotificarEditor tareaId={seleccion.id} />
-              : esExpediente
-                ? null
-                : <Editor nodo={nodo} />
+              : <Editor nodo={nodo} />
       }
-      {!borrarPendienteConfirm && puedeBorrarTarea && <BotonBorrarTarea />}
+      {!borrarPendienteConfirm && puedeBorrarTarea && <BotonBorrar />}
       {!borrarPendienteConfirm && !ocultarDespensa && (
         <div className="border-top mt-3 pt-3">
           <Despensa deshabilitarProducido={esAnalizar} esEsperarPlazo={esEsperarPlazo} />
         </div>
       )}
-      {esExpediente && hayDetalle && <Acciones referencia={detalle.referencia} />}
     </div>
   )
 }
