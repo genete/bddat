@@ -33,6 +33,13 @@
 
   var SIN_VALOR = { IS_NULL: true, NOT_NULL: true };
 
+  // Añadir o quitar una fila cambia el formulario sin que el usuario teclee nada, así que
+  // no dispara input ni change. El marco del inspector (ADR-053 §A, #1042) solo enciende
+  // «Guardar» al oírlos: sin este aviso, quitar una fila no se podría guardar.
+  function avisarCambio(el) {
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
   document.addEventListener('click', function (e) {
     var addBtn = e.target.closest('[data-cond-add]');
     if (addBtn) {
@@ -41,6 +48,7 @@
       var rows = editor ? editor.querySelector('[data-cond-rows]') : null;
       if (tpl && rows) {
         rows.appendChild(tpl.content.cloneNode(true));
+        avisarCambio(rows);
       }
       return;
     }
@@ -48,7 +56,11 @@
     var removeBtn = e.target.closest('[data-cond-remove]');
     if (removeBtn) {
       var row = removeBtn.closest('[data-cond-row]');
-      if (row) row.remove();
+      if (row) {
+        var contenedor = row.parentNode;
+        row.remove();
+        avisarCambio(contenedor);
+      }
       return;
     }
   });

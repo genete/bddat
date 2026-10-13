@@ -51,6 +51,15 @@
         jsonEl.value = JSON.stringify(pasos);
     }
 
+    // Serializa y avisa de que el formulario ha cambiado. Añadir, quitar o mover un paso o un
+    // documento no dispara input ni change; el marco del inspector (ADR-053 §A, #1042) solo
+    // enciende «Guardar» al oírlos. (serializar a secas se usa para el estado inicial, que no
+    // es un cambio del usuario.)
+    function cambiado(r) {
+        serializar(r);
+        r.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
     function clonar(nombrePlantilla) {
         var tpl = document.querySelector('[data-pasos-editor] template[' + nombrePlantilla + ']');
         if (!tpl || !tpl.content.firstElementChild) return null;
@@ -67,7 +76,7 @@
             if (nuevoPaso && listEl) {
                 listEl.appendChild(nuevoPaso);
                 renumerar(r);
-                serializar(r);
+                cambiado(r);
             }
             return;
         }
@@ -75,7 +84,7 @@
         var pasoRemoveBtn = e.target.closest('[data-paso-remove]');
         if (pasoRemoveBtn) {
             var pasoElR = pasoRemoveBtn.closest('[data-paso]');
-            if (pasoElR) { pasoElR.remove(); renumerar(r); serializar(r); }
+            if (pasoElR) { pasoElR.remove(); renumerar(r); cambiado(r); }
             return;
         }
 
@@ -86,7 +95,7 @@
             if (pasoElU && prev) {
                 pasoElU.parentNode.insertBefore(pasoElU, prev);
                 renumerar(r);
-                serializar(r);
+                cambiado(r);
             }
             return;
         }
@@ -98,7 +107,7 @@
             if (pasoElD && next) {
                 pasoElD.parentNode.insertBefore(next, pasoElD);
                 renumerar(r);
-                serializar(r);
+                cambiado(r);
             }
             return;
         }
@@ -109,7 +118,7 @@
             var nuevoDoc = clonar('data-doc-template');
             if (pasoElDoc && nuevoDoc) {
                 pasoElDoc.querySelector('[data-paso-docs]').appendChild(nuevoDoc);
-                serializar(r);
+                cambiado(r);
             }
             return;
         }
@@ -117,7 +126,7 @@
         var docRemoveBtn = e.target.closest('[data-doc-remove]');
         if (docRemoveBtn) {
             var docEl = docRemoveBtn.closest('[data-doc-row]');
-            if (docEl) { docEl.remove(); serializar(r); }
+            if (docEl) { docEl.remove(); cambiado(r); }
             return;
         }
     });
