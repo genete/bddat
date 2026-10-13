@@ -1,8 +1,8 @@
 // DatosNodo.jsx — La zona de datos de un nodo con diseño (#1043, ADR-053 §C).
 //
 // Pinta las tarjetas que declara `disenosDatos.js` y es la MISMA zona en lectura y en edición:
-// criterio de Carlos (13/10/2026), en modo edición, con más motivo, la parte informativa se
-// sigue viendo, se pueda editar o no. Lo único que cambia entre modos es el control de los
+// criterio de Carlos (13/10/2026), lo que se ve en lectura no se oculta en edición, y lo que sale
+// en edición también se ve en lectura. Lo único que cambia entre modos es el control de los
 // datos editables: de solo lectura en lectura, vivo en edición, en el mismo sitio y con el
 // mismo rótulo.
 //
@@ -11,13 +11,16 @@
 // Guardar / Cancelar del marco). Dos garantías para que no se pierda información en silencio:
 // una etiqueta que el payload traiga y el diseño no conozca cae en «Otros datos», y un dato que
 // el payload no traiga (el backend omite los vacíos) sale con «—», como en el listado.
+//
+// `bloqueado` deshabilita los controles vivos (fase cerrada, ADR-036: el backend rechazaría el
+// guardado de todos modos).
 import React from 'react'
 import { useArbolStore } from '../store.js'
 import {
   TarjetaDatos, CampoDato, ValorSoloLectura, CasillaSoloLectura, ControlCampo,
 } from './TarjetaDatos.jsx'
 
-export default function DatosNodo({ diseno, campos }) {
+export default function DatosNodo({ diseno, detalle, nodo, bloqueado = false }) {
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
   const editables   = useArbolStore((s) => s.editableCampos)
   const borrador    = useArbolStore((s) => s.borrador)
@@ -30,7 +33,8 @@ export default function DatosNodo({ diseno, campos }) {
     if (primerVivo.current) primerVivo.current.focus({ preventScroll: true })
   }, [editables])
 
-  const lista     = campos || []
+  const ctx       = { detalle, nodo }
+  const lista     = detalle.campos || []
   const valores   = new Map(lista.map((c) => [c.etiqueta, c.valor]))
   const conocidas = new Set(diseno.tarjetas.flatMap((t) => t.campos.map((c) => c.etiqueta)))
   const ocultas   = new Set(diseno.ocultas || [])
@@ -44,7 +48,7 @@ export default function DatosNodo({ diseno, campos }) {
       const ref = refAsignada ? null : primerVivo
       refAsignada = true
       return (
-        <ControlCampo ref={ref} campo={vivo} valor={borrador[vivo.campo] ?? ''}
+        <ControlCampo ref={ref} campo={vivo} valor={borrador[vivo.campo] ?? ''} disabled={bloqueado}
                       onChange={(v) => setCampo(vivo.campo, v)} />
       )
     }
@@ -62,7 +66,8 @@ export default function DatosNodo({ diseno, campos }) {
       {diseno.tarjetas.map((t) => (
         <TarjetaDatos key={t.titulo} titulo={t.titulo} icono={t.icono}>
           {t.campos.map((c) => {
-            const valor = valores.get(c.etiqueta)
+            if (c.visibleSi && !c.visibleSi(ctx)) return null
+            const valor = c.valorDe ? c.valorDe(ctx) : valores.get(c.etiqueta)
             if (c.opcional && valor === undefined) return null
             const rotulo = c.rotulo || c.etiqueta
             return (

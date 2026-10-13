@@ -279,6 +279,8 @@ function Agregados({ agregados }) {
 // Bloque Organismos (ADR-042 §B): read-only, solo presente en fase CONSULTAS.
 // Pulsar una fila navega al nodo organismo en el árbol — ninguna mutación desde
 // aquí, la regla del árbol como único sitio de edición se mantiene sin excepción.
+// Sin `seleccionar` (en edición, #1043) las filas se ven pero no navegan: editar bloquea el
+// árbol, y `seleccionar` no sale del modo edición ni limpia el borrador.
 function Organismos({ organismos, seleccionar }) {
   if (!organismos || organismos.length === 0) return null
   return (
@@ -286,9 +288,10 @@ function Organismos({ organismos, seleccionar }) {
       <div className="text-muted fw-semibold small mb-1">Organismos</div>
       <ul className="list-group list-group-flush">
         {organismos.map((o) => (
-          <li key={o.id} className="list-group-item px-0 py-2" style={{ cursor: 'pointer' }}
-              role="button"
-              onClick={() => seleccionar({ tipo: 'organismo', id: o.id })}>
+          <li key={o.id} className="list-group-item px-0 py-2"
+              style={seleccionar ? { cursor: 'pointer' } : undefined}
+              role={seleccionar ? 'button' : undefined}
+              onClick={seleccionar ? () => seleccionar({ tipo: 'organismo', id: o.id }) : undefined}>
             <div className="d-flex align-items-center gap-2">
               <span className="flex-grow-1 text-truncate fw-semibold">{o.nombre_completo || '—'}</span>
               {o.traslado_titular_vencido && (
@@ -361,21 +364,24 @@ function Documentos({ documentos }) {
 //
 // Es la misma en lectura y en edición: en edición lo informativo no desaparece, se pueda editar
 // o no. Hoy la pintan en los dos modos los nodos ya revisados, que son los que tienen un diseño
-// en `disenosDatos.js` (el expediente y la solicitud); los demás la pintan solo en lectura, con
-// la lista de texto plano, y su edición sigue siendo el `Editor`, hasta que la revisión nodo a
-// nodo los migre.
+// en `disenosDatos.js` (expediente, solicitud, versión y fase); los demás la pintan solo en
+// lectura, con la lista de texto plano, y su edición sigue siendo el `Editor`, hasta que la
+// revisión nodo a nodo los migre.
 function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
+  const modoEdicion = useArbolStore((s) => s.modoEdicion)
   const esHoja = tipo === 'tarea'
   const diseno = disenoDeNodo(tipo)
+  // Fase cerrada (#720, ADR-036): los controles vivos se deshabilitan, como hacía el `Editor`.
+  const faseCerrada = tipo === 'fase' && !!nodo && nodo.estado === 'FINALIZADA'
   return (
     <>
       {diseno
-        ? <DatosNodo diseno={diseno} campos={detalle.campos} />
+        ? <DatosNodo diseno={diseno} detalle={detalle} nodo={nodo} bloqueado={faseCerrada} />
         : <Campos campos={detalle.campos} />}
       {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
       <Plazo plazo={detalle.plazo} />
       <PlazosActos nodo={nodo} tipo={tipo} />
-      <Organismos organismos={detalle.organismos} seleccionar={seleccionar} />
+      <Organismos organismos={detalle.organismos} seleccionar={modoEdicion ? null : seleccionar} />
       <Documentos documentos={detalle.documentos} />
     </>
   )
@@ -1258,10 +1264,19 @@ function InspectorEdicion({ nodo }) {
   // Nodos migrados (#1043): la misma columna que la lectura (alto completo, pie pegado abajo) y
   // tres zonas en este orden: datos (la misma zona que en lectura), acciones y creación (solo
   // en edición, debajo de los datos) y pie. En las acciones va primero la Despensa —lo
-  // frecuente, con su panel a la vista—, después las de la bisagra de la solicitud y, al
+  // frecuente, con su panel a la vista—, después las propias del nodo (la bisagra de la
+  // solicitud; las consultas, el cumplimiento, el cierre y la reapertura de la fase) y, al
   // fondo, «Borrar», por destructivo.
   if (migrado) {
-    const puedeBorrar = seleccion.tipo !== 'expediente' && puedeEditarNodo(seleccion.tipo)
+    // Fase cerrada (#720, ADR-036): dentro no se crea ni se borra nada; su único camino es reabrirla.
+    const faseCerrada = esFase && !!nodo && nodo.estado === 'FINALIZADA'
+    const puedeBorrar = seleccion.tipo !== 'expediente' && puedeEditarNodo(seleccion.tipo) && !faseCerrada
+    // Las acciones propias solo se pintan si hay alguna, para no dejar un separador vacío.
+    // Cumplimiento y cierre solo existen en las finalizadoras (el backend trae su certificado
+    // solo en ellas); «Enviar consultas» solo con organismos pendientes.
+    const hayPropias = esSolicitud || faseCerrada
+      || (esFaseConsultas && organismosPendientesSeparata(nodo).length > 0)
+      || (esFase && hayDetalle && !!(detalle.cert_cumplimiento || detalle.cert_cierre))
     return (
       <div className="p-3 d-flex flex-column h-100">
         {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
@@ -1275,16 +1290,21 @@ function InspectorEdicion({ nodo }) {
               <div className="border-top mt-3 pt-3">
                 <Despensa />
               </div>
-              {esSolicitud && (
+              {hayPropias && (
                 <div className="border-top mt-3 pt-3">
-                  <CertFinInstruccion />
-                  <CierreSolicitud />
+                  {esSolicitud && <CertFinInstruccion />}
+                  {esSolicitud && <CierreSolicitud />}
+                  {esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
+                  {esFase && <CertCumplimientoFase />}
+                  {esFase && <CierreFase nodo={nodo} />}
+                  {faseCerrada && <ReabrirFase />}
                 </div>
               )}
               {puedeBorrar && <div className="mb-3"><BotonBorrar /></div>}
             </>
           )}
         {esSolicitud && <ModalInformeFinInstruccion />}
+        {esFase && <ModalConfirmacionCierre />}
         {hayDetalle && <Acciones referencia={detalle.referencia} />}
       </div>
     )
