@@ -34,6 +34,7 @@ El inspector es el primer estándar para todos los casos: la isla del árbol (po
 - **En edición:** Guardar y Cancelar, solo habilitados con borrador vivo, y «Cerrar» siempre presente. El contrato de salida de ADR-023 §5 bis no cambia: con la superficie limpia, «Cerrar» sale sin revertir nada; con cambios sin guardar, la salida se comporta como Cancelar.
 - **Visibilidad garantizada con cualquier ancho:** en edición se ve, al menos, «Cerrar». La barra del árbol ya lo consigue truncando la cabecera y no los botones; el marco del shell debe reproducirlo.
 - **Qué declara cada caso:** el fragmento Jinja declara su título, la URL de su edición y su formulario; el árbol alimenta al shell con su estado. *Interpretación:* los nombres de los atributos y de la API de ese contrato, y cómo se aloja la cabecera del árbol (semáforo, tipo, título, estado, candado), los fija la fase 1 de #1042 prototipando, no este ADR. *Interpretación:* «Editar» vive en el marco, por lo que implica «ver / editar».
+- **Contrato implementado en #1042** (13/10/2026; en la rama de trabajo hasta que se mergee su PR): los nombres de los atributos y de la API están en `docs/guias/GUIA_COMPONENTES_INTERACTIVOS.md`, §«Marco único del inspector». Las *Interpretación* de arriba siguen pendientes de que Carlos las confirme.
 
 ### B — Cuerpo flexible: ancho mínimo por caso y scroll horizontal (D11)
 
