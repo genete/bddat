@@ -561,12 +561,21 @@
 }
 .app-inspector__bar-actions [hidden] { display: none; }
 
+/* Cuerpo: el único que hace scroll (vertical y horizontal); la barra del marco queda fuera.
+   Cada caso declara su ancho mínimo (--inspector-min, que fija inspector-overlay.js desde
+   data-min-width del fragmento o el descriptor del árbol): por debajo, el contenido no se
+   encoge más y aparece el scroll horizontal como señal (ADR-053 §B, D11). */
 .app-inspector__body {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   min-height: 0;
 }
+.app-inspector__body > * {
+  min-width: var(--inspector-min, 0px);
+}
+/* La señal es la barra de scroll nativa del cuerpo. Con barras superpuestas (modo «overlay»
+   de algunos sistemas) se oculta sola: no medido en el navegador de la Consejería (#1042). */
 
 /* Backdrop bloqueante durante edición (is-inspector-locked) */
 .app-inspector__backdrop {

@@ -29,15 +29,16 @@
  *       <div class="p-3" data-inspector-frame="editar">                      edición
  *     Opcionales: data-title (sustituye al título del listado; ponerlo cuando el título es
  *     editable, o la cabecera queda desactualizada tras guardar), data-edit-label
- *     (rótulo de «Editar», p. ej. «Resolver») y data-save-label (rótulo de «Guardar»).
+ *     (rótulo de «Editar», p. ej. «Resolver»), data-save-label (rótulo de «Guardar») y
+ *     data-min-width (ancho mínimo del cuerpo en px: por debajo, scroll horizontal del cuerpo).
  *     Sin data-edit-url no hay «Editar». En edición, el formulario es el único
  *     form[data-inspector-form] del fragmento y «Guardar» lo envía con requestSubmit().
  *     Un fragmento sin data-inspector-frame no tiene barra (los de solo lectura: cola,
  *     seguimiento y huérfanos, hasta que adopten el marco).
  *
  *  2) El árbol del expediente (React), con AppInspector.setFrame(desc): { modo, titulo, tipo,
- *     estado, candado, semaforo: { color, titulo }, puedeEditar, hayCambios, guardando,
- *     onEditar, onGuardar, onSalir }.
+ *     estado, candado, semaforo: { color, titulo }, puedeEditar, minWidth, hayCambios,
+ *     guardando, onEditar, onGuardar, onSalir }.
  *
  * «Guardar» está deshabilitado mientras no haya cambios; el botón de salida dice «Cerrar» si
  * no los hay y «Cancelar» si los hay (ADR-023 §5 bis). En un fragmento Jinja hay cambios
@@ -64,6 +65,7 @@
     modo: 'ver', titulo: '', tipo: '', estado: '', candado: false, semaforo: null,
     puedeEditar: false, rotuloEditar: 'Editar', rotuloGuardar: 'Guardar',
     hayCambios: false, guardando: false, sinFormulario: false,
+    minWidth: 0,   // ancho mínimo del cuerpo en px; 0 = sin mínimo (el cuerpo se encoge)
     onEditar: null, onGuardar: null, onSalir: null
   };
 
@@ -109,6 +111,10 @@
   function _renderFrame() {
     var bar = getBar();
     if (!bar) return;
+    // Ancho mínimo del cuerpo (ADR-053 §B): por debajo, scroll horizontal del cuerpo, nunca
+    // de la barra. Sin marco no hay mínimo.
+    var body = getBody();
+    if (body) body.style.setProperty('--inspector-min', ((_frame && _frame.minWidth) || 0) + 'px');
     if (!_frame) { bar.hidden = true; return; }
     var f = _frame;
     bar.hidden = false;
@@ -194,6 +200,7 @@
       puedeEditar: modo === 'ver' && !!editUrl,
       rotuloEditar: d.editLabel || 'Editar',
       rotuloGuardar: d.saveLabel || 'Guardar',
+      minWidth: parseInt(d.minWidth, 10) || 0,
       sinFormulario: sinFormulario,
       onEditar: function () { _entrarEdicion(editUrl); },
       onGuardar: _guardarFormulario,
@@ -265,8 +272,10 @@
         _aplicarMarco();
       } else {
         // Hasta que llegue el fragmento nuevo, la cabecera ya es la del elemento nuevo y
-        // sin gestos (los del anterior no valen). Si no había barra, no se enseña ninguna.
-        if (_frame) _frame = Object.assign({}, FRAME_DEFECTOS, { titulo: _title });
+        // sin gestos (los del anterior no valen); el cuerpo conserva su ancho mínimo, que
+        // sigue siendo el del contenido que todavía hay en él. Si no había barra, no se
+        // enseña ninguna.
+        if (_frame) _frame = Object.assign({}, FRAME_DEFECTOS, { titulo: _title, minWidth: _frame.minWidth });
         _renderFrame();
         _loadFragment(fragmentUrl, selId);
       }
