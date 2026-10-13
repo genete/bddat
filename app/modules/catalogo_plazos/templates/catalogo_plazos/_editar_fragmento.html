@@ -22,7 +22,7 @@
 {% set TIPO_LABELS = {'boolean': 'verdadero/falso', 'numerico': 'número', 'texto': 'texto', 'fecha': 'AAAA-MM-DD', 'enum': 'valor del catálogo'} %}
 {% set NIVEL_LABEL = {'ACTO': 'Acto', 'TAREA': 'Tarea'} %}
 
-<div class="p-3" data-inspector-frame="editar"
+<div class="p-3" data-inspector-frame="editar" data-min-width="800"
      data-title="{{ NIVEL_LABEL.get(item.tipo_elemento, item.tipo_elemento) }} · {{ item.hoja or '' }}">
 
 <form data-inspector-form class="form-catalogo-plazo-editar"

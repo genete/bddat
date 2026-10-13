@@ -4,7 +4,8 @@
    Marco único (ADR-053 §A, #1042): «Guardar» y «Cancelar/Cerrar» los pinta el shell.
 #}
 
-<div class="p-3" data-inspector-frame="editar" data-title="{{ entidad.nombre_completo }}">
+<div class="p-3" data-inspector-frame="editar" data-min-width="440"
+     data-title="{{ entidad.nombre_completo }}">
 
 <form data-inspector-form
       data-action="{{ url_for('entidades.editar', entidad_id=entidad.id) }}">

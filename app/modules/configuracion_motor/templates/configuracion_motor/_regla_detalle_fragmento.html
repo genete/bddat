@@ -11,7 +11,7 @@
 {% set ACCION_LABEL = {'CREAR': 'Crear', 'BORRAR': 'Borrar'} %}
 {% set EFECTO_LABEL = {'BLOQUEAR': 'Bloquear', 'ADVERTIR': 'Advertir'} %}
 
-<div class="p-3" data-inspector-frame="ver"
+<div class="p-3" data-inspector-frame="ver" data-min-width="440"
      data-title="{{ ACCION_LABEL.get(item.accion, item.accion) }} · {{ item.sujeto }}"
      {% if puede_editar %}data-edit-url="{{ url_for('configuracion_motor.regla_editar_fragmento', id=item.id) }}"{% endif %}>
 

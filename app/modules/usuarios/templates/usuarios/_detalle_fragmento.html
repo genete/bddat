@@ -5,7 +5,7 @@
    fragmento declara el suyo y la cabecera no queda desactualizada tras guardar.
 #}
 
-<div class="p-3" data-inspector-frame="ver"
+<div class="p-3" data-inspector-frame="ver" data-min-width="540"
      data-title="{{ [usuario.nombre, usuario.apellido1, usuario.apellido2]|select|join(' ') }}"
      {% if puede_editar %}data-edit-url="{{ url_for('usuarios.editar_fragmento', id=usuario.id) }}"{% endif %}>
 

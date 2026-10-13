@@ -13,7 +13,7 @@
 {% set NIVEL_LABEL = {'ACTO': 'Acto', 'TAREA': 'Tarea'} %}
 {% set UNIDAD_LABEL = {'DIAS_HABILES': 'días hábiles', 'DIAS_NATURALES': 'días naturales', 'MESES': 'meses', 'ANOS': 'años'} %}
 
-<div class="p-3" data-inspector-frame="ver"
+<div class="p-3" data-inspector-frame="ver" data-min-width="440"
      data-title="{{ NIVEL_LABEL.get(item.tipo_elemento, item.tipo_elemento) }} · {{ item.hoja or '' }}"
      {% if puede_editar %}data-edit-url="{{ url_for('catalogo_plazos.editar_fragmento', id=item.id) }}"{% endif %}>
 

@@ -5,7 +5,7 @@
    vigente/fecha_baja no se editan aquí — botón dedicado en el fragmento de lectura.
 #}
 
-<div class="p-3" data-inspector-frame="editar" data-title="{{ item.nombre }}">
+<div class="p-3" data-inspector-frame="editar" data-min-width="420" data-title="{{ item.nombre }}">
 
 <form data-inspector-form
       data-action="{{ url_for('firmantes_portafirmas.editar', id=item.id) }}">

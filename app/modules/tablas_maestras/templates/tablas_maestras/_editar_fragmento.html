@@ -6,7 +6,7 @@
    (inmutable, el backend lo ignora aunque llegara).
 #}
 
-<div class="p-3" data-inspector-frame="editar">
+<div class="p-3" data-inspector-frame="editar"{% if tipo == 'tramite' %} data-min-width="460"{% endif %}>
 
 <form data-inspector-form class="form-tabla-maestra-editar"
       data-action="{{ url_for('tablas_maestras.editar', tipo=tipo, id=obj.id) }}">

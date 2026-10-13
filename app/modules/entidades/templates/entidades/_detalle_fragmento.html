@@ -5,7 +5,7 @@
    data-title: el nombre es editable, así que el fragmento declara el título.
 #}
 
-<div class="p-3" data-inspector-frame="ver"
+<div class="p-3" data-inspector-frame="ver" data-min-width="340"
      data-title="{{ entidad.nombre_completo }}"
      data-edit-url="{{ url_for('entidades.editar_fragmento', entidad_id=entidad.id) }}">
 
