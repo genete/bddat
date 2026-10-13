@@ -18,7 +18,7 @@
 //     cabecera fija, igual que en cualquier otro nodo.
 //
 // Este contenedor NO monta Guardar/Cancelar: el de los campos directos vive en
-// la cabecera (BarraEdicion, #688) y todo lo demás que se ve aquí (vincular
+// la barra del marco del shell (#688, #1042) y todo lo demás que se ve aquí (vincular
 // documento, guardar ítem técnico, guardar shuttle) persiste por su cuenta y de
 // inmediato, sin pasar por el borrador.
 import React from 'react'

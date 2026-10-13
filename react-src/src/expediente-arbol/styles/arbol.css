@@ -299,12 +299,9 @@ body.arbol-lock .app-inspector {
   /* inspector sigue position:fixed (ADR-023); solo elevamos z-index sobre el
      overlay transparente de App.jsx (1040) para que el panel sea interaccionable */
   z-index: 1050;
-}
-
-/* Inspector destacado mientras el lock está activo (zona interactiva). */
-.arbol-inspector--lock {
+  /* Inspector destacado mientras el lock está activo (zona interactiva): el anillo rodea
+     el panel entero, barra del marco incluida (antes iba en el contenedor interior). */
   box-shadow: 0 0 0 3px rgba(13, 110, 253, .35);
-  border-radius: 8px;
 }
 
 /* ── Menú contextual (S3b-4) ──────────────────────────────────────────────── */

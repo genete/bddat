@@ -82,6 +82,30 @@
     <aside class="app-inspector" id="app-inspector" aria-label="Inspector">
       <div class="app-inspector__resize" data-inspector-resize
            aria-label="Redimensionar / cerrar inspector" role="button" tabindex="-1"></div>
+      {# Marco único (ADR-053 §A, #1042): lo pinta inspector-overlay.js a partir de lo que declara
+         el fragmento Jinja (data-inspector-frame) o el árbol React (AppInspector.setFrame). Si nadie
+         declara marco, queda oculto. La cabecera se trunca; los botones no (siempre se ve «Cerrar»). #}
+      <div class="app-inspector__bar" id="app-inspector-bar" hidden>
+        <div class="app-inspector__bar-head">
+          <span class="seg-sem is-relleno mt-1" data-frame-semaforo hidden></span>
+          <div class="app-inspector__bar-text">
+            <div class="text-uppercase text-muted small fw-semibold" data-frame-tipo hidden></div>
+            <div class="fw-bold text-truncate" data-frame-titulo></div>
+            <span class="badge text-bg-light mt-1" data-frame-estado hidden>
+              <i class="bi bi-lock-fill me-1" data-frame-candado hidden title="Fase cerrada"></i><span data-frame-estado-texto></span>
+            </span>
+          </div>
+        </div>
+        {# Orden: «Cancelar/Cerrar» a la izquierda y la acción principal a la derecha (como en los
+           formularios y modales de la app). «Editar» y «Guardar» no coinciden nunca, y ocupan el
+           mismo sitio: al pulsar «Editar» el puntero cae sobre «Guardar» deshabilitado (sin hover),
+           no sobre una salida a un doble clic de distancia. #}
+        <div class="app-inspector__bar-actions">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-frame-salir hidden>Cerrar</button>
+          <button type="button" class="btn btn-sm btn-primary" data-frame-editar hidden>Editar</button>
+          <button type="button" class="btn btn-sm btn-primary" data-frame-guardar hidden>Guardar</button>
+        </div>
+      </div>
       <div class="app-inspector__body" id="app-inspector-body">
         {% block inspector %}{% endblock %}
       </div>

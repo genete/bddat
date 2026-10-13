@@ -8,7 +8,7 @@
 // donde el campo era simplemente inaccesible desde el árbol.
 //
 // No lleva Guardar propio a propósito: escribe en `borrador.notas` del store y
-// lo persiste el par Guardar/Cancelar de la cabecera fija (BarraEdicion), igual
+// lo persiste el par Guardar/Cancelar de la barra del marco (shell), igual
 // que en cualquier otro nodo. Lo que cada contenedor persiste por su cuenta y de
 // inmediato (checks, shuttle, registrar envío…) es otro asunto y no pasa por
 // aquí.

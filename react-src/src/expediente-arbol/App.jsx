@@ -10,6 +10,7 @@ import { showToast } from '../shared/ui/toast.js'
 import Viewbar from './components/Viewbar.jsx'
 import Arbol from './components/Arbol.jsx'
 import Inspector from './components/Inspector.jsx'
+import { usePuenteInspector } from './puenteInspector.js'
 
 // Slots del shell declarados en arbol.html. Portales: un único árbol React / store.
 const inspectorSlot = () => document.getElementById('arbol-inspector-slot')
@@ -100,6 +101,10 @@ export default function App() {
       AppInspector.close()
     }
   }, [seleccion])
+
+  // Marco único del inspector (ADR-053 §A, #1042): la barra con la cabecera y los gestos
+  // Editar / Guardar / Cancelar-Cerrar la pinta el shell; este hook le pasa el estado del árbol.
+  usePuenteInspector()
 
   // Coherencia bidireccional: si el shell cierra el panel (botón ×, Escape, light-dismiss),
   // deseleccionamos en el store para que el árbol refleje el estado.

@@ -530,12 +530,52 @@
               0  8px 0 var(--gris-principal);
 }
 
+/* Marco único (ADR-053 §A, #1042): barra fija sobre el cuerpo, fuera de su scroll.
+   La cabecera se trunca (min-width:0 en la caja de texto) y las acciones no se encogen:
+   con cualquier ancho del panel se ve, al menos, «Cerrar» en edición. */
+.app-inspector__bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem 0.75rem 1.25rem;   /* a la izquierda, la franja de resize (6 px) */
+  background: #ffffff;
+  border-bottom: 1px solid var(--border-color);
+}
+.app-inspector__bar[hidden] { display: none; }
+
+.app-inspector__bar-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.app-inspector__bar-text { min-width: 0; }
+
+.app-inspector__bar-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+.app-inspector__bar-actions [hidden] { display: none; }
+
+/* Cuerpo: el único que hace scroll (vertical y horizontal); la barra del marco queda fuera.
+   Cada caso declara su ancho mínimo (--inspector-min, que fija inspector-overlay.js desde
+   data-min-width del fragmento o el descriptor del árbol): por debajo, el contenido no se
+   encoge más y aparece el scroll horizontal como señal (ADR-053 §B, D11). */
 .app-inspector__body {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   min-height: 0;
 }
+.app-inspector__body > * {
+  min-width: var(--inspector-min, 0px);
+}
+/* La señal es la barra de scroll nativa del cuerpo. Con barras superpuestas (modo «overlay»
+   de algunos sistemas) se oculta sola: no medido en el navegador de la Consejería (#1042). */
 
 /* Backdrop bloqueante durante edición (is-inspector-locked) */
 .app-inspector__backdrop {

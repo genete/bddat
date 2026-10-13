@@ -1,17 +1,13 @@
 {# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 §9 / #534).
    No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
-   Fase 2: solo lectura. Botón "Editar" (Fase 3), "Gestionar…" (Fase 4).
+   «Gestionar…» (direcciones y autorizados) abre el modal grande.
+   Marco único (ADR-053 §A, #1042): «Editar» lo pinta el shell a partir de data-edit-url.
+   data-title: el nombre es editable, así que el fragmento declara el título.
 #}
 
-<div class="p-3">
-
-<div class="d-flex justify-content-end mb-3">
-    <button type="button" class="btn btn-primary btn-sm"
-            data-inspector-edit
-            data-edit-url="{{ url_for('entidades.editar_fragmento', entidad_id=entidad.id) }}">
-        <i class="fas fa-edit me-1"></i> Editar
-    </button>
-</div>
+<div class="p-3" data-inspector-frame="ver" data-min-width="340"
+     data-title="{{ entidad.nombre_completo }}"
+     data-edit-url="{{ url_for('entidades.editar_fragmento', entidad_id=entidad.id) }}">
 
 <!-- CARD 1 — Identificación -->
 <div class="card mb-3">

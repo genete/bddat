@@ -1,8 +1,11 @@
 {# _inspector_expediente.html — Parcial de lectura para el inspector (ADR-024 §4 / #543).
    No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   Marco único (ADR-053 §A, #1042): «Editar» lo pinta el shell a partir de data-edit-url.
+   El título es el del listado (AT-<número>, que no se edita).
 #}
 
-<div class="p-3">
+<div class="p-3" data-inspector-frame="ver" data-min-width="520"
+     {% if puede_editar %}data-edit-url="{{ url_for('expedientes.editar_fragmento', id=expediente.id) }}"{% endif %}>
 
 <!-- Botones de acción (ADR-024 §4.2) -->
 <div class="d-flex gap-2 mb-3">
@@ -20,13 +23,6 @@
            class="btn btn-primary btn-sm">
             <i class="fas fa-sitemap me-1"></i> Tramitar
         </a>
-        {% if puede_editar %}
-        <button type="button" class="btn btn-success btn-sm"
-                data-inspector-edit
-                data-edit-url="{{ url_for('expedientes.editar_fragmento', id=expediente.id) }}">
-            <i class="fas fa-edit me-1"></i> Editar
-        </button>
-        {% endif %}
     </div>
 </div>
 

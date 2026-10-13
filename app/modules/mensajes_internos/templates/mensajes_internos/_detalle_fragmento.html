@@ -1,6 +1,9 @@
 {# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #28).
    No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
-   - "Resolver" → fragmento de resolución (data-inspector-edit). Solo gestionar_.
+   - Marco único (ADR-053 §A, #1042): el botón de la barra lo pinta el shell a partir de
+     data-edit-url, y aquí «Editar» significa RESOLVER (ADR-040 §3): data-edit-label
+     lo rotula «Resolver» y el fragmento de resolución rotula «Guardar» como
+     «Resolver petición». Solo gestionar_. El título es el del listado (el tipo).
    - "Acusar recibo" → form data-inspector-form (POST XHR → JSON → refresh).
      Solo el remitente, y solo tras la resolución.
 
@@ -9,17 +12,8 @@
    (etiqueta, valor). Añadir un tipo nuevo no toca este fichero.
 #}
 
-<div class="p-3">
-
-<div class="d-flex justify-content-end gap-2 mb-3">
-    {% if puede_resolver %}
-    <button type="button" class="btn btn-primary btn-sm"
-            data-inspector-edit
-            data-edit-url="{{ url_for('mensajes_internos.editar_fragmento', id=mensaje.id) }}">
-        <i class="fas fa-gavel me-1"></i> Resolver
-    </button>
-    {% endif %}
-</div>
+<div class="p-3" data-inspector-frame="ver" data-edit-label="Resolver"
+     {% if puede_resolver %}data-edit-url="{{ url_for('mensajes_internos.editar_fragmento', id=mensaje.id) }}"{% endif %}>
 
 <!-- CARD 1 — La petición -->
 <div class="card mb-3">

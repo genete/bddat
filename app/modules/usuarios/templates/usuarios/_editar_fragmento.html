@@ -1,25 +1,18 @@
 {# _editar_fragmento.html — Parcial de edición para el inspector (ADR-023 §5 / #544).
-   No extiende base_app.html. Inyectado por inspector-overlay.js vía data-inspector-edit.
+   No extiende base_app.html. Cargado por el shell al pulsar «Editar» del marco.
    Submit interceptado: POST XHR → JSON { ok, errors, message }.
+   Marco único (ADR-053 §A, #1042): «Guardar» y «Cancelar/Cerrar» los pinta el shell en su barra
+   (Guardar envía este formulario con requestSubmit). El título es el de la lectura.
 #}
 
-<div class="p-3">
+<div class="p-3" data-inspector-frame="editar" data-min-width="560"
+     data-title="{{ [usuario.nombre, usuario.apellido1, usuario.apellido2]|select|join(' ') }}">
 
 <form data-inspector-form
       data-action="{{ url_for('usuarios.editar', id=usuario.id) }}">
 
 <div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small"
      style="display:none;"></div>
-
-<div class="d-flex justify-content-end gap-2 mb-3">
-    <button type="button" class="btn btn-outline-secondary btn-sm"
-            data-inspector-cancel-edit>
-        <i class="fas fa-times me-1"></i> Cancelar
-    </button>
-    <button type="submit" class="btn btn-primary btn-sm">
-        <i class="fas fa-save me-1"></i> Guardar cambios
-    </button>
-</div>
 
 <!-- CARD 1 — Identificación -->
 <div class="card mb-3">

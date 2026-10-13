@@ -1,6 +1,7 @@
 {# _editar_fragmento.html — Parcial de edición para el inspector (ADR-023 / #632).
-   No extiende base_app.html. Inyectado por inspector-overlay.js vía data-inspector-edit.
+   No extiende base_app.html. Cargado por el shell al pulsar «Editar» del marco.
    Submit interceptado: POST XHR → JSON { ok, errors, message }.
+   Marco único (ADR-053 §A, #1042): «Guardar» y «Cancelar/Cerrar» los pinta el shell.
 
    Cascada nivel→camino→campo_fecha: ver _campo_fecha_macro.html y
    catalogo-plazos-cascada.js. El bloque inicial visible lo decide el servidor
@@ -12,28 +13,22 @@
    sin indexar (mismo name repetido), reconstruidas con request.form.getlist()
    en el mismo orden del DOM. La lógica de añadir/quitar fila vive en
    requisitos-inspector.js (genérica, reutilizada tal cual — ver
-   project_inspector_vs_modal_scripts.md). Operadores BETWEEN/NOT_BETWEEN
+   project_inspector_vs_modal_scripts.md; avisa con change al añadir o quitar filas,
+   que es lo que enciende «Guardar»). Operadores BETWEEN/NOT_BETWEEN
    reutilizan el mismo input CSV que IN/NOT_IN (exigen exactamente 2 valores).
 #}
 {% import 'catalogo_plazos/_campo_fecha_macro.html' as cf %}
 
 {% set TIPO_LABELS = {'boolean': 'verdadero/falso', 'numerico': 'número', 'texto': 'texto', 'fecha': 'AAAA-MM-DD', 'enum': 'valor del catálogo'} %}
+{% set NIVEL_LABEL = {'ACTO': 'Acto', 'TAREA': 'Tarea'} %}
 
-<div class="p-3">
+<div class="p-3" data-inspector-frame="editar" data-min-width="800"
+     data-title="{{ NIVEL_LABEL.get(item.tipo_elemento, item.tipo_elemento) }} · {{ item.hoja or '' }}">
 
 <form data-inspector-form class="form-catalogo-plazo-editar"
       data-action="{{ url_for('catalogo_plazos.editar', id=item.id) }}">
 
 <div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
-
-<div class="d-flex justify-content-end gap-2 mb-3">
-    <button type="button" class="btn btn-outline-secondary btn-sm" data-inspector-cancel-edit>
-        <i class="fas fa-times me-1"></i> Cancelar
-    </button>
-    <button type="submit" class="btn btn-primary btn-sm">
-        <i class="fas fa-save me-1"></i> Guardar cambios
-    </button>
-</div>
 
 <!-- CARD 1 — Nivel ESFTT e inicio de cómputo -->
 <div class="card mb-3">

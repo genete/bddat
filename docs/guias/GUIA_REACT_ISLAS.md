@@ -315,7 +315,7 @@ shell cuándo abrir/cerrar y cuándo entrar/salir de edición.
 
 ```js
 // En el effect de selección del store (p.ej. al clicar un nodo):
-AppInspector.mountReact({ selId: nodo.id, title: nodo.nombre })
+AppInspector.mountReact({ selId: nodo.id })
 
 // Al deseleccionar (o al recibir el evento de cierre desde el panel):
 AppInspector.close()
@@ -336,6 +336,21 @@ AppInspector.setLocked(true)   // activa backdrop bloqueante
 AppInspector.setLocked(false)  // desbloquea
 AppInspector.refresh()         // si el contenido es un fragmento Jinja
 ```
+
+### El marco (barra) lo pinta el shell, no la isla (ADR-053 §A, #1042)
+
+La cabecera del nodo (tipo, título, estado, candado, semáforo) y los botones Editar / Guardar /
+Cancelar-Cerrar **no se pintan en React**: los pinta una barra del shell
+(`#app-inspector-bar`), y la isla solo la alimenta con datos por `AppInspector.setFrame(...)`.
+El árbol lo hace con un hook, `usePuenteInspector` (`expediente-arbol/puenteInspector.js`), que
+construye el descriptor a partir del store y lo empuja solo cuando cambia (el borrador cambia
+con cada tecla; el descriptor casi nunca). Los gestos del descriptor (`onEditar`, `onGuardar`,
+`onSalir`) leen el store en el momento de pulsar, no capturan estado de un render.
+
+Una isla nueva con inspector copia ese patrón en vez de pintar su propia barra; la forma del
+descriptor y el resto del contrato (qué enciende «Guardar», ancho mínimo, rótulos) están en
+`GUIA_COMPONENTES_INTERACTIVOS.md` §«Marco único del inspector». El cuerpo de la isla (lo que
+hay debajo de la barra) no hace scroll por su cuenta: hace scroll el cuerpo del shell.
 
 ### Slot Jinja para islas
 
