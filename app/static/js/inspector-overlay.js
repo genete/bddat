@@ -32,7 +32,8 @@
  *     (rótulo de «Editar», p. ej. «Resolver») y data-save-label (rótulo de «Guardar»).
  *     Sin data-edit-url no hay «Editar». En edición, el formulario es el único
  *     form[data-inspector-form] del fragmento y «Guardar» lo envía con requestSubmit().
- *     Un fragmento sin data-inspector-frame no tiene barra y se comporta como antes.
+ *     Un fragmento sin data-inspector-frame no tiene barra (los de solo lectura: cola,
+ *     seguimiento y huérfanos, hasta que adopten el marco).
  *
  *  2) El árbol del expediente (React), con AppInspector.setFrame(desc): { modo, titulo, tipo,
  *     estado, candado, semaforo: { color, titulo }, puedeEditar, hayCambios, guardando,
@@ -470,20 +471,6 @@
       AppModalLarge.open(modalBtn.dataset.modalLargeUrl, { title: modalBtn.dataset.modalLargeTitle || '' });
       return;
     }
-    // Botón "Editar" del propio fragmento de lectura (fragmentos aún sin marco)
-    var editBtn = e.target.closest('[data-inspector-edit]');
-    if (editBtn) {
-      _entrarEdicion(editBtn.dataset.editUrl);
-      return;
-    }
-    // Botón "Cancelar" del propio formulario de edición (fragmentos aún sin marco)
-    if (e.target.closest('[data-inspector-cancel-edit]')) {
-      setLocked(false);
-      _formDirty = false;
-      _restoreReadFragment();
-      if (window.mostrar_toast) window.mostrar_toast('info', 'Cambios descartados.');
-      return;
-    }
   });
 
   // ── Submit del formulario de edición (interceptado via XHR) ──────────────
@@ -537,8 +524,6 @@
     var form = e.target.closest ? e.target.closest('form[data-inspector-form]') : null;
     if (!form) return;
     _formDirty = true;
-    var btn = form.querySelector('[type=submit]');
-    if (btn && btn.disabled) btn.disabled = false;
     // Con marco, «Guardar» se enciende y «Cerrar» pasa a «Cancelar».
     if (_frame && _frame.modo === 'editar' && !_frame.hayCambios) _patchFrame({ hayCambios: true });
   }
