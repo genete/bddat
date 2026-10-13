@@ -67,7 +67,7 @@
 
 - **topbar, sidebar, viewbar, main, footer**: siempre presentes en `base_app.html`.
 - **dock**: siempre presente en `base_app.html` como partial de chrome global. Su visibilidad la controla el usuario mediante la campana 🔔 del topbar (toggle). Estado en `localStorage` (`bddat.dock.open`). Las vistas no lo definen ni lo sobreescriben. Ver ADR-020.
-- **inspector**: siempre presente en `base_app.html` como contenedor de shell (recogido por defecto). **No es una columna del grid**: es un overlay `position:fixed` en el borde derecho. Se abre/cierra mediante `window.AppInspector` (JS) al seleccionar un ítem en cualquier vista. El `{% block inspector %}` existe solo para que las islas React monten su slot dentro del body del panel; las vistas Jinja no lo definen.
+- **inspector**: siempre presente en `base_app.html` como contenedor de shell (recogido por defecto). **No es una columna del grid**: es un overlay `position:fixed` en el borde derecho. Se abre/cierra mediante `window.AppInspector` (JS) al seleccionar un ítem en cualquier vista. El `{% block inspector %}` existe solo para que las islas React monten su slot dentro del body del panel; las vistas Jinja no lo definen. Dentro del `<aside>` hay dos zonas: la **barra del marco** (`.app-inspector__bar`, cabecera y botones de ver / editar / guardar / cancelar, fija y fuera del scroll; la pinta el shell, ADR-053 §A) y el **cuerpo** (`.app-inspector__body`, el único que hace scroll, vertical y horizontal).
 
 El grid del shell es siempre `sidebar | main` (+ filas viewbar/dock/footer). El inspector no ocupa área de grid y **nunca reflowa** el contenido.
 
@@ -102,6 +102,7 @@ html { font-size: 15px; }   /* a 15px: datos de tabla ~13px, chrome ~14px */
 --sidebar-width-expanded     /* 208px */
 --sidebar-width-collapsed    /* 56px */
 --inspector-width            /* 900px (default de apertura; ajustable por el usuario) */
+--inspector-min              /* ancho mínimo del cuerpo del inspector, por caso (0 = sin mínimo); lo fija el shell desde data-min-width (ADR-053 §B) */
 --dock-height                /* 240px */
 ```
 

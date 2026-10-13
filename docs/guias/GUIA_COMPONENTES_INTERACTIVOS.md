@@ -520,8 +520,10 @@ Control del inspector overlay de shell. Funciona en cualquier vista (Jinja o Rea
 AppInspector.open({ selId, title, fragmentUrl })
 // Abre o hace swap del inspector. Si fragmentUrl: carga el fragmento en el panel.
 // Si ya está abierto con el mismo selId: no-op (retención, §7 ADR-023).
+// `title` es la cabecera de reserva del marco (la que pasa el listado): el fragmento puede
+// sustituirla con data-title. refresh() la conserva.
 
-AppInspector.mountReact({ selId, title })
+AppInspector.mountReact({ selId })
 // Variante para islas React: abre el panel sin tocar el body
 // (la isla pinta por portal en #app-inspector-body).
 
@@ -533,7 +535,11 @@ AppInspector.refresh()
 
 AppInspector.setLocked(bool)
 // true → backdrop bloqueante (modo edición); false → lectura.
-// Sustituye/coexiste con el body.arbol-lock del árbol.
+// Sustituye/coexiste con el body.arbol-lock del árbol. Con un fragmento Jinja con marco,
+// el propio marco lo gobierna (bloqueado en edición, libre en lectura).
+
+AppInspector.setFrame(descriptor | null)
+// Marco que alimenta una isla React (el puente del árbol). Ver «Marco único del inspector».
 
 AppInspector.isOpen()        // → boolean
 AppInspector.currentSel()   // → selId actual o null
@@ -553,6 +559,86 @@ AppInspector.currentSel()   // → selId actual o null
 |---|---|
 | `.app-shell.is-inspector-open` | Inspector visible |
 | `.app-shell.is-inspector-locked` | Edición — backdrop bloqueante |
+
+#### Marco único del inspector (ADR-053 §A y §B, #1042)
+
+El shell pinta **una sola barra** (`#app-inspector-bar`, fuera del scroll del cuerpo) con la
+cabecera y los gestos de ver / editar / guardar / cancelar / cerrar. Ni los fragmentos Jinja ni
+el árbol pintan ya la suya. Hay dos fuentes:
+
+**1. Un fragmento Jinja**, con atributos en su raíz (el DOM que hay en el cuerpo es la verdad):
+
+```html
+<!-- lectura -->
+<div class="p-3" data-inspector-frame="ver" data-title="…"
+     {% if puede_editar %}data-edit-url="{{ url_for('modulo.editar_fragmento', id=x.id) }}"{% endif %}>
+<!-- edición -->
+<div class="p-3" data-inspector-frame="editar" data-title="…">
+  <form data-inspector-form data-action="{{ url_for('modulo.editar', id=x.id) }}"> … </form>
+</div>
+```
+
+| Atributo | Dónde | Qué hace |
+|---|---|---|
+| `data-inspector-frame` | raíz | `ver` o `editar`. Sin él, el fragmento no tiene barra (cola, seguimiento y huérfanos, de solo lectura) |
+| `data-edit-url` | lectura | URL del fragmento de edición. Sin él no hay «Editar» (es el antiguo `{% if puede_editar %}`) |
+| `data-title` | ambas | Sustituye al título del listado. **Ponerlo cuando el título sale de un campo editable**; si no, la cabecera queda desactualizada tras guardar. Con el nombre o el código inmutable basta el del listado |
+| `data-edit-label` | lectura | Rótulo de «Editar» (p. ej. «Resolver» en mensajes internos, donde editar es resolver) |
+| `data-save-label` | edición | Rótulo de «Guardar» (p. ej. «Resolver petición») |
+| `data-min-width` | ambas | Ancho mínimo del cuerpo en px (ver abajo) |
+
+Reglas del contrato:
+
+- **El fragmento no lleva botones de editar, cancelar ni guardar.** El formulario de edición es
+  el **único** `form[data-inspector-form]` del fragmento; «Guardar» lo envía con `requestSubmit()`
+  (pasa por la validación HTML5 y por el envío XHR de siempre). Con dos formularios o con
+  ninguno, «Guardar» queda deshabilitado y el shell avisa en consola. Intro en un campo de
+  texto guarda si hay cambios.
+- Las **acciones propias** de la lectura (activar, eliminar, «Gestionar»…) se quedan en el
+  cuerpo: el marco solo se lleva «Editar».
+- **«Guardar» gris y «Cerrar» con el formulario limpio; «Guardar» activo y «Cancelar» cuando se
+  ha tocado.** Tocar es un `input` o un `change` dentro del formulario. **Todo script que cambie
+  campos sin que el usuario teclee** (añadir, quitar o mover una fila, escribir un campo oculto,
+  elegir un fichero en un modal) **tiene que disparar un `change` que burbujee**
+  (`el.dispatchEvent(new Event('change', { bubbles: true }))`): si no, «Guardar» no se enciende y
+  el cambio no se puede guardar, sin ningún aviso. Lo hacen `requisitos-inspector.js`,
+  `tablas-maestras-pasos.js` y el explorador de plantillas.
+- Los botones del marco **no llevan icono** junto al verbo (estilo de la Junta): «Editar»,
+  «Guardar», «Cancelar/Cerrar». Orden: «Cancelar/Cerrar» a la izquierda y la acción principal a la
+  derecha, y «Editar» y «Guardar» ocupan el mismo sitio (al pulsar «Editar» el puntero cae sobre
+  «Guardar» deshabilitado).
+- En vista **no hay cruz**: se cierra con clic exterior, `Escape` o un clic en la franja de
+  redimensionado. (`_inspector_cola.html` conserva la suya hasta que adopte el marco, #1039.)
+- El **interior no cambia**: «Guardar» del marco es el del formulario entero. Lo que un bloque
+  interior guarda por su cuenta (en el árbol: ítems técnicos, shuttles, vincular documento…)
+  no enciende la barra (ADR-023 §5 bis, rev. 2026-07-29).
+
+**2. El árbol del expediente (React)**, con `AppInspector.setFrame(descriptor)`, que lo llama
+`usePuenteInspector` (`react-src/src/expediente-arbol/puenteInspector.js`) cada vez que cambia el
+estado:
+
+```javascript
+AppInspector.setFrame({
+  modo: 'ver' | 'editar', tipo, titulo, estado, candado,        // cabecera
+  semaforo: { color, titulo },                                  // semáforo del nodo (o null)
+  puedeEditar, hayCambios, guardando, minWidth,
+  onEditar, onGuardar, onSalir,                                 // los tres gestos
+})
+```
+
+Los gestos ejecutan las acciones del store (`entrarEdicion`, `guardar()` —nunca con el evento del
+clic: su primer argumento es la justificación del escape— y `cancelar`). `hayCambios` es el del
+borrador global del store.
+
+**Ancho mínimo (D11).** El cuerpo hace scroll vertical y horizontal; la barra queda fuera. Cada
+caso declara el ancho por debajo del cual su contenido no se encoge más (`data-min-width`, o
+`minWidth` en el descriptor) y el shell lo vuelca en `--inspector-min`. Sin declarar, el cuerpo se
+encoge hasta el mínimo del shell (320 px). Las cifras de cada fragmento se midieron con este
+criterio: barrido de 320 a 960 px de 20 en 20, en lectura y en edición, con scrollbars clásicos
+activos; el caso «cabe» cuando el cuerpo no desborda y ningún control visible queda por debajo
+de su umbral (texto, textarea y fecha 110 px; select 80; número 56). Para un fragmento nuevo,
+medirlo igual en vez de estimarlo. La señal del scroll horizontal es la barra nativa; con barras
+superpuestas se oculta sola y eso no está medido en el navegador de la Consejería.
 
 ---
 
