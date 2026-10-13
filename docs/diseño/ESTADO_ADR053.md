@@ -28,7 +28,7 @@ al hub, el código muerto y la documentación obsoleta.
 | Orden | Issue | Qué es | Capa | Estado (11/10/2026) |
 |---|---|---|---|---|
 | 0 | — | **ADR-053** redactado a partir del PRE-ADR, con cabeceras «Enmendado por» en ADR-023 (§5 bis, §6, §8 y §9) y en ADR-017 | Diseño | Redactado el 11/10/2026 como Propuesta y **Adoptada por Carlos el 13/10/2026**. Las *Interpretación* de su texto (el puente del marco, el alcance del contrato, la isla `mi-trabajo` tras #1039) siguen sin confirmar: las fija la fase 1 de #1042 o la profundización del issue que toque |
-| 1 | **#1042** | **Marco del inspector** (D9–D12, §8.15): el shell pinta la barra (cabecera, Editar, Guardar/Cancelar, Cerrar) con «Cerrar» visible a cualquier ancho; el árbol la alimenta con su estado de borrador (el puente); cuerpo con scroll y ancho mínimo por caso, con scroll horizontal por debajo. Primer paso: prototipar el puente. Un solo issue en cinco fases (prototipo del puente; marco en el shell y el árbol; fragmentos Jinja; ancho mínimo y scroll horizontal; documentación) | Frontend | Abierto (11/10/2026), con el análisis de impacto en el cuerpo; fase 1 sin empezar. Base previa: #676 y #688 (cerrados; marco del árbol) |
+| 1 | **#1042** | **Marco del inspector** (D9–D12, §8.15): el shell pinta la barra (cabecera, Editar, Guardar/Cancelar, Cerrar) con «Cerrar» visible a cualquier ancho; el árbol la alimenta con su estado de borrador (el puente); cuerpo con scroll y ancho mínimo por caso, con scroll horizontal por debajo. Primer paso: prototipar el puente. Un solo issue en cinco fases (prototipo del puente; marco en el shell y el árbol; fragmentos Jinja; ancho mínimo y scroll horizontal; documentación) | Frontend | Abierto. **Implementado el 13/10/2026 en las cinco fases**, en la rama `claude/stoic-lamport-0ps7sn` y sin PR todavía: marco en el shell, puente del árbol, los 17 fragmentos Jinja (lectura y edición) y ancho mínimo con scroll horizontal; el contrato, en `GUIA_COMPONENTES_INTERACTIVOS.md` §«Marco único del inspector». Pendiente de Carlos: confirmar las cifras de ancho mínimo (propuesta, medidas con barras de scroll clásicas) y si el contrato se publica como comentario en #1042. Base previa: #676 y #688 (cerrados; marco del árbol) |
 | 2 | **#1043** | **Inspector del árbol: lectura ≈ edición** (D15) | Frontend | Abierto (11/10/2026), en cinco fases; la fase 1 es de definición, sin código, y no ha empezado. Se mira junto al marco: toca la lectura de `Inspector.jsx` y el `Editor` genérico |
 | 3 | **#1041** | **Listados fuera del estándar** (D16): un issue y decisión una a una de cinco páginas —tablas maestras, normas y variables, seguimiento y huérfanos, configuración del motor, Delegación Territorial—: adoptan el estándar (incluida una base con varias listas por página) o se justifica el motivo | Frontend | Abierto (11/10/2026); las decisiones por página, sin tomar. Independiente del marco. Absorbió #755 y #644 (cerrados); la causa raíz de #644 es su primera tarea |
 | 4 | **#1039** | Cola de Mi trabajo al listado estándar Jinja (D8). Su inspector se adapta al marco | Frontend | Abierto, sin profundizar. El listado puede ir antes que el marco; el inspector, después (*propuesta*) |
@@ -58,8 +58,12 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 
 ## Huecos por definir
 
-- **El puente del marco con el estado del árbol** (`hayCambios`, `guardando`, `guardar`): se averigua
-  prototipando, en el primer issue (§8.15).
+- ~~**El puente del marco con el estado del árbol** (`hayCambios`, `guardando`, `guardar`)~~ — resuelto el
+  13/10 en #1042: el hook `usePuenteInspector` empuja un descriptor al shell con `AppInspector.setFrame`.
+- **«Cerrar» descarta sin avisar lo escrito en los bloques interiores del árbol** (ítem técnico y shuttle
+  de requerimientos de ANALIZAR; registro de la notificación de NOTIFICAR): guardan por su cuenta y no
+  encienden la barra del marco, que sigue diciendo «Cerrar». Carlos lo separó de #1042 el 13/10. **Sin
+  issue todavía:** hay un borrador con opciones y preguntas pendiente de su visto bueno.
 - **Dónde se aloja la edición del documento:** el inspector del pool o, desde otros sitios, el modal grande.
   Depende del marco y de que el formulario de edición del pool quepa en el inspector (§8.10, PRE-ADR §10).
 - ~~**#755 frente al issue de D16**~~ — resuelto el 11/10: #1041 absorbió #755 y #644 (los dos cerrados), y
@@ -117,3 +121,9 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   del ADR (el puente del marco, el alcance del contrato, qué hace la isla `mi-trabajo` tras #1039) van
   marcadas *Interpretación* en su texto, y falta que Carlos las confirme.
 - **13/10/2026** — **ADR-053 pasa a Adoptada** (Carlos). Se actualizan sus punteros en las cabeceras de ADR-017 y ADR-023 y en `docs/README.md`; el PRE-ADR, congelado, no se toca. Las *Interpretación* no cambian de estado con la adopción. Carlos confirma que #1042 (marco del inspector) es lo que toca ahora; el resto del orden de la tabla sigue siendo una propuesta.
+- **13/10/2026** — **#1042 implementado** en sus cinco fases (rama de trabajo, sin PR): el shell pinta la
+  barra del marco (cabecera, Editar, Guardar, Cancelar/Cerrar, sin icono junto al verbo); el árbol la
+  alimenta con el puente; los 17 fragmentos Jinja pasan a declarar su marco con atributos `data-*` y pierden
+  sus botones; el cuerpo hace scroll horizontal por debajo del mínimo de cada caso. Decisiones de Carlos en el
+  camino: «Guardar» solo con borrador vivo, el interior se respeta como está y el marco solo responde a sus
+  avisos de «sucio», y la cruz de la Cola se queda hasta su rediseño. Salió un hueco nuevo, sin issue (arriba).
