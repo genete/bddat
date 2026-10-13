@@ -1,16 +1,18 @@
 // Inspector.jsx — panel read-only adaptativo al nodo seleccionado (#500, ADR-016 §5).
 //
-// S3a (lectura): cabecera (tipo+nombre+estado+semáforo, tomada del árbol del store)
-// + datos finos y documentos del detalle lazy (§16) + plazo + agregados del subárbol
-// + acciones rápidas no destructivas (abrir doc, copiar referencia).
+// S3a (lectura): datos finos y documentos del detalle lazy (§16) + plazo + agregados del
+// subárbol + acciones rápidas no destructivas (abrir doc, copiar referencia).
 // Edición / despensa → S3b.
+//
+// La cabecera (tipo, título, estado, semáforo, candado) y los gestos de ver / editar /
+// guardar / cancelar los pinta el shell, no este fichero (marco único, ADR-053 §A, #1042):
+// los alimenta `puenteInspector.js` con el estado del store.
 import React from 'react'
 import { createPortal } from 'react-dom'
 import { useArbolStore, selectHayCambios } from '../store.js'
 import { showToast } from '../../shared/ui/toast.js'
 import { puedeEditarNodo } from '../../shared/auth.js'
 import { estaSellado } from '../sellado.js'
-import Semaforo from './nodos/Semaforo.jsx'
 import BarraPlazo from './nodos/BarraPlazo.jsx'
 import { barraDeActo, fechaLarga } from '../plazoActo.js'
 import Despensa from './Despensa.jsx'
@@ -21,7 +23,7 @@ import NotificarEditor from './NotificarEditor.jsx'
 import BloqueNotificacionesTramite from './notificar/BloqueNotificacionesTramite.jsx'
 import ModalConfirmacionFrase from './ModalConfirmacionFrase.jsx'
 
-const ETIQUETA_TIPO = {
+export const ETIQUETA_TIPO = {
   expediente: 'Expediente',
   solicitud:  'Solicitud',
   version:    'Versión',
@@ -48,7 +50,7 @@ const ROL_DOC = { CONSUMIDO: 'Consumido', PRODUCIDO: 'Producido' }
 
 // --- Búsqueda y conteo de subárbol (para confirmación de borrado, §7) -----------
 
-function buscarNodo(arbol, sel) {
+export function buscarNodo(arbol, sel) {
   if (!arbol || !sel) return null
   if (sel.tipo === 'expediente') return arbol.expediente
   for (const sol of arbol.solicitudes || []) {
@@ -97,7 +99,7 @@ function contarSubarbol(arbol, sel) {
   return {}
 }
 
-function tituloNodo(tipo, nodo) {
+export function tituloNodo(tipo, nodo) {
   if (!nodo) return ''
   if (tipo === 'expediente') return nodo.codigo || ''
   if (tipo === 'solicitud') return [nodo.siglas, nodo.descripcion].filter(Boolean).join(' — ')
@@ -117,29 +119,6 @@ async function copiarReferencia(ref) {
 }
 
 // --- Subcomponentes -------------------------------------------------------------
-
-function Cabecera({ tipo, nodo, compacta }) {
-  const sem = nodo && nodo.semaforo
-  // Candado (#720, ADR-036): solo la propia fase lleva el indicador — es el único
-  // nivel con un acto de cierre formal (documento_resultado_id); trámite/tarea
-  // quedan cubiertos transitivamente, sin badge propio.
-  const cerrada = tipo === 'fase' && nodo && nodo.estado === 'FINALIZADA'
-  return (
-    <div className={`d-flex align-items-start gap-2 min-w-0 ${compacta ? '' : 'mb-3'}`}>
-      {sem && <span className="mt-1"><Semaforo color={sem.color} relleno /></span>}
-      <div className="flex-grow-1 min-w-0">
-        <div className="text-uppercase text-muted small fw-semibold">{ETIQUETA_TIPO[tipo] || tipo}</div>
-        <div className="fw-bold text-truncate">{tituloNodo(tipo, nodo) || '—'}</div>
-        {nodo && nodo.estado && (
-          <span className="badge text-bg-light mt-1">
-            {cerrada && <i className="bi bi-lock-fill me-1" title="Fase cerrada" />}
-            {nodo.estado}
-          </span>
-        )}
-      </div>
-    </div>
-  )
-}
 
 function Campos({ campos }) {
   if (!campos || campos.length === 0) return null
@@ -1071,8 +1050,8 @@ function ModalInformeFinInstruccion() {
 }
 
 // Editor genérico: pinta un control por campo del esquema editable, autofocus en
-// el primero. Guardar/Cancelar viven en la barra fija (BarraEdicion, ADR-023 §5 bis);
-// aquí solo queda Borrar, que no es parte del control de salida del marco.
+// el primero. Guardar/Cancelar viven en la barra del marco (shell, ADR-023 §5 bis,
+// ADR-053 §A); aquí solo queda Borrar, que no es parte del control de salida del marco.
 //
 // Fase cerrada (#720): los campos se deshabilitan (el backend rechazaría el guardado
 // de todos modos, capas 1-3 del ADR) y se antepone ReabrirFase — único camino para
@@ -1191,54 +1170,15 @@ function BotonBorrarTarea() {
   )
 }
 
-// Barra superior fija del marco de edición (ADR-023 §5 bis, #676): cabecera +
-// control de salida, inmutable al scroll del contenido de abajo.
-//
-// El par Guardar/Cancelar de los CAMPOS DIRECTOS del nodo (el esquema editable
-// genérico — hoy `notas` en tarea, `observaciones` en el resto) vive siempre
-// aquí, para cualquier tipo de nodo incluida la superficie-de-trabajo (#688,
-// enmienda de ADR-023 §5 bis): el emplazamiento del control no depende de qué
-// pinte el contenedor de abajo. Lo que cada contenedor bespoke persiste por su
-// cuenta y de inmediato (check documental, check técnico, shuttle, registrar
-// envío…) es ortogonal y no pasa por este ciclo.
-//
-//   onClick del botón de salida siempre `cancelar` — misma acción del store para
-//   ambos rótulos; solo cambia el texto según haya borrador vivo. La confirmación
-//   en sucio ya la impone el bloqueo de light-dismiss del shell (ADR-023 §5 bis),
-//   no un diálogo aparte aquí.
-function BarraEdicion({ tipo, nodo }) {
-  const guardando  = useArbolStore((s) => s.guardando)
-  const guardar    = useArbolStore((s) => s.guardar)
-  const cancelar   = useArbolStore((s) => s.cancelar)
-  const hayCambios = useArbolStore(selectHayCambios)
-
-  return (
-    <div className="flex-shrink-0 border-bottom p-3 d-flex align-items-start justify-content-between gap-2">
-      <Cabecera tipo={tipo} nodo={nodo} compacta />
-      <div className="d-flex gap-2 flex-shrink-0">
-        {/* `() => guardar()` y no `onClick={guardar}`: desde #765 el primer argumento
-            de `guardar` es la justificación del escape, y pasarle el evento del click
-            lo convertiría en un bypass involuntario. */}
-        <button type="button" className="btn btn-sm btn-primary"
-                disabled={guardando || !hayCambios} onClick={() => guardar()}>
-          {guardando ? 'Guardando…' : 'Guardar'}
-        </button>
-        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={cancelar}>
-          {hayCambios ? 'Cancelar' : 'Cerrar'}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// En edición: cabecera+control de salida fijos (BarraEdicion) + un ÚNICO contenedor
-// con scroll para editor y despensa juntos (#725 tarea 6). Antes la despensa vivía en
-// un split fijo aparte (120px al fondo del panel) que competía por la misma franja del
-// viewport con el toast-container (bottom-0, custom.css) — dos elementos fijos al fondo
-// siempre se pisan. Al meterla en el flujo normal del scroll deja de ser un elemento
-// fijo propio. En lectura NO hay split (igual que S3a). El inspector lleva siempre el
-// borde+sombra de edición (arbol-inspector--lock, CSS) porque editar bloquea el resto
-// de la UI desde que se entra; el inspector NUNCA se atenúa (es la zona interactiva).
+// En edición: editor y despensa juntos, en el flujo normal del cuerpo del shell, que es el
+// único que hace scroll (#725 tarea 6, #1042). La cabecera y el control de salida
+// (Guardar / Cancelar / Cerrar) los pinta el marco del shell, fuera de ese scroll
+// (ADR-023 §5 bis, ADR-053 §A). Antes la despensa vivía en un split fijo aparte (120px al
+// fondo del panel) que competía por la misma franja del viewport con el toast-container
+// (bottom-0, custom.css) — dos elementos fijos al fondo siempre se pisan. En lectura NO hay
+// split (igual que S3a). El borde+sombra de edición va en el panel entero
+// (`body.arbol-lock .app-inspector`, arbol.css) porque editar bloquea el resto de la UI desde
+// que se entra; el inspector NUNCA se atenúa (es la zona interactiva).
 function InspectorEdicion({ nodo }) {
   const expedienteId          = useArbolStore((s) => s.expedienteId)
   const seleccion             = useArbolStore((s) => s.seleccion)
@@ -1289,37 +1229,34 @@ function InspectorEdicion({ nodo }) {
   // trámite no notifica a nadie según el catálogo, el bloque no se pinta.
   const esTramite = seleccion.tipo === 'tramite'
   return (
-    <div className="d-flex flex-column h-100 arbol-inspector--lock">
-      <BarraEdicion tipo={seleccion.tipo} nodo={nodo} />
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} className="p-3">
-        {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
-        {!borrarPendienteConfirm && esTramite && (
-          <BloqueNotificacionesTramite expedienteId={expedienteId} tramiteId={seleccion.id} />
-        )}
-        {!borrarPendienteConfirm && esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
-        {!borrarPendienteConfirm && esSolicitud && <CertFinInstruccion />}
-        {!borrarPendienteConfirm && esSolicitud && <CierreSolicitud />}
-        {!borrarPendienteConfirm && esFase && <CertCumplimientoFase />}
-        {!borrarPendienteConfirm && esFase && <CierreFase nodo={nodo} />}
-        {esSolicitud && <ModalInformeFinInstruccion />}
-        {esFase && <ModalConfirmacionCierre />}
-        {borrarPendienteConfirm
-          ? <ConfirmacionBorrado nodo={nodo} />
-          : esAnalizar
-            ? <AnalizarEditor tareaId={seleccion.id} />
-            : esElaborar
-              ? <ElaborarEditor tareaId={seleccion.id} nodo={nodo} />
-              : esNotificar
-                ? <NotificarEditor tareaId={seleccion.id} />
-                : <Editor nodo={nodo} />
-        }
-        {!borrarPendienteConfirm && puedeBorrarTarea && <BotonBorrarTarea />}
-        {!borrarPendienteConfirm && !ocultarDespensa && (
-          <div className="border-top mt-3 pt-3">
-            <Despensa deshabilitarProducido={esAnalizar} esEsperarPlazo={esEsperarPlazo} />
-          </div>
-        )}
-      </div>
+    <div className="p-3">
+      {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
+      {!borrarPendienteConfirm && esTramite && (
+        <BloqueNotificacionesTramite expedienteId={expedienteId} tramiteId={seleccion.id} />
+      )}
+      {!borrarPendienteConfirm && esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
+      {!borrarPendienteConfirm && esSolicitud && <CertFinInstruccion />}
+      {!borrarPendienteConfirm && esSolicitud && <CierreSolicitud />}
+      {!borrarPendienteConfirm && esFase && <CertCumplimientoFase />}
+      {!borrarPendienteConfirm && esFase && <CierreFase nodo={nodo} />}
+      {esSolicitud && <ModalInformeFinInstruccion />}
+      {esFase && <ModalConfirmacionCierre />}
+      {borrarPendienteConfirm
+        ? <ConfirmacionBorrado nodo={nodo} />
+        : esAnalizar
+          ? <AnalizarEditor tareaId={seleccion.id} />
+          : esElaborar
+            ? <ElaborarEditor tareaId={seleccion.id} nodo={nodo} />
+            : esNotificar
+              ? <NotificarEditor tareaId={seleccion.id} />
+              : <Editor nodo={nodo} />
+      }
+      {!borrarPendienteConfirm && puedeBorrarTarea && <BotonBorrarTarea />}
+      {!borrarPendienteConfirm && !ocultarDespensa && (
+        <div className="border-top mt-3 pt-3">
+          <Despensa deshabilitarProducido={esAnalizar} esEsperarPlazo={esEsperarPlazo} />
+        </div>
+      )}
     </div>
   )
 }
@@ -1334,7 +1271,6 @@ export default function Inspector() {
   const cargando = useArbolStore((s) => s.detalleCargando)
   const error = useArbolStore((s) => s.detalleError)
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
-  const entrarEdicion = useArbolStore((s) => s.entrarEdicion)
 
   if (!seleccion) {
     return (
@@ -1347,26 +1283,14 @@ export default function Inspector() {
   const nodo = buscarNodo(arbol, seleccion)
   if (modoEdicion) return <InspectorEdicion nodo={nodo} />
   const esHoja = seleccion.tipo === 'tarea'
-  // Sellado (#720, ADR-036): Editar sigue disponible sobre la propia fase cerrada —
-  // es el único camino hasta el botón "Reabrir fase" del editor — pero no sobre un
-  // trámite/tarea cuya fase está cerrada, donde el backend rechazaría el guardado.
+  // Sellado (#720, ADR-036): el botón Editar del marco sigue disponible sobre la propia fase
+  // cerrada —es el único camino hasta el botón "Reabrir fase" del editor— pero no sobre un
+  // trámite/tarea cuya fase está cerrada, donde el backend rechazaría el guardado (la
+  // condición vive en puenteInspector.js: `puedeEditar`).
   const sellado = estaSellado(arbol, seleccion)
-  const puedeEditar = puedeEditarNodo(seleccion.tipo) && (seleccion.tipo === 'fase' || !sellado)
 
   return (
     <div className="p-3 d-flex flex-column h-100">
-      <Cabecera tipo={seleccion.tipo} nodo={nodo} />
-
-      {puedeEditar && (
-        <div className="mb-3">
-          {/* Editar vive en el inspector: edita el nodo inspeccionado (no "toda la vista"). */}
-          <button type="button" className="btn btn-sm btn-outline-primary"
-                  onClick={() => entrarEdicion(seleccion)}>
-            ✏️ Editar
-          </button>
-        </div>
-      )}
-
       {sellado && seleccion.tipo !== 'fase' && (
         <div className="alert alert-secondary py-2 px-3 small mb-3">
           <i className="bi bi-lock-fill me-1" />

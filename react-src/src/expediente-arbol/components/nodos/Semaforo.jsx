@@ -5,7 +5,7 @@
 // significado del color aparece en el hover (title).
 import React from 'react'
 
-const SIGNIFICADO = {
+export const SIGNIFICADO = {
   rojo:     'Acción pendiente del tramitador',
   amarillo: 'En espera de firma',
   azul:     'En espera de un externo (destinatario o boletín)',

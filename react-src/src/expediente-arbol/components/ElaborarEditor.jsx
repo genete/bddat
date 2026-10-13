@@ -23,7 +23,7 @@
 // firmado.
 //
 // El par Guardar/Cancelar que persiste lo que la Despensa apila vive en la
-// cabecera fija (BarraEdicion, #688), no en el pie de este contenedor.
+// barra del marco del shell (#688, #1042), no en el pie de este contenedor.
 //
 // Destinatario (#929, ADR-051 §H): encima de "Generar escrito", el bloque
 // `BloqueDestinatarioTramite` dice a quién va el escrito y, si el trámite lo elige el
