@@ -1,7 +1,8 @@
 // Despensa.jsx — zona inferior del split del inspector en edición (ADR-016 §5/§10).
 //
 // Modo adaptativo según el tipo de nodo seleccionado:
-//   · tipos-creables (S3b-2): solicitud, fase, trámite, tarea  → lista de tipos + zona de drop/staging
+//   · tipos-creables (S3b-2): solicitud, fase, trámite, tarea  → panel de creación (zona de drop /
+//     tipo elegido) encima de la lista de tipos (#1043)
 //   · docs del pool (S3b-3):  tarea  → fichas de doc del pool + staging consumido/producido
 import React from 'react'
 import { useArbolStore } from '../store.js'
@@ -114,24 +115,11 @@ function DespensaTipos() {
         )}
       </div>
 
-      {mostrados.length > 0 ? (
-        <div className="d-flex flex-column gap-1">
-          {mostrados.map((t) => (
-            <FilaTipoCreable
-              key={t.tipo_id}
-              tipo={t}
-              variante="panel"
-              seleccionado={tipoCreacionPendiente?.tipo_id === t.tipo_id}
-              onClick={() => seleccionarTipoCrear(t)}
-              draggable
-              onDragStart={onDragStart(t)}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="text-muted small fst-italic">No hay tipos disponibles</div>
-      )}
-
+      {/* Panel de creación ENCIMA de la lista (#1043, observación de Carlos 13/10): con 23 tipos,
+          el botón «Crear» debajo de la lista quedaba a cientos de píxeles de la fila elegida y de
+          lo visible, y no se notaba nada al elegir. Aquí se ve desde que se entra en edición:
+          primero la zona de arrastrar con «Crear» deshabilitado, y al elegir un tipo, ese mismo
+          sitio pasa a ser el panel del tipo elegido. */}
       {tipoCreacionPendiente && bloqueoActual ? (
         <BloqueoForzar
           bloqueo={bloqueoActual}
@@ -178,16 +166,42 @@ function DespensaTipos() {
         </div>
       ) : (
         <div
-          className={`d-flex align-items-center justify-content-center rounded border small text-muted p-2 ${
-            draggingOver ? 'bg-primary-subtle border-primary text-primary' : 'border-secondary-subtle'
+          className={`d-flex align-items-center gap-2 rounded border small p-2 ${
+            draggingOver ? 'bg-primary-subtle border-primary text-primary' : 'border-secondary-subtle text-muted'
           }`}
           style={{ borderStyle: 'dashed', minHeight: 36 }}
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
         >
-          {draggingOver ? 'Suelta aquí' : 'Arrastra o selecciona un tipo'}
+          <span className="flex-grow-1 text-center">
+            {draggingOver ? 'Suelta aquí' : 'Arrastra o selecciona un tipo'}
+          </span>
+          {/* `pointerEvents: none`: un botón deshabilitado se traga los eventos de arrastre y la
+              zona dejaría de aceptar el «soltar» justo encima de él. */}
+          <button type="button" className="btn btn-sm btn-primary" disabled
+                  style={{ pointerEvents: 'none' }}>
+            Crear
+          </button>
         </div>
+      )}
+
+      {mostrados.length > 0 ? (
+        <div className="d-flex flex-column gap-1">
+          {mostrados.map((t) => (
+            <FilaTipoCreable
+              key={t.tipo_id}
+              tipo={t}
+              variante="panel"
+              seleccionado={tipoCreacionPendiente?.tipo_id === t.tipo_id}
+              onClick={() => seleccionarTipoCrear(t)}
+              draggable
+              onDragStart={onDragStart(t)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="text-muted small fst-italic">No hay tipos disponibles</div>
       )}
     </div>
   )
