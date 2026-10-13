@@ -1092,7 +1092,6 @@ function Editor({ nodo }) {
   const guardando  = useArbolStore((s) => s.guardando)
   const guardar    = useArbolStore((s) => s.guardar)
   const hayCambios = useArbolStore(selectHayCambios)
-  const solicitarBorrado = useArbolStore((s) => s.solicitarBorrado)
   const firstRef = React.useRef(null)
   React.useEffect(() => { if (firstRef.current) firstRef.current.focus() }, [campos])
 
@@ -1134,12 +1133,7 @@ function Editor({ nodo }) {
           {ctrl(c, i === 0 ? firstRef : null)}
         </div>
       ))}
-      {puedeBorrar && (
-        <div className="d-flex mt-3">
-          <button type="button" className="btn btn-sm btn-outline-danger"
-                  onClick={solicitarBorrado}>🗑️ Borrar</button>
-        </div>
-      )}
+      {puedeBorrar && <BotonBorrar />}
     </form>
   )
 }
@@ -1287,7 +1281,7 @@ function InspectorEdicion({ nodo }) {
                   <CierreSolicitud />
                 </div>
               )}
-              {puedeBorrar && <BotonBorrar />}
+              {puedeBorrar && <div className="mb-3"><BotonBorrar /></div>}
             </>
           )}
         {esSolicitud && <ModalInformeFinInstruccion />}
