@@ -96,10 +96,14 @@
             </span>
           </div>
         </div>
+        {# Orden: «Cancelar/Cerrar» a la izquierda y la acción principal a la derecha (como en los
+           formularios y modales de la app). «Editar» y «Guardar» no coinciden nunca, y ocupan el
+           mismo sitio: al pulsar «Editar» el puntero cae sobre «Guardar» deshabilitado (sin hover),
+           no sobre una salida a un doble clic de distancia. #}
         <div class="app-inspector__bar-actions">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-frame-salir hidden>Cerrar</button>
           <button type="button" class="btn btn-sm btn-primary" data-frame-editar hidden>Editar</button>
           <button type="button" class="btn btn-sm btn-primary" data-frame-guardar hidden>Guardar</button>
-          <button type="button" class="btn btn-sm btn-outline-secondary" data-frame-salir hidden>Cerrar</button>
         </div>
       </div>
       <div class="app-inspector__body" id="app-inspector-body">

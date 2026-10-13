@@ -112,7 +112,10 @@
     var f = _frame;
     bar.hidden = false;
 
-    _q(bar, '[data-frame-titulo]').textContent = f.titulo || '';
+    // El título se trunca con puntos suspensivos si no cabe; el texto completo, en el tooltip.
+    var titulo = _q(bar, '[data-frame-titulo]');
+    titulo.textContent = f.titulo || '';
+    titulo.title = f.titulo || '';
 
     var tipo = _q(bar, '[data-frame-tipo]');
     tipo.hidden = !f.tipo;
