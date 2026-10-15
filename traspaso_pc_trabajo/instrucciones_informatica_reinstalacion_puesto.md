@@ -118,7 +118,7 @@ Con la contraseña de `postgres`, desde Git Bash en `/d/BDDAT`:
    no sirve: `rm -rf venv && python -m venv venv && venv/Scripts/python.exe -m pip install -r requirements.txt`.
 3. **`.env`:** revisar contraseñas de `DATABASE_URL` y `TEST_DATABASE_URL`, y que las rutas
    `D:/BDDAT/...` sigan siendo válidas. Si LibreOffice quedó en otra ruta, fijar `SOFFICE`.
-4. **Esquema y catálogos:** `venv/Scripts/python.exe -m flask db upgrade`. Las 193 migraciones
+4. **Esquema y catálogos:** `venv/Scripts/python.exe -m flask db upgrade`. Las 192 migraciones
    reconstruyen el esquema y el catálogo (91 de ellas insertan datos). Los datos de operación
    (expedientes, notificaciones…) se pierden con la base, y por vuestras reglas no condicionan nada.
 5. **Almacén y manifiestos:** comprobar que `D:\BDDAT\almacen_dev\ALMACEN.txt` y

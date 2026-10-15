@@ -57,7 +57,7 @@ antes de empezar en el otro*.
 
 **PostgreSQL.** Instalado con `apt` (la 16 que trae Ubuntu 24.04 es la que ya prueba la nube), solo en
 `localhost`. Roles `bddat_admin` y `claude_desktop`, bases `bddat` y `bddat_test`. La BD se reconstruye
-con `flask db upgrade` (193 migraciones: esquema y catálogo). Consultas de Claude: `psql` por
+con `flask db upgrade` (192 migraciones: esquema y catálogo). Consultas de Claude: `psql` por
 Bash dentro de la máquina. El **MCP de PostgreSQL** es dudoso: la documentación dice que los
 conectores y MCP de una sesión SSH corren a través de Desktop, es decir, en el PC trabajo y no en el
 servidor. Habría que verlo; el plan B es `psql`.

@@ -165,7 +165,7 @@ y el servidor va a estar listo en pocos días.
 - **Tampoco se pierde la BD de desarrollo** (confirmado: su carpeta de datos estaba en D:). Se
   recupera reinstalando la misma versión mayor de PostgreSQL y apuntando el servicio a esa carpeta
   (ver instrucciones para Informática, §2). Con la BD intacta, la prioridad de A sube: es lo que
-  restablece el entorno tal cual estaba. Plan B si no arranca: reconstruir desde las 193 migraciones.
+  restablece el entorno tal cual estaba. Plan B si no arranca: reconstruir desde las 192 migraciones.
 - **Sí se pierde:** la configuración de usuario de Claude local (MCP de PostgreSQL, Playwright y
   Windows) y las memorias locales del proyecto, más el `venv` (apunta al Python antiguo y se recrea).
 - **Riesgo vivo:** `.env`, `docs_prueba/`, `almacen_dev/`, `manifiestos_dev/` y la carpeta de datos de
