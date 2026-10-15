@@ -59,8 +59,8 @@ automatización.
   certificados de cierre; notificación edictal; plazos desde catálogo; motor de reglas e invariantes; sellado de fase
   cerrada; almacén de ficheros; escritos en .odt; buscador global; seguimiento y estadísticas.
 - **En curso:** fase de DUP; notificaciones a varios destinatarios; interfaz unificada.
-- **Pendiente antes de producción:** resto de fases, importación de expedientes de Access, HTTPS y certificado,
-  Esquema Nacional de Seguridad, copias de seguridad.
+- **Pendiente antes de producción:** resto de fases, importación de expedientes de Access y adecuación
+  al ENS (categorización y medidas técnicas: HTTPS, copias, autenticación corporativa, registro).
 - **Después de producción:** automatización de BandeJA, Notifica-PNT y Port@firmas; mensajería; elementos
   eléctricos del proyecto (activos), con repositorio propio `genete/bddat-instalaciones`, y su cartografía (PostGIS);
   manual de usuario; exportaciones e informes.
