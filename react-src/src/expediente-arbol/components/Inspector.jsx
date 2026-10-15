@@ -22,7 +22,9 @@ import ElaborarEditor from './ElaborarEditor.jsx'
 import NotificarEditor from './NotificarEditor.jsx'
 import DatosNodo from './DatosNodo.jsx'
 import { disenoDeNodo } from '../disenosDatos.js'
-import BloqueNotificacionesTramite from './notificar/BloqueNotificacionesTramite.jsx'
+import {
+  TarjetaNotificacionesTramite, AccionNotificacionesTramite, useHayNotificacionesTramite,
+} from './notificar/NotificacionesTramite.jsx'
 import ModalConfirmacionFrase from './ModalConfirmacionFrase.jsx'
 
 export const ETIQUETA_TIPO = {
@@ -364,11 +366,12 @@ function Documentos({ documentos }) {
 //
 // Es la misma en lectura y en edición: en edición lo informativo no desaparece, se pueda editar
 // o no. Hoy la pintan en los dos modos los nodos ya revisados, que son los que tienen un diseño
-// en `disenosDatos.js` (expediente, solicitud, versión y fase); los demás la pintan solo en
-// lectura, con la lista de texto plano, y su edición sigue siendo el `Editor`, hasta que la
-// revisión nodo a nodo los migre.
+// en `disenosDatos.js` (expediente, solicitud, versión, fase, organismo y trámite); los demás la
+// pintan solo en lectura, con la lista de texto plano, y su edición sigue siendo el `Editor`,
+// hasta que la revisión nodo a nodo los migre.
 function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
+  const expedienteId = useArbolStore((s) => s.expedienteId)
   const esHoja = tipo === 'tarea'
   const diseno = disenoDeNodo(tipo)
   // Fase cerrada (#720, ADR-036): los controles vivos se deshabilitan, como hacía el `Editor`.
@@ -378,6 +381,9 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
       {diseno
         ? <DatosNodo diseno={diseno} detalle={detalle} nodo={nodo} bloqueado={faseCerrada} />
         : <Campos campos={detalle.campos} />}
+      {tipo === 'tramite' && (
+        <TarjetaNotificacionesTramite expedienteId={expedienteId} tramiteId={Number(detalle.nodo.id)} />
+      )}
       {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
       <Plazo plazo={detalle.plazo} />
       <PlazosActos nodo={nodo} tipo={tipo} />
@@ -1257,10 +1263,12 @@ function InspectorEdicion({ nodo }) {
   // decide el backend (`cert_cumplimiento`/`cert_cierre` solo vienen en las
   // finalizadoras).
   const esFase = seleccion.tipo === 'fase'
-  // Notificaciones del trámite (#929, ADR-051 §D): a quién falta notificar y el botón de
-  // añadirlas. Mismo emplazamiento que las acciones de fase: junto al Editor. Si el
-  // trámite no notifica a nadie según el catálogo, el bloque no se pinta.
+  // Notificaciones del trámite (#929, ADR-051 §D): a quién falta notificar (tarjeta de datos, en
+  // los dos modos) y el botón de añadirlas (acciones, solo aquí). Si el trámite no notifica a
+  // nadie según el catálogo, ni la tarjeta ni el botón se pintan. El hook va siempre (reglas de
+  // los hooks) y solo cuenta si el nodo es un trámite: un id de tarea puede coincidir con el último.
   const esTramite = seleccion.tipo === 'tramite'
+  const hayNotifTramite = useHayNotificacionesTramite(Number(seleccion.id)) && esTramite
   // Nodos migrados (#1043): la misma columna que la lectura (alto completo, pie pegado abajo) y
   // tres zonas en este orden: datos (la misma zona que en lectura), acciones y creación (solo
   // en edición, debajo de los datos) y pie. En las acciones va primero la Despensa —lo
@@ -1277,6 +1285,7 @@ function InspectorEdicion({ nodo }) {
     const hayPropias = esSolicitud || faseCerrada
       || (esFaseConsultas && organismosPendientesSeparata(nodo).length > 0)
       || (esFase && hayDetalle && !!(detalle.cert_cumplimiento || detalle.cert_cierre))
+      || hayNotifTramite
     return (
       <div className="p-3 d-flex flex-column h-100">
         {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
@@ -1298,6 +1307,9 @@ function InspectorEdicion({ nodo }) {
                   {esFase && <CertCumplimientoFase />}
                   {esFase && <CierreFase nodo={nodo} />}
                   {faseCerrada && <ReabrirFase />}
+                  {esTramite && (
+                    <AccionNotificacionesTramite expedienteId={expedienteId} tramiteId={Number(seleccion.id)} />
+                  )}
                 </div>
               )}
               {puedeBorrar && <div className="mb-3"><BotonBorrar /></div>}
@@ -1312,9 +1324,6 @@ function InspectorEdicion({ nodo }) {
   return (
     <div className="p-3">
       {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
-      {!borrarPendienteConfirm && esTramite && (
-        <BloqueNotificacionesTramite expedienteId={expedienteId} tramiteId={seleccion.id} />
-      )}
       {!borrarPendienteConfirm && esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
       {!borrarPendienteConfirm && esSolicitud && <CertFinInstruccion />}
       {!borrarPendienteConfirm && esSolicitud && <CierreSolicitud />}

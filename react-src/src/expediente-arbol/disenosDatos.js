@@ -151,12 +151,31 @@ export const DISENO_ORGANISMO = {
   ],
 }
 
+// Los dos datos del trámite salen en los dos modos y Observaciones es de solo lectura o textarea vivo
+// (criterio de Carlos, 13/10). Las notificaciones del trámite (#929) no son un dato del payload
+// sino su propia tarjeta, justo debajo de esta: la pinta `ZonaDatos`
+// (`notificar/NotificacionesTramite.jsx`), y su botón va a las acciones, solo en edición.
+export const DISENO_TRAMITE = {
+  // Estado está en la barra.
+  ocultas: ['Estado'],
+  tarjetas: [
+    {
+      titulo: 'Datos del trámite', icono: 'fa-file-alt',
+      campos: [
+        { etiqueta: 'Nº de tareas', col: 6 },
+        { etiqueta: 'Observaciones', campo: 'observaciones', control: 'textarea' },
+      ],
+    },
+  ],
+}
+
 const DISENOS = {
   expediente: DISENO_EXPEDIENTE,
   solicitud: DISENO_SOLICITUD,
   version: DISENO_VERSION,
   fase: DISENO_FASE,
   organismo: DISENO_ORGANISMO,
+  tramite: DISENO_TRAMITE,
 }
 
 // El diseño del nodo, o null si todavía no está migrado.
