@@ -41,6 +41,7 @@ from app.models.tramites_organismos import TramiteOrganismo
 from app.models.reformados_proyecto import ReformadoProyecto
 from app.services import estado_dominio as sem
 from app.services import notificaciones as notif_svc
+from app.services.consolidacion_defectos import tramite_con_secciones_extendidas
 
 log = logging.getLogger(__name__)
 
@@ -475,14 +476,14 @@ def _serializar_organismos_fase(fase, tramites_data: list[dict]) -> list[dict]:
 def _serializar_tramite(tr) -> dict:
     agg = _agregados_vacios()
     tareas_data = []
+    tt = tr.tipo_tramite
     for ta in sorted(tr.tareas, key=lambda t: t.id):
-        nodo, nodo_agg = _serializar_tarea(ta)
+        nodo, nodo_agg = _serializar_tarea(ta, tt.codigo if tt else None)
         tareas_data.append(nodo)
         _sumar_agregados(agg, nodo_agg)
 
     est, propio = sem.estado_tramite(tr, [t['semaforo']['estado'] for t in tareas_data])
 
-    tt = tr.tipo_tramite
     return {
         'tipo': 'tramite',
         'id': tr.id,
@@ -496,12 +497,17 @@ def _serializar_tramite(tr) -> dict:
     }
 
 
-def _serializar_tarea(tarea) -> tuple[dict, dict]:
+def _serializar_tarea(tarea, codigo_tramite: Optional[str]) -> tuple[dict, dict]:
     """
     Devuelve (nodo, agregados_de_esta_tarea).
 
     La tarea es hoja: no lleva bloque 'agregados' propio, pero aporta sus átomos
     (plazos, pendientes_notificar) al agregado de sus ancestros.
+
+    `codigo_tramite` es el del trámite que la contiene: lo que enseña el inspector de una
+    tarea depende del tipo de tarea y del trámite (#1043), así que el nodo de ANALIZAR dice
+    si su trámite lleva las secciones extendidas (`analisis_extendido`) y el front no repite
+    esa lista.
     """
     tt = tarea.tipo_tarea
     codigo = tt.codigo if tt else None
@@ -531,6 +537,8 @@ def _serializar_tarea(tarea) -> tuple[dict, dict]:
     if codigo == 'NOTIFICAR':
         nodo['justificantes_previos'] = {'count': len(tarea.justificantes_previos)}
         nodo['sede'] = notif_svc.estado_sede(tarea)
+    if codigo == 'ANALIZAR':
+        nodo['analisis_extendido'] = tramite_con_secciones_extendidas(codigo_tramite)
 
     agg = _agregados_vacios()
 

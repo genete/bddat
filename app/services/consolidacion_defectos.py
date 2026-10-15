@@ -29,6 +29,28 @@ from app.services.assembler import build
 from app.services.requisitos import evaluar_requisitos
 from app.services.items_tecnicos import evaluar_items_tecnicos
 
+# Trámites cuya tarea ANALIZAR lleva las secciones extendidas del contenedor
+# (#442: check documental #495, check técnico #581, requerimientos #440).
+# El resto de trámites cuya tarea ANALIZAR produce un DIAGNOSTICO (CONSULTA_SEPARATA,
+# AUDIENCIA...) solo necesita el núcleo común (resultado + producir documento).
+#
+# Única fuente de esa distinción: la leen el endpoint de ANALIZAR (`secciones_extendidas`) y el
+# árbol (`analisis_extendido` en el nodo de la tarea, #1043), de modo que el inspector sabe qué
+# variante pintar antes de cargar nada y no repite esta lista en el front.
+TRAMITES_CON_SECCIONES_ANALISIS = frozenset({'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_SUBSANACION'})
+
+
+def tramite_con_secciones_extendidas(codigo_tramite) -> bool:
+    """¿Lleva el trámite de este código las secciones extendidas de ANALIZAR (#442/#677)?"""
+    return codigo_tramite in TRAMITES_CON_SECCIONES_ANALISIS
+
+
+def tiene_secciones_extendidas(tarea) -> bool:
+    """Trámite de la tarea ∈ TRAMITES_CON_SECCIONES_ANALISIS (#442/#677)."""
+    tramite = tarea.tramite
+    codigo = tramite.tipo_tramite.codigo if tramite and tramite.tipo_tramite else None
+    return tramite_con_secciones_extendidas(codigo)
+
 
 def _cita_normativa(norma, articulo) -> str:
     """' (art. X, Título de la norma)' si hay norma; cadena vacía si no.

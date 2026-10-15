@@ -46,7 +46,13 @@ from app.utils.formularios import leer_json
 from app.services.assembler import build, build_sujeto
 from app.services.requisitos import evaluar_requisitos
 from app.services.items_tecnicos import evaluar_items_tecnicos
-from app.services.consolidacion_defectos import consolidar_defectos
+from app.services.consolidacion_defectos import (
+    consolidar_defectos,
+    # Los dos nombres con guion bajo siguen importables desde aquí (los usan los tests #442 y
+    # #677): la lista y la función viven ahora en el servicio, que también las lee el árbol.
+    TRAMITES_CON_SECCIONES_ANALISIS as _TRAMITES_CON_SECCIONES_ANALISIS,
+    tiene_secciones_extendidas as _tiene_secciones_extendidas,
+)
 from app.services.diagnosticos import (
     crear_diagnostico, revertir_diagnostico, motivo_bloqueo_reversion,
     DiagnosticoConsumidoError, DiagnosticoSuperadoError, FaseCerradaError,
@@ -61,12 +67,6 @@ from app.services import notificaciones as notif_svc
 from app.services import destinatarios_notificacion as dest_svc
 from app.services.estado_dominio import estado_tarea
 from app.utils.permisos import verificar_acceso_expediente, tiene_permiso
-
-# Trámites cuya tarea ANALIZAR lleva las secciones extendidas del contenedor
-# (#442: check documental #495, check técnico #581, requerimientos #440).
-# El resto de trámites cuya tarea ANALIZAR produce un DIAGNOSTICO (CONSULTA_SEPARATA,
-# AUDIENCIA...) solo necesita el núcleo común (resultado + producir documento).
-_TRAMITES_CON_SECCIONES_ANALISIS = {'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_SUBSANACION'}
 
 # Blueprint para API
 api_bp = Blueprint('api', __name__, url_prefix='/api')
@@ -1546,11 +1546,6 @@ def _codigo_tramite(tarea) -> str | None:
         tarea.tramite.tipo_tramite.codigo
         if tarea.tramite and tarea.tramite.tipo_tramite else None
     )
-
-
-def _tiene_secciones_extendidas(tarea) -> bool:
-    """Trámite de la tarea ∈ _TRAMITES_CON_SECCIONES_ANALISIS (#442/#677)."""
-    return _codigo_tramite(tarea) in _TRAMITES_CON_SECCIONES_ANALISIS
 
 
 def _es_ronda_subsanacion(tarea) -> bool:
