@@ -140,7 +140,40 @@ Orden de preferencia de las alternativas, todas viables salvo la primera mejor:
 El desarrollo en la nube sigue siendo viable en cualquier caso: lo que se pierde sin el equipo es el
 entorno real para «trastear», no la capacidad de programar.
 
-## 8. Cómo contarlo en una frase
+## 8. Usuarios, Internet y dominio en el PC Linux
+
+**Quién corre cuando el PC está encendido y esperando.** Nadie ha hecho login. `systemd` lanza los
+servicios configurados, cada uno con su usuario de sistema: PostgreSQL como `postgres`, Flask como un
+usuario sin privilegios (p. ej. `bddat`) o como tu cuenta. `root` solo lo usan el arranque y el servicio
+SSH; nada tuyo corre como root y nadie entra como root (se usa `sudo`).
+
+**Quién necesita Internet.** Por defecto, la salida depende de la **máquina**, no del usuario de Linux:
+el cortafuegos o proxy ve la IP del equipo. Necesitan Internet `apt`, `git`, `pip`, `npm` y `claude`
+(con tu cuenta); Flask y PostgreSQL no. Excepción: un proxy que pida identificarse. Tres casos a
+preguntar:
+1. La IP del servidor tiene salida abierta o autorizada: nada más que hacer.
+2. Proxy sin autenticación, basta autorizar la IP: se configura la dirección del proxy una vez.
+3. Proxy con usuario y contraseña: hace falta una cuenta de servicio y guardar sus credenciales en la
+   configuración. El caso incómodo.
+
+El PC de trabajo probablemente sale con tu usuario de dominio (Kerberos o NTLM transparente); un Linux
+sin dominio no puede hacerlo.
+
+**Cómo entras por SSH.** Con una cuenta Linux de esa máquina (normalmente local, p. ej. `carlos`), con
+clave SSH y sin pasar por el dominio: `ssh carlos@servidor`. Todo lo que hagas, Claude Code incluido,
+corre bajo esa cuenta.
+
+**Dominio.** Linux puede unirse a Active Directory. Entonces no te crean un usuario nuevo: usas tu
+cuenta de dominio de siempre, y el equipo recibe su propia cuenta de equipo. No es imprescindible;
+lo exigirá Informática si su política obliga a cuentas centralizadas y auditables (ENS, #176).
+Cualquiera de las dos vías vale con una condición: **tu cuenta, local o de dominio, debe tener `sudo`**.
+Claude Desktop por SSH necesita además entrar con clave, sin contraseña interactiva.
+
+**Preguntas para el coordinador:** (1) ¿cuenta local con clave SSH o unido al dominio, con `sudo` en
+ambos casos?; (2) ¿cómo sale el servidor a Internet: abierto por IP, proxy sin autenticación o proxy
+con usuario?
+
+## 9. Cómo contarlo en una frase
 
 «Necesito un servidor Linux en la red interna, con permisos de administración para mí, donde alojar la
 base de datos y la aplicación de desarrollo, para no depender de mi PC de trabajo; es además el ensayo
