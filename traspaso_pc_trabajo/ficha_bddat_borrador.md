@@ -62,8 +62,8 @@ automatización.
 - **Pendiente antes de producción:** resto de fases, importación de expedientes de Access y adecuación
   al ENS (categorización y medidas técnicas: HTTPS, copias, autenticación corporativa, registro).
 - **Después de producción:** automatización de BandeJA, Notifica-PNT y Port@firmas; mensajería; elementos
-  eléctricos del proyecto (activos), con repositorio propio `genete/bddat-instalaciones`, y su cartografía (PostGIS);
-  manual de usuario; exportaciones e informes.
+  eléctricos del proyecto (activos), que definen lo que se autoriza, con repositorio propio
+  `genete/bddat-instalaciones`; su representación cartográfica (PostGIS); manual de usuario; exportaciones e informes.
 
 ---
 
