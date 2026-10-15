@@ -121,11 +121,13 @@ En términos de requisitos, no de marca:
 3. **IP fija interna** y SSH (22) permitido desde tu PC de trabajo.
 4. **Salida a Internet** a la lista de §5, con el mecanismo de proxy que corresponda.
 5. Un sitio donde copiar los backups (el share, por ejemplo).
+5b. Acceso HTTP interno a un puerto del servidor desde los PC del edificio, para demos (§9).
 6. Aclarar quién parchea el sistema: puede ser el propio desarrollador con actualizaciones automáticas
    de seguridad.
 
-Para desarrollo **no hace falta** abrir la aplicación a otros usuarios: solo tú, por túnel. El acceso de
-usuarios finales es una fase posterior (despliegue), que ya pasa por el issue #151 con Informática.
+Para el trabajo diario **no hace falta** abrir la aplicación: solo tú, por túnel. Solo para demos
+controladas se abre un puerto, y limitado (§9). El acceso de usuarios finales es una fase posterior
+(despliegue), que ya pasa por el issue #151 con Informática.
 
 ## 7. Si no conceden Linux
 
@@ -173,7 +175,39 @@ Claude Desktop por SSH necesita además entrar con clave, sin contraseña intera
 ambos casos?; (2) ¿cómo sale el servidor a Internet: abierto por IP, proxy sin autenticación o proxy
 con usuario?
 
-## 9. Cómo contarlo en una frase
+## 9. Demo controlada desde un PC del edificio (sin SSH en ese PC)
+
+Caso: presentaciones y formación en una sala (p. ej. el PC del proyector). Manejas tú, contra lo más
+reciente de desarrollo, y en ese PC solo hay navegador: no se puede contar con SSH. **No es una app
+abierta para que otros trasteen.**
+
+1. **Antes, desde tu PC por SSH:** `git pull`, migraciones y arranque de la instancia de demo. Después
+   ya no hace falta SSH.
+2. **Instancia de demo:** segundo arranque de la misma app, con la misma BD de desarrollo, escuchando
+   en `0.0.0.0` en otro puerto (p. ej. 8080). La instancia de trabajo sigue en `127.0.0.1:5000`,
+   cerrada al exterior.
+3. **En la sala:** `http://<ip-o-nombre-del-servidor>:8080` en el navegador y entras con tu usuario.
+
+Ajustes:
+- **Sin `debug`.** `run.py` lleva `debug=True` fijo; expuesto, el depurador de Werkzeug permite ejecutar
+  código a quien llegue al puerto. La instancia de demo se arranca sin él (p. ej. gunicorn con un solo
+  proceso). No recarga al editar: si cambias código, se reinicia.
+- **Cortafuegos del servidor (`ufw`)** limitado a la IP del PC de la sala, y la instancia encendida solo
+  durante la reunión.
+- **Sin HTTPS** la contraseña de tu usuario viaja en claro por la red interna. Riesgo pequeño para una
+  demo corta; se resuelve más adelante con nginx y HTTPS.
+- **Datos:** es la BD de desarrollo; lo que se vea en pantalla es lo que haya en ella.
+
+Depende de Informática: que la red del edificio deje llegar desde ese PC (o desde la red interna) al
+puerto del servidor, porque entre segmentos puede haber un cortafuegos propio. Se pide como «acceso
+HTTP interno a un puerto del servidor desde los PC del edificio»; es lo mismo que necesitará la
+aplicación en producción. Se puede comprobar con un PC cualquiera de otra planta cuando el servidor
+esté montado.
+
+Cuando exista la instancia Docker «pre» (#330), la demo mejor desde ella que desde la de desarrollo,
+para que no se rompa mientras editas código. Producción irá en otra máquina (#151).
+
+## 10. Cómo contarlo en una frase
 
 «Necesito un servidor Linux en la red interna, con permisos de administración para mí, donde alojar la
 base de datos y la aplicación de desarrollo, para no depender de mi PC de trabajo; es además el ensayo
