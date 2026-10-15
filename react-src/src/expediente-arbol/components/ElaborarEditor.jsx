@@ -1,7 +1,7 @@
 // ElaborarEditor.jsx — contenedor de la tarea ELABORAR (#608).
 //
-// Reemplaza al Editor genérico cuando la tarea seleccionada es de tipo ELABORAR
-// (ver Inspector.jsx). Engancha el backend de generación de escritos (#167,
+// Superficie de trabajo propia de la tarea de tipo ELABORAR, en lugar del diseño de tarea
+// genérica (tabla en superficiesTarea.js; ver Inspector.jsx). Engancha el backend de generación de escritos (#167,
 // app/routes/api_escritos.py) ya existente y completo, huérfano de UI desde que
 // el sistema Jinja "BC" que lo alojaba se eliminó en #500.
 //

@@ -1,8 +1,8 @@
 // NotificarEditor.jsx — contenedor de la tarea NOTIFICAR (#657/#658/#712, ADR-034;
 // rehecho en #929, zona A: tramitarla en el navegador).
 //
-// Reemplaza al Editor genérico cuando la tarea seleccionada es de tipo NOTIFICAR
-// (ver Inspector.jsx). Solo carga el payload de `GET …/notificar` y reparte; cada cosa
+// Superficie de trabajo propia de la tarea de tipo NOTIFICAR, en lugar del diseño de tarea
+// genérica (tabla en superficiesTarea.js; ver Inspector.jsx). Solo carga el payload de `GET …/notificar` y reparte; cada cosa
 // vive en su componente de `notificar/`:
 //   - BloqueDestinatario            a quién se notifica y cómo se elige (A2)
 //   - BloqueRegistro                justificante final, resultado, sede, fechas (A1)

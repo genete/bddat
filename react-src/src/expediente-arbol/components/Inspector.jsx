@@ -9,7 +9,7 @@
 // los alimenta `puenteInspector.js` con el estado del store.
 import React from 'react'
 import { createPortal } from 'react-dom'
-import { useArbolStore, selectHayCambios } from '../store.js'
+import { useArbolStore } from '../store.js'
 import { showToast } from '../../shared/ui/toast.js'
 import { puedeEditarNodo } from '../../shared/auth.js'
 import { estaSellado } from '../sellado.js'
@@ -22,6 +22,7 @@ import ElaborarEditor from './ElaborarEditor.jsx'
 import NotificarEditor from './NotificarEditor.jsx'
 import DatosNodo from './DatosNodo.jsx'
 import { disenoDeNodo } from '../disenosDatos.js'
+import { superficieDeNodoTarea } from '../superficiesTarea.js'
 import {
   TarjetaNotificacionesTramite, AccionNotificacionesTramite, useHayNotificacionesTramite,
 } from './notificar/NotificacionesTramite.jsx'
@@ -365,16 +366,19 @@ function Documentos({ documentos }) {
 // Zona de datos del cuerpo: lo informativo del nodo, en el orden de siempre (#1043, ADR-053 §C).
 //
 // Es la misma en lectura y en edición: en edición lo informativo no desaparece, se pueda editar
-// o no. Hoy la pintan en los dos modos los nodos ya revisados, que son los que tienen un diseño
-// en `disenosDatos.js` (expediente, solicitud, versión, fase, organismo y trámite); los demás la
-// pintan solo en lectura, con la lista de texto plano, y su edición sigue siendo el `Editor`,
-// hasta que la revisión nodo a nodo los migre.
+// o no. La pintan en los dos modos los nodos que tienen un diseño en `disenosDatos.js`
+// (expediente, solicitud, versión, fase, organismo, trámite y la tarea genérica); las tareas con
+// superficie propia (ANALIZAR, ELABORAR, NOTIFICAR) la pintan solo en lectura, con la lista de
+// texto plano, y su edición es su editor, hasta que la fase 3 las migre.
 function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
   const expedienteId = useArbolStore((s) => s.expedienteId)
+  const arbol = useArbolStore((s) => s.arbol)
   const esHoja = tipo === 'tarea'
-  const diseno = disenoDeNodo(tipo)
-  // Fase cerrada (#720, ADR-036): los controles vivos se deshabilitan, como hacía el `Editor`.
+  // La tarea solo tiene diseño si es genérica: las de superficie propia siguen con `Campos`.
+  const tareaGenerica = esHoja && !!nodo && !superficieDeNodoTarea(arbol, nodo)
+  const diseno = disenoDeNodo(tipo, { tareaGenerica })
+  // Fase cerrada (#720, ADR-036): los controles vivos se deshabilitan.
   const faseCerrada = tipo === 'fase' && !!nodo && nodo.estado === 'FINALIZADA'
   return (
     <>
@@ -505,7 +509,7 @@ function organismosPendientesSeparata(fase) {
 }
 
 // Acción de fase CONSULTAS en modo edición (ADR-042 §C, #396 bloque 5): vive
-// junto al Editor genérico, no lo sustituye — resultado_fase_id/documento_
+// en la zona de acciones, junto a las demás — resultado_fase_id/documento_
 // resultado_id de esta fase siguen editándose igual que en cualquier otra.
 // Oculto sin organismos pendientes: el botón no tiene nada útil que decir.
 function AccionesFaseConsultas({ nodo }) {
@@ -528,8 +532,8 @@ function AccionesFaseConsultas({ nodo }) {
 // terminada. Hasta que el certificado consta, el motor bloquea la apertura de la
 // fase finalizadora citando el art. 82.1 LPACAP.
 //
-// Vive junto al Editor genérico, como AccionesFaseConsultas y ReabrirFase, no en
-// lugar de él. Siempre visible en la solicitud, y con el botón SIEMPRE activo: el
+// Vive en la zona de acciones, como AccionesFaseConsultas y ReabrirFase.
+// Siempre visible en la solicitud, y con el botón SIEMPRE activo: el
 // gesto dejó de ser una puerta que se concede o se deniega. Preguntar «¿cómo va
 // esto?» no tiene precondiciones —se puede desde el primer día— y la respuesta es
 // un informe, no un error. Por eso el inspector ya no trae el motivo del «todavía
@@ -1087,69 +1091,6 @@ function ModalInformeFinInstruccion() {
   )
 }
 
-// Editor genérico: pinta un control por campo del esquema editable, autofocus en
-// el primero. Guardar/Cancelar viven en la barra del marco (shell, ADR-023 §5 bis,
-// ADR-053 §A); aquí solo queda Borrar, que no es parte del control de salida del marco.
-//
-// Fase cerrada (#720): los campos se deshabilitan (el backend rechazaría el guardado
-// de todos modos, capas 1-3 del ADR) y se antepone ReabrirFase — único camino para
-// volver a poder editarlos. Borrar tampoco se ofrece: nunca tiene sentido borrar el
-// nodo de una fase cerrada sin reabrirla antes.
-function Editor({ nodo }) {
-  const seleccion  = useArbolStore((s) => s.seleccion)
-  const campos     = useArbolStore((s) => s.editableCampos)
-  const cargando   = useArbolStore((s) => s.edicionCargando)
-  const borrador   = useArbolStore((s) => s.borrador)
-  const setCampo   = useArbolStore((s) => s.setCampo)
-  const guardando  = useArbolStore((s) => s.guardando)
-  const guardar    = useArbolStore((s) => s.guardar)
-  const hayCambios = useArbolStore(selectHayCambios)
-  const firstRef = React.useRef(null)
-  React.useEffect(() => { if (firstRef.current) firstRef.current.focus() }, [campos])
-
-  const faseCerrada = seleccion && seleccion.tipo === 'fase' && nodo && nodo.estado === 'FINALIZADA'
-  const puedeBorrar = seleccion && seleccion.tipo !== 'expediente' &&
-                      puedeEditarNodo(seleccion.tipo) && !faseCerrada
-
-  if (cargando) return <div className="text-muted small">Cargando editor…</div>
-  if (!campos.length)
-    return (
-      <div className="text-muted small mb-3">
-        Sin campos editables. Usa la despensa inferior para añadir elementos al árbol.
-      </div>
-    )
-
-  const ctrl = (c, ref) => {
-    const val = borrador[c.campo] ?? ''
-    if (c.control === 'textarea')
-      return <textarea ref={ref} className="form-control form-control-sm" rows={3}
-               value={val} onChange={(e) => setCampo(c.campo, e.target.value)} disabled={faseCerrada} />
-    if (c.control === 'select')
-      return (
-        <select ref={ref} className="form-select form-select-sm" value={val} disabled={faseCerrada}
-          onChange={(e) => setCampo(c.campo, e.target.value === '' ? null : Number(e.target.value))}>
-          <option value="">—</option>
-          {(c.opciones || []).map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
-        </select>
-      )
-    return <input ref={ref} type="text" className="form-control form-control-sm"
-             value={val} onChange={(e) => setCampo(c.campo, e.target.value)} disabled={faseCerrada} />
-  }
-
-  return (
-    <form onSubmit={(e) => { e.preventDefault(); if (hayCambios && !guardando && !faseCerrada) guardar() }}>
-      {faseCerrada && <ReabrirFase />}
-      {campos.map((c, i) => (
-        <div className="mb-2" key={c.campo}>
-          <label className="form-label small text-muted mb-1">{c.etiqueta}</label>
-          {ctrl(c, i === 0 ? firstRef : null)}
-        </div>
-      ))}
-      {puedeBorrar && <BotonBorrar />}
-    </form>
-  )
-}
-
 // Vía de escape del Guardar cuando el backend devuelve un bloqueo FORZABLE
 // (#765). Hasta ahora `puede_escapar:true` solo se ofrecía al CREAR: los tres
 // bloqueos forzables del cierre de fase —completitud (#723), diagnóstico
@@ -1188,10 +1129,10 @@ function BloqueoGuardarForzable() {
 }
 
 // Control de borrado compartido por los tres editores bespoke de tarea (ANALIZAR/
-// ELABORAR/NOTIFICAR, #742) y por los nodos con diseño de datos (#1043): el Editor genérico lo
-// integra en su propio form (arriba), pero ninguno de los tres bespoke lo trae de fábrica — se
-// hoistea aquí, al nivel de InspectorEdicion, en vez de triplicarlo en cada uno (mismo criterio
-// ya aplicado a Despensa: es el contenedor común quien pone el "chrome" alrededor del editor).
+// ELABORAR/NOTIFICAR, #742) y por los nodos con diseño de datos (#1043): ninguno de los tres
+// bespoke lo trae de fábrica — se hoistea aquí, al nivel de InspectorEdicion, en vez de triplicarlo
+// en cada uno (mismo criterio ya aplicado a Despensa: es el contenedor común quien pone el
+// "chrome" alrededor del editor).
 function BotonBorrar() {
   const solicitarBorrado = useArbolStore((s) => s.solicitarBorrado)
   return (
@@ -1216,50 +1157,52 @@ function InspectorEdicion({ nodo }) {
   const seleccion             = useArbolStore((s) => s.seleccion)
   const borrarPendienteConfirm = useArbolStore((s) => s.borrarPendienteConfirm)
   const seccionesExtendidas   = useArbolStore((s) => s.analizarSeccionesExtendidas)
-  // ANALIZAR (#442): contenedor bespoke en vez del Editor genérico — secciones de
-  // checklist + resultado + producir diagnóstico no encajan en el esquema
-  // campo-a-campo. InspectorEdicion (cabecera, lock, split con Despensa) se
-  // reutiliza igual para el resto de tareas.
-  const esAnalizar = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'ANALIZAR'
+  const arbol                 = useArbolStore((s) => s.arbol)
+  // La superficie de trabajo propia de la tarea sale de una única tabla por tipo de tarea y trámite
+  // (`superficiesTarea.js`); una tarea que no figura en ella es genérica (más abajo).
+  const superficie = seleccion.tipo === 'tarea' ? superficieDeNodoTarea(arbol, nodo) : null
+  // ANALIZAR (#442): contenedor bespoke en vez de un formulario de campos — secciones de
+  // checklist + resultado + producir diagnóstico no encajan en el esquema campo-a-campo.
+  // InspectorEdicion (cabecera, lock, split con Despensa) se reutiliza igual para el resto.
+  const esAnalizar = superficie === 'ANALIZAR'
   // ELABORAR (#608): idem, para enganchar "Generar escrito" (backend #167, huérfano
   // de UI desde la eliminación del sistema BC en #500).
-  const esElaborar = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'ELABORAR'
+  const esElaborar = superficie === 'ELABORAR'
   // NOTIFICAR (#657/#658, ADR-034): idem, "Registrar envío"/"Completar resultado".
   // Igual que ELABORAR, la Despensa NO se deshabilita — sigue siendo el mecanismo
   // genérico que vincula el documento producido (desacoplado de estos formularios).
-  const esNotificar = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'NOTIFICAR'
-  // Nodos con diseño de datos (#1043, lectura ≈ edición: el expediente y la solicitud): la
-  // edición pinta la misma zona de datos que la lectura y debajo las acciones y el pie.
+  const esNotificar = superficie === 'NOTIFICAR'
+  // Tarea genérica (#1043): sin superficie propia. Hoy es ESPERAR_PLAZO, y lo será cualquier tipo
+  // de tarea o trámite que no figure en la tabla.
+  const tareaGenerica = seleccion.tipo === 'tarea' && !!nodo && !superficie
+  // Nodos con diseño de datos (#1043, lectura ≈ edición: todos salvo las tareas con superficie
+  // propia): la edición pinta la misma zona de datos que la lectura y debajo las acciones y el pie.
   const detalle      = useArbolStore((s) => s.detalle)
   const cargandoDet  = useArbolStore((s) => s.detalleCargando)
   const seleccionar  = useArbolStore((s) => s.seleccionar)
   const hayDetalle   = !!detalle && !cargandoDet
-  const migrado      = !!disenoDeNodo(seleccion.tipo)
+  const migrado      = !!disenoDeNodo(seleccion.tipo, { tareaGenerica })
   // ESPERAR_PLAZO (#766): sin editor bespoke — solo la ayuda de la Despensa sobre
   // qué documento es el producido cuando en la recepción llegan varios (regla de
   // #764). Es la única tarea cuyo producido es un documento recibido de fuera.
-  const esEsperarPlazo = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'ESPERAR_PLAZO'
+  const esEsperarPlazo = tareaGenerica && nodo.tipo_codigo === 'ESPERAR_PLAZO'
   // ADR-033 §1: en ANALIZAR extendido (ANÁLISIS_DOCUMENTAL/REQUERIMIENTO_SUBSANACIÓN)
   // casar un requisito documental deriva el consumido — la Despensa queda sin uso
   // legítimo y se oculta. En ANALIZAR simple (p.ej. CONSULTA_SEPARATA) sigue viva,
   // sin cambios. `seccionesExtendidas` es null hasta que AnalizarEditor confirma el
   // valor real (primer getAnalizar) — se muestra por defecto hasta saberlo con certeza.
   const ocultarDespensa = esAnalizar && seccionesExtendidas === true
-  // Los tres editores bespoke no traen su propio control de borrado (a diferencia
-  // del Editor genérico, que lo integra en su form) — #742. Fase cerrada no aplica
-  // aquí: seleccion.tipo es siempre 'tarea', nunca 'fase' (mismo supuesto que ya
-  // asume el Editor genérico para tareas).
-  const esBespoke = esAnalizar || esElaborar || esNotificar
-  const puedeBorrarTarea = esBespoke && puedeEditarNodo('tarea')
-  // Fase CONSULTAS (ADR-042 §C, #396 bloque 5): a diferencia de los bespoke de
-  // tarea, esto NO sustituye al Editor genérico — vive junto a él, como un
-  // bloque de acciones más (mismo criterio que ReabrirFase).
+  // Los tres editores bespoke no traen su propio control de borrado — #742. Fase cerrada no aplica
+  // aquí: seleccion.tipo es siempre 'tarea', nunca 'fase'.
+  const puedeBorrarTarea = !!superficie && puedeEditarNodo('tarea')
+  // Fase CONSULTAS (ADR-042 §C, #396 bloque 5): acción propia de la fase, en la zona de acciones
+  // (mismo criterio que ReabrirFase).
   const esFaseConsultas = seleccion.tipo === 'fase' && nodo && nodo.tipo_codigo === 'CONSULTAS'
   // Bisagra instrucción → resolución (#827): acción de la solicitud, mismo criterio
-  // de emplazamiento que la de CONSULTAS — junto al Editor, no en su lugar.
+  // de emplazamiento que la de CONSULTAS.
   const esSolicitud = seleccion.tipo === 'solicitud'
   // Cumplimiento del plazo (#947) y cierre de la fase (#956): acciones de la fase
-  // finalizadora, mismo emplazamiento — junto al Editor. Qué fases las tienen lo
+  // finalizadora, mismo emplazamiento. Qué fases las tienen lo
   // decide el backend (`cert_cumplimiento`/`cert_cierre` solo vienen en las
   // finalizadoras).
   const esFase = seleccion.tipo === 'fase'
@@ -1297,7 +1240,7 @@ function InspectorEdicion({ nodo }) {
           : (
             <>
               <div className="border-top mt-3 pt-3">
-                <Despensa />
+                <Despensa esEsperarPlazo={esEsperarPlazo} />
               </div>
               {hayPropias && (
                 <div className="border-top mt-3 pt-3">
@@ -1321,16 +1264,10 @@ function InspectorEdicion({ nodo }) {
       </div>
     )
   }
+  // Solo llegan aquí las tareas con superficie de trabajo propia (fase 3 de #1043 las migrará).
   return (
     <div className="p-3">
       {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
-      {!borrarPendienteConfirm && esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
-      {!borrarPendienteConfirm && esSolicitud && <CertFinInstruccion />}
-      {!borrarPendienteConfirm && esSolicitud && <CierreSolicitud />}
-      {!borrarPendienteConfirm && esFase && <CertCumplimientoFase />}
-      {!borrarPendienteConfirm && esFase && <CierreFase nodo={nodo} />}
-      {esSolicitud && <ModalInformeFinInstruccion />}
-      {esFase && <ModalConfirmacionCierre />}
       {borrarPendienteConfirm
         ? <ConfirmacionBorrado nodo={nodo} />
         : esAnalizar
@@ -1339,12 +1276,12 @@ function InspectorEdicion({ nodo }) {
             ? <ElaborarEditor tareaId={seleccion.id} nodo={nodo} />
             : esNotificar
               ? <NotificarEditor tareaId={seleccion.id} />
-              : <Editor nodo={nodo} />
+              : null
       }
       {!borrarPendienteConfirm && puedeBorrarTarea && <BotonBorrar />}
       {!borrarPendienteConfirm && !ocultarDespensa && (
         <div className="border-top mt-3 pt-3">
-          <Despensa deshabilitarProducido={esAnalizar} esEsperarPlazo={esEsperarPlazo} />
+          <Despensa deshabilitarProducido={esAnalizar} />
         </div>
       )}
     </div>

@@ -27,8 +27,8 @@ export default function DatosNodo({ diseno, detalle, nodo, bloqueado = false }) 
   const setCampo    = useArbolStore((s) => s.setCampo)
   const primerVivo  = React.useRef(null)
 
-  // Al entrar en edición el foco va al primer control vivo, como hacía el `Editor`, pero sin
-  // mover el scroll: la pantalla no debe saltar al pulsar Editar.
+  // Al entrar en edición el foco va al primer control vivo, pero sin mover el scroll: la
+  // pantalla no debe saltar al pulsar Editar.
   React.useEffect(() => {
     if (primerVivo.current) primerVivo.current.focus({ preventScroll: true })
   }, [editables])

@@ -2,8 +2,8 @@
 //
 // Un diseño dice en qué tarjetas va cada dato del payload de `detalle_de_nodo` y qué dato es
 // editable, con los rótulos y el orden de los inspectores del listado. Lo pinta `DatosNodo`,
-// igual en lectura que en edición. Un nodo sin diseño sigue con la lista de texto plano
-// (`Campos`) y su `Editor`, hasta que la revisión nodo a nodo lo migre.
+// igual en lectura que en edición. Un nodo sin diseño (las tareas con superficie propia) sigue con la
+// lista de texto plano (`Campos`) y su editor, hasta que la fase 3 las migre.
 //
 // Cada dato: { etiqueta, rotulo?, col?, casilla?, opcional?, campo?, control? }
 //   etiqueta  clave del payload (`detalle.campos[].etiqueta`)
@@ -169,6 +169,24 @@ export const DISENO_TRAMITE = {
   ],
 }
 
+// La tarea genérica es la que no tiene superficie de trabajo propia (`superficiesTarea.js`): hoy
+// ESPERAR_PLAZO, y cualquier combinación de tipo de tarea y trámite que no figure en esa tabla. Su
+// único dato es «Notas» (`esquema_editable._esquema_tarea`); el plazo y los documentos son bloques de
+// la zona de datos, no tarjetas. «Estado» y «Tipo» están en la barra (el tipo, en su título).
+// «Resultado de notificación» solo lo trae NOTIFICAR, que no es genérica: si alguna vez llegara, cae
+// en «Otros datos» y no se pierde.
+export const DISENO_TAREA = {
+  ocultas: ['Estado', 'Tipo'],
+  tarjetas: [
+    {
+      titulo: 'Datos de la tarea', icono: 'fa-tasks',
+      campos: [
+        { etiqueta: 'Notas', campo: 'notas', control: 'textarea' },
+      ],
+    },
+  ],
+}
+
 const DISENOS = {
   expediente: DISENO_EXPEDIENTE,
   solicitud: DISENO_SOLICITUD,
@@ -178,7 +196,9 @@ const DISENOS = {
   tramite: DISENO_TRAMITE,
 }
 
-// El diseño del nodo, o null si todavía no está migrado.
-export function disenoDeNodo(tipo) {
+// El diseño del nodo, o null si todavía no está migrado. La tarea solo tiene diseño si es genérica
+// (`tareaGenerica`): las que tienen superficie propia siguen con su editor hasta la fase 3.
+export function disenoDeNodo(tipo, { tareaGenerica = false } = {}) {
+  if (tipo === 'tarea') return tareaGenerica ? DISENO_TAREA : null
   return DISENOS[tipo] || null
 }

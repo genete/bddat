@@ -1,7 +1,7 @@
 // AnalizarEditor.jsx — contenedor de la tarea ANALIZAR (#442, #677, ADR-033).
 //
-// Reemplaza al Editor genérico cuando la tarea seleccionada es de tipo ANALIZAR
-// (ver Inspector.jsx). Se compone de:
+// Superficie de trabajo propia de la tarea de tipo ANALIZAR, en lugar del diseño de tarea
+// genérica (tabla en superficiesTarea.js; ver Inspector.jsx). Se compone de:
 //   - Secciones extendidas (check documental #495, check técnico #581,
 //     requerimientos #440), solo si el backend las declara (secciones_extendidas)
 //     — no todo trámite con ANALIZAR las necesita (p.ej. CONSULTA_SEPARATA).

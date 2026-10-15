@@ -2,8 +2,8 @@
 // bespoke (#688).
 //
 // Los contenedores de superficie-de-trabajo (ANALIZAR/ELABORAR/NOTIFICAR)
-// sustituyen al Editor genérico, que es quien pinta el esquema editable campo a
-// campo. Sin este bloque, `notas` —único campo directo de una tarea— quedaría
+// sustituyen al diseño de tarea genérica, que es quien pinta las Notas (superficiesTarea.js).
+// Sin este bloque, `notas` —único campo directo de una tarea— quedaría
 // sin superficie donde escribirse: es lo que ocurría en ELABORAR y NOTIFICAR,
 // donde el campo era simplemente inaccesible desde el árbol.
 //

@@ -67,9 +67,6 @@ export function CasillaSoloLectura({ rotulo, marcada }) {
 // opciones?}, tal como lo da `esquema_de_nodo`). `onChange` recibe el valor ya del tipo del
 // campo: texto, o el `valor` original de la opción elegida (no se fuerza a número: hay selectores
 // de texto, como la vía del organismo) o `null` si se elige «—».
-//
-// Es el equivalente de `Editor.ctrl` (Inspector.jsx) para los nodos ya migrados; `Editor`
-// desaparecerá cuando lo estén todos.
 export const ControlCampo = React.forwardRef(function ControlCampo(
   { campo, valor, onChange, disabled = false }, ref,
 ) {
