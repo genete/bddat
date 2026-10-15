@@ -12,12 +12,35 @@
 // cae en el diseño genérico (datos comunes + Despensa + Borrar) sin tocar nada, aunque la semilla
 // no tenga ningún caso (hoy solo ESPERAR_PLAZO). Es el germen del registro de editores de #1047.
 //
-// Para una excepción por trámite: `porTramite: { CODIGO_TRAMITE: 'SUPERFICIE' | null }`; `null` dice
-// que en ese trámite la tarea es genérica aunque su tipo tenga superficie.
+// Cómo se elige la superficie de una entrada, en este orden:
+//   1. `porTramite: { CODIGO_TRAMITE: 'SUPERFICIE' | null }`; `null` dice que en ese trámite la tarea
+//      es genérica aunque su tipo tenga superficie.
+//   2. `variante(nodo)`: el nodo de la tarea en el árbol dice qué variante es, con un dato que pone
+//      el backend (ANALIZAR: `analisis_extendido`, que sale de la única lista de trámites con
+//      secciones extendidas, `consolidacion_defectos.TRAMITES_CON_SECCIONES_ANALISIS`; el front no
+//      la repite). Devuelve el nombre de la superficie o `undefined` para quedarse con el defecto.
+//   3. `defecto`.
+//
+// `ANALIZAR_SIMPLE` (el ANALIZAR de un trámite sin secciones extendidas) ya usa el diseño de datos
+// de la tarea: su resultado es una tarjeta de datos y producir el diagnóstico, una acción de la
+// zona de acciones. Las demás superficies siguen con su editor hasta la fase 3.
 export const SUPERFICIES_TAREA = {
-  ANALIZAR:  { defecto: 'ANALIZAR',  porTramite: {} },
+  ANALIZAR: {
+    defecto: 'ANALIZAR',
+    // Sin el dato (un árbol antiguo) se queda en el editor completo, que atiende las dos variantes.
+    variante: (nodo) => (nodo && nodo.analisis_extendido === false ? 'ANALIZAR_SIMPLE' : undefined),
+    porTramite: {},
+  },
   ELABORAR:  { defecto: 'ELABORAR',  porTramite: {} },
   NOTIFICAR: { defecto: 'NOTIFICAR', porTramite: {} },
+}
+
+// Superficies que ya usan el diseño de datos de la tarea (las demás siguen con su editor).
+const SUPERFICIES_CON_DISENO = new Set(['ANALIZAR_SIMPLE'])
+
+// ¿Pinta la tarea la zona de datos común? Sí si es genérica (sin superficie) o su superficie ya migró.
+export function tieneDisenoTarea(superficie) {
+  return !superficie || SUPERFICIES_CON_DISENO.has(superficie)
 }
 
 // Código del tipo de trámite al que pertenece la tarea, buscado en el árbol ya cargado.
@@ -32,8 +55,9 @@ export function codigoTramiteDeTarea(arbol, tareaId) {
   return null
 }
 
-// Nombre de la superficie propia de la combinación, o null si la tarea es genérica.
-export function superficieDeTarea(tareaCodigo, tramiteCodigo) {
+// Nombre de la superficie propia de la combinación, o null si la tarea es genérica. `nodo` es la
+// entrada de la tarea en el árbol (solo lo leen las entradas con `variante`).
+export function superficieDeTarea(tareaCodigo, tramiteCodigo, nodo) {
   // Solo claves propias: un código que coincida con una propiedad de `Object` («constructor»…)
   // no es una entrada de la tabla.
   const propia = (obj, clave) => !!clave && Object.prototype.hasOwnProperty.call(obj, clave)
@@ -41,11 +65,12 @@ export function superficieDeTarea(tareaCodigo, tramiteCodigo) {
   const entrada = SUPERFICIES_TAREA[tareaCodigo]
   const porTramite = entrada.porTramite || {}
   if (propia(porTramite, tramiteCodigo)) return porTramite[tramiteCodigo]
-  return entrada.defecto
+  const variante = entrada.variante ? entrada.variante(nodo) : undefined
+  return variante === undefined ? entrada.defecto : variante
 }
 
 // La superficie de la tarea del árbol (`nodo` = su entrada en el árbol), o null.
 export function superficieDeNodoTarea(arbol, nodo) {
   if (!nodo) return null
-  return superficieDeTarea(nodo.tipo_codigo, codigoTramiteDeTarea(arbol, nodo.id))
+  return superficieDeTarea(nodo.tipo_codigo, codigoTramiteDeTarea(arbol, nodo.id), nodo)
 }

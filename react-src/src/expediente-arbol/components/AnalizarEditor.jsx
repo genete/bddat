@@ -1,7 +1,10 @@
 // AnalizarEditor.jsx — contenedor de la tarea ANALIZAR (#442, #677, ADR-033).
 //
-// Superficie de trabajo propia de la tarea de tipo ANALIZAR, en lugar del diseño de tarea
-// genérica (tabla en superficiesTarea.js; ver Inspector.jsx). Se compone de:
+// Superficie de trabajo propia de la tarea de tipo ANALIZAR con secciones extendidas, en lugar
+// del diseño de tarea genérica (tabla en superficiesTarea.js; ver Inspector.jsx). El ANALIZAR de
+// un trámite sin ellas (CONSULTA_SEPARATA…) ya no pasa por aquí: lo atiende `AnalizarSimple.jsx`
+// con el diseño de datos de la tarea; las ramas «simple» de este fichero solo quedan como
+// respaldo si el nodo del árbol llegara sin `analisis_extendido`. Se compone de:
 //   - Secciones extendidas (check documental #495, check técnico #581,
 //     requerimientos #440), solo si el backend las declara (secciones_extendidas)
 //     — no todo trámite con ANALIZAR las necesita (p.ej. CONSULTA_SEPARATA).
@@ -34,7 +37,7 @@ import { showToast } from '../../shared/ui/toast.js'
 import { tienePermiso } from '../../shared/auth.js'
 import BloqueNotas from './BloqueNotas.jsx'
 
-const ETIQUETA_RESULTADO = {
+export const ETIQUETA_RESULTADO = {
   favorable: 'Favorable',
   condicionado: 'Condicionado',
   desfavorable: 'Desfavorable',
@@ -1057,7 +1060,12 @@ function BloqueDefectos({ producido, items, resueltos, resultado }) {
 // desfavorable si hay defectos); solo texto informativo + botón. `resultado` no
 // viaja en el body: lo fija el backend. En ANALIZAR simple se mantiene el radio
 // libre de siempre, incluido "Condicionado".
-function NucleoResultado({ expedienteId, tareaId, completo, derivado, resultadoPrevisto, onProducido }) {
+//
+// Exportado: el ANALIZAR simple (`AnalizarSimple.jsx`, #1043) lo usa como acción de la zona de
+// acciones, con su propio título.
+export function NucleoResultado({
+  expedienteId, tareaId, completo, derivado, resultadoPrevisto, onProducido, titulo = 'Resultado',
+}) {
   const [resultado, setResultado] = React.useState('favorable')
   const [confirmando, setConfirmando] = React.useState(false)
   const [justificacion, setJustificacion] = React.useState('')
@@ -1082,7 +1090,7 @@ function NucleoResultado({ expedienteId, tareaId, completo, derivado, resultadoP
 
   return (
     <div className="card mb-3">
-      <div className="card-header card-header-accent fw-semibold small">Resultado</div>
+      <div className="card-header card-header-accent fw-semibold small">{titulo}</div>
       <div className="card-body card-body-tinted">
         {derivado ? (
           <div className="mb-3 small">

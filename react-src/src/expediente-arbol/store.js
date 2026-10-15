@@ -938,6 +938,11 @@ export const useArbolStore = create((set, get) => ({
   // hasta que el usuario reseleccione el nodo. `borradorInicial` se actualiza igual
   // que `borrador` (mismo patrón que entrarEdicion) para que hayCambios no marque
   // como "pendiente de guardar" un campo que ya se persistió por su cuenta.
+  //
+  // También la usa producir el diagnóstico de un ANALIZAR simple (`AnalizarSimple.jsx`, #1043):
+  // el POST fija el producido por su cuenta, y sin esta sincronización un Guardar completo
+  // posterior (si se tocan vínculos en la Despensa en la misma edición) llevaría
+  // `documento_producido_id` anterior y `editar_tarea` desvincularía el diagnóstico recién producido.
   sincronizarProducidoNotificar: (documentoId) => set((s) => ({
     borrador: { ...s.borrador, documento_producido_id: documentoId },
     borradorInicial: { ...s.borradorInicial, documento_producido_id: documentoId },

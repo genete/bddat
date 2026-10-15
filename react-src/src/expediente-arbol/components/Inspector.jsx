@@ -22,7 +22,10 @@ import ElaborarEditor from './ElaborarEditor.jsx'
 import NotificarEditor from './NotificarEditor.jsx'
 import DatosNodo from './DatosNodo.jsx'
 import { disenoDeNodo } from '../disenosDatos.js'
-import { superficieDeNodoTarea } from '../superficiesTarea.js'
+import { superficieDeNodoTarea, tieneDisenoTarea } from '../superficiesTarea.js'
+import {
+  TarjetaResultadoDiagnostico, AccionProducirDiagnostico, useDiagnosticoPendiente,
+} from './AnalizarSimple.jsx'
 import {
   TarjetaNotificacionesTramite, AccionNotificacionesTramite, useHayNotificacionesTramite,
 } from './notificar/NotificacionesTramite.jsx'
@@ -375,9 +378,11 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
   const expedienteId = useArbolStore((s) => s.expedienteId)
   const arbol = useArbolStore((s) => s.arbol)
   const esHoja = tipo === 'tarea'
-  // La tarea solo tiene diseño si es genérica: las de superficie propia siguen con `Campos`.
-  const tareaGenerica = esHoja && !!nodo && !superficieDeNodoTarea(arbol, nodo)
-  const diseno = disenoDeNodo(tipo, { tareaGenerica })
+  // La tarea solo tiene diseño si es genérica o su superficie ya migró (ANALIZAR simple): las de
+  // superficie propia sin migrar siguen con `Campos`.
+  const superficie = esHoja ? superficieDeNodoTarea(arbol, nodo) : null
+  const tareaConDiseno = esHoja && !!nodo && tieneDisenoTarea(superficie)
+  const diseno = disenoDeNodo(tipo, { tareaConDiseno })
   // Fase cerrada (#720, ADR-036): los controles vivos se deshabilitan.
   const faseCerrada = tipo === 'fase' && !!nodo && nodo.estado === 'FINALIZADA'
   return (
@@ -387,6 +392,9 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
         : <Campos campos={detalle.campos} />}
       {tipo === 'tramite' && (
         <TarjetaNotificacionesTramite expedienteId={expedienteId} tramiteId={Number(detalle.nodo.id)} />
+      )}
+      {superficie === 'ANALIZAR_SIMPLE' && (
+        <TarjetaResultadoDiagnostico expedienteId={expedienteId} tareaId={Number(detalle.nodo.id)} />
       )}
       {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
       <Plazo plazo={detalle.plazo} />
@@ -1165,6 +1173,9 @@ function InspectorEdicion({ nodo }) {
   // checklist + resultado + producir diagnóstico no encajan en el esquema campo-a-campo.
   // InspectorEdicion (cabecera, lock, split con Despensa) se reutiliza igual para el resto.
   const esAnalizar = superficie === 'ANALIZAR'
+  // ANALIZAR simple (trámite sin secciones extendidas, #1043): ya migrado al diseño de datos; su
+  // resultado es una tarjeta de datos y producir el diagnóstico, una acción (`AnalizarSimple.jsx`).
+  const esAnalizarSimple = superficie === 'ANALIZAR_SIMPLE'
   // ELABORAR (#608): idem, para enganchar "Generar escrito" (backend #167, huérfano
   // de UI desde la eliminación del sistema BC en #500).
   const esElaborar = superficie === 'ELABORAR'
@@ -1172,20 +1183,22 @@ function InspectorEdicion({ nodo }) {
   // Igual que ELABORAR, la Despensa NO se deshabilita — sigue siendo el mecanismo
   // genérico que vincula el documento producido (desacoplado de estos formularios).
   const esNotificar = superficie === 'NOTIFICAR'
-  // Tarea genérica (#1043): sin superficie propia. Hoy es ESPERAR_PLAZO, y lo será cualquier tipo
-  // de tarea o trámite que no figure en la tabla.
-  const tareaGenerica = seleccion.tipo === 'tarea' && !!nodo && !superficie
+  // Tarea con diseño de datos (#1043): la genérica (sin superficie propia: hoy ESPERAR_PLAZO, y lo
+  // será cualquier tipo de tarea o trámite que no figure en la tabla) y la de superficie ya migrada
+  // (ANALIZAR simple).
+  const tareaConDiseno = seleccion.tipo === 'tarea' && !!nodo && tieneDisenoTarea(superficie)
   // Nodos con diseño de datos (#1043, lectura ≈ edición: todos salvo las tareas con superficie
-  // propia): la edición pinta la misma zona de datos que la lectura y debajo las acciones y el pie.
+  // propia sin migrar): la edición pinta la misma zona de datos que la lectura y debajo las
+  // acciones y el pie.
   const detalle      = useArbolStore((s) => s.detalle)
   const cargandoDet  = useArbolStore((s) => s.detalleCargando)
   const seleccionar  = useArbolStore((s) => s.seleccionar)
   const hayDetalle   = !!detalle && !cargandoDet
-  const migrado      = !!disenoDeNodo(seleccion.tipo, { tareaGenerica })
+  const migrado      = !!disenoDeNodo(seleccion.tipo, { tareaConDiseno })
   // ESPERAR_PLAZO (#766): sin editor bespoke — solo la ayuda de la Despensa sobre
   // qué documento es el producido cuando en la recepción llegan varios (regla de
   // #764). Es la única tarea cuyo producido es un documento recibido de fuera.
-  const esEsperarPlazo = tareaGenerica && nodo.tipo_codigo === 'ESPERAR_PLAZO'
+  const esEsperarPlazo = tareaConDiseno && nodo.tipo_codigo === 'ESPERAR_PLAZO'
   // ADR-033 §1: en ANALIZAR extendido (ANÁLISIS_DOCUMENTAL/REQUERIMIENTO_SUBSANACIÓN)
   // casar un requisito documental deriva el consumido — la Despensa queda sin uso
   // legítimo y se oculta. En ANALIZAR simple (p.ej. CONSULTA_SEPARATA) sigue viva,
@@ -1212,6 +1225,9 @@ function InspectorEdicion({ nodo }) {
   // los hooks) y solo cuenta si el nodo es un trámite: un id de tarea puede coincidir con el último.
   const esTramite = seleccion.tipo === 'tramite'
   const hayNotifTramite = useHayNotificacionesTramite(Number(seleccion.id)) && esTramite
+  // Diagnóstico por producir de un ANALIZAR simple (#1043): mientras falte, la zona de acciones
+  // lleva la acción de producirlo. Mismo hook-siempre que arriba.
+  const hayDiagnosticoPendiente = useDiagnosticoPendiente(Number(seleccion.id)) && esAnalizarSimple
   // Nodos migrados (#1043): la misma columna que la lectura (alto completo, pie pegado abajo) y
   // tres zonas en este orden: datos (la misma zona que en lectura), acciones y creación (solo
   // en edición, debajo de los datos) y pie. En las acciones va primero la Despensa —lo
@@ -1229,6 +1245,7 @@ function InspectorEdicion({ nodo }) {
       || (esFaseConsultas && organismosPendientesSeparata(nodo).length > 0)
       || (esFase && hayDetalle && !!(detalle.cert_cumplimiento || detalle.cert_cierre))
       || hayNotifTramite
+      || hayDiagnosticoPendiente
     return (
       <div className="p-3 d-flex flex-column h-100">
         {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
@@ -1240,7 +1257,8 @@ function InspectorEdicion({ nodo }) {
           : (
             <>
               <div className="border-top mt-3 pt-3">
-                <Despensa esEsperarPlazo={esEsperarPlazo} />
+                {/* En ANALIZAR el documento producido lo genera el diagnóstico, no se vincula a mano. */}
+                <Despensa deshabilitarProducido={esAnalizarSimple} esEsperarPlazo={esEsperarPlazo} />
               </div>
               {hayPropias && (
                 <div className="border-top mt-3 pt-3">
@@ -1252,6 +1270,9 @@ function InspectorEdicion({ nodo }) {
                   {faseCerrada && <ReabrirFase />}
                   {esTramite && (
                     <AccionNotificacionesTramite expedienteId={expedienteId} tramiteId={Number(seleccion.id)} />
+                  )}
+                  {esAnalizarSimple && (
+                    <AccionProducirDiagnostico expedienteId={expedienteId} tareaId={Number(seleccion.id)} />
                   )}
                 </div>
               )}

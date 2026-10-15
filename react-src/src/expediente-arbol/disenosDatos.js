@@ -169,12 +169,14 @@ export const DISENO_TRAMITE = {
   ],
 }
 
-// La tarea genérica es la que no tiene superficie de trabajo propia (`superficiesTarea.js`): hoy
-// ESPERAR_PLAZO, y cualquier combinación de tipo de tarea y trámite que no figure en esa tabla. Su
-// único dato es «Notas» (`esquema_editable._esquema_tarea`); el plazo y los documentos son bloques de
-// la zona de datos, no tarjetas. «Estado» y «Tipo» están en la barra (el tipo, en su título).
-// «Resultado de notificación» solo lo trae NOTIFICAR, que no es genérica: si alguna vez llegara, cae
-// en «Otros datos» y no se pierde.
+// La tarea con diseño es la genérica, la que no tiene superficie de trabajo propia
+// (`superficiesTarea.js`): hoy ESPERAR_PLAZO, y cualquier combinación de tipo de tarea y trámite que
+// no figure en esa tabla; y el ANALIZAR simple, cuya superficie ya migró. Su único dato es «Notas»
+// (`esquema_editable._esquema_tarea`); el plazo y los documentos son bloques de la zona de datos, no
+// tarjetas, y el resultado del ANALIZAR simple es su propia tarjeta (`AnalizarSimple.jsx`), como las
+// notificaciones del trámite. «Estado» y «Tipo» están en la barra (el tipo, en su título).
+// «Resultado de notificación» solo lo trae NOTIFICAR, que no tiene diseño: si alguna vez llegara,
+// cae en «Otros datos» y no se pierde.
 export const DISENO_TAREA = {
   ocultas: ['Estado', 'Tipo'],
   tarjetas: [
@@ -196,9 +198,10 @@ const DISENOS = {
   tramite: DISENO_TRAMITE,
 }
 
-// El diseño del nodo, o null si todavía no está migrado. La tarea solo tiene diseño si es genérica
-// (`tareaGenerica`): las que tienen superficie propia siguen con su editor hasta la fase 3.
-export function disenoDeNodo(tipo, { tareaGenerica = false } = {}) {
-  if (tipo === 'tarea') return tareaGenerica ? DISENO_TAREA : null
+// El diseño del nodo, o null si todavía no está migrado. La tarea solo tiene diseño si la
+// superficie lo permite (`tareaConDiseno`, de `tieneDisenoTarea`): las que tienen una superficie
+// propia sin migrar siguen con su editor hasta la fase 3.
+export function disenoDeNodo(tipo, { tareaConDiseno = false } = {}) {
+  if (tipo === 'tarea') return tareaConDiseno ? DISENO_TAREA : null
   return DISENOS[tipo] || null
 }
