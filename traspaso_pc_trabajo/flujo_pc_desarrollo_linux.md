@@ -118,7 +118,16 @@ En términos de requisitos, no de marca:
    una VM.
 2. **Permiso de administración (sudo) para el desarrollador** sobre ese equipo. Sin esto se pierde la
    utilidad. Si Informática exige administrarlo ella, no se podría instalar ni arreglar nada sin ticket.
-3. **IP fija interna** y SSH (22) permitido desde tu PC de trabajo.
+3. **IP fija interna** (asignada por Informática o con reserva en el DHCP) y SSH (22) permitido desde
+   tu PC de trabajo.
+3b. **Nombre en el DNS interno** para el equipo (p. ej. `bddat-dev.<dominio interno>`) apuntando a esa
+   IP. No se da solo: hay que pedirlo. Con la IP también funciona, pero se memoriza mal y se rompe si
+   cambia. Los usuarios (demo, formación, producción) deben usar siempre un nombre, nunca una IP.
+   Más adelante, un **segundo nombre (CNAME)** para el servicio (p. ej. `bddat.<dominio>`) que apunte
+   al equipo: el día que producción pase a otra máquina solo cambia a dónde apunta, sin avisar a los
+   usuarios. Sin puerto en la dirección cuando haya nginx delante (80/443); mientras sea demo, el
+   `:8080` es aceptable. Con HTTPS hará falta además un certificado para ese nombre, normalmente
+   emitido por Informática (tema de producción).
 4. **Salida a Internet** a la lista de §5, con el mecanismo de proxy que corresponda.
 5. Un sitio donde copiar los backups (el share, por ejemplo).
 5b. Acceso HTTP interno a un puerto del servidor desde los PC del edificio, para demos (§9).
