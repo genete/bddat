@@ -32,12 +32,6 @@ export const useArbolStore = create((set, get) => ({
   edicionCargando: false,
   guardando: false,
 
-  // --- ANALIZAR (#442/#677): flag conocido tras el primer getAnalizar de la
-  // sesión de edición actual. null mientras se desconoce (o nodo no-ANALIZAR)
-  // — Inspector.jsx lo trata como "no ocultar Despensa" hasta confirmar true,
-  // para no ocultarla de golpe en ANALIZAR simple (donde sigue viva).
-  analizarSeccionesExtendidas: null,
-
   // --- creación de hijo (S3b-2) ---
   _tiposCreablesCache: {},    // { 'tipo-id': payload } — compartida con menú contextual S3b-4
   tiposCreables: null,        // payload de GET tipos-creables del nodo seleccionado
@@ -193,7 +187,7 @@ export const useArbolStore = create((set, get) => ({
           editableCampos: [], borrador: {}, borradorInicial: {},
           tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '', fuenteCrear: '',
           bloqueoGuardar: null,
-          docVinculandoPendiente: null, analizarSeccionesExtendidas: null,
+          docVinculandoPendiente: null,
           menuCtx: null, menuDetalle: null, borrarPendienteConfirm: false })
     const expedienteId = get().expedienteId
     if (!expedienteId) { set({ edicionCargando: false }); return }  // mock standalone: editor vacío
@@ -216,8 +210,6 @@ export const useArbolStore = create((set, get) => ({
   },
 
   setCampo: (campo, valor) => set((s) => ({ borrador: { ...s.borrador, [campo]: valor } })),
-
-  setAnalizarSeccionesExtendidas: (v) => set({ analizarSeccionesExtendidas: v }),
 
   cancelar: () => {
     const { seleccion } = get()
@@ -947,6 +939,25 @@ export const useArbolStore = create((set, get) => ({
     borrador: { ...s.borrador, documento_producido_id: documentoId },
     borradorInicial: { ...s.borradorInicial, documento_producido_id: documentoId },
   })),
+
+  // Vuelve a pedir el detalle del nodo seleccionado SIN vaciarlo mientras llega (a diferencia de
+  // `cargarDetalle`, que pone `detalle: null` y desmonta la zona de datos). Lo usan las secciones del
+  // ANALIZAR extendido (#1043): casar un requisito cambia los documentos de la tarea y la lista
+  // «Documentos» debe ponerse al día, pero remontar las secciones haría perder lo que el técnico lleva
+  // escrito en las demás. Solo actualiza si la selección sigue siendo la misma al volver la respuesta.
+  refrescarDetalleSilencioso: async () => {
+    const { expedienteId, seleccion } = get()
+    if (!expedienteId || !seleccion) return
+    const key = `${seleccion.tipo}-${seleccion.id}`
+    try {
+      const data = await getNodo(expedienteId, seleccion.tipo, seleccion.id)
+      const actual = get().seleccion
+      if (!actual || `${actual.tipo}-${actual.id}` !== key) return
+      set((s) => ({ detalle: data, _detalleCache: { ...s._detalleCache, [key]: data } }))
+    } catch (e) {
+      if (e.status !== 401 && e.status !== 403) showToast('No se pudo refrescar el detalle', 'danger')
+    }
+  },
 
   // Re-pide /arbol e invalida TODA la caché de detalle (una mutación puede recomputar
   // agregados/plazos de los ancestros → decisión F). Tras refrescar, re-dispara el

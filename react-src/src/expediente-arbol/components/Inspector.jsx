@@ -17,15 +17,14 @@ import BarraPlazo from './nodos/BarraPlazo.jsx'
 import { barraDeActo, fechaLarga } from '../plazoActo.js'
 import Despensa from './Despensa.jsx'
 import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
-import AnalizarEditor from './AnalizarEditor.jsx'
+import { AnalisisExtendido, AccionProducirDiagnostico } from './AnalizarEditor.jsx'
 import ElaborarEditor from './ElaborarEditor.jsx'
 import NotificarEditor from './NotificarEditor.jsx'
 import DatosNodo from './DatosNodo.jsx'
 import { disenoDeNodo } from '../disenosDatos.js'
 import { superficieDeNodoTarea, tieneDisenoTarea } from '../superficiesTarea.js'
-import {
-  TarjetaResultadoDiagnostico, AccionProducirDiagnostico, useDiagnosticoPendiente,
-} from './AnalizarSimple.jsx'
+import { TarjetaResultadoDiagnostico } from './AnalizarSimple.jsx'
+import { useDiagnosticoPendiente } from '../analizarEstado.js'
 import {
   TarjetaNotificacionesTramite, AccionNotificacionesTramite, useHayNotificacionesTramite,
 } from './notificar/NotificacionesTramite.jsx'
@@ -395,6 +394,9 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
       )}
       {superficie === 'ANALIZAR_SIMPLE' && (
         <TarjetaResultadoDiagnostico expedienteId={expedienteId} tareaId={Number(detalle.nodo.id)} />
+      )}
+      {superficie === 'ANALIZAR' && (
+        <AnalisisExtendido expedienteId={expedienteId} tareaId={Number(detalle.nodo.id)} />
       )}
       {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
       <Plazo plazo={detalle.plazo} />
@@ -1164,18 +1166,17 @@ function InspectorEdicion({ nodo }) {
   const expedienteId          = useArbolStore((s) => s.expedienteId)
   const seleccion             = useArbolStore((s) => s.seleccion)
   const borrarPendienteConfirm = useArbolStore((s) => s.borrarPendienteConfirm)
-  const seccionesExtendidas   = useArbolStore((s) => s.analizarSeccionesExtendidas)
   const arbol                 = useArbolStore((s) => s.arbol)
   // La superficie de trabajo propia de la tarea sale de una única tabla por tipo de tarea y trámite
   // (`superficiesTarea.js`); una tarea que no figura en ella es genérica (más abajo).
   const superficie = seleccion.tipo === 'tarea' ? superficieDeNodoTarea(arbol, nodo) : null
-  // ANALIZAR (#442): contenedor bespoke en vez de un formulario de campos — secciones de
-  // checklist + resultado + producir diagnóstico no encajan en el esquema campo-a-campo.
-  // InspectorEdicion (cabecera, lock, split con Despensa) se reutiliza igual para el resto.
-  const esAnalizar = superficie === 'ANALIZAR'
-  // ANALIZAR simple (trámite sin secciones extendidas, #1043): ya migrado al diseño de datos; su
-  // resultado es una tarjeta de datos y producir el diagnóstico, una acción (`AnalizarSimple.jsx`).
+  // ANALIZAR (#442, #1043): las dos variantes ya usan el diseño de datos de la tarea. El análisis
+  // son tarjetas de datos —en lectura y en edición— y producir el diagnóstico, una acción de la zona
+  // de acciones. Con secciones extendidas (ADR-033: check documental, técnico y requerimientos) lo
+  // pinta `AnalisisExtendido`; sin ellas (trámites tipo CONSULTA_SEPARATA), `AnalizarSimple.jsx`.
+  const esAnalizarExtendido = superficie === 'ANALIZAR'
   const esAnalizarSimple = superficie === 'ANALIZAR_SIMPLE'
+  const esAnalizar = esAnalizarExtendido || esAnalizarSimple
   // ELABORAR (#608): idem, para enganchar "Generar escrito" (backend #167, huérfano
   // de UI desde la eliminación del sistema BC en #500).
   const esElaborar = superficie === 'ELABORAR'
@@ -1185,7 +1186,7 @@ function InspectorEdicion({ nodo }) {
   const esNotificar = superficie === 'NOTIFICAR'
   // Tarea con diseño de datos (#1043): la genérica (sin superficie propia: hoy ESPERAR_PLAZO, y lo
   // será cualquier tipo de tarea o trámite que no figure en la tabla) y la de superficie ya migrada
-  // (ANALIZAR simple).
+  // (las dos variantes de ANALIZAR).
   const tareaConDiseno = seleccion.tipo === 'tarea' && !!nodo && tieneDisenoTarea(superficie)
   // Nodos con diseño de datos (#1043, lectura ≈ edición: todos salvo las tareas con superficie
   // propia sin migrar): la edición pinta la misma zona de datos que la lectura y debajo las
@@ -1199,14 +1200,8 @@ function InspectorEdicion({ nodo }) {
   // qué documento es el producido cuando en la recepción llegan varios (regla de
   // #764). Es la única tarea cuyo producido es un documento recibido de fuera.
   const esEsperarPlazo = tareaConDiseno && nodo.tipo_codigo === 'ESPERAR_PLAZO'
-  // ADR-033 §1: en ANALIZAR extendido (ANÁLISIS_DOCUMENTAL/REQUERIMIENTO_SUBSANACIÓN)
-  // casar un requisito documental deriva el consumido — la Despensa queda sin uso
-  // legítimo y se oculta. En ANALIZAR simple (p.ej. CONSULTA_SEPARATA) sigue viva,
-  // sin cambios. `seccionesExtendidas` es null hasta que AnalizarEditor confirma el
-  // valor real (primer getAnalizar) — se muestra por defecto hasta saberlo con certeza.
-  const ocultarDespensa = esAnalizar && seccionesExtendidas === true
-  // Los tres editores bespoke no traen su propio control de borrado — #742. Fase cerrada no aplica
-  // aquí: seleccion.tipo es siempre 'tarea', nunca 'fase'.
+  // Los editores bespoke que quedan (ELABORAR y NOTIFICAR) no traen su propio control de borrado
+  // — #742. Fase cerrada no aplica aquí: seleccion.tipo es siempre 'tarea', nunca 'fase'.
   const puedeBorrarTarea = !!superficie && puedeEditarNodo('tarea')
   // Fase CONSULTAS (ADR-042 §C, #396 bloque 5): acción propia de la fase, en la zona de acciones
   // (mismo criterio que ReabrirFase).
@@ -1225,9 +1220,9 @@ function InspectorEdicion({ nodo }) {
   // los hooks) y solo cuenta si el nodo es un trámite: un id de tarea puede coincidir con el último.
   const esTramite = seleccion.tipo === 'tramite'
   const hayNotifTramite = useHayNotificacionesTramite(Number(seleccion.id)) && esTramite
-  // Diagnóstico por producir de un ANALIZAR simple (#1043): mientras falte, la zona de acciones
-  // lleva la acción de producirlo. Mismo hook-siempre que arriba.
-  const hayDiagnosticoPendiente = useDiagnosticoPendiente(Number(seleccion.id)) && esAnalizarSimple
+  // Diagnóstico por producir de un ANALIZAR (#1043): mientras falte, la zona de acciones lleva la
+  // acción de producirlo. Mismo hook-siempre que arriba.
+  const hayDiagnosticoPendiente = useDiagnosticoPendiente(Number(seleccion.id)) && esAnalizar
   // Nodos migrados (#1043): la misma columna que la lectura (alto completo, pie pegado abajo) y
   // tres zonas en este orden: datos (la misma zona que en lectura), acciones y creación (solo
   // en edición, debajo de los datos) y pie. En las acciones va primero la Despensa —lo
@@ -1256,10 +1251,14 @@ function InspectorEdicion({ nodo }) {
           ? <ConfirmacionBorrado nodo={nodo} />
           : (
             <>
-              <div className="border-top mt-3 pt-3">
-                {/* En ANALIZAR el documento producido lo genera el diagnóstico, no se vincula a mano. */}
-                <Despensa deshabilitarProducido={esAnalizarSimple} esEsperarPlazo={esEsperarPlazo} />
-              </div>
+              {/* ADR-033 §1: en ANALIZAR extendido casar un requisito documental deriva el consumido,
+                  así que la Despensa queda sin uso legítimo y se oculta. En el simple sigue viva. En
+                  los dos el documento producido lo genera el diagnóstico, no se vincula a mano. */}
+              {!esAnalizarExtendido && (
+                <div className="border-top mt-3 pt-3">
+                  <Despensa deshabilitarProducido={esAnalizar} esEsperarPlazo={esEsperarPlazo} />
+                </div>
+              )}
               {hayPropias && (
                 <div className="border-top mt-3 pt-3">
                   {esSolicitud && <CertFinInstruccion />}
@@ -1271,7 +1270,7 @@ function InspectorEdicion({ nodo }) {
                   {esTramite && (
                     <AccionNotificacionesTramite expedienteId={expedienteId} tramiteId={Number(seleccion.id)} />
                   )}
-                  {esAnalizarSimple && (
+                  {esAnalizar && (
                     <AccionProducirDiagnostico expedienteId={expedienteId} tareaId={Number(seleccion.id)} />
                   )}
                 </div>
@@ -1285,24 +1284,23 @@ function InspectorEdicion({ nodo }) {
       </div>
     )
   }
-  // Solo llegan aquí las tareas con superficie de trabajo propia (fase 3 de #1043 las migrará).
+  // Solo llegan aquí las tareas con superficie de trabajo propia sin migrar, ELABORAR y NOTIFICAR
+  // (la fase 3 de #1043 las migrará).
   return (
     <div className="p-3">
       {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
       {borrarPendienteConfirm
         ? <ConfirmacionBorrado nodo={nodo} />
-        : esAnalizar
-          ? <AnalizarEditor tareaId={seleccion.id} />
-          : esElaborar
-            ? <ElaborarEditor tareaId={seleccion.id} nodo={nodo} />
-            : esNotificar
-              ? <NotificarEditor tareaId={seleccion.id} />
-              : null
+        : esElaborar
+          ? <ElaborarEditor tareaId={seleccion.id} nodo={nodo} />
+          : esNotificar
+            ? <NotificarEditor tareaId={seleccion.id} />
+            : null
       }
       {!borrarPendienteConfirm && puedeBorrarTarea && <BotonBorrar />}
-      {!borrarPendienteConfirm && !ocultarDespensa && (
+      {!borrarPendienteConfirm && (
         <div className="border-top mt-3 pt-3">
-          <Despensa deshabilitarProducido={esAnalizar} />
+          <Despensa />
         </div>
       )}
     </div>

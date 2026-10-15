@@ -1,33 +1,33 @@
-// AnalizarEditor.jsx — contenedor de la tarea ANALIZAR (#442, #677, ADR-033).
+// AnalizarEditor.jsx — las piezas de la tarea ANALIZAR (#442, #677, ADR-033; #1043, ADR-053 §C).
 //
-// Superficie de trabajo propia de la tarea de tipo ANALIZAR con secciones extendidas, en lugar
-// del diseño de tarea genérica (tabla en superficiesTarea.js; ver Inspector.jsx). El ANALIZAR de
-// un trámite sin ellas (CONSULTA_SEPARATA…) ya no pasa por aquí: lo atiende `AnalizarSimple.jsx`
-// con el diseño de datos de la tarea; las ramas «simple» de este fichero solo quedan como
-// respaldo si el nodo del árbol llegara sin `analisis_extendido`. Se compone de:
-//   - Secciones extendidas (check documental #495, check técnico #581,
-//     requerimientos #440), solo si el backend las declara (secciones_extendidas)
-//     — no todo trámite con ANALIZAR las necesita (p.ej. CONSULTA_SEPARATA).
-//     Cada una es un acordeón con resumen en cabecera (ADR-033 §1) que se
-//     colapsa (abrible) al producir el diagnóstico (§6).
-//   - Bloque de defectos: un único bloque que muta de nombre y naturaleza al
-//     producir — "Borrador defectos" en curso → "Resultado diagnóstico"
-//     producido (§1). Solo en secciones extendidas.
-//   - Núcleo de resultado (siempre presente): en secciones extendidas el
-//     resultado es derivado del borrador, sin elección libre ni "Condicionado"
-//     (§3); en ANALIZAR simple se mantiene el radio libre de siempre.
-//   - Notas: campo directo de la tarea, enganchado a `borrador.notas` del store
-//     (#688). No lleva botón propio — lo guarda el par Guardar/Cancelar de la
-//     cabecera fija, igual que en cualquier otro nodo.
+// La tarea ANALIZAR pinta el diseño de datos de la tarea (Notas, plazo y documentos, en
+// `DatosNodo`/`ZonaDatos`) y, en lectura y en edición (criterio de Carlos, 13/10/2026: lo que sale
+// en edición también se ve en lectura), las tarjetas de su análisis. Este fichero aporta las del
+// ANALIZAR con secciones extendidas (ANALISIS_DOCUMENTAL, REQUERIMIENTO_SUBSANACION; el backend lo
+// dice en el nodo del árbol, `superficiesTarea.js`); el de un trámite sin ellas (CONSULTA_SEPARATA…)
+// tiene su tarjeta en `AnalizarSimple.jsx`. Aquí hay:
+//   - `AnalisisExtendido` (zona de datos): las tres secciones y el bloque de defectos, en los dos
+//     modos. En lectura son de solo lectura y sin botones; en edición llevan los controles de
+//     siempre.
+//       · Secciones extendidas (check documental #495, check técnico #581, requerimientos #440),
+//         solo si el backend las declara (secciones_extendidas). Cada una es un acordeón con
+//         resumen en cabecera (ADR-033 §1) que se colapsa (abrible) al producir el diagnóstico (§6).
+//       · Bloque de defectos: un único bloque que muta de nombre y naturaleza al producir —
+//         "Borrador defectos" en curso → "Resultado diagnóstico" producido (§1).
+//   - `AccionProducirDiagnostico` (zona de acciones, solo edición y solo mientras falte producirlo):
+//     el núcleo de resultado. En secciones extendidas el resultado es derivado del borrador, sin
+//     elección libre ni "Condicionado" (§3); en ANALIZAR simple se mantiene el radio libre.
 //
-// Este contenedor NO monta Guardar/Cancelar: el de los campos directos vive en
-// la barra del marco del shell (#688, #1042) y todo lo demás que se ve aquí (vincular
-// documento, guardar ítem técnico, guardar shuttle) persiste por su cuenta y de
-// inmediato, sin pasar por el borrador.
+// Las Notas son del diseño de datos de la tarea, enganchadas a `borrador.notas` del store (#688): las
+// guarda el par Guardar/Cancelar del marco del shell (#1042). Todo lo demás que se ve aquí (vincular
+// documento, guardar ítem técnico, guardar shuttle, producir) persiste por su cuenta y de inmediato,
+// sin pasar por el borrador: no se toca cómo guarda cada bloque (decisión de Carlos, 15/10/2026);
+// el aviso de «interior sucio» al salir es de #1055.
 import React from 'react'
 import { useArbolStore } from '../store.js'
+import { useAnalisisTarea } from '../analizarEstado.js'
 import {
-  getAnalizar, postAnalizar, revertirDiagnostico,
+  postAnalizar, revertirDiagnostico,
   vincularRequisitoDocumental, desvincularRequisitoDocumental,
   anclarProyectoPrincipal,
   guardarCoberturaTecnica,
@@ -35,7 +35,6 @@ import {
 } from '../api.js'
 import { showToast } from '../../shared/ui/toast.js'
 import { tienePermiso } from '../../shared/auth.js'
-import BloqueNotas from './BloqueNotas.jsx'
 
 export const ETIQUETA_RESULTADO = {
   favorable: 'Favorable',
@@ -47,21 +46,23 @@ export const ETIQUETA_RESULTADO = {
 // cuerpo colapsable. `abiertaInicial` solo se lee al montar: el padre fuerza
 // un remount (key) cuando cambia el estado producido/no-producido para que la
 // regla "colapsado al entrar en edición" se aplique en el momento correcto.
-function Acordeon({ titulo, resumen, abiertaInicial, children }) {
+//
+// Misma cabecera que las demás tarjetas del inspector (`TarjetaDatos`: acento, icono `fas fa-*`).
+function Acordeon({ titulo, icono, resumen, abiertaInicial, children }) {
   const [abierta, setAbierta] = React.useState(abiertaInicial)
   const toggle = () => setAbierta((a) => !a)
 
   return (
     <div className="card mb-3">
       <div
-        className="card-header card-header-accent fw-semibold small d-flex justify-content-between align-items-center"
+        className="card-header card-header-accent fw-semibold d-flex justify-content-between align-items-center"
         style={{ cursor: 'pointer' }}
         role="button"
         tabIndex={0}
         onClick={toggle}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle() } }}
       >
-        <span>{titulo}</span>
+        <span>{icono && <i className={`fas ${icono} me-1`} />}{titulo}</span>
         <span className="d-flex align-items-center gap-2">
           {resumen && <span className="text-muted fw-normal">{resumen}</span>}
           <i className={`bi ${abierta ? 'bi-chevron-up' : 'bi-chevron-down'}`} />
@@ -291,7 +292,10 @@ function AvisoJustificacion({ pidiendo, enviando, motivo, onConfirmar, onCancela
 }
 
 // Fila de un requisito documental (#495): estado + selector de documento del pool.
-function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido, onRecargar }) {
+//
+// `soloLectura` (#1043): el mismo requisito, con su estado y el documento casado, sin Quitar,
+// Anclar, Vincular ni Cambiar. El aviso de divergencia del ancla se queda como información.
+function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido, onRecargar, soloLectura }) {
   const [seleccionando, setSeleccionando] = React.useState(false)
   const [documentoId, setDocumentoId] = React.useState('')
   const [enviando, setEnviando] = React.useState(false)
@@ -364,14 +368,16 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido,
       {item.documento && (
         <div className="d-flex align-items-center gap-2 small mb-1">
           <span className="text-truncate">{item.documento.nombre}</span>
-          <button
-            type="button"
-            className="btn btn-sm btn-link text-danger p-0 lh-1"
-            disabled={enviando}
-            onClick={() => reversion.ejecutar(() => justificacion.ejecutar(desvincular))}
-          >
-            Quitar
-          </button>
+          {!soloLectura && (
+            <button
+              type="button"
+              className="btn btn-sm btn-link text-danger p-0 lh-1"
+              disabled={enviando}
+              onClick={() => reversion.ejecutar(() => justificacion.ejecutar(desvincular))}
+            >
+              Quitar
+            </button>
+          )}
         </div>
       )}
 
@@ -383,7 +389,7 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido,
               ? `El proyecto de la instalación es «${item.divergencia_ancla.documento_anclado.nombre}»: el checklist apunta a otro documento.`
               : 'El expediente no tiene todavía ningún documento anclado como proyecto de la instalación.'}
           </span>
-          {tienePermiso('editar_expediente') && (
+          {!soloLectura && tienePermiso('editar_expediente') && (
             <button
               type="button"
               className="btn btn-sm btn-outline-primary py-0 text-nowrap"
@@ -396,22 +402,26 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido,
         </div>
       )}
 
-      <AvisoReversionDiagnostico
-        confirmando={reversion.confirmando}
-        revirtiendo={reversion.revirtiendo}
-        bloqueo={reversion.bloqueo}
-        onConfirmar={reversion.confirmar}
-        onCancelar={reversion.cancelar}
-      />
-      <AvisoJustificacion
-        pidiendo={justificacion.pidiendo}
-        enviando={justificacion.enviando}
-        motivo={justificacion.motivo}
-        onConfirmar={justificacion.confirmar}
-        onCancelar={justificacion.cancelar}
-      />
+      {!soloLectura && (
+        <>
+          <AvisoReversionDiagnostico
+            confirmando={reversion.confirmando}
+            revirtiendo={reversion.revirtiendo}
+            bloqueo={reversion.bloqueo}
+            onConfirmar={reversion.confirmar}
+            onCancelar={reversion.cancelar}
+          />
+          <AvisoJustificacion
+            pidiendo={justificacion.pidiendo}
+            enviando={justificacion.enviando}
+            motivo={justificacion.motivo}
+            onConfirmar={justificacion.confirmar}
+            onCancelar={justificacion.cancelar}
+          />
+        </>
+      )}
 
-      {seleccionando ? (
+      {soloLectura ? null : seleccionando ? (
         <div className="d-flex gap-1">
           <select
             className="form-select form-select-sm"
@@ -453,17 +463,18 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido,
   )
 }
 
-function SeccionDocumental({ checklist, expedienteId, tareaId, producido, onRecargar, abiertaInicial }) {
+function SeccionDocumental({ checklist, expedienteId, tareaId, producido, onRecargar, abiertaInicial, soloLectura }) {
   const pool = useArbolStore((s) => s.pool)
   const cargarPool = useArbolStore((s) => s.cargarPool)
 
-  React.useEffect(() => { cargarPool() }, [cargarPool])
+  // El pool solo hace falta para elegir un documento: en lectura no se pide.
+  React.useEffect(() => { if (!soloLectura) cargarPool() }, [cargarPool, soloLectura])
 
   const cubiertos = checklist.filter((it) => it.cubierto).length
   const resumen = checklist.length > 0 ? `${cubiertos}/${checklist.length} cubiertos` : null
 
   return (
-    <Acordeon titulo="Check documental" resumen={resumen} abiertaInicial={abiertaInicial}>
+    <Acordeon titulo="Check documental" icono="fa-clipboard-list" resumen={resumen} abiertaInicial={abiertaInicial}>
       {checklist.length === 0 ? (
         <div className="text-muted small fst-italic">No hay requisitos documentales aplicables.</div>
       ) : (
@@ -476,6 +487,7 @@ function SeccionDocumental({ checklist, expedienteId, tareaId, producido, onReca
             pool={pool}
             producido={producido}
             onRecargar={onRecargar}
+            soloLectura={soloLectura}
           />
         ))
       )}
@@ -487,7 +499,9 @@ function SeccionDocumental({ checklist, expedienteId, tareaId, producido, onReca
 // justificación/ubicación. Máquina de 3 estados de CoberturaItemTecnico
 // (app/models/items_tecnicos.py): sin texto = no revisado; texto+cubierto=false =
 // desfavorable; texto+cubierto=true = favorable.
-function FilaItemTecnico({ item, expedienteId, tareaId, producido, onRecargar }) {
+//
+// `soloLectura` (#1043): el mismo ítem con su estado, la casilla y el texto bloqueados, sin Guardar.
+function FilaItemTecnico({ item, expedienteId, tareaId, producido, onRecargar, soloLectura }) {
   const [texto, setTexto] = React.useState(item.texto || '')
   const [cubierto, setCubierto] = React.useState(item.cubierto)
   const [enviando, setEnviando] = React.useState(false)
@@ -532,7 +546,7 @@ function FilaItemTecnico({ item, expedienteId, tareaId, producido, onRecargar })
           className="form-check-input"
           id={`tecnico-cubierto-${item.item_tecnico_id}`}
           checked={cubierto}
-          disabled={!texto.trim()}
+          disabled={soloLectura || !texto.trim()}
           onChange={(e) => setCubierto(e.target.checked)}
         />
         <label className="form-check-label small" htmlFor={`tecnico-cubierto-${item.item_tecnico_id}`}>
@@ -543,8 +557,10 @@ function FilaItemTecnico({ item, expedienteId, tareaId, producido, onRecargar })
       <textarea
         className="form-control form-control-sm mb-1"
         rows={2}
-        placeholder="Ubicación si cumple, o justificación de por qué falta…"
+        placeholder={soloLectura ? '—' : 'Ubicación si cumple, o justificación de por qué falta…'}
         value={texto}
+        readOnly={soloLectura}
+        style={soloLectura ? { resize: 'none' } : undefined}
         onChange={(e) => {
           const v = e.target.value
           setTexto(v)
@@ -552,39 +568,43 @@ function FilaItemTecnico({ item, expedienteId, tareaId, producido, onRecargar })
         }}
       />
 
-      <AvisoReversionDiagnostico
-        confirmando={reversion.confirmando}
-        revirtiendo={reversion.revirtiendo}
-        bloqueo={reversion.bloqueo}
-        onConfirmar={reversion.confirmar}
-        onCancelar={reversion.cancelar}
-      />
-      <AvisoJustificacion
-        pidiendo={justificacion.pidiendo}
-        enviando={justificacion.enviando}
-        motivo={justificacion.motivo}
-        onConfirmar={justificacion.confirmar}
-        onCancelar={justificacion.cancelar}
-      />
+      {!soloLectura && (
+        <>
+          <AvisoReversionDiagnostico
+            confirmando={reversion.confirmando}
+            revirtiendo={reversion.revirtiendo}
+            bloqueo={reversion.bloqueo}
+            onConfirmar={reversion.confirmar}
+            onCancelar={reversion.cancelar}
+          />
+          <AvisoJustificacion
+            pidiendo={justificacion.pidiendo}
+            enviando={justificacion.enviando}
+            motivo={justificacion.motivo}
+            onConfirmar={justificacion.confirmar}
+            onCancelar={justificacion.cancelar}
+          />
 
-      <button
-        type="button"
-        className="btn btn-sm btn-outline-secondary"
-        disabled={!hayCambios || enviando}
-        onClick={() => reversion.ejecutar(() => justificacion.ejecutar(guardar))}
-      >
-        {enviando ? 'Guardando…' : 'Guardar'}
-      </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary"
+            disabled={!hayCambios || enviando}
+            onClick={() => reversion.ejecutar(() => justificacion.ejecutar(guardar))}
+          >
+            {enviando ? 'Guardando…' : 'Guardar'}
+          </button>
+        </>
+      )}
     </div>
   )
 }
 
-function SeccionTecnica({ checklist, expedienteId, tareaId, producido, onRecargar, abiertaInicial }) {
+function SeccionTecnica({ checklist, expedienteId, tareaId, producido, onRecargar, abiertaInicial, soloLectura }) {
   const revisados = checklist.filter((it) => (it.texto || '').trim()).length
   const resumen = checklist.length > 0 ? `${revisados}/${checklist.length} revisados` : null
 
   return (
-    <Acordeon titulo="Check técnico" resumen={resumen} abiertaInicial={abiertaInicial}>
+    <Acordeon titulo="Check técnico" icono="fa-tools" resumen={resumen} abiertaInicial={abiertaInicial}>
       {checklist.length === 0 ? (
         <div className="text-muted small fst-italic">No hay ítems técnicos aplicables.</div>
       ) : (
@@ -596,6 +616,7 @@ function SeccionTecnica({ checklist, expedienteId, tareaId, producido, onRecarga
             tareaId={tareaId}
             producido={producido}
             onRecargar={onRecargar}
+            soloLectura={soloLectura}
           />
         ))
       )}
@@ -623,7 +644,10 @@ const ETIQUETA_CATEGORIA = Object.fromEntries(CATEGORIAS_REQUERIMIENTO)
 // producida — ahí el juicio es "resuelto o no", editar/quitar quedan
 // deshabilitados (ADR-033 §7: un requerimiento libre no tiene contra qué casar
 // automáticamente, borrarlo sin más pierde el juicio del técnico sin rastro).
-function FilaSeleccionado({ item, idx, total, esRondaSubsanacion, onQuitar, onMover, onEditar, onToggleResuelto }) {
+//
+// `soloLectura` (#1043): el mismo texto, tachado si está resuelto y con la casilla de resuelto
+// bloqueada en una ronda de subsanación, sin asa, editar, subir, bajar ni quitar.
+function FilaSeleccionado({ item, idx, total, esRondaSubsanacion, onQuitar, onMover, onEditar, onToggleResuelto, soloLectura }) {
   const [editando, setEditando] = React.useState(false)
   const [texto, setTexto] = React.useState(item.texto)
 
@@ -637,13 +661,16 @@ function FilaSeleccionado({ item, idx, total, esRondaSubsanacion, onQuitar, onMo
 
   return (
     <div className="d-flex align-items-start gap-1 border-bottom pb-1 mb-1">
-      <span className="text-muted" style={{ cursor: 'grab' }} title="Arrastrar para reordenar">⠿</span>
+      {!soloLectura && (
+        <span className="text-muted" style={{ cursor: 'grab' }} title="Arrastrar para reordenar">⠿</span>
+      )}
       {esRondaSubsanacion && (
         <div className="form-check mt-1" title="Marcar como resuelto">
           <input
             type="checkbox"
             className="form-check-input"
             checked={Boolean(item.resuelto)}
+            disabled={soloLectura}
             onChange={() => onToggleResuelto(idx)}
           />
         </div>
@@ -671,50 +698,57 @@ function FilaSeleccionado({ item, idx, total, esRondaSubsanacion, onQuitar, onMo
           <span>{item.texto}</span>
         )}
       </div>
-      {!editando && !item.catalogo_requerimientos_id && !esRondaSubsanacion && (
-        <button
-          type="button"
-          className="btn btn-sm btn-link p-0 lh-1"
-          title="Editar"
-          onClick={empezarEdicion}
-        >
-          ✏️
-        </button>
+      {!soloLectura && (
+        <>
+          {!editando && !item.catalogo_requerimientos_id && !esRondaSubsanacion && (
+            <button
+              type="button"
+              className="btn btn-sm btn-link p-0 lh-1"
+              title="Editar"
+              onClick={empezarEdicion}
+            >
+              ✏️
+            </button>
+          )}
+          <div className="d-flex flex-column">
+            <button
+              type="button"
+              className="btn btn-sm btn-link p-0 lh-1"
+              disabled={idx === 0}
+              title="Subir"
+              onClick={() => onMover(idx, -1)}
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-link p-0 lh-1"
+              disabled={idx === total - 1}
+              title="Bajar"
+              onClick={() => onMover(idx, 1)}
+            >
+              ↓
+            </button>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-link text-danger p-0 lh-1"
+            title={esRondaSubsanacion ? 'No se puede quitar en una ronda de subsanación — márcalo resuelto' : 'Quitar'}
+            disabled={esRondaSubsanacion}
+            onClick={() => onQuitar(idx)}
+          >
+            ✕
+          </button>
+        </>
       )}
-      <div className="d-flex flex-column">
-        <button
-          type="button"
-          className="btn btn-sm btn-link p-0 lh-1"
-          disabled={idx === 0}
-          title="Subir"
-          onClick={() => onMover(idx, -1)}
-        >
-          ↑
-        </button>
-        <button
-          type="button"
-          className="btn btn-sm btn-link p-0 lh-1"
-          disabled={idx === total - 1}
-          title="Bajar"
-          onClick={() => onMover(idx, 1)}
-        >
-          ↓
-        </button>
-      </div>
-      <button
-        type="button"
-        className="btn btn-sm btn-link text-danger p-0 lh-1"
-        title={esRondaSubsanacion ? 'No se puede quitar en una ronda de subsanación — márcalo resuelto' : 'Quitar'}
-        disabled={esRondaSubsanacion}
-        onClick={() => onQuitar(idx)}
-      >
-        ✕
-      </button>
     </div>
   )
 }
 
-function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsanacion, onRecargarConsolidado, abiertaInicial }) {
+//
+// `soloLectura` (#1043): solo la lista «Seleccionados» a todo el ancho (el catálogo, el texto libre, el
+// guardado y los avisos son de la edición). En edición no cambia nada: las dos columnas de siempre.
+function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsanacion, onRecargarConsolidado, abiertaInicial, soloLectura }) {
   const [catalogo, setCatalogo] = React.useState([])
   const [seleccionados, setSeleccionados] = React.useState([])
   const [cargando, setCargando] = React.useState(true)
@@ -869,6 +903,7 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsan
   return (
     <Acordeon
       titulo="Requerimientos"
+      icono="fa-list-ol"
       resumen={resumen}
       abiertaInicial={abiertaInicial}
     >
@@ -876,117 +911,123 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsan
         <div className="text-muted small fst-italic">Cargando…</div>
       ) : (
         <>
-        <AvisoReversionDiagnostico
-          confirmando={reversion.confirmando}
-          revirtiendo={reversion.revirtiendo}
-          bloqueo={reversion.bloqueo}
-          onConfirmar={reversion.confirmar}
-          onCancelar={reversion.cancelar}
-        />
-        <AvisoJustificacion
-          pidiendo={justificacion.pidiendo}
-          enviando={justificacion.enviando}
-          motivo={justificacion.motivo}
-          onConfirmar={justificacion.confirmar}
-          onCancelar={justificacion.cancelar}
-        />
-        <div className="row g-2">
-          {/* Columna izquierda: catálogo */}
-          <div className="col-6">
-            <input
-              type="text"
-              className="form-control form-control-sm mb-2"
-              placeholder="Filtrar catálogo…"
-              value={filtro}
-              onChange={(e) => setFiltro(e.target.value)}
+        {!soloLectura && (
+          <>
+            <AvisoReversionDiagnostico
+              confirmando={reversion.confirmando}
+              revirtiendo={reversion.revirtiendo}
+              bloqueo={reversion.bloqueo}
+              onConfirmar={reversion.confirmar}
+              onCancelar={reversion.cancelar}
             />
-            <div style={{ maxHeight: 220, overflowY: 'auto' }}>
-              {catalogoPorCategoria.length === 0 ? (
-                <div className="text-muted small fst-italic">Sin ítems disponibles.</div>
-              ) : (
-                catalogoPorCategoria.map(([cod, etiqueta, items]) => (
-                  <div key={cod} className="mb-2">
-                    <div className="text-muted small fw-semibold">{etiqueta}</div>
-                    {items.map((c) => (
-                      <div key={c.id} className="d-flex align-items-start gap-1 small mb-1">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-secondary lh-1"
-                          title="Añadir"
-                          onClick={() => anadirDelCatalogo(c)}
-                        >
-                          →
-                        </button>
-                        <span className="flex-grow-1">{c.texto}</span>
-                      </div>
-                    ))}
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="border-top pt-2 mt-2">
-              <textarea
-                className="form-control form-control-sm mb-1"
-                rows={2}
-                placeholder="Requerimiento no catalogado…"
-                value={textoLibre}
-                onChange={(e) => setTextoLibre(e.target.value)}
+            <AvisoJustificacion
+              pidiendo={justificacion.pidiendo}
+              enviando={justificacion.enviando}
+              motivo={justificacion.motivo}
+              onConfirmar={justificacion.confirmar}
+              onCancelar={justificacion.cancelar}
+            />
+          </>
+        )}
+        <div className="row g-2">
+          {/* Columna izquierda: catálogo (solo edición) */}
+          {!soloLectura && (
+            <div className="col-6">
+              <input
+                type="text"
+                className="form-control form-control-sm mb-2"
+                placeholder="Filtrar catálogo…"
+                value={filtro}
+                onChange={(e) => setFiltro(e.target.value)}
               />
-              {/* #684 + #28: mismo sitio, misma intención, efecto distinto según
-                  permiso. Supervisor/Admin guardan de verdad en el catálogo (es el
-                  CRUD real que pueden hacer); el resto PROPONE el alta, y esa
-                  propuesta viaja como mensaje al Supervisor (#28) sin tocar el
-                  catálogo. En ambos casos el requerimiento se añade a la tarea, así
-                  que el diagnóstico nunca queda esperando una respuesta.
-                  La casilla estuvo deshabilitada desde #684 hasta que existió la
-                  bandeja; ya no lo está. */}
-              <div className="d-flex align-items-center gap-2 mb-1">
-                <div className="form-check mb-0">
-                  <input
-                    type="checkbox"
-                    className="form-check-input"
-                    id={puedeCurarCatalogo ? 'req-guardar-catalogo' : 'req-solicitar-catalogo'}
-                    checked={guardarEnCatalogo}
-                    onChange={(e) => setGuardarEnCatalogo(e.target.checked)}
-                  />
-                  <label
-                    className="form-check-label small"
-                    htmlFor={puedeCurarCatalogo ? 'req-guardar-catalogo' : 'req-solicitar-catalogo'}
-                  >
-                    {puedeCurarCatalogo ? 'Guardar en catálogo' : 'Solicitar guardado en catálogo'}
-                  </label>
-                </div>
-                {guardarEnCatalogo && (
-                  <select
-                    className="form-select form-select-sm w-auto"
-                    value={categoriaNueva}
-                    onChange={(e) => setCategoriaNueva(e.target.value)}
-                  >
-                    {CATEGORIAS_REQUERIMIENTO.map(([cod, etiqueta]) => (
-                      <option key={cod} value={cod}>{etiqueta}</option>
-                    ))}
-                  </select>
-                )}
-                {!puedeCurarCatalogo && guardarEnCatalogo && (
-                  <span className="text-muted small fst-italic">
-                    lo decide el Supervisor
-                  </span>
+              <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+                {catalogoPorCategoria.length === 0 ? (
+                  <div className="text-muted small fst-italic">Sin ítems disponibles.</div>
+                ) : (
+                  catalogoPorCategoria.map(([cod, etiqueta, items]) => (
+                    <div key={cod} className="mb-2">
+                      <div className="text-muted small fw-semibold">{etiqueta}</div>
+                      {items.map((c) => (
+                        <div key={c.id} className="d-flex align-items-start gap-1 small mb-1">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-secondary lh-1"
+                            title="Añadir"
+                            onClick={() => anadirDelCatalogo(c)}
+                          >
+                            →
+                          </button>
+                          <span className="flex-grow-1">{c.texto}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))
                 )}
               </div>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary"
-                disabled={!textoLibre.trim() || anadiendoLibre}
-                onClick={anadirTextoLibre}
-              >
-                {anadiendoLibre ? 'Añadiendo…' : '→ Añadir'}
-              </button>
-            </div>
-          </div>
 
-          {/* Columna derecha: seleccionados */}
-          <div className="col-6">
+              <div className="border-top pt-2 mt-2">
+                <textarea
+                  className="form-control form-control-sm mb-1"
+                  rows={2}
+                  placeholder="Requerimiento no catalogado…"
+                  value={textoLibre}
+                  onChange={(e) => setTextoLibre(e.target.value)}
+                />
+                {/* #684 + #28: mismo sitio, misma intención, efecto distinto según
+                    permiso. Supervisor/Admin guardan de verdad en el catálogo (es el
+                    CRUD real que pueden hacer); el resto PROPONE el alta, y esa
+                    propuesta viaja como mensaje al Supervisor (#28) sin tocar el
+                    catálogo. En ambos casos el requerimiento se añade a la tarea, así
+                    que el diagnóstico nunca queda esperando una respuesta.
+                    La casilla estuvo deshabilitada desde #684 hasta que existió la
+                    bandeja; ya no lo está. */}
+                <div className="d-flex align-items-center gap-2 mb-1">
+                  <div className="form-check mb-0">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      id={puedeCurarCatalogo ? 'req-guardar-catalogo' : 'req-solicitar-catalogo'}
+                      checked={guardarEnCatalogo}
+                      onChange={(e) => setGuardarEnCatalogo(e.target.checked)}
+                    />
+                    <label
+                      className="form-check-label small"
+                      htmlFor={puedeCurarCatalogo ? 'req-guardar-catalogo' : 'req-solicitar-catalogo'}
+                    >
+                      {puedeCurarCatalogo ? 'Guardar en catálogo' : 'Solicitar guardado en catálogo'}
+                    </label>
+                  </div>
+                  {guardarEnCatalogo && (
+                    <select
+                      className="form-select form-select-sm w-auto"
+                      value={categoriaNueva}
+                      onChange={(e) => setCategoriaNueva(e.target.value)}
+                    >
+                      {CATEGORIAS_REQUERIMIENTO.map(([cod, etiqueta]) => (
+                        <option key={cod} value={cod}>{etiqueta}</option>
+                      ))}
+                    </select>
+                  )}
+                  {!puedeCurarCatalogo && guardarEnCatalogo && (
+                    <span className="text-muted small fst-italic">
+                      lo decide el Supervisor
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  disabled={!textoLibre.trim() || anadiendoLibre}
+                  onClick={anadirTextoLibre}
+                >
+                  {anadiendoLibre ? 'Añadiendo…' : '→ Añadir'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Columna derecha: seleccionados (en lectura, a todo el ancho) */}
+          <div className={soloLectura ? 'col-12' : 'col-6'}>
             <div className="text-muted small fw-semibold mb-2">Seleccionados</div>
             {seleccionados.length === 0 ? (
               <div className="text-muted small fst-italic">Sin requerimientos seleccionados todavía.</div>
@@ -1002,12 +1043,13 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsan
                   onMover={mover}
                   onEditar={editarInline}
                   onToggleResuelto={toggleResuelto}
+                  soloLectura={soloLectura}
                 />
               ))
             )}
           </div>
         </div>
-        <div className="mt-2">{botonGuardar}</div>
+        {!soloLectura && <div className="mt-2">{botonGuardar}</div>}
         </>
       )}
     </Acordeon>
@@ -1023,7 +1065,9 @@ function BloqueDefectos({ producido, items, resueltos, resultado }) {
 
   return (
     <div className="card mb-3">
-      <div className="card-header card-header-accent fw-semibold small">{titulo}</div>
+      <div className="card-header card-header-accent fw-semibold">
+        <i className="fas fa-clipboard-check me-1" />{titulo}
+      </div>
       <div className="card-body card-body-tinted">
         {producido && (
           <div className="mb-2">
@@ -1061,9 +1105,9 @@ function BloqueDefectos({ producido, items, resueltos, resultado }) {
 // viaja en el body: lo fija el backend. En ANALIZAR simple se mantiene el radio
 // libre de siempre, incluido "Condicionado".
 //
-// Exportado: el ANALIZAR simple (`AnalizarSimple.jsx`, #1043) lo usa como acción de la zona de
-// acciones, con su propio título.
-export function NucleoResultado({
+// Lo usa `AccionProducirDiagnostico` (más abajo, #1043) como acción de la zona de acciones, con su
+// propio título.
+function NucleoResultado({
   expedienteId, tareaId, completo, derivado, resultadoPrevisto, onProducido, titulo = 'Resultado',
 }) {
   const [resultado, setResultado] = React.useState('favorable')
@@ -1090,7 +1134,9 @@ export function NucleoResultado({
 
   return (
     <div className="card mb-3">
-      <div className="card-header card-header-accent fw-semibold small">{titulo}</div>
+      <div className="card-header card-header-accent fw-semibold">
+        <i className="fas fa-check-double me-1" />{titulo}
+      </div>
       <div className="card-body card-body-tinted">
         {derivado ? (
           <div className="mb-3 small">
@@ -1165,64 +1211,44 @@ export function NucleoResultado({
   )
 }
 
-export default function AnalizarEditor({ tareaId }) {
-  const expedienteId = useArbolStore((s) => s.expedienteId)
-  const seleccion = useArbolStore((s) => s.seleccion)
-  const cargarDetalle = useArbolStore((s) => s.cargarDetalle)
-  const setAnalizarSeccionesExtendidas = useArbolStore((s) => s.setAnalizarSeccionesExtendidas)
+// Las tarjetas del análisis del ANALIZAR con secciones extendidas: la parte de la zona de datos del
+// inspector que es propia de esta tarea (#1043, ADR-053 §C), en lectura y en edición. Lee el
+// análisis del estado compartido (`analizarEstado.js`) y lo recarga tras cada mutación de una
+// sección.
+//
+// En lectura (`!modoEdicion`) las tres secciones son de solo lectura y sin botones; en edición
+// llevan los controles de siempre. Qué se ve y dónde no cambia entre modos: mismas tarjetas, mismo
+// orden, mismo resumen en la cabecera y, si hay diagnóstico producido, plegadas (ADR-033 §6).
+export function AnalisisExtendido({ expedienteId, tareaId }) {
+  const modoEdicion = useArbolStore((s) => s.modoEdicion)
+  const refrescarDetalle = useArbolStore((s) => s.refrescarDetalleSilencioso)
+  const cargar = useAnalisisTarea((s) => s.cargar)
+  const payload = useAnalisisTarea((s) => (s.tareaId === tareaId ? s.payload : null))
+  const error = useAnalisisTarea((s) => (s.tareaId === tareaId ? s.error : null))
 
-  const [payload, setPayload] = React.useState(null)
-  const [cargando, setCargando] = React.useState(true)
-  const [error, setError] = React.useState(null)
+  React.useEffect(() => { cargar(expedienteId, tareaId) }, [cargar, expedienteId, tareaId])
 
-  const cargar = React.useCallback(async () => {
-    setCargando(true)
-    setError(null)
-    try {
-      const data = await getAnalizar(expedienteId, tareaId)
-      setPayload(data)
-      setAnalizarSeccionesExtendidas(data.secciones_extendidas)
-    } catch (e) {
-      setError(e)
-    } finally {
-      setCargando(false)
-    }
-  }, [expedienteId, tareaId, setAnalizarSeccionesExtendidas])
-
-  // Al cambiar de tarea (no al recargar la misma por una mutación puntual),
-  // se limpia el payload para que el gate de abajo muestre "Cargando…" — evita
-  // el flash de datos de la tarea anterior mientras llega la nueva (#693/#697).
-  React.useEffect(() => {
-    setPayload(null)
-    cargar()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expedienteId, tareaId])
-
-  // Con payload ya cargado, una recarga por mutación (onRecargar/onRecargarConsolidado
-  // de las secciones) no debe reemplazar el árbol entero — solo refresca los datos
-  // ya montados (#693, #697: remount completo en cada vinculación/guardado puntual).
-  if (cargando && !payload) return <div className="text-muted small">Cargando…</div>
-  if (error) {
-    return <div className="text-danger small">No se pudo cargar: {String((error && error.message) || error)}</div>
-  }
+  if (error && !payload) return <div className="text-danger small mb-3">{error}</div>
   if (!payload) return null
 
-  const onProducido = async () => {
-    // Refresca el detalle de lectura del árbol (Documentos, rol Producido) y
-    // el propio payload local (pasa a modo solo lectura). El pool de la
-    // despensa no se invalida aquí (cacheado por vida de la isla, #517) — en
-    // secciones extendidas la Despensa ya no se monta (ver Inspector.jsx).
-    await cargarDetalle(seleccion)
-    await cargar()
+  // Con el análisis ya cargado, una mutación puntual (vincular, guardar un ítem, guardar el shuttle,
+  // revertir) solo refresca los datos ya montados: no vacía el inspector ni remonta las secciones, o
+  // se perdería lo que el técnico lleva escrito en las demás (#693, #697). Casar un requisito deriva
+  // el consumido, así que el detalle (la lista «Documentos» de la zona de datos) se pide también,
+  // sin vaciarlo mientras llega.
+  const recargar = async () => {
+    await cargar(expedienteId, tareaId)
+    await refrescarDetalle()
   }
 
+  const soloLectura = !modoEdicion
   const producido = !!payload.documento_producido
   // Fuerza remount de los acordeones al cruzar la frontera no-producido→producido
   // (o al entrar ya producido): "colapsado al entrar en edición" (ADR-033 §6).
   const claveColapso = String(producido)
 
   return (
-    <div>
+    <>
       {payload.secciones_extendidas && (
         <>
           <SeccionDocumental
@@ -1231,8 +1257,9 @@ export default function AnalizarEditor({ tareaId }) {
             expedienteId={expedienteId}
             tareaId={tareaId}
             producido={producido}
-            onRecargar={cargar}
+            onRecargar={recargar}
             abiertaInicial={!producido}
+            soloLectura={soloLectura}
           />
           <SeccionTecnica
             key={`tec-${claveColapso}`}
@@ -1240,8 +1267,9 @@ export default function AnalizarEditor({ tareaId }) {
             expedienteId={expedienteId}
             tareaId={tareaId}
             producido={producido}
-            onRecargar={cargar}
+            onRecargar={recargar}
             abiertaInicial={!producido}
+            soloLectura={soloLectura}
           />
           <SeccionRequerimientos
             key={`req-${claveColapso}`}
@@ -1249,16 +1277,15 @@ export default function AnalizarEditor({ tareaId }) {
             tareaId={tareaId}
             producido={producido}
             esRondaSubsanacion={payload.es_ronda_subsanacion}
-            onRecargarConsolidado={cargar}
+            onRecargarConsolidado={recargar}
             abiertaInicial={!producido}
+            soloLectura={soloLectura}
           />
         </>
       )}
 
       {/* Bloque mutante (ADR-033 §1): "Borrador defectos" en secciones extendidas
-          mientras se trabaja; "Resultado diagnóstico" tras producir, para
-          cualquier tipo de ANALIZAR (también el simple, que antes de producir
-          no tiene nada que agregar y no muestra este bloque). */}
+          mientras se trabaja; "Resultado diagnóstico" tras producir. */}
       {(payload.secciones_extendidas || producido) && (
         <BloqueDefectos
           producido={producido}
@@ -1267,19 +1294,43 @@ export default function AnalizarEditor({ tareaId }) {
           resultado={producido ? payload.documento_producido.resultado : payload.resultado_previsto}
         />
       )}
+    </>
+  )
+}
 
-      {!producido && (
-        <NucleoResultado
-          expedienteId={expedienteId}
-          tareaId={tareaId}
-          completo={payload.completo}
-          derivado={payload.secciones_extendidas}
-          resultadoPrevisto={payload.resultado_previsto}
-          onProducido={onProducido}
-        />
-      )}
+// Producir el documento de diagnóstico: la acción de la zona de acciones del inspector, solo en
+// edición y solo mientras no se ha producido, para los dos ANALIZAR (el extendido, con el resultado
+// derivado del borrador; el simple, con el radio libre). Lo ya producido no lleva acción: su
+// resultado es la tarjeta de datos.
+export function AccionProducirDiagnostico({ expedienteId, tareaId }) {
+  const refrescarArbol = useArbolStore((s) => s.refrescarArbol)
+  const sincronizarProducido = useArbolStore((s) => s.sincronizarProducidoNotificar)
+  const cargar = useAnalisisTarea((s) => s.cargar)
+  const payload = useAnalisisTarea((s) => (s.tareaId === tareaId ? s.payload : null))
 
-      <BloqueNotas />
-    </div>
+  // Producido (o aún sin cargar): no hay nada que accionar.
+  if (!payload || payload.documento_producido) return null
+
+  // Producir cambia el estado de la tarea, sus documentos y el semáforo: se recarga el
+  // diagnóstico (la tarjeta pasa a «producido»), se mete el documento producido en el borrador
+  // (la Despensa lo enseña y un Guardar completo posterior no lo desvincula) y se refresca el
+  // árbol, que invalida la caché del detalle.
+  const alProducir = async () => {
+    await cargar(expedienteId, tareaId)
+    const producido = useAnalisisTarea.getState().payload?.documento_producido
+    if (producido) sincronizarProducido(producido.id)
+    await refrescarArbol()
+  }
+
+  return (
+    <NucleoResultado
+      expedienteId={expedienteId}
+      tareaId={tareaId}
+      titulo="Producir diagnóstico"
+      completo={payload.completo}
+      derivado={payload.secciones_extendidas}
+      resultadoPrevisto={payload.resultado_previsto}
+      onProducido={alProducir}
+    />
   )
 }

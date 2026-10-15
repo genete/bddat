@@ -171,10 +171,11 @@ export const DISENO_TRAMITE = {
 
 // La tarea con diseño es la genérica, la que no tiene superficie de trabajo propia
 // (`superficiesTarea.js`): hoy ESPERAR_PLAZO, y cualquier combinación de tipo de tarea y trámite que
-// no figure en esa tabla; y el ANALIZAR simple, cuya superficie ya migró. Su único dato es «Notas»
-// (`esquema_editable._esquema_tarea`); el plazo y los documentos son bloques de la zona de datos, no
-// tarjetas, y el resultado del ANALIZAR simple es su propia tarjeta (`AnalizarSimple.jsx`), como las
-// notificaciones del trámite. «Estado» y «Tipo» están en la barra (el tipo, en su título).
+// no figure en esa tabla; y el ANALIZAR, en sus dos variantes, cuya superficie ya migró. Su único
+// dato es «Notas» (`esquema_editable._esquema_tarea`); el plazo y los documentos son bloques de la
+// zona de datos, no tarjetas, y el análisis del ANALIZAR son sus propias tarjetas debajo de esta
+// (`AnalisisExtendido` en `AnalizarEditor.jsx`; `TarjetaResultadoDiagnostico` en `AnalizarSimple.jsx`),
+// como las notificaciones del trámite. «Estado» y «Tipo» están en la barra (el tipo, en su título).
 // «Resultado de notificación» solo lo trae NOTIFICAR, que no tiene diseño: si alguna vez llegara,
 // cae en «Otros datos» y no se pierde.
 export const DISENO_TAREA = {

@@ -21,13 +21,16 @@
 //      la repite). Devuelve el nombre de la superficie o `undefined` para quedarse con el defecto.
 //   3. `defecto`.
 //
-// `ANALIZAR_SIMPLE` (el ANALIZAR de un trámite sin secciones extendidas) ya usa el diseño de datos
-// de la tarea: su resultado es una tarjeta de datos y producir el diagnóstico, una acción de la
-// zona de acciones. Las demás superficies siguen con su editor hasta la fase 3.
+// Las dos variantes de ANALIZAR ya usan el diseño de datos de la tarea: su análisis son tarjetas de
+// datos —en lectura y en edición— y producir el diagnóstico, una acción de la zona de acciones.
+// `ANALIZAR` es el de los trámites con secciones extendidas (ANALISIS_DOCUMENTAL,
+// REQUERIMIENTO_SUBSANACION) y `ANALIZAR_SIMPLE` el de los demás. ELABORAR y NOTIFICAR siguen con su
+// editor hasta que la fase 3 las migre.
 export const SUPERFICIES_TAREA = {
   ANALIZAR: {
     defecto: 'ANALIZAR',
-    // Sin el dato (un árbol antiguo) se queda en el editor completo, que atiende las dos variantes.
+    // Sin el dato (un árbol antiguo) se queda en la variante con secciones, que si el endpoint dice
+    // que no las hay no las pinta (`AnalisisExtendido`).
     variante: (nodo) => (nodo && nodo.analisis_extendido === false ? 'ANALIZAR_SIMPLE' : undefined),
     porTramite: {},
   },
@@ -36,7 +39,7 @@ export const SUPERFICIES_TAREA = {
 }
 
 // Superficies que ya usan el diseño de datos de la tarea (las demás siguen con su editor).
-const SUPERFICIES_CON_DISENO = new Set(['ANALIZAR_SIMPLE'])
+const SUPERFICIES_CON_DISENO = new Set(['ANALIZAR', 'ANALIZAR_SIMPLE'])
 
 // ¿Pinta la tarea la zona de datos común? Sí si es genérica (sin superficie) o su superficie ya migró.
 export function tieneDisenoTarea(superficie) {

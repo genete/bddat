@@ -3,58 +3,25 @@
 //
 // Su superficie es corta: decidir el resultado y producir el documento de diagnóstico. Por eso usa
 // el diseño de datos de la tarea (Notas, plazo y documentos, en `DatosNodo`/`ZonaDatos`) y aporta
-// dos piezas del mismo dato, en las dos zonas del cuerpo del inspector (criterio de Carlos,
-// 13/10/2026: lo que sale en edición también se ve en lectura):
-//   - `TarjetaResultadoDiagnostico`, en la zona de datos, en lectura y en edición: el resultado y
-//     los defectos del diagnóstico ya producido, o «Pendiente de producir».
-//   - `AccionProducirDiagnostico`, en la zona de acciones, solo en edición y solo mientras no se ha
-//     producido: el radio de resultado y el botón irreversible (`NucleoResultado`, el mismo del
-//     editor completo, que sigue atendiendo a las tareas de trámites con secciones extendidas).
+// una tarjeta de datos, en lectura y en edición (criterio de Carlos, 13/10/2026: lo que sale en
+// edición también se ve en lectura): `TarjetaResultadoDiagnostico`, con el resultado y los defectos
+// del diagnóstico ya producido, o «Pendiente de producir». Producirlo es una acción de la zona de
+// acciones, solo en edición (`AccionProducirDiagnostico`, en `AnalizarEditor.jsx`, igual que para el
+// ANALIZAR extendido, que tiene sus propias tarjetas en `AnalisisExtendido`).
 //
-// Comparten el estado en `useDiagnosticoTarea`: la tarjeta lo carga al montarse y la acción lo
-// recarga tras producir, sin depender de que el inspector se vuelva a montar. Leen
-// `GET …/tarea/<id>/analizar`, el mismo endpoint del editor completo, que solo exige poder ver el
-// expediente. Qué trámites son «simples» lo dice el backend en el nodo del árbol
-// (`analisis_extendido`, ver `superficiesTarea.js`); este fichero no lo decide.
+// Lee `GET …/tarea/<id>/analizar` a través del estado compartido (`analizarEstado.js`): el mismo
+// endpoint del editor extendido, que solo exige poder ver el expediente. Qué trámites son «simples»
+// lo dice el backend en el nodo del árbol (`analisis_extendido`, ver `superficiesTarea.js`); este
+// fichero no lo decide.
 import React from 'react'
-import { create } from 'zustand'
-import { useArbolStore } from '../store.js'
-import { getAnalizar } from '../api.js'
+import { useAnalisisTarea } from '../analizarEstado.js'
 import { TarjetaDatos, CampoDato, ValorSoloLectura } from './TarjetaDatos.jsx'
-import { NucleoResultado, ETIQUETA_RESULTADO } from './AnalizarEditor.jsx'
-
-// `tareaId` dice de qué tarea es `payload`: al cambiar de tarea se descarta, pero al recargar la
-// misma (tras producir) se conserva y no parpadea.
-export const useDiagnosticoTarea = create((set, get) => ({
-  tareaId: null,
-  payload: null,
-  error: null,
-
-  cargar: async (expedienteId, tareaId) => {
-    if (get().tareaId !== tareaId) set({ tareaId, payload: null, error: null })
-    try {
-      const payload = await getAnalizar(expedienteId, tareaId)
-      if (get().tareaId === tareaId) set({ payload, error: null })
-    } catch (e) {
-      if (get().tareaId === tareaId) {
-        set({ error: (e && e.message) || 'No se pudo cargar el diagnóstico' })
-      }
-    }
-  },
-}))
-
-// ¿Falta producir el diagnóstico de esta tarea? Lo usa el inspector para saber si pinta la zona de
-// acciones propias.
-export function useDiagnosticoPendiente(tareaId) {
-  return useDiagnosticoTarea(
-    (s) => s.tareaId === tareaId && !!s.payload && !s.payload.documento_producido,
-  )
-}
+import { ETIQUETA_RESULTADO } from './AnalizarEditor.jsx'
 
 export function TarjetaResultadoDiagnostico({ expedienteId, tareaId }) {
-  const cargar = useDiagnosticoTarea((s) => s.cargar)
-  const payload = useDiagnosticoTarea((s) => (s.tareaId === tareaId ? s.payload : null))
-  const error = useDiagnosticoTarea((s) => (s.tareaId === tareaId ? s.error : null))
+  const cargar = useAnalisisTarea((s) => s.cargar)
+  const payload = useAnalisisTarea((s) => (s.tareaId === tareaId ? s.payload : null))
+  const error = useAnalisisTarea((s) => (s.tareaId === tareaId ? s.error : null))
 
   React.useEffect(() => { cargar(expedienteId, tareaId) }, [cargar, expedienteId, tareaId])
 
@@ -85,38 +52,5 @@ export function TarjetaResultadoDiagnostico({ expedienteId, tareaId }) {
         </>
       )}
     </TarjetaDatos>
-  )
-}
-
-export function AccionProducirDiagnostico({ expedienteId, tareaId }) {
-  const refrescarArbol = useArbolStore((s) => s.refrescarArbol)
-  const sincronizarProducido = useArbolStore((s) => s.sincronizarProducidoNotificar)
-  const cargar = useDiagnosticoTarea((s) => s.cargar)
-  const payload = useDiagnosticoTarea((s) => (s.tareaId === tareaId ? s.payload : null))
-
-  // Producido (o aún sin cargar): no hay nada que accionar.
-  if (!payload || payload.documento_producido) return null
-
-  // Producir cambia el estado de la tarea, sus documentos y el semáforo: se recarga el
-  // diagnóstico (la tarjeta pasa a «producido»), se mete el documento producido en el borrador
-  // (la Despensa lo enseña y un Guardar completo posterior no lo desvincula) y se refresca el
-  // árbol, que invalida la caché del detalle.
-  const alProducir = async () => {
-    await cargar(expedienteId, tareaId)
-    const producido = useDiagnosticoTarea.getState().payload?.documento_producido
-    if (producido) sincronizarProducido(producido.id)
-    await refrescarArbol()
-  }
-
-  return (
-    <NucleoResultado
-      expedienteId={expedienteId}
-      tareaId={tareaId}
-      titulo="Producir diagnóstico"
-      completo={payload.completo}
-      derivado={false}
-      resultadoPrevisto={payload.resultado_previsto}
-      onProducido={alProducir}
-    />
   )
 }
