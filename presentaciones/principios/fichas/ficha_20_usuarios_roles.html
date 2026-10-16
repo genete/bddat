@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 20 · Usuarios y roles</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* lo que va */
+  --vuelta:#3B6D11;   /* lo que vuelve */
+  --plan:#854F0B;     /* reservado */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.titulo{position:absolute;left:0;right:0;top:34px;text-align:center;font-size:30px;font-weight:600}
+
+/* Arriba: los cuatro roles */
+.rol{position:absolute;top:104px;width:280px;height:250px;border:2px solid var(--borde-fuerte);border-radius:12px;background:#fff;
+  padding:14px 16px;display:flex;flex-direction:column}
+.rol svg{width:38px;height:38px;color:var(--texto)}
+.rol svg *{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rol h3{font-size:24px;font-weight:700;margin:6px 0 6px}
+.rol p{font-size:17px;line-height:1.35;color:var(--texto)}
+.rol .mt{margin-top:auto;border-top:1px solid var(--borde);padding-top:8px;font-size:14px;color:var(--texto-2)}
+.rol .mt b{display:block;font-size:17px;color:var(--ida)}
+
+/* Abajo izquierda: un usuario, varios roles */
+.usuario{position:absolute;left:40px;top:400px;width:560px;border:2px solid var(--texto);border-radius:12px;background:var(--tarjeta);
+  padding:14px 18px}
+.usuario h3{font-size:21px;font-weight:700}
+.usuario .roles{display:flex;gap:8px;margin:8px 0 12px}
+.usuario .roles span{font-size:16px;font-weight:600;border:1.5px solid var(--borde-fuerte);border-radius:999px;padding:3px 12px;background:#fff}
+.usuario .entra{display:flex;align-items:center;gap:10px;font-size:17px}
+.usuario .sel{border:2px solid var(--ida);border-radius:8px;padding:4px 12px;background:#fff;font-weight:700;color:var(--ida)}
+
+/* Abajo derecha: ver y actuar */
+.ver{position:absolute;left:660px;top:400px;width:580px;display:flex;flex-direction:column;gap:12px}
+.fila{display:flex;align-items:center;gap:14px;border:2px solid var(--borde-fuerte);border-radius:12px;background:#fff;padding:10px 16px}
+.fila svg{width:36px;height:36px;flex:none;color:var(--texto)}
+.fila svg *{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.fila .t{font-size:20px;font-weight:700}
+.fila .s{font-size:16px;color:var(--texto-2)}
+.fila.bita{border-color:var(--texto);background:var(--tarjeta)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-carpeta" viewBox="0 0 38 38"><path d="M3 8h12l4 4h16v22H3z"/><path d="M10 22h18M10 28h12"/></symbol>
+  <symbol id="i-bandeja" viewBox="0 0 38 38"><path d="M4 22l5-15h20l5 15v11H4z"/><path d="M4 22h9l2 4h8l2-4h9"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 38 38"><rect x="3" y="4" width="32" height="30" rx="3"/><path d="M9 27V19M16 27V12M23 27v-5M30 27V15"/></symbol>
+  <symbol id="i-engranaje" viewBox="0 0 38 38"><circle cx="19" cy="19" r="5"/><path d="M19 3v5M19 30v5M3 19h5M30 19h5M7.7 7.7l3.5 3.5M26.8 26.8l3.5 3.5M7.7 30.3l3.5-3.5M26.8 11.2l3.5-3.5"/></symbol>
+  <symbol id="i-ojo" viewBox="0 0 36 36"><path d="M2 18s6-10 16-10 16 10 16 10-6 10-16 10S2 18 2 18z"/><circle cx="18" cy="18" r="5"/></symbol>
+  <symbol id="i-mano" viewBox="0 0 36 36"><path d="M10 18V8a2.5 2.5 0 0 1 5 0v8M15 15V5a2.5 2.5 0 0 1 5 0v11M20 15V7a2.5 2.5 0 0 1 5 0v10M25 15a2.5 2.5 0 0 1 5 0v6c0 7-5 12-11 12h-1c-4 0-7-2-9-6l-4-7a2.5 2.5 0 0 1 4-3l1 2"/></symbol>
+  <symbol id="i-cuaderno" viewBox="0 0 30 34"><path d="M5 2h20v30H5z"/><path d="M10 2v30"/><path d="M14 10h7M14 15h7M14 20h5"/></symbol>
+</svg>
+
+<div id="escenario">
+  <div class="titulo">Usuarios y roles</div>
+
+  <!-- 2 a 5 · Los cuatro roles, uno por clic -->
+  <div class="rol paso" data-paso="2" style="left:40px">
+    <svg><use href="#i-carpeta"/></svg>
+    <h3>Tramitador</h3>
+    <p>Lleva sus expedientes: decide, avanza por el árbol y genera los escritos</p>
+    <div class="mt">Mi trabajo<b>Seguimiento</b></div>
+  </div>
+  <div class="rol paso" data-paso="3" style="left:340px">
+    <svg><use href="#i-bandeja"/></svg>
+    <h3>Administrativo</h3>
+    <p>Da soporte: sube documentos, notifica y vigila tareas y plazos</p>
+    <div class="mt">Mi trabajo<b>Tareas y subidas</b></div>
+  </div>
+  <div class="rol paso" data-paso="4" style="left:640px">
+    <svg><use href="#i-panel"/></svg>
+    <h3>Supervisor</h3>
+    <p>Ve todos los expedientes, asigna y configura catálogos, plantillas y reglas</p>
+    <div class="mt">Mi trabajo<b>Control y Gestión</b></div>
+  </div>
+  <div class="rol paso" data-paso="5" style="left:940px">
+    <svg><use href="#i-engranaje"/></svg>
+    <h3>Administrador</h3>
+    <p>Configuración técnica y operaciones delicadas</p>
+    <div class="mt">Mi trabajo<b>Control y Gestión</b></div>
+  </div>
+
+  <!-- 6 · Un usuario puede tener varios roles: entra con uno -->
+  <div class="usuario paso" data-paso="6">
+    <h3>Un usuario, varios roles</h3>
+    <div class="roles"><span>Tramitador</span><span>Supervisor</span></div>
+    <div class="entra">Entra con <span class="sel">Supervisor ▾</span> y cambia cuando quiera</div>
+  </div>
+
+  <!-- 7 · Se restringen los actos, no las miradas -->
+  <div class="ver">
+    <div class="fila paso" data-paso="7">
+      <svg><use href="#i-ojo"/></svg>
+      <div><div class="t">Ver: todos, todo</div><div class="s">catálogos, reglas, plantillas y expedientes ajenos</div></div>
+    </div>
+    <div class="fila paso" data-paso="7" style="transition-delay:.25s">
+      <svg><use href="#i-mano"/></svg>
+      <div><div class="t">Actuar: según el rol</div><div class="s">se restringen los actos, no las miradas</div></div>
+    </div>
+    <!-- 8 · Fuera de la asignación: se puede, y queda escrito -->
+    <div class="fila bita paso" data-paso="8">
+      <svg><use href="#i-cuaderno"/></svg>
+      <div><div class="t">¿Un expediente que no es suyo?</div><div class="s">se puede actuar, y queda en la bitácora</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var MAX = Math.max.apply(null, els.map(function(e){ return +e.getAttribute('data-paso'); }));
+  var paso = 1;
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var hs = location.hash, mm = hs.match(/paso=(\d+)/);
+  if (hs === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (mm) paso = Math.max(1, Math.min(MAX, +mm[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>

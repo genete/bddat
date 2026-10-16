@@ -509,29 +509,27 @@ vincular.
 
 ---
 
-## 18. Roles, vistas y bitácora — [propuesta]
+## 18. Roles, vistas y bitácora — [propuesta] → absorbida
 
-**En pantalla:**
-- Cuatro roles, cada uno con su trabajo
-- Listado → inspector
-- Todo queda en la bitácora
-
-**Notas:** tramitador, administrativo, supervisor, administrador; mínimo privilegio.
-El seguimiento se calcula del árbol: el color dice qué toca. Bitácora de toda acción y
-de todo escape.
+Se reparte: los roles van a la 20 (usuarios y roles); el listado que se calcula del
+árbol, a una ficha propia sobre el estado derivado; la bitácora, al escape (9) y al
+permiso blando (20).
 
 **Fuente:** ADR-012, ADR-013, ADR-023, ADR-053; fichas 3, 4b y 9 de octubre.
 
-**Estado (interno):** hecho; revisión de coherencia de la interfaz en curso (ADR-053).
-
 ---
 
-## 20. Usuarios y roles — [Carlos] (añadida al final; se reordena después)
+## 20. Usuarios y roles — [Carlos] ✔ hecha (primer intento, sin revisar; absorbe los roles de la 18)
 
-**En pantalla (propuesta):**
-- Tramitador · Administrativo · Supervisor · Administrador
-- Un usuario puede tener varios roles: elige con cuál entra
-- Cada rol, su «Mi trabajo»
+**Fichero:** `fichas/ficha_20_usuarios_roles.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2–5 | Un rol por clic, cada uno con su icono, qué hace y su «Mi trabajo»: **Tramitador** (lleva sus expedientes: decide, avanza por el árbol y genera los escritos · Seguimiento) · **Administrativo** (da soporte: sube documentos, notifica y vigila tareas y plazos · Tareas y subidas) · **Supervisor** (ve todos los expedientes, asigna y configura catálogos, plantillas y reglas · Control y Gestión) · **Administrador** (configuración técnica y operaciones delicadas · Control y Gestión) |
+| 6 | **Un usuario, varios roles**: Tramitador y Supervisor; «Entra con [Supervisor ▾] y cambia cuando quiera» |
+| 7 | **Ver: todos, todo** (catálogos, reglas, plantillas y expedientes ajenos) · **Actuar: según el rol** («se restringen los actos, no las miradas») |
+| 8 | **¿Un expediente que no es suyo?** «se puede actuar, y queda en la bitácora» |
 
 **Notas:** tramitador: lleva sus expedientes, genera escritos, avanza por el árbol.
 Administrativo: da soporte, sube documentos al pool y vigila tareas y plazos (los plazos
