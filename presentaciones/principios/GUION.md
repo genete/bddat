@@ -798,3 +798,29 @@ lo que se deja para después son las alertas y los informes. Las cifras son inve
 `INVENTARIO_BACKEND.md` §12.A y §12.B.
 
 **Estado (interno):** sin empezar; el cálculo de plazos en que se apoya, hecho.
+
+---
+
+## 19f. La instalación, no solo el expediente — [propuesta, post producción] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_19f_instalacion.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Un mapa esquemático: fincas, dos caminos y las subestaciones SET Cartuja y SET Guadalcacín |
+| 3 | La línea por tramos según su estado: en servicio (verde), autorizada (azul), en trámite (gris discontinuo), con el CT 1 |
+| 4 | A la derecha, cada elemento con su **estado** y el acto que **lo ampara** (AE 2025, AAC 2026, reformado en trámite) |
+| 5 | Las fincas que cruza, rayadas · «la relación de bienes y derechos de la DUP, sobre el catastro» |
+| 6 | «El expediente dice qué se autorizó; el mapa, dónde está y en qué punto» |
+
+**Notas:** hoy el proyecto es un documento y unos pocos datos (tensión, tipo de suelo,
+instrumento ambiental…). La idea es describir sus elementos (líneas, centros,
+subestaciones) y ligarlos a los actos que los autorizan, ponen en servicio, modifican o
+cierran; con eso, el mapa. Encaja con las modificaciones de instalaciones existentes
+(art. 115 RD 1955/2000), que hoy no tienen dónde apoyarse, y con la DUP. Nombres y
+trazado inventados.
+
+**Fuente:** ficha 12 de octubre (puntos 3 y 4); `PLAN_ESTRATEGIA.md` §A, bloques 6 y 7.
+
+**Estado (interno):** sin empezar; opcional según `PLAN_ESTRATEGIA` §G.4.

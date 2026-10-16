@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 19f · La instalación en el mapa</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* lo que va */
+  --vuelta:#3B6D11;   /* lo que vuelve */
+  --plan:#854F0B;     /* reservado */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,#ayuda,.finca{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.titulo{position:absolute;left:0;right:0;top:34px;text-align:center;font-size:30px;font-weight:600}
+
+/* Izquierda: el mapa */
+.mapa{position:absolute;left:40px;top:100px;width:640px;height:480px;border:2px solid var(--borde-fuerte);border-radius:12px;overflow:hidden;
+  background:#FBFAF6}
+.mapa svg{position:absolute;left:0;top:0}
+.finca{fill:none;stroke:#D3D1C7;stroke-width:1.5;transition:fill .6s ease,stroke .6s ease}
+.ver-fincas .finca.afectada{fill:url(#rayado);stroke:var(--texto-2)}
+.camino{fill:none;stroke:#E2E0D8;stroke-width:9;stroke-linecap:round}
+.tramo{fill:none;stroke-width:6;stroke-linecap:round;stroke-linejoin:round}
+.tramo.servicio{stroke:var(--vuelta)}
+.tramo.autorizada{stroke:var(--ida)}
+.tramo.tramite{stroke:var(--borde-fuerte);stroke-dasharray:10 8}
+.set{fill:#fff;stroke:var(--texto);stroke-width:3}
+.ct{fill:#fff;stroke:var(--ida);stroke-width:3}
+.rot{font-size:14px;font-weight:700;fill:var(--texto)}
+.rot.claro{fill:var(--texto-2);font-weight:600}
+
+/* Derecha: los elementos y el acto que los ampara */
+.lista{position:absolute;left:720px;top:100px;width:520px;border:2px solid var(--borde-fuerte);border-radius:12px;background:#fff;overflow:hidden}
+.lista .cab,.lista .f{display:grid;grid-template-columns:1fr 130px 120px;align-items:center}
+.lista .cab{background:var(--tarjeta);font-size:13px;font-weight:700;color:var(--texto-2);text-transform:uppercase;letter-spacing:.4px}
+.lista span{padding:7px 12px}
+.lista .f{border-top:1px solid var(--borde);font-size:16px}
+.estado{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:700}
+.estado i{width:22px;height:5px;border-radius:3px}
+.e-servicio{color:var(--vuelta)} .e-servicio i{background:var(--vuelta)}
+.e-autorizada{color:var(--ida)} .e-autorizada i{background:var(--ida)}
+.e-tramite{color:var(--texto-2)} .e-tramite i{background:repeating-linear-gradient(90deg,var(--borde-fuerte) 0 6px,transparent 6px 10px)}
+.acto{font-size:14px;color:var(--texto-2)}
+
+.fincas{position:absolute;left:720px;top:380px;width:520px;display:flex;gap:14px;align-items:center;border:2px solid var(--texto-2);border-radius:12px;
+  background:#fff;padding:12px 16px}
+.fincas i{width:44px;height:30px;flex:none;border:2px solid var(--texto-2);border-radius:4px;
+  background:repeating-linear-gradient(135deg,#F3F2EE 0 4px,#B4B2A9 4px 6px)}
+.fincas b{font-size:18px}
+.fincas span{font-size:16px;color:var(--texto-2)}
+.lema{position:absolute;left:720px;top:500px;width:520px;font-size:20px;line-height:1.4;color:var(--texto-2)}
+.lema b{color:var(--texto)}
+</style>
+</head>
+<body>
+
+<div id="escenario">
+  <div class="titulo">La instalación, no solo el expediente</div>
+
+  <!-- 2 · El mapa: fincas, caminos y las dos subestaciones -->
+  <div class="mapa paso" data-paso="2">
+    <svg width="640" height="480" viewBox="0 0 640 480">
+      <defs>
+        <pattern id="rayado" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="9" height="9" fill="#F3F2EE"/><path d="M0 0 V9" stroke="#B4B2A9" stroke-width="3"/>
+        </pattern>
+      </defs>
+      <g id="fincas">
+        <path class="finca afectada" d="M0 0 H180 L160 150 H0z"/>
+        <path class="finca afectada" d="M180 0 H330 L320 170 L160 150z"/>
+        <path class="finca" d="M330 0 H640 V120 L320 170z"/>
+        <path class="finca afectada" d="M0 150 H160 L320 170 L300 330 L0 300z"/>
+        <path class="finca afectada" d="M320 170 L640 120 V300 L470 330 L300 330z"/>
+        <path class="finca" d="M0 300 L300 330 L280 480 H0z"/>
+        <path class="finca" d="M300 330 L470 330 L520 480 H280z"/>
+        <path class="finca afectada" d="M470 330 L640 300 V480 H520z"/>
+      </g>
+      <path class="camino" d="M0 230 C160 240 360 200 640 210"/>
+      <path class="camino" d="M410 0 C400 160 430 320 400 480"/>
+      <!-- 3 · la línea, por tramos según su estado -->
+      <g class="paso" data-paso="3">
+        <path class="tramo servicio" d="M70 110 L240 150"/>
+        <path class="tramo autorizada" d="M240 150 L360 260"/>
+        <path class="tramo tramite" d="M360 260 L560 390"/>
+        <circle class="ct" cx="240" cy="150" r="9"/>
+      </g>
+      <rect class="set" x="52" y="92" width="36" height="36" rx="4"/>
+      <rect class="set" x="542" y="372" width="36" height="36" rx="4"/>
+      <text class="rot" x="40" y="80">SET Cartuja</text>
+      <text class="rot" x="480" y="430">SET Guadalcacín</text>
+      <text class="rot claro paso" data-paso="3" x="252" y="140">CT 1</text>
+    </svg>
+  </div>
+
+  <!-- 4 · Cada elemento con su estado y el acto que lo ampara -->
+  <div class="lista paso" data-paso="4">
+    <div class="cab"><span>Elemento</span><span>Estado</span><span>Lo ampara</span></div>
+    <div class="f"><span>Línea 66 kV, tramo 1</span><span class="estado e-servicio"><i></i>en servicio</span><span class="acto">AE 2025</span></div>
+    <div class="f"><span>Centro de transformación 1</span><span class="estado e-autorizada"><i></i>autorizado</span><span class="acto">AAC 2026</span></div>
+    <div class="f"><span>Línea 66 kV, tramo 2</span><span class="estado e-autorizada"><i></i>autorizado</span><span class="acto">AAC 2026</span></div>
+    <div class="f"><span>Línea 66 kV, tramo 3</span><span class="estado e-tramite"><i></i>en trámite</span><span class="acto">reformado</span></div>
+  </div>
+
+  <!-- 5 · Las fincas que cruza -->
+  <div class="fincas paso" data-paso="5">
+    <i></i><div><b>Las fincas que cruza</b><br><span>la relación de bienes y derechos de la DUP, sobre el catastro</span></div>
+  </div>
+
+  <!-- 6 · La idea -->
+  <div class="lema paso" data-paso="6">El expediente dice <b>qué se autorizó</b>;<br>el mapa, <b>dónde está y en qué punto</b>.</div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var MAX = Math.max.apply(null, els.map(function(e){ return +e.getAttribute('data-paso'); }));
+  var paso = 1;
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+    esc.classList.toggle('ver-fincas', paso >= 5);
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var hs = location.hash, mm = hs.match(/paso=(\d+)/);
+  if (hs === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (mm) paso = Math.max(1, Math.min(MAX, +mm[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>
