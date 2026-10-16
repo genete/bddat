@@ -54,6 +54,11 @@
 >   choquen con nombres reales del servicio.
 > - Si cambia el estado antes de presentar, retocar la 23 (un array al principio del script).
 >
+> **Compilar:** `python presentaciones/principios/compilar.py` regenera `index.html`, la
+> presentación entera con el reproductor de `fundamentos` (es lo que se publica; hay que
+> versionarlo). El orden es el alfabético de los ficheros. Manejo y convenciones, en
+> `README.md`.
+>
 > **Cómo se trabaja (acordado con Carlos):**
 > - Pocas palabras en pantalla, nada rimbombante; Carlos narra. Solo esquemas animados.
 > - Carlos describe la animación; se hace un primer intento, se ajusta y, cuando está
