@@ -50,7 +50,15 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
 
 /* Derecha: consume y produce */
 .grupo{position:absolute;left:820px;width:430px}
-.grupo .et{font-size:22px;font-weight:700;margin-bottom:10px}
+.grupo .et{font-size:22px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:10px}
+/* la cardinalidad, destacada: consume N, produce 1 */
+.grupo .card{display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:36px;
+  padding:0 8px;border-radius:999px;color:#fff;font-size:21px;font-weight:700}
+.grupo.consume .card{background:var(--ida)}
+.grupo.produce .card{background:var(--vuelta)}
+.grupo .uno{font-size:16px;font-weight:400;color:var(--texto-2)}
+/* icono: varios documentos en consume, uno en produce */
+.grupo .ico{width:40px;height:46px;flex:none}
 .grupo.consume .et{color:var(--ida)}
 .grupo.produce .et{color:var(--vuelta)}
 .grupo .pildoras{display:flex;flex-wrap:wrap;gap:8px}
@@ -68,6 +76,21 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
 </style>
 </head>
 <body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- un documento -->
+  <symbol id="i-doc" viewBox="0 0 40 46" fill="#fff" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round">
+    <path d="M8 3h18l9 9v31H8z"/><path d="M26 3v9h9"/>
+    <path fill="none" stroke-width="1.8" stroke-linecap="round" opacity=".55" d="M13 20h17M13 26h17M13 32h17M13 38h11"/>
+  </symbol>
+  <!-- varios documentos, apilados -->
+  <symbol id="i-docs" viewBox="0 0 40 46" fill="#fff" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round">
+    <path d="M2 9h16l7 7v28H2z"/>
+    <path d="M8 5h16l7 7v28H8z"/>
+    <path d="M14 1h16l8 8v28H14z"/><path d="M30 1v8h8"/>
+    <path fill="none" stroke-width="1.8" stroke-linecap="round" opacity=".55" d="M18 15h15M18 20h15M18 25h15M18 30h10"/>
+  </symbol>
+</svg>
 
 <div id="escenario">
   <div class="titulo">La tarea y el documento</div>
@@ -89,6 +112,35 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
       consume: ['Modelo de solicitud', 'Proyecto técnico', 'Justificante de pago de la tasa',
                 'Documentación de subsanación', 'Respuesta del organismo', 'Alegación de IP', '…'],
       produce: ['Diagnóstico de análisis'],
+    },
+    {
+      nombre: 'ELABORAR',
+      encuadre: ['Distribución', 'AAP', 'Análisis de solicitud', 'Requerimiento de subsanación'],
+      hace: 'Redacta y firma un escrito, en un solo acto',
+      matiz: 'El borrador sale de una plantilla con los datos del expediente',
+      consume: ['Diagnóstico de análisis', 'Proyecto técnico', 'Respuesta del organismo',
+                'Certificado de fin de instrucción', '…'],
+      produce: ['Oficio de requerimiento de subsanación', 'Oficio de consulta a organismo',
+                'Resolución de autorización', '…'],
+    },
+    {
+      nombre: 'NOTIFICAR',
+      encuadre: ['Distribución', 'AAP', 'Consultas', 'Separata a organismo'],
+      hace: 'Hace llegar el escrito a su destinatario',
+      matiz: 'El canal no se elige: lo dice el justificante',
+      consume: ['Oficio de consulta a organismo', 'Oficio de requerimiento de subsanación',
+                'Resolución de autorización', 'Acuse del primer intento postal', '…'],
+      produce: ['Justificante Notifica-PNT', 'Justificante BandeJA', 'Justificante SIR / ARIES',
+                'Justificante notificación postal', '…'],
+    },
+    {
+      nombre: 'ESPERAR PLAZO',
+      encuadre: ['Distribución', 'AAP', 'Consultas', 'Separata a organismo'],
+      hace: 'Cuenta el plazo y recoge lo que llega',
+      matiz: 'Lo que llega lo examina después un ANALIZAR',
+      consume: ['Justificante de la notificación', 'Justificante publicación BOE', '…'],
+      produce: ['Respuesta del organismo', 'Documentación de subsanación',
+                'Informe preceptivo del Ministerio', 'Certificado de plazo cumplido', '…'],
     },
   ];
   var NIVELES = ['Expediente', 'Solicitud', 'Fase', 'Trámite', 'Tarea'];
@@ -162,26 +214,28 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
       n.appendChild(document.createTextNode(v));
       enc.appendChild(n);
     });
-    poner('c tarea', p0, hasta, 'left:' + TX + 'px;top:' + TY + 'px', .2).textContent = t.nombre;
+    poner('c tarea', p0, hasta, 'left:' + TX + 'px;top:' + TY + 'px' +
+          (t.nombre.length > 10 ? ';font-size:36px' : ''), .2).textContent = t.nombre;
 
     /* izquierda: qué hace */
-    var h = poner('c hace', p0 + 1, hasta, 'left:200px;top:' + TY + 'px');
+    var h = poner('c hace', p0 + 1, hasta, 'left:180px;top:' + TY + 'px');
     h.textContent = t.hace;
     var m = document.createElement('span'); m.textContent = t.matiz; h.appendChild(m);
 
     /* derecha arriba: consume, con flecha que entra en la tarea */
     var gc = poner('grupo consume', p0 + 2, hasta, 'top:190px');
-    gc.innerHTML = '<div class="et">Consume</div>';
+    gc.innerHTML = '<div class="et"><svg class="ico"><use href="#i-docs"/></svg>Consume <span class="card">N</span></div>';
     pildoras(gc, t.consume, p0 + 2, hasta);
     /* de Consume, en horizontal, hasta encima de la tarea y bajando a ella */
-    flecha('consume', p0 + 2, hasta, 808, 241, TX, 241, TX, TY - 48);
+    flecha('consume', p0 + 2, hasta, 812, 213, TX, 213, TX, TY - 48);
 
     /* derecha abajo: produce, con flecha que sale de la tarea */
-    var gp = poner('grupo produce', p0 + 3, hasta, 'top:500px');
-    gp.innerHTML = '<div class="et">Produce</div>';
+    var gp = poner('grupo produce', p0 + 3, hasta, 'top:478px');
+    gp.innerHTML = '<div class="et"><svg class="ico"><use href="#i-doc"/></svg>Produce <span class="card">1</span>' +
+      (t.produce.length > 1 ? '<span class="uno">uno de estos tipos</span>' : '') + '</div>';
     pildoras(gp, t.produce, p0 + 3, hasta);
     /* de la tarea, bajando y en horizontal, hasta Produce */
-    flecha('produce', p0 + 3, hasta, TX, TY + 48, TX, 552, 810, 552);
+    flecha('produce', p0 + 3, hasta, TX, TY + 48, TX, 501, 812, 501);
   });
 
   var els = [].slice.call(document.querySelectorAll('[data-paso]'));
