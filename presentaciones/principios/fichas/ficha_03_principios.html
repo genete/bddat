@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 3 · Principios de diseño de BDDAT</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* lo que va */
+  --vuelta:#3B6D11;   /* lo que vuelve */
+  --plan:#854F0B;     /* reservado */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.titulo{position:absolute;left:0;right:0;top:34px;text-align:center;font-size:30px;font-weight:600}
+
+/* La lista: un principio por paso */
+.lista{position:absolute;left:250px;right:150px;top:112px;display:flex;flex-direction:column;gap:12px}
+.principio{display:flex;align-items:center;gap:18px;font-size:27px;font-weight:600}
+.num{flex:none;width:42px;height:42px;border-radius:50%;background:var(--tarjeta);
+  border:2px solid var(--borde-fuerte);display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:700;color:var(--texto-2)}
+</style>
+</head>
+<body>
+
+<div id="escenario">
+  <div class="titulo">Principios de diseño de BDDAT</div>
+
+  <div class="lista" id="lista"></div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  /* El listado: uno por clic, a partir del paso 2 */
+  var PRINCIPIOS = [
+    'La iniciativa es del tramitador',
+    'Todo vale mientras no esté prohibido',
+    'Toda prohibición tiene una salida justificada',
+    'El documento es el núcleo del dato',
+    'El estado se deriva, no se apunta',
+    'La semántica vive en los tipos',
+    'Una sola fuente de la verdad',
+    'Las reglas son datos, no código',
+    'Los invariantes protegen la estructura',
+    'Todo queda registrado',
+  ];
+  var lista = document.getElementById('lista');
+  PRINCIPIOS.forEach(function(t, i){
+    var d = document.createElement('div');
+    d.className = 'principio paso';
+    d.setAttribute('data-paso', i + 2);
+    d.innerHTML = '<span class="num">' + (i + 1) + '</span><span></span>';
+    d.lastChild.textContent = t;
+    lista.appendChild(d);
+  });
+
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var MAX = Math.max.apply(null, els.map(function(e){ return +e.getAttribute('data-paso'); }));
+  var paso = 1;
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var h = location.hash, m = h.match(/paso=(\d+)/);
+  if (h === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (m) paso = Math.max(1, Math.min(MAX, +m[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>
