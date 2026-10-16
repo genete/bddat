@@ -196,11 +196,19 @@ de octubre.
 
 ---
 
-## 7. Las tareas se encadenan por documentos — [propuesta]
+## 7. Las tareas encadenan documentos — [Carlos] ✔ hecha
 
-**En pantalla:**
-- Cada tarea consume documentos y produce uno
-- Lo que produce una lo consume la siguiente
+**Fichero:** `fichas/ficha_07_cadenas.html`
+
+Tres trámites de `ESTRUCTURA_FTT` en columna, repartidos en horizontal. Entre cada dos
+tareas, el documento que produce la de arriba y consume la de abajo. Un clic por
+cadena, que cae en cascada.
+
+| Clic | Cadena |
+|---|---|
+| 2 | **Requerimiento de subsanación** (Análisis de solicitud): Diagnóstico de análisis → ELABORAR → Oficio de requerimiento de subsanación ✍ → NOTIFICAR → Justificante Notifica-PNT → ESPERAR PLAZO → Documentación de subsanación → ANALIZAR → Diagnóstico de análisis |
+| 3 | **Separata a organismo** (Consultas): Separata del proyecto → ELABORAR → Oficio de consulta a organismo ✍ → NOTIFICAR → Justificante BandeJA → ESPERAR PLAZO → Respuesta del organismo → ANALIZAR → Diagnóstico de análisis |
+| 4 | **Anuncio en el BOP** (Información pública), contraejemplo con doble espera: Anuncio de información pública → ELABORAR → Oficio de remisión del anuncio ✍ → NOTIFICAR → Justificante SIR → ESPERAR PLAZO *publicación* → Anuncio publicado en el BOP → ESPERAR PLAZO *alegaciones* → Certificado de plazo cumplido |
 
 **Notas:** ANALIZAR → diagnóstico → ELABORAR → escrito → NOTIFICAR → justificante →
 ESPERAR PLAZO → documento recibido → ANALIZAR. Patrones combinables: A (analizar),

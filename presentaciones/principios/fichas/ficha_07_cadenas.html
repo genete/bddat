@@ -39,8 +39,7 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
 
 .tarea{background:var(--tarjeta);border:2.5px solid var(--texto);border-radius:10px;padding:5px 18px;
   font-size:19px;font-weight:700;letter-spacing:.4px;white-space:nowrap;text-align:center}
-.tarea small{display:block;font-size:13px;font-weight:600;letter-spacing:0;color:var(--plan)}
-.tarea.doble{border-color:var(--plan)}
+.tarea small{display:block;font-size:13px;font-weight:600;letter-spacing:0;color:var(--texto-2)}
 .doc{display:flex;align-items:center;gap:7px;border:1.8px solid var(--borde-fuerte);border-radius:999px;
   padding:3px 12px 3px 8px;background:#fff;font-size:15px;font-weight:600;white-space:nowrap;color:var(--texto)}
 .doc .i{width:16px;height:19px;flex:none;color:var(--texto-2)}
@@ -86,7 +85,7 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
       't:ANALIZAR', 'd:Diagnóstico de análisis'] },
     { t: 'Anuncio en el BOP', s: 'Fase: Información pública', x: 1067, items: [
       'd:Anuncio de información pública', 't:ELABORAR', 'd:Oficio de remisión del anuncio (F)',
-      't:NOTIFICAR', 'd:Justificante de remisión', 't:ESPERAR PLAZO·publicación',
+      't:NOTIFICAR', 'd:Justificante SIR', 't:ESPERAR PLAZO·publicación',
       'd:Anuncio publicado en el BOP', 't:ESPERAR PLAZO·alegaciones', 'd:Certificado de plazo cumplido'] },
   ];
   var esc = document.getElementById('escenario');
@@ -104,7 +103,6 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
     cab.lastChild.textContent = c.s;
     col.appendChild(cab);
 
-    var dobles = c.items.filter(function(it){ return it.indexOf('t:ESPERAR PLAZO·') === 0; }).length > 1;
     c.items.forEach(function(it, i){
       var retardo = .15 + i * .14;
       if (i) {
@@ -121,7 +119,7 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
       var tipo = it.slice(0, 2), txt = it.slice(2);
       if (tipo === 't:') {
         var partes = txt.split('·');
-        e.className = 'tarea paso' + (partes[1] && dobles ? ' doble' : '');
+        e.className = 'tarea paso';
         e.textContent = partes[0];
         if (partes[1]) { var sm = document.createElement('small'); sm.textContent = partes[1]; e.appendChild(sm); }
       } else {
