@@ -721,3 +721,27 @@ y encargos» amplía la bandeja de peticiones al supervisor que ya existe.
 
 **Fuente:** ficha 12 de octubre; ADR-021; ADR-040; `PLAN_ESTRATEGIA.md` §A (bloques 6, 7,
 13 y 14); `INVENTARIO_BACKEND.md` §12.
+
+---
+
+## 19c. Firmar y notificar sin salir de BDDAT — [propuesta, post producción] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_19c_firma_notifica.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | **Hoy** («cada salida y cada vuelta pasan por una persona»): borrador listo para firma → a mano: alta en BandeJA y envío a Port@firmas → a mano: bajar el firmado y subirlo → a mano: alta en Notifica-PNT → a mano: bajar el justificante, subirlo y poner su fecha |
+| 3 | **Después** («BDDAT hace los recados»): borrador listo → BDDAT lo envía a firma (azul) → vuelve solo: firmado, se reconoce por su pie y se coloca (verde) → BDDAT lo notifica al destinatario de la tarea (azul) → vuelve solo: justificante, fechas y resultado leídos (verde) |
+| 4 | Píldoras: «actúa en nombre del funcionario, con sus credenciales» · «todo queda en la bitácora» · «el procedimiento no cambia: se ahorran pasos» |
+
+**Notas:** une dos ideas de la 19b. Lo que ya está hecho la hace posible: el código del
+pie, el destinatario guardado en cada notificación (lo que necesita un envío automático,
+ADR-051) y las fechas que salen de los documentos (ADR-049). El automatismo usa un
+usuario virtual que actúa con las credenciales del funcionario, de modo que en BandeJA y
+Notifica consta quien de verdad actúa; solo añade, no cambia el modelo (ADR-021). Hay una
+prueba de concepto de consulta de estado en Notifica-PNT.
+
+**Fuente:** ADR-021; ADR-049; ADR-051; `DISEÑO_ECOSISTEMA_MANAGERS.md`.
+
+**Estado (interno):** diseñado (ADR-021, implementación aparcada).
