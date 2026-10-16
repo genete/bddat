@@ -392,11 +392,18 @@ proyección de plazos.
 
 ---
 
-## 13. Notificaciones — [propuesta]
+## 13. Notificaciones — [propuesta] ✔ hecha (primer intento, sin revisar)
 
-**En pantalla:**
-- Siempre a un destinatario
-- El canal lo dice el justificante
+**Fichero:** `fichas/ficha_13_notificaciones.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Izquierda, **A quién** («una notificación por destinatario, con la dirección de su rol»): la resolución firmada se abre en cuatro NOTIFICAR (solicitante, dos organismos consultados, órgano ambiental) |
+| 3 | Quinta fila discontinua en rojo, «FALTA: Ayuntamiento de Jerez» · «el trámite no termina mientras falte alguien» |
+| 4 | Derecha, **Cómo** («el canal no se elige: lo dice el justificante»): Justificante Notifica-PNT → canales Notifica-PNT (marcado) · BandeJA · SIR · Postal · Edicto en el BOE |
+| 5 | **Cuándo** («dos fechas, cada una con su efecto»): 3 jun puesta a disposición, «cumple el deber de notificar» (azul) · 6 jun leída, «surte efectos: corren sus plazos» (verde) |
+| 6 | Abajo a la izquierda, **En papel**: 1.er intento fallido → 2.º intento fallido → anuncio en el BOE |
 
 **Notas:** el canal no se elige: se deduce del justificante vinculado. Fechas de
 notificación, de cumplimiento y de efectos. Notificación edictal.

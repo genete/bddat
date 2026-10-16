@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 13 · Notificaciones</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* lo que va */
+  --vuelta:#3B6D11;   /* lo que vuelve */
+  --plan:#854F0B;     /* reservado */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.titulo{position:absolute;left:0;right:0;top:34px;text-align:center;font-size:30px;font-weight:600}
+:root{--rojo:#A32D2D}
+.sub{position:absolute;font-size:21px;font-weight:700}
+.sub small{display:block;font-size:15px;font-weight:600;color:var(--texto-2)}
+.divisoria{position:absolute;left:640px;top:100px;height:580px;border-left:2px dashed var(--borde)}
+#trazos{position:absolute;left:0;top:0;width:1280px;height:720px;overflow:visible}
+#trazos path{fill:none;stroke:var(--ida);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+#trazos .gris{stroke:var(--borde-fuerte)}
+#trazos .verde{stroke:var(--vuelta)}
+#trazos .rojo{stroke:var(--rojo);stroke-dasharray:6 5}
+
+/* Izquierda: una notificación por destinatario */
+.firmado{position:absolute;left:40px;top:250px;width:150px;text-align:center;font-size:16px;font-weight:700}
+.firmado svg{width:70px;height:88px;color:var(--borde-fuerte);display:block;margin:0 auto 4px}
+.dest{position:absolute;left:250px;width:360px;height:52px;display:flex;align-items:center;gap:10px;border:2px solid var(--ida);
+  border-radius:10px;background:#fff;padding:0 12px;white-space:nowrap}
+.dest .tarea{font-size:13px;font-weight:700;letter-spacing:.4px;color:#fff;background:var(--ida);border-radius:5px;padding:2px 6px}
+.dest .n{font-size:16px;font-weight:700;line-height:1.2}
+.dest .r{font-size:13px;font-weight:600;color:var(--texto-2)}
+.dest.falta{border-style:dashed;border-color:var(--rojo);background:#FBEFEF}
+.dest.falta .tarea{background:var(--rojo)}
+.nota{position:absolute;font-size:16px;color:var(--texto-2);white-space:nowrap}
+.nota b{color:var(--texto)}
+.nota.roja{color:var(--rojo);font-weight:600}
+
+/* Escalada en papel: dos intentos y el BOE */
+.escalada{position:absolute;left:40px;top:560px;width:570px;display:flex;align-items:center;gap:8px}
+.escalada .p{font-size:15px;font-weight:600;border:1.8px solid var(--borde-fuerte);border-radius:999px;padding:4px 11px;
+  background:#fff;white-space:nowrap}
+.escalada .p.mal{border-color:var(--rojo);color:var(--rojo)}
+.escalada .p.boe{border-color:var(--vuelta);color:var(--vuelta)}
+.escalada .f{color:var(--borde-fuerte);font-size:18px}
+
+/* Derecha: el canal y las dos fechas */
+.just{position:absolute;left:690px;top:180px;display:flex;align-items:center;gap:8px;border:2px solid var(--vuelta);
+  border-radius:999px;padding:6px 14px;font-size:17px;font-weight:700;color:var(--vuelta);background:#fff}
+.just svg{width:16px;height:19px}
+.canales{position:absolute;left:690px;top:258px;width:540px;display:flex;flex-wrap:wrap;gap:8px}
+.canal{font-size:16px;font-weight:600;color:var(--texto-2);border:1.5px solid var(--borde-fuerte);border-radius:8px;padding:4px 12px;background:#fff}
+.canal.si{border-color:var(--texto);background:var(--texto);color:#fff}
+
+.linea{position:absolute;left:700px;top:458px;width:500px;height:3px;background:var(--borde-fuerte)}
+.hito{position:absolute;top:430px;translate:-50% 0;display:flex;flex-direction:column;align-items:center;text-align:center}
+.hito .punto{width:16px;height:16px;border-radius:50%;margin-top:19px;border:3px solid currentColor;background:#fff}
+.hito .d{font-size:15px;font-weight:700;margin-bottom:-8px;color:var(--texto)}
+.hito .q{margin-top:8px;font-size:17px;font-weight:700;white-space:nowrap}
+.hito .s{font-size:15px;font-weight:600;color:var(--texto-2);white-space:nowrap}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-doc" viewBox="0 0 40 46" fill="#fff" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round">
+    <path d="M8 3h18l9 9v31H8z"/><path d="M26 3v9h9"/>
+    <path fill="none" stroke-width="1.8" stroke-linecap="round" opacity=".55" d="M13 20h17M13 26h17M13 32h11"/>
+  </symbol>
+  <symbol id="i-firma" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 11c2-5 4-8 5-6s-1 7 1 7 3-6 5-6 1 5 3 5 3-3 4-4 2 1 3 1"/>
+  </symbol>
+</svg>
+
+<div id="escenario">
+  <div class="titulo">Notificaciones</div>
+  <div class="divisoria paso" data-paso="4"></div>
+
+  <!-- 2 · A quién: una notificación por destinatario -->
+  <div class="sub paso" data-paso="2" style="left:40px;top:100px">A quién<small>una notificación por destinatario, con la dirección de su rol</small></div>
+  <svg id="trazos" viewBox="0 0 1280 720" aria-hidden="true">
+    <g class="paso" data-paso="2">
+      <path d="M190 300 H215 V184 H250 M215 300 H250 M215 300 V358 H250"/>
+      <path d="M215 242 H250" />
+    </g>
+    <path class="paso rojo" data-paso="3" d="M215 358 V416 H250"/>
+  </svg>
+  <div class="firmado paso" data-paso="2">
+    <svg><use href="#i-doc"/></svg>Resolución<br>firmada
+  </div>
+  <div class="dest paso" data-paso="2" style="top:158px;transition-delay:.15s"><span class="tarea">NOTIFICAR</span><div><div class="n">Promotora Solar S.L.</div><div class="r">solicitante</div></div></div>
+  <div class="dest paso" data-paso="2" style="top:216px;transition-delay:.3s"><span class="tarea">NOTIFICAR</span><div><div class="n">ADIF</div><div class="r">organismo consultado</div></div></div>
+  <div class="dest paso" data-paso="2" style="top:274px;transition-delay:.45s"><span class="tarea">NOTIFICAR</span><div><div class="n">Distribuidora del Sur S.A.</div><div class="r">organismo consultado</div></div></div>
+  <div class="dest paso" data-paso="2" style="top:332px;transition-delay:.6s"><span class="tarea">NOTIFICAR</span><div><div class="n">Delegación de Sostenibilidad</div><div class="r">órgano ambiental</div></div></div>
+
+  <!-- 3 · ¿Quién falta? -->
+  <div class="dest falta paso" data-paso="3" style="top:390px"><span class="tarea">FALTA</span><div><div class="n">Ayuntamiento de Jerez</div><div class="r">organismo consultado</div></div></div>
+  <div class="nota roja paso" data-paso="3" style="left:250px;top:452px;transition-delay:.3s">el trámite no termina mientras falte alguien</div>
+
+  <!-- 4 · Cómo: el canal lo dice el justificante -->
+  <div class="sub paso" data-paso="4" style="left:690px;top:100px">Cómo<small>el canal no se elige: lo dice el justificante</small></div>
+  <div class="just paso" data-paso="4" style="transition-delay:.2s"><svg><use href="#i-doc"/></svg>Justificante Notifica-PNT</div>
+  <svg class="paso" data-paso="4" width="1280" height="720" style="position:absolute;left:0;top:0;overflow:visible;transition-delay:.3s" aria-hidden="true">
+    <path d="M790 220 V246" fill="none" stroke="#3B6D11" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M784 238 l6 9 6-9" fill="none" stroke="#3B6D11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div class="canales paso" data-paso="4" style="transition-delay:.4s">
+    <span class="canal si">Notifica-PNT</span><span class="canal">BandeJA</span><span class="canal">SIR</span>
+    <span class="canal">Postal</span><span class="canal">Edicto en el BOE</span>
+  </div>
+
+  <!-- 5 · Cuándo: dos fechas distintas -->
+  <div class="sub paso" data-paso="5" style="left:690px;top:340px">Cuándo<small>dos fechas, cada una con su efecto</small></div>
+  <div class="linea paso" data-paso="5"></div>
+  <div class="hito paso" data-paso="5" style="left:800px;color:var(--ida);transition-delay:.2s">
+    <span class="d">3 jun</span><span class="punto"></span>
+    <span class="q">puesta a disposición</span><span class="s">cumple el deber de notificar</span>
+  </div>
+  <div class="hito paso" data-paso="5" style="left:1090px;color:var(--vuelta);transition-delay:.5s">
+    <span class="d">6 jun</span><span class="punto"></span>
+    <span class="q">leída</span><span class="s">surte efectos: corren sus plazos</span>
+  </div>
+
+  <!-- 6 · En papel: dos intentos y, si fallan, el BOE -->
+  <div class="nota paso" data-paso="6" style="left:40px;top:520px"><b>En papel</b>, si no se puede entregar:</div>
+  <div class="escalada paso" data-paso="6" style="transition-delay:.2s">
+    <span class="p mal">1.er intento fallido</span><span class="f">→</span>
+    <span class="p mal">2.º intento fallido</span><span class="f">→</span>
+    <span class="p boe">anuncio en el BOE</span>
+  </div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var MAX = Math.max.apply(null, els.map(function(e){ return +e.getAttribute('data-paso'); }));
+  var paso = 1;
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var hs = location.hash, mm = hs.match(/paso=(\d+)/);
+  if (hs === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (mm) paso = Math.max(1, Math.min(MAX, +mm[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>
