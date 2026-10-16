@@ -32,7 +32,14 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
 .titulo{position:absolute;left:0;right:0;top:34px;text-align:center;font-size:30px;font-weight:600}
 
 /* Cada elemento se coloca por su centro (data-x, data-y) */
-.c{position:absolute;translate:-50% -50%;white-space:nowrap}
+.c{position:absolute;translate:-50% -50%;white-space:nowrap;z-index:2}
+
+/* Saltos de la libertad total: una flecha cada vez, debajo de las cajas */
+#saltos{position:absolute;left:0;top:0;width:1280px;height:720px;z-index:1;overflow:visible}
+.salto{color:var(--ida)}
+.salto path{fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset .7s ease}
+.salto polygon{fill:currentColor;opacity:0;transition:opacity .2s ease .65s}
+.salto.on polygon{opacity:1}
 .lado{font-size:28px;font-weight:600}
 .lema{font-size:19px;color:var(--texto-2)}
 .caja{background:var(--tarjeta);border:2px solid var(--borde-fuerte);border-radius:10px;
@@ -59,10 +66,12 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
   <div class="c lado paso" data-paso="3" data-x="1040" data-y="112">Libertad total</div>
   <div class="c lema paso" data-paso="3" data-x="1040" data-y="145">todo cabe, nada se controla</div>
   <div id="libre"></div>
+  <!-- 4 a 8 · saltos de un bloque a otro: cada flecha borra la anterior -->
+  <svg id="saltos" viewBox="0 0 1280 720" aria-hidden="true"></svg>
 
-  <!-- 4 · En medio: BDDAT -->
-  <div class="c bddat paso" data-paso="4" data-x="640" data-y="410">BDDAT</div>
-  <div class="c lema paso" data-paso="4" data-x="640" data-y="488" style="transition-delay:.3s">se sitúa en un punto intermedio</div>
+  <!-- 9 · En medio: BDDAT (la última flecha se quita) -->
+  <div class="c bddat paso" data-paso="9" data-x="640" data-y="410">BDDAT</div>
+  <div class="c lema paso" data-paso="9" data-x="640" data-y="488" style="transition-delay:.3s">se sitúa en un punto intermedio</div>
 </div>
 
 <div id="ayuda">← → o clic para avanzar</div>
@@ -101,12 +110,57 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
   ORDEN.forEach(function(k, i){
     var a = -Math.PI / 2 + i * Math.PI / 3;
     nuevo('caja', 3, Math.round(cx + rx * Math.cos(a)), Math.round(cy + ry * Math.sin(a)),
-          ELEMENTOS[k], .15 + i * .2);
+          ELEMENTOS[k], .15 + i * .2).id = 'libre' + k;
   });
 
   [].forEach.call(document.querySelectorAll('.c'), function(c){
     c.style.left = c.getAttribute('data-x') + 'px';
     c.style.top = c.getAttribute('data-y') + 'px';
+  });
+
+  /* Saltos: [paso, de, a, curvatura], con índices de ELEMENTOS. Cada uno solo se ve en
+     su paso (data-solo): al llegar el siguiente, el anterior se borra. */
+  var SALTOS = [
+    [4, 0, 5, -.3],   /* Solicitud → Recursos */
+    [5, 5, 1, -.2],   /* Recursos → Requerimiento */
+    [6, 2, 4, .3],    /* Información pública → Resolución */
+    [7, 3, 0, -.25],  /* Consultas → Solicitud */
+    [8, 4, 3, .2],    /* Resolución → Consultas */
+  ];
+  var NS = 'http://www.w3.org/2000/svg';
+  var svg = document.getElementById('saltos');
+  function caja(k){
+    var c = document.getElementById('libre' + k);
+    return {x: +c.getAttribute('data-x'), y: +c.getAttribute('data-y'),
+            w: c.offsetWidth / 2 + 5, h: c.offsetHeight / 2 + 5};
+  }
+  function borde(b, tx, ty){
+    var dx = tx - b.x, dy = ty - b.y;
+    var k = Math.min(Math.abs(b.w / (dx || 1e-6)), Math.abs(b.h / (dy || 1e-6)));
+    return {x: b.x + dx * k, y: b.y + dy * k};
+  }
+  function el(tag, attrs){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  SALTOS.forEach(function(s){
+    var A = caja(s[1]), B = caja(s[2]);
+    var p0 = borde(A, B.x, B.y), p2 = borde(B, A.x, A.y);
+    var dx = p2.x - p0.x, dy = p2.y - p0.y;
+    var qx = (p0.x + p2.x) / 2 - dy * s[3], qy = (p0.y + p2.y) / 2 + dx * s[3];
+    var g = el('g', {'class': 'salto paso', 'data-paso': s[0], 'data-solo': '1'});
+    var path = el('path', {d: 'M' + p0.x + ' ' + p0.y + ' Q' + qx + ' ' + qy + ' ' + p2.x + ' ' + p2.y});
+    g.appendChild(path);
+    var tx = p2.x - qx, ty = p2.y - qy, tl = Math.hypot(tx, ty);
+    tx /= tl; ty /= tl;
+    var L = 16, W = 7.5;
+    g.appendChild(el('polygon', {points: [p2.x, p2.y, p2.x - tx * L - ty * W, p2.y - ty * L + tx * W,
+                                          p2.x - tx * L + ty * W, p2.y - ty * L - tx * W].join(' ')}));
+    svg.appendChild(g);
+    var largo = path.getTotalLength();
+    path.style.strokeDasharray = largo;
+    path.style.strokeDashoffset = largo;
   });
 
   var els = [].slice.call(document.querySelectorAll('[data-paso]'));
@@ -115,7 +169,13 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
   var ayuda = document.getElementById('ayuda');
 
   function pintar(){
-    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+    els.forEach(function(e){
+      var n = +e.getAttribute('data-paso');
+      var on = e.hasAttribute('data-solo') ? n === paso : n <= paso;   /* data-solo: solo en su paso */
+      e.classList.toggle('on', on);
+      var p = e.querySelector && e.querySelector('path');
+      if (p && p.style.strokeDasharray) p.style.strokeDashoffset = on ? 0 : p.style.strokeDasharray;
+    });
   }
   function ir(n){
     paso = Math.max(1, Math.min(MAX, n));

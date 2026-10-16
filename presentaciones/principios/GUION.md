@@ -64,7 +64,8 @@ juego.
 | 1 | Título |
 | 2 | Izquierda, **Flujo rígido** («el sistema decide el siguiente paso»): Solicitud → Requerimiento → Información pública → Consultas → Resolución → Recursos, en cascada vertical con flechas |
 | 3 | Derecha, **Libertad total** («todo cabe, nada se controla»): los mismos seis elementos sin conexión, equidistantes en círculo y en otro orden |
-| 4 | En medio, **BDDAT** · «se sitúa en un punto intermedio» |
+| 4–8 | Saltos en la libertad total: una flecha entre dos bloques cualesquiera por paso; al aparecer la siguiente, la anterior se borra |
+| 9 | La última flecha se quita y aparece en medio **BDDAT** · «se sitúa en un punto intermedio» |
 
 **Notas:** en el flujo rígido lo imprevisto no cabe y el tramitador acaba trabajando
 fuera; en la libertad total el estado depende de que alguien lo apunte. En BDDAT la
