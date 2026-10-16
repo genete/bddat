@@ -126,15 +126,32 @@ vincular no es del expediente (huérfano del pool).
 
 ---
 
-## 5. Expediente · Solicitud · Fase · Trámite · Tarea — [Carlos]
+## 5. Encapsulamiento y semántica — [Carlos] ✔ hecha
 
-**En pantalla:**
-- Cinco niveles fijos
-- La semántica vive en los tipos
+**Fichero:** `fichas/ficha_05_encapsulamiento_tipos.html`
 
-**Notas:** el punto pedido decía «Expediente/Solicitud/trámites/tareas»; la **Fase**
-es nivel propio en el modelo. Los tipos (de expediente, solicitud, fase, trámite) son
-catálogo. Fases en paralelo.
+Dos conceptos en una ficha: primero el encapsulamiento (cada nivel envuelve al
+siguiente), luego los tipos de cada nivel, que le dan la semántica.
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Izquierda: **Expediente** |
+| 3 | Derecha, «Tipos de expediente»: Transporte · Distribución · Distribución cedida · Renovable · Autoconsumo · Línea directa · Convencional · Otros |
+| 4 | Llave horizontal (punta arriba, brazos abajo, medio ancho) y **Solicitud**; los tipos anteriores se quitan |
+| 5 | «Tipos de solicitud»: AAP · AAC · DUP · AE provisional · AE definitiva · AAT · Modificación · Cierre · Desistimiento · Renuncia · Recurso · RAIPEE · y combinadas: AAP+AAC… |
+| 6 | Llave y **Fase** |
+| 7 | «Tipos de fase» (selección): Análisis de solicitud · Consultas · Información pública · Compatibilidad ambiental · Figura ambiental externa · Datos catastrales · Consulta al Ministerio · Resolución · Resolución DUP · … |
+| 8 | Llave y **Trámite** |
+| 9 | «Tipos de trámite» (selección): Análisis documental · Requerimiento de subsanación · Comunicación de inicio · Separata a organismo · Traslado al titular · Anuncio en el BOE · Tablón de ayuntamientos · … |
+| 10 | Llave y **Tarea** |
+| 11 | «Tipos de tarea»: ANALIZAR · ELABORAR · NOTIFICAR · ESPERAR PLAZO (se quedan) |
+
+Los tipos de la derecha no se acumulan: se sustituyen al bajar de nivel para que quepan
+grandes.
+
+**Notas:** la **Fase** es nivel propio en el modelo. Los tipos son catálogo. Fases en
+paralelo.
 
 **Fuente:** fichas 1 y 5 de octubre; ADR-037; `docs/referencia/ESTRUCTURA_FTT.md`.
 
@@ -144,6 +161,9 @@ desde la interfaz.
 ---
 
 ## 6. Cuatro tareas — [propuesta]
+
+> Las cuatro ya aparecen como tipos de tarea en la ficha 5: queda por decidir si esta
+> ficha sigue o se funde con la 7.
 
 **En pantalla:**
 - ANALIZAR · ELABORAR · NOTIFICAR · ESPERAR PLAZO
