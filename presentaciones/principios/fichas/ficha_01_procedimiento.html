@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 1 · El procedimiento de autorización</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* lo que va */
+  --vuelta:#3B6D11;   /* lo que vuelve */
+  --plan:#854F0B;     /* reservado */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,#ayuda,.arco path,.arco .cabeza,.arco text{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.titulo{position:absolute;left:0;right:0;top:34px;text-align:center;font-size:30px;font-weight:600}
+
+/* La nube: cada concepto se coloca por su centro (data-x, data-y) */
+.c{position:absolute;translate:-50% -50%;white-space:nowrap;font-weight:600;line-height:1.05;z-index:2;
+  text-shadow:0 0 4px #fff,0 0 8px #fff,0 0 12px #fff}
+.c.menor{font-weight:400;color:var(--texto-2)}
+.c.norma{font-weight:500;color:var(--texto-2);font-style:italic}
+.c.chip{font-size:16px;font-weight:600;color:var(--texto-2);border:1.5px solid var(--borde-fuerte);
+  border-radius:8px;padding:2px 8px;background:#fff;text-shadow:none}
+/* los satélites de un concepto entran un poco después que él */
+.c.tarde{transition-delay:.25s}
+.c.tarde2{transition-delay:.45s}
+
+/* Las relaciones: se dibujan debajo de las palabras */
+#relaciones,#rotulos{position:absolute;left:0;top:0;width:1280px;height:720px;z-index:1;overflow:visible}
+#rotulos{z-index:3;pointer-events:none}
+.arco path{fill:none;stroke-width:2.5;stroke-linecap:round;transition:stroke-dashoffset .9s ease}
+.arco .cabeza{stroke:none;opacity:0;transition:opacity .2s ease .85s}
+.arco text{font-size:17px;font-weight:600;paint-order:stroke;stroke:#fff;stroke-width:6px;stroke-linejoin:round;
+  opacity:0;transition:opacity .3s ease .5s}
+.arco.on .cabeza,.arco.on text{opacity:1}
+.arco.ida{color:var(--ida)}
+.arco.vuelta{color:var(--vuelta)}
+.arco.tiempo{color:#7A3E9D}
+.arco path{stroke:currentColor}
+.arco .cabeza,.arco text{fill:currentColor}
+</style>
+</head>
+<body>
+
+<div id="escenario">
+  <div class="titulo">El procedimiento de autorización de instalaciones eléctricas</div>
+
+  <svg id="relaciones" viewBox="0 0 1280 720" aria-hidden="true"></svg>
+  <svg id="rotulos" viewBox="0 0 1280 720" aria-hidden="true"></svg>
+
+  <!-- 2 · Normativa -->
+  <div class="c paso" data-paso="2" id="normativa" data-x="250" data-y="205" style="font-size:56px">Normativa</div>
+  <div class="c norma paso tarde" data-paso="2" data-x="130" data-y="132" style="font-size:22px">RD 1955/2000</div>
+  <div class="c norma paso tarde" data-paso="2" data-x="372" data-y="128" style="font-size:24px">LSE</div>
+  <div class="c norma paso tarde" data-paso="2" data-x="96" data-y="268" style="font-size:19px">RD 337/2014</div>
+  <div class="c norma paso tarde" data-paso="2" data-x="404" data-y="262" style="font-size:19px">RD 223/2008</div>
+  <div class="c norma paso tarde2" data-paso="2" data-x="170" data-y="312" style="font-size:17px">decretos de simplificación</div>
+  <div class="c norma paso tarde2" data-paso="2" data-x="388" data-y="306" style="font-size:17px">medidas urgentes</div>
+
+  <!-- 3 · Promotor -->
+  <div class="c paso" data-paso="3" id="promotor" data-x="720" data-y="160" style="font-size:48px">Promotor</div>
+
+  <!-- 4 · Distribuidora -->
+  <div class="c paso" data-paso="4" id="distribuidora" data-x="1080" data-y="140" style="font-size:34px">Distribuidora</div>
+
+  <!-- 5 · Información pública -->
+  <div class="c paso" data-paso="5" id="ip" data-x="590" data-y="470" style="font-size:38px">Información pública</div>
+
+  <!-- 6 · Organismos -->
+  <div class="c paso" data-paso="6" id="organismos" data-x="1020" data-y="320" style="font-size:46px">Organismos</div>
+
+  <!-- 7 · Solicitudes simples -->
+  <div class="c paso" data-paso="7" id="solicitudes" data-x="700" data-y="270" style="font-size:32px">Solicitudes</div>
+  <div class="c chip paso tarde" data-paso="7" data-x="586" data-y="322">AAP</div>
+  <div class="c chip paso tarde" data-paso="7" data-x="646" data-y="322">AAC</div>
+  <div class="c chip paso tarde" data-paso="7" data-x="706" data-y="322">DUP</div>
+  <div class="c chip paso tarde" data-paso="7" data-x="760" data-y="322">AE</div>
+  <div class="c chip paso tarde" data-paso="7" data-x="816" data-y="322">AAT</div>
+  <div class="c chip paso tarde2" data-paso="7" data-x="626" data-y="360">Modificación</div>
+  <div class="c chip paso tarde2" data-paso="7" data-x="730" data-y="360">Cierre</div>
+  <div class="c chip paso tarde2" data-paso="7" data-x="808" data-y="360">…</div>
+
+  <!-- 8 · Proyecto -->
+  <div class="c paso" data-paso="8" id="proyecto" data-x="300" data-y="430" style="font-size:52px">Proyecto</div>
+
+  <!-- 9 · Documentación -->
+  <div class="c paso" data-paso="9" id="documentacion" data-x="160" data-y="570" style="font-size:30px">Documentación</div>
+
+  <!-- 10 · Recursos -->
+  <div class="c paso" data-paso="10" id="recursos" data-x="1170" data-y="450" style="font-size:28px">Recursos</div>
+
+  <!-- 11 · Plazos -->
+  <div class="c paso" data-paso="11" id="plazos" data-x="880" data-y="610" style="font-size:50px">Plazos</div>
+
+  <!-- 12 · Excepciones -->
+  <div class="c paso" data-paso="12" id="excepciones" data-x="470" data-y="625" style="font-size:28px">Excepciones</div>
+  <div class="c menor paso tarde" data-paso="12" data-x="420" data-y="665" style="font-size:20px">suelo urbano</div>
+  <div class="c menor paso tarde" data-paso="12" data-x="545" data-y="665" style="font-size:20px">tensión</div>
+
+  <!-- 13 · Figura ambiental -->
+  <div class="c paso" data-paso="13" id="ambiental" data-x="1110" data-y="560" style="font-size:32px">Figura ambiental</div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  /* Relaciones: [paso, de, a, rótulo, tipo, curvatura]. No pretenden ser exactas:
+     solo enseñan que todo está relacionado con todo. */
+  var RELACIONES = [
+    [14, 'promotor', 'solicitudes', 'solicitud', 'ida', .25],
+    [14, 'promotor', 'proyecto', 'redacta', 'ida', -.18],
+    [14, 'normativa', 'plazos', 'fija', 'tiempo', .22],
+    [14, 'documentacion', 'promotor', 'requerimiento', 'ida', .3],
+
+    [15, 'proyecto', 'organismos', 'separata', 'ida', .14],
+    [15, 'organismos', 'promotor', 'condicionados', 'vuelta', .25],
+    [15, 'organismos', 'plazos', 'espera de plazo', 'tiempo', -.25],
+    [15, 'solicitudes', 'distribuidora', 'notificación', 'ida', -.2],
+
+    [16, 'ip', 'promotor', 'alegaciones', 'vuelta', -.3],
+    [16, 'proyecto', 'ip', 'anuncio', 'ida', .3],
+    [16, 'ambiental', 'ip', 'informe', 'vuelta', -.2],
+    [16, 'ip', 'plazos', 'plazo', 'tiempo', .25],
+
+    [17, 'solicitudes', 'recursos', 'resolución', 'ida', -.15],
+    [17, 'recursos', 'plazos', 'plazo', 'tiempo', .3],
+    [17, 'excepciones', 'ip', 'sin IP', 'ida', .35],
+    [17, 'excepciones', 'ambiental', 'exenta', 'ida', -.12],
+    [17, 'plazos', 'documentacion', 'notificación', 'ida', .2],
+    [17, 'distribuidora', 'organismos', 'alegaciones', 'vuelta', .3],
+  ];
+
+  var NS = 'http://www.w3.org/2000/svg';
+  var svg = document.getElementById('relaciones');
+  var svgR = document.getElementById('rotulos');   /* rótulos por encima de las palabras */
+
+  /* Coloca cada concepto en su centro */
+  [].forEach.call(document.querySelectorAll('.c'), function(c){
+    c.style.left = c.getAttribute('data-x') + 'px';
+    c.style.top = c.getAttribute('data-y') + 'px';
+  });
+
+  /* Caja de un concepto en coordenadas del lienzo (sin escalar ni transformar) */
+  function caja(id){
+    var c = document.getElementById(id);
+    var x = +c.getAttribute('data-x'), y = +c.getAttribute('data-y');
+    return {x: x, y: y, w: c.offsetWidth / 2 + 8, h: c.offsetHeight / 2 + 6};
+  }
+  /* Punto donde la recta del centro hacia (tx,ty) sale de la caja */
+  function borde(b, tx, ty){
+    var dx = tx - b.x, dy = ty - b.y;
+    var k = Math.min(Math.abs(b.w / (dx || 1e-6)), Math.abs(b.h / (dy || 1e-6)));
+    return {x: b.x + dx * k, y: b.y + dy * k};
+  }
+  function el(tag, attrs){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function dibujar(){
+    svg.innerHTML = '';
+    svgR.innerHTML = '';
+    RELACIONES.forEach(function(r){
+      var A = caja(r[1]), B = caja(r[2]);
+      var p0 = borde(A, B.x, B.y), p2 = borde(B, A.x, A.y);
+      var mx = (p0.x + p2.x) / 2, my = (p0.y + p2.y) / 2;
+      var dx = p2.x - p0.x, dy = p2.y - p0.y, d = Math.hypot(dx, dy);
+      var cx = mx - dy * r[5], cy = my + dx * r[5];               /* punto de control */
+      var g = el('g', {'class': 'arco paso ' + r[4], 'data-paso': r[0]});
+      var path = el('path', {d: 'M' + p0.x + ' ' + p0.y + ' Q' + cx + ' ' + cy + ' ' + p2.x + ' ' + p2.y});
+      g.appendChild(path);
+      /* punta orientada según la tangente final de la curva */
+      var tx = p2.x - cx, ty = p2.y - cy, tl = Math.hypot(tx, ty);
+      tx /= tl; ty /= tl;
+      var L = 14, W = 6.5;
+      var pts = [[p2.x, p2.y], [p2.x - tx * L - ty * W, p2.y - ty * L + tx * W],
+                 [p2.x - tx * L + ty * W, p2.y - ty * L - tx * W]];
+      g.appendChild(el('polygon', {'class': 'cabeza', points: pts.map(function(p){ return p.join(','); }).join(' ')}));
+      /* rótulo en el punto medio de la curva */
+      var lx = .25 * p0.x + .5 * cx + .25 * p2.x, ly = .25 * p0.y + .5 * cy + .25 * p2.y;
+      var t = el('text', {x: lx, y: ly + 6, 'text-anchor': 'middle'});
+      t.textContent = r[3];
+      var gr = el('g', {'class': 'arco paso ' + r[4], 'data-paso': r[0]});
+      gr.appendChild(t);
+      svg.appendChild(g);
+      svgR.appendChild(gr);
+      var largo = path.getTotalLength();
+      path.style.strokeDasharray = largo;
+      path.style.strokeDashoffset = largo;
+    });
+  }
+
+  dibujar();
+
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var MAX = Math.max.apply(null, els.map(function(e){ return +e.getAttribute('data-paso'); }));
+  var paso = 1;
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){
+      var on = +e.getAttribute('data-paso') <= paso;
+      e.classList.toggle('on', on);
+      var p = e.querySelector && e.querySelector('path');
+      if (p) p.style.strokeDashoffset = on ? 0 : p.style.strokeDasharray;
+    });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var h = location.hash, m = h.match(/paso=(\d+)/);
+  if (h === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (m) paso = Math.max(1, Math.min(MAX, +m[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>
