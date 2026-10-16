@@ -54,9 +54,17 @@
 
 ---
 
-## 0. Portada
+## 0. Portada — ✔ hecha (primer intento, sin revisar)
 
-**En pantalla:** BDDAT · Cómo funciona
+**Fichero:** `fichas/ficha_00_portada.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | **BDDAT** · Cómo funciona, en grande y centrado · «Tramitación de autorizaciones de instalaciones eléctricas de alta tensión» |
+| 2 | La cabecera sube y aparece el índice en ocho bloques: el problema y los principios · la estructura · el control · con quién y cuándo · fases del procedimiento · los documentos · las personas · de principio a fin (dónde estamos y lo que viene) |
+
+**Notas:** el índice es el hilo de la presentación: cada bloque agrupa fichas que se
+apoyan en las anteriores.
 
 ---
 
