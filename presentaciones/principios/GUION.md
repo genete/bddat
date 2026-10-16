@@ -400,6 +400,29 @@ de todo escape.
 
 ---
 
+## 20. Usuarios y roles — [Carlos] (añadida al final; se reordena después)
+
+**En pantalla (propuesta):**
+- Tramitador · Administrativo · Supervisor · Administrador
+- Un usuario puede tener varios roles: elige con cuál entra
+- Cada rol, su «Mi trabajo»
+
+**Notas:** tramitador: lleva sus expedientes, genera escritos, avanza por el árbol.
+Administrativo: da soporte, sube documentos al pool y vigila tareas y plazos (los plazos
+ya los calcula BDDAT). Supervisor: ve todos los expedientes, asigna, supervisa usuarios y
+configura catálogos y reglas. Administrador: configuración técnica y operaciones
+delicadas (bajas físicas, archivado). Mínimo privilegio y permisos blandos. Mi trabajo
+según el rol: cola de tareas (administrativo), seguimiento (tramitador), Control y
+Gestión (supervisor). Se solapa con la 18 (roles, vistas y bitácora): al reordenar, una
+de las dos absorbe a la otra.
+
+**Fuente:** ficha 3 de octubre; ADR-012, ADR-013, ADR-017, ADR-028, ADR-029, ADR-038;
+`app/modules/mi_trabajo/routes.py`.
+
+**Estado (interno):** hecho.
+
+---
+
 ## 19. Estado de desarrollo (una o dos fichas)
 
 **En pantalla:** hecho · en curso · antes de producción · después de producción.
