@@ -463,11 +463,18 @@ la historia.
 
 ---
 
-## 16. Escritos y plantillas — [propuesta]
+## 16. Escritos y plantillas — [propuesta] ✔ hecha (primer intento, sin revisar)
 
-**En pantalla:**
-- La plantilla según el contexto
-- Los datos salen del expediente
+**Fichero:** `fichas/ficha_16_escritos.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Arriba, dónde estoy (Distribución › AAP › Análisis de solicitud › Requerimiento de subsanación › ELABORAR); a la izquierda, **Plantillas para este punto** (la del requerimiento marcada, su reiteración y «Ver todas…» en discontinua) · «se ofrecen según dónde estoy; las mantiene el supervisor, sin programar» |
+| 3 | La **Plantilla**: texto fijo, huecos (titular, proyecto, defecto), condiciones («si falta la tasa», «para cada defecto») y el código en el pie |
+| 4 | Flecha al **Borrador** con los datos del expediente resaltados y la lista de defectos |
+| 5 | Se recuadra el código del pie (`BDDAT-4711-L`) · «el código del pie dice de qué tarea es el escrito» |
+| 6 | A la derecha, hasta la firma: se retoca si hace falta → PDF para firma → **Firmado** ✍ «lo produce ELABORAR» |
 
 **Notas:** plantillas `.odt`, elegidas por la posición en la estructura (con escape),
 con código de trazabilidad en el pie.

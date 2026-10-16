@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 16 · Escritos y plantillas</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* lo que va */
+  --vuelta:#3B6D11;   /* lo que vuelve */
+  --plan:#854F0B;     /* reservado */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.titulo{position:absolute;left:0;right:0;top:34px;text-align:center;font-size:30px;font-weight:600}
+.c{position:absolute;translate:-50% -50%;white-space:nowrap}
+
+/* Arriba: dónde estoy */
+.encuadre{display:flex;align-items:center;gap:8px;font-size:17px;color:var(--texto-2)}
+.encuadre .niv{border:1.5px solid var(--borde-fuerte);border-radius:999px;padding:3px 11px;background:#fff}
+.encuadre .yo{border:2px solid var(--texto);color:var(--texto);font-weight:700;background:var(--tarjeta)}
+.encuadre .sep{color:var(--borde-fuerte)}
+
+/* Izquierda: las plantillas que se ofrecen aquí */
+.oferta{position:absolute;left:40px;top:170px;width:300px}
+.oferta h3,.hoja h3{font-size:19px;font-weight:700;margin-bottom:8px}
+.op{display:flex;align-items:center;gap:8px;border:1.5px solid var(--borde-fuerte);border-radius:8px;padding:7px 10px;
+  margin-bottom:7px;font-size:16px;background:#fff}
+.op i{width:16px;height:16px;border-radius:50%;border:2px solid var(--borde-fuerte);flex:none}
+.op.si{border:2px solid var(--ida)} .op.si i{border-color:var(--ida);background:var(--ida)}
+.op.todas{border-style:dashed;color:var(--texto-2)}
+.oferta .nota{margin-top:14px;font-size:16px;line-height:1.4;color:var(--texto-2)}
+
+/* Centro: la plantilla y el borrador, uno junto a otro */
+.hoja{position:absolute;top:170px;width:330px}
+.papel{position:relative;height:350px;border:2px solid var(--borde-fuerte);border-radius:4px;background:#fff;padding:16px 18px;
+  font-size:15px;line-height:1.5;box-shadow:4px 4px 0 var(--tarjeta)}
+.papel .linea{height:8px;border-radius:4px;background:var(--borde);margin:9px 0}
+.tok{font-family:Consolas,"Courier New",monospace;font-size:14px;color:var(--ida);background:#EAF1F8;border-radius:4px;padding:0 4px}
+.cond{font-family:Consolas,"Courier New",monospace;font-size:13px;color:var(--texto-2)}
+.dato{font-weight:700;background:#E7F0DF;border-radius:4px;padding:0 4px}
+.papel ul{margin:2px 0 0 18px;padding:0}
+.pie{position:absolute;left:18px;right:18px;bottom:10px;border-top:1px solid var(--borde);padding-top:5px;
+  font-family:Consolas,"Courier New",monospace;font-size:13px;color:var(--texto-2);display:flex;justify-content:space-between}
+.pie b{color:var(--texto);transition:background .5s ease}
+.ver-pie .pie b{background:#FFF;outline:2px solid var(--texto);outline-offset:2px;border-radius:2px}
+.flecha{position:absolute;overflow:visible}
+.flecha path{fill:none;stroke:var(--texto);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.rot{position:absolute;font-size:15px;font-weight:600;color:var(--texto-2);white-space:nowrap}
+
+/* Derecha: hasta la firma */
+.camino{position:absolute;left:1100px;top:180px;width:150px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.camino .p{width:150px;font-size:16px;font-weight:600;border:1.8px solid var(--borde-fuerte);border-radius:9px;padding:7px 8px;background:#fff}
+.camino .p.fin{border:2.5px solid var(--vuelta);color:var(--vuelta);font-weight:700}
+.camino .p svg{width:26px;height:16px;vertical-align:-3px;margin-left:4px}
+.camino .b{color:var(--borde-fuerte);font-size:18px;line-height:1}
+.camino .s{font-size:13px;color:var(--texto-2);font-weight:600}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-firma" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 11c2-5 4-8 5-6s-1 7 1 7 3-6 5-6 1 5 3 5 3-3 4-4 2 1 3 1"/>
+    <path d="M2 15h22" stroke-width="1.4" opacity=".6"/>
+  </symbol>
+</svg>
+
+<div id="escenario">
+  <div class="titulo">Escritos y plantillas</div>
+
+  <!-- 2 · Dónde estoy, y las plantillas que tocan aquí -->
+  <div class="c encuadre paso" data-paso="2" style="left:640px;top:118px">
+    <span class="niv">Distribución</span><span class="sep">›</span><span class="niv">AAP</span><span class="sep">›</span>
+    <span class="niv">Análisis de solicitud</span><span class="sep">›</span><span class="niv">Requerimiento de subsanación</span>
+    <span class="sep">›</span><span class="niv yo">ELABORAR</span>
+  </div>
+  <div class="oferta paso" data-paso="2" style="transition-delay:.25s">
+    <h3>Plantillas para este punto</h3>
+    <div class="op si"><i></i>Requerimiento de subsanación</div>
+    <div class="op"><i></i>Reiteración del requerimiento</div>
+    <div class="op todas"><i></i>Ver todas…</div>
+    <div class="nota">se ofrecen según dónde estoy;<br>las mantiene el supervisor,<br>sin programar</div>
+  </div>
+
+  <!-- 3 · La plantilla: texto fijo, datos del expediente y condiciones -->
+  <div class="hoja paso" data-paso="3" style="left:380px">
+    <h3>Plantilla</h3>
+    <div class="papel">
+      <div>Titular: <span class="tok">titular</span></div>
+      <div>Proyecto: <span class="tok">proyecto</span></div>
+      <div class="linea"></div><div class="linea" style="width:80%"></div>
+      <div class="cond">si falta la tasa:</div>
+      <div>&nbsp;&nbsp;«Deberá aportar el justificante…»</div>
+      <div class="cond">para cada defecto:</div>
+      <div>&nbsp;&nbsp;· <span class="tok">defecto</span></div>
+      <div class="linea"></div><div class="linea" style="width:60%"></div>
+      <div class="pie"><span>pie</span><span class="tok">código</span></div>
+    </div>
+  </div>
+
+  <!-- 4 · El borrador, con los datos del expediente -->
+  <svg class="flecha paso" data-paso="4" width="1280" height="720" style="left:0;top:0">
+    <path d="M718 360 H748"/><path d="M740 352 l8 8 -8 8"/>
+  </svg>
+  <div class="hoja paso" data-paso="4" style="left:760px;transition-delay:.2s">
+    <h3>Borrador</h3>
+    <div class="papel">
+      <div>Titular: <span class="dato">Promotora Solar S.L.</span></div>
+      <div>Proyecto: <span class="dato">Línea 20 kV Las Lomas</span></div>
+      <div class="linea"></div><div class="linea" style="width:80%"></div>
+      <div>Deberá aportar el justificante del pago de la tasa…</div>
+      <ul>
+        <li><span class="dato">Falta la separata para ADIF</span></li>
+        <li><span class="dato">Plano de situación ilegible</span></li>
+      </ul>
+      <div class="linea" style="width:60%"></div>
+      <div class="pie"><span>pie</span><b>BDDAT-4711-L</b></div>
+    </div>
+  </div>
+
+  <!-- 5 · El código del pie: el escrito sabe de qué tarea es -->
+  <div class="rot paso" data-paso="5" style="left:790px;top:568px">el código del pie dice de qué tarea es el escrito</div>
+
+  <!-- 6 · Hasta la firma -->
+  <div class="camino paso" data-paso="6">
+    <div class="p">Se retoca<div class="s">si hace falta</div></div>
+    <div class="b">↓</div>
+    <div class="p">PDF para firma</div>
+    <div class="b">↓</div>
+    <div class="p fin">Firmado<svg><use href="#i-firma"/></svg><div class="s">lo produce ELABORAR</div></div>
+  </div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var MAX = Math.max.apply(null, els.map(function(e){ return +e.getAttribute('data-paso'); }));
+  var paso = 1;
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+    esc.classList.toggle('ver-pie', paso === 5);
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var hs = location.hash, mm = hs.match(/paso=(\d+)/);
+  if (hs === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (mm) paso = Math.max(1, Math.min(MAX, +mm[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>
