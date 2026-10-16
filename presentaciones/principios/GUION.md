@@ -1,5 +1,41 @@
 # Guion — «Cómo funciona BDDAT» (borrador 2)
 
+> ## Para retomar (traspaso del 16/10/2026)
+>
+> **Rama:** `claude/stoic-wright-2w0sy3` (la de los documentos de traspaso y la ADA). Todo
+> está aquí: este guion y las fichas en `presentaciones/principios/fichas/`. No se trabaja
+> en `develop` ni en otra rama.
+>
+> **Contexto:** presentación larga para el personal técnico de la ADA, tras la demo del
+> 16/10. Trata de los principios de funcionamiento de BDDAT; la tecnología está en
+> `../fundamentos/`, cuyo formato se copia (lienzo 1280×720, `data-paso`).
+>
+> **Hecho (8 fichas, cada una descrita abajo con ✔):**
+> 1 El procedimiento de autorización · 2 Flujo rígido frente a libertad total ·
+> 3 Principios de diseño · 4 El documento y el expediente · 5 Encapsulamiento y semántica ·
+> 6 La tarea y el documento · 7 Las tareas encadenan documentos · 8 Entidades.
+>
+> **Siguiente:** la 9 (Normas → Contexto → Reglas → Prohibición → Escape), luego 10
+> (invariantes) y el resto del guion. La 20 (usuarios y roles) se añadió al final.
+>
+> **Pendiente:**
+> - Ficha 4: reordenar y añadir algo al lado del documento (lo dijo Carlos; aún sin concretar).
+> - Reordenar el conjunto al final. La 18 y la 20 se solapan (roles): una absorbe a la otra.
+> - Falta `compilar.py` e `index.html` (copiar los de `../fundamentos/` y poner `ORDEN`).
+>   Hasta entonces cada ficha se abre sola en el navegador.
+>
+> **Cómo se trabaja (acordado con Carlos):**
+> - Pocas palabras en pantalla, nada rimbombante; Carlos narra. Solo esquemas animados.
+> - Carlos describe la animación; se hace un primer intento, se ajusta y, cuando está
+>   madura, se pasa a limpio aquí (tabla de pasos, ✔ hecha). El estado de desarrollo solo
+>   se marca internamente y va en una o dos fichas al final.
+> - Principales en recuadro, secundarios en píldora. Azul lo que va, verde lo que vuelve,
+>   morado el tiempo. Sin ámbar (en `fundamentos` significa «plan»).
+> - Mecanismos ya usados en las fichas: `data-paso` (aparece en N), `data-hasta` (se
+>   oculta en M), `data-solo` (solo en su paso), `#todo` y `#paso=N` en la dirección.
+> - En la nube se revisa con Playwright (abrir el HTML con `#paso=N` y capturar) y se le
+>   enseña a Carlos en el panel de la app. Citas legales, comprobadas en el BOE.
+
 > **Para qué.** Presentación para el personal técnico de la ADA sobre los principios de
 > funcionamiento de BDDAT. La tecnología queda en `../fundamentos/`.
 >
@@ -221,11 +257,21 @@ recibir documentación de terceros exige un ANALIZAR después.
 
 ---
 
-## 8. Entidades — [Carlos]
+## 8. Entidades — [Carlos] ✔ hecha
 
-**En pantalla:**
-- Una sola tabla
-- El papel depende del trámite
+**Fichero:** `fichas/ficha_08_entidades.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Izquierda, **Una tabla por tipo**: Titulares, Organismos, Ayuntamientos; «Distribuidora del Sur S.A.» está en dos, con teléfonos distintos |
+| 3 | Las filas duplicadas se marcan en rojo: «La misma empresa, dos veces, con datos distintos» |
+| 4 | Derecha, **Una sola tabla: entidades con roles**: la ficha de la entidad (NIF, dirección, teléfono) y sus roles como interruptores (Titular ✔, Consultado ✔, Publicador ✗) |
+| 5 | Representación: «Gestora Técnica S.L. — actúa en su nombre», flecha «representa» |
+| 6 | Direcciones de notificación por rol: como titular → Dpto. de tramitaciones; como consultada → Área técnica |
+
+Nombres y datos ficticios. Fuera de pantalla: tipo de titular y la sede de la solicitud
+para el solicitante.
 
 **Notas:** titular en un expediente, organismo consultado en otro: roles, no una tabla
 por tipo, para no duplicar datos (una sola fuente de la verdad). Representación.
