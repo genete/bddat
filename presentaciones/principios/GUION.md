@@ -414,10 +414,22 @@ notificación, de cumplimiento y de efectos. Notificación edictal.
 
 ---
 
-## 14. Organismos consultados — [propuesta]
+## 14. Organismos consultados — [propuesta] ✔ hecha (primer intento, sin revisar)
 
-**En pantalla:**
-- Un sub-proceso por organismo
+**Fichero:** `fichas/ficha_14_organismos.html`
+
+Una calle por organismo, que avanza a su ritmo: lo que va en azul (separata, traslados),
+lo que vuelve en verde (la respuesta), el silencio en morado.
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | **Fase Consultas** «un camino propio por organismo, cada uno a su ritmo»; cuatro organismos (ADIF, Distribuidora, Ayuntamiento, Confederación) con su Separata, en bloque |
+| 3 | ADIF: calla 30 días → ✓ conformidad |
+| 4 | Distribuidora: condicionado → Traslado al titular → conforme → ✓ condicionado aceptado |
+| 5 | Ayuntamiento: oposición → Traslado al titular → reparos → Traslado al organismo → calla 15 días → ✓ favorable |
+| 6 | Confederación: informe → Traslado al titular → conforme → ✓ favorable; abajo, píldoras «si el organismo calla: conformidad» · «una sola vuelta de reparos» · «RD 1955/2000, arts. 127 y 131» |
+| 7 | Sello: **Todos terminados** «la fase se cierra con su certificado» |
 
 **Notas:** separata, respuesta, traslado al titular, silencio. Número variable de
 organismos por fase.
