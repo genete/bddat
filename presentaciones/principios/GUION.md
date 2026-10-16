@@ -640,6 +640,32 @@ de las dos absorbe a la otra.
 
 ---
 
+## 20b. Un expediente de principio a fin — [propuesta, hueco] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_20b_recorrido.html`
+
+La síntesis: liga las fichas con el procedimiento. Cada pieza ya se ha visto; aquí se ve
+dónde actúa.
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | El procedimiento en siete etapas: Solicitud (entra por registro) › Análisis (¿está completa?) › Instrucción (en paralelo: Consultas, Información pública, Ambiental) › **Fin de instrucción** › Resolución (elaborar y firmar) › Notificación (a todos) › **Cierre** |
+| 3 | «Lo que pone BDDAT», bajo Solicitud (entidades y roles · uno o varios actos · el reloj de cada acto empieza) y Análisis (requisitos según el proyecto · diagnóstico · requerimiento y su plazo) |
+| 4 | Bajo Instrucción: un camino por organismo · anuncios y alegaciones · reformados: nueva versión |
+| 5 | Bajo Fin de instrucción (certificado: la bisagra) y Resolución (plantilla con los datos · firma) |
+| 6 | Bajo Notificación (un destinatario cada una · el canal, del justificante · cumplimiento y efectos) y Cierre (certificados de cierre · ¿en plazo?, acto por acto); «Después: recurso, modificación, explotación… es otra solicitud» |
+| 7 | «De principio a fin»: Reglas e invariantes (en cada paso, con escape) · Estado calculado (árbol y listado) · Documentos (en el almacén, con fecha) · Bitácora (quién, cuándo, por qué) |
+
+**Notas:** sirve de repaso antes del estado de desarrollo. Las etapas son las del RD
+1955/2000 y la LPACAP para una autorización; la instrucción tiene más fases según el
+caso (consulta al Ministerio, datos catastrales para la DUP…). Lo que viene después de
+una solicitud resuelta y notificada es otra solicitud (invariante de la 10).
+
+**Estado (interno):** —
+
+---
+
 ## 19. Estado de desarrollo (una o dos fichas)
 
 **En pantalla:** hecho · en curso · antes de producción · después de producción.
