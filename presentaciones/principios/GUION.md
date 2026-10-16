@@ -775,3 +775,26 @@ LPACAP, BOE-A-2015-10565).
 matriz de cobertura; #573.
 
 **Estado (interno):** diseñado (ADR-027), sin código.
+
+---
+
+## 19e. Ver venir los vencimientos — [propuesta, post producción] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_19e_vencimientos.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | El horizonte de tres semanas, una calle por tramitador (Tomás, Ana, Luis) con la línea de «hoy»: círculos morados para los plazos de terceros (alegaciones, informes, subsanaciones) y rombos rojos para el plazo de resolver de un acto |
+| 3 | El aviso: «Tomás: el plazo de resolver la AAC de AT-12 vence en 5 días» · «el aviso llega a quien lleva el expediente, sin buscarlo» |
+| 4 | **Informe de situación** «a demanda · cifras de ejemplo»: solicitudes en trámite · con el plazo de resolver vencido · tiempo medio de una AAP |
+
+**Notas:** hoy cada plazo se calcula y se ve en su expediente (árbol, inspector, listado).
+La idea es mirarlos todos juntos hacia delante: por persona, por unidad y para los
+servicios centrales. Lo previo, la proyección de plazos, está en «antes de producción»;
+lo que se deja para después son las alertas y los informes. Las cifras son inventadas.
+
+**Fuente:** ficha 12 de octubre (punto 7); `PLAN_ESTRATEGIA.md` §A, bloque 5;
+`INVENTARIO_BACKEND.md` §12.A y §12.B.
+
+**Estado (interno):** sin empezar; el cálculo de plazos en que se apoya, hecho.
