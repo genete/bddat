@@ -55,12 +55,16 @@ juego.
 
 ---
 
-## 2. Flujo rígido frente a libertad total — [Carlos]
+## 2. Flujo rígido frente a libertad total — [Carlos] ✔ hecha
 
-**En pantalla:**
-- Flujo rígido: el sistema decide el paso siguiente
-- Libertad total: todo cabe, nada se controla
-- BDDAT: en medio
+**Fichero:** `fichas/ficha_02_rigido_libre.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Izquierda, **Flujo rígido** («el sistema decide el siguiente paso»): Solicitud → Requerimiento → Información pública → Consultas → Resolución → Recursos, en cascada vertical con flechas |
+| 3 | Derecha, **Libertad total** («todo cabe, nada se controla»): los mismos seis elementos sin conexión, equidistantes en círculo y en otro orden |
+| 4 | En medio, **BDDAT** · «se sitúa en un punto intermedio» |
 
 **Notas:** en el flujo rígido lo imprevisto no cabe y el tramitador acaba trabajando
 fuera; en la libertad total el estado depende de que alguien lo apunte. En BDDAT la
