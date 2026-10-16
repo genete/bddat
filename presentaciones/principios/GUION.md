@@ -695,3 +695,29 @@ va en fichas propias (19b y siguientes).
 octubre y de los documentos de estado vivos (`ESTADO_ADR049`, `ESTADO_ADR050`,
 `ESTADO_ADR053`) a 16/10/2026. Si cambia algo antes de la presentación, se retoca la
 lista en el propio HTML (un array al principio del script).
+
+---
+
+## 19b. Después de producción — [propuesta] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_19b_despues.html` · «mejoras que no hacen falta para funcionar»
+
+Mapa de ideas en una rejilla de 3×3, una fila por clic. Las que tocan el procedimiento van
+en recuadro oscuro y tienen ficha propia a continuación (19c a 19f).
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | **Firmar y notificar sin salir** · **Lo que vuelve, se coloca solo** · **El expediente que sale** |
+| 3 | **Ver venir los vencimientos** · Avisos y encargos · **La instalación en el mapa** |
+| 4 | Ayuda donde se trabaja · A hoja de cálculo · Titularidad en bloque |
+| 5 | «las que tocan el procedimiento: se ven a continuación» |
+
+**Notas:** son las nueve de la ficha 12 de octubre, agrupadas y con nombres de
+procedimiento. «Lo que vuelve, se coloca solo» une dos piezas que ya existen a medias: el
+código del pie (hoy solo comprueba el vínculo del requerimiento) y el registro manual de
+los justificantes (el lector completo de Notifica-PNT está decidido, sin hacer). «Avisos
+y encargos» amplía la bandeja de peticiones al supervisor que ya existe.
+
+**Fuente:** ficha 12 de octubre; ADR-021; ADR-040; `PLAN_ESTRATEGIA.md` §A (bloques 6, 7,
+13 y 14); `INVENTARIO_BACKEND.md` §12.
