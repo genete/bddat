@@ -440,10 +440,19 @@ organismos por fase.
 
 ---
 
-## 15. Reformados de proyecto — [propuesta]
+## 15. Reformados de proyecto — [propuesta] ✔ hecha (primer intento, sin revisar)
 
-**En pantalla:**
-- La versión del proyecto es el eje
+**Fichero:** `fichas/ficha_15_reformados.html` · título «Reformados de proyecto: la versión como eje»
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | La línea de los documentos del proyecto; el **Proyecto** abre la **Versión 1** |
+| 3 | De la versión 1 cuelgan sus fases: Análisis de solicitud · Consultas · Información pública |
+| 4 | Llega un **Anexo de planos**: «¿Produce un reformado? No» — sigue la versión 1 |
+| 5 | Llega un **Reformado** (requerido o voluntario): «¿Produce un reformado? Sí» — corte y **Versión 2** |
+| 6 | De la versión 2 cuelgan Consultas e Información pública (2.ª ronda); las de la versión 1 pasan a discontinuas · «la historia de la versión 1 se conserva» |
+| 7 | **Resolución** «sobre la versión 2» · píldoras «repetir una fase en la misma versión: la regla lo bloquea» · «la resolución, congruente con lo pedido» |
 
 **Notas:** un reformado corta las fases, que se repiten para la nueva versión sin perder
 la historia.
