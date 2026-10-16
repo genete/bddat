@@ -367,12 +367,19 @@ fecha de resolución y si se cumplió.
 
 ---
 
-## 12. Plazos — [propuesta]
+## 12. Plazos — [propuesta] ✔ hecha (primer intento, sin revisar)
 
-**En pantalla:**
-- Catálogo editable
-- Días hábiles y suspensiones
-- Efecto del vencimiento
+**Fichero:** `fichas/ficha_12_plazos.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Izquierda, una entrada del **Catálogo de plazos** (editable), la del requerimiento de subsanación: dónde · desde (el justificante de la notificación) · cuánto (10 días hábiles, en morado) · cumple (la documentación de subsanación) · si vence (se le tiene por desistido, en rojo) · norma (LPACAP art. 68.1) |
+| 3 | Derecha, el calendario del 4 al 18: el día del justificante, los fines de semana rayados, la cuenta 1…10 de hábiles y «vence» el 18 · «sin sábados, domingos ni festivos» |
+| 4 | «hoy» el 11: la barra morada corre hasta hoy · «En plazo · quedan 5 días» |
+| 5 | Llega la documentación de subsanación el 13: la barra para ahí, en verde · «Cumplido» · «Para en lo primero que llegue: cumplimiento, vencimiento u hoy» |
+| 6 | Abajo, el **Plazo de resolver y notificar** de la AAP (3 meses desde la solicitud): una barra de la solicitud al vencimiento |
+| 7 | El tramo del requerimiento queda rayado («suspende») y el vencimiento se desplaza: «más tarde» |
 
 **Notas:** cada plazo dice a qué se aplica, desde qué documento se cuenta, qué
 documento acredita el cumplimiento y qué pasa si vence (silencio, caducidad…).
