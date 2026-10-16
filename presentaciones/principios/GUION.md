@@ -86,7 +86,8 @@
 > - **[Carlos]** = punto pedido por Carlos; **[propuesta]** = añadido, a depurar.
 >
 > El orden es el de los bloques de la portada; cada bloque abre con su título en este
-> guion.
+> guion, y cada ficha lleva arriba a la izquierda, en gris claro, el bloque al que
+> pertenece (en el bloque 8: «De principio a fin», «Dónde estamos» o «Lo que viene»).
 
 ---
 

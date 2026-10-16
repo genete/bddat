@@ -33,5 +33,7 @@ El orden es el alfabético de los ficheros (`ficha_00_…` a `ficha_28_…`).
 - Un bloque de estilos común y un lienzo fijo de 1280×720 que se escala a la ventana.
 - `data-paso="N"`: aparece al llegar al paso N; `data-hasta="M"`: se oculta al llegar a M;
   `data-solo`: solo se ve en su paso.
+- Arriba a la izquierda, en gris claro, el bloque del índice al que pertenece la ficha
+  (`.bloque-tag`, sin paso: se ve siempre).
 - Azul: lo que va. Verde: lo que vuelve. Morado: el tiempo. Sin ámbar (en `fundamentos`
   significa «plan»). Principales en recuadro, secundarios en píldora.
