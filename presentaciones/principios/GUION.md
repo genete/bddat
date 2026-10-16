@@ -100,12 +100,21 @@ quitaron las listas blancas de combinaciones de la estructura.
 
 ---
 
-## 4. El documento, núcleo del dato. El expediente — [Carlos]
+## 4. El documento y el expediente — [Carlos] ✔ hecha (pendiente: reordenar y añadir algo al lado del documento)
 
-**En pantalla:**
-- Las fechas son del documento
-- El estado se deriva
-- Expediente = documentos vinculados
+**Fichero:** `fichas/ficha_04_documento_expediente.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Izquierda, **Documento**: el fichero físico (`informe.pdf`) |
+| 3–4 | Los metadatos que le pone BDDAT: tipo de documento · fecha administrativa |
+| 5 | Art. 26.2 LPACAP: referencia temporal y metadatos mínimos |
+| 6 | Derecha, **Expediente**: «conjunto ordenado de documentos y actuaciones que sirven de antecedente y fundamento a la resolución administrativa» (art. 70.1 LPACAP) |
+| 7 | Cinco documentos entran numerados en una carpeta (el índice del art. 70.2) |
+| 8 | Borradores, notas, información auxiliar: no forman parte del expediente (art. 70.4) |
+
+Citas comprobadas en el BOE (BOE-A-2015-10565). El art. 40 es el de la notificación.
 
 **Notas:** fecha administrativa, la que cuenta legalmente, no la del fichero; la
 estructura no guarda fechas; nadie actualiza el estado a mano. Un documento sin
