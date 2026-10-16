@@ -417,8 +417,37 @@ Suspensión como medida única. Plazo de resolver de cada acto.
 
 **Fuente:** ADR-041, ADR-048.
 
-**Estado (interno):** hecho; pendiente mostrar el plazo de resolver en el árbol y la
-proyección de plazos.
+**Estado (interno):** hecho, con el plazo de resolver de cada acto en el árbol (#922);
+pendientes la proyección de plazos y conectar la suspensión al plazo del acto (#796).
+
+---
+
+## 12b. Una solicitud, varios actos — [propuesta, hueco] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_12b_actos.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | **Solicitud AAP + AAC + DUP**, que se abre en tres actos: AAP (autorización previa) · AAC (de construcción) · DUP (utilidad pública) |
+| 3 | Una barra morada por acto, desde la misma solicitud: 3 meses · 3 meses · 6 meses · «desde la misma solicitud: cada acto, su plazo» |
+| 4 | Detrás, al principio de las tres barras: «una instrucción común» |
+| 5 | **Resolución AAP y AAC** («juntas o por separado») y **Resolución DUP** («siempre en acto aparte») |
+| 6 | Abajo, por qué: **Autorizaciones** (se consideran dictadas por la Dirección General · recurso de alzada) frente a **Declaración de utilidad pública** (la Consejería · agota la vía administrativa: reposición) |
+
+**Notas:** una solicitud es un contenedor: no cumple ni incumple plazos; lo hace cada
+acto. El plazo corre desde la solicitud pero es de cada acto, y existe desde el primer
+día, antes de que exista la fase que lo resuelve. La instrucción se comparte (una ronda
+de consultas por organismo para todo lo que ampara el mismo proyecto). En Andalucía la
+autorización y la DUP no pueden ir en el mismo acto: no las dicta el mismo órgano ni
+agotan la misma vía (Resolución de la DG de Energía de 11/03/2022 y Orden de 05/06/2013,
+art. 5.6). La DUP no se puede declarar sin aprobar antes o a la vez el proyecto de
+ejecución. Conecta con la 12 (el plazo de resolver de la AAP) y con la de certificados
+(el cierre de la solicitud enumera por acto).
+
+**Fuente:** ADR-045, ADR-046, ADR-047, ADR-049 §E.
+
+**Estado (interno):** hecho; la fase de resolución de la DUP, en curso.
 
 ---
 
