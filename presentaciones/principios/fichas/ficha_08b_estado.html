@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 8b · El estado se deriva</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* lo que va */
+  --vuelta:#3B6D11;   /* lo que vuelve */
+  --plan:#854F0B;     /* reservado */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.titulo{position:absolute;left:0;right:0;top:34px;text-align:center;font-size:30px;font-weight:600}
+/* Los seis colores del semáforo de BDDAT */
+:root{--s-rojo:#C2362B;--s-naranja:#D9731F;--s-amarillo:#D9B300;--s-azul:#185FA5;--s-gris:#9A9890;--s-verde:#3B6D11}
+
+/* El árbol: fase → trámites → tareas */
+#ramas{position:absolute;left:0;top:0;width:1280px;height:720px;overflow:visible}
+#ramas path{fill:none;stroke:var(--borde-fuerte);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nodo{position:absolute;display:flex;align-items:center;gap:8px;border:2px solid var(--borde-fuerte);border-radius:9px;
+  background:#fff;padding:6px 10px;font-size:16px;font-weight:700;white-space:nowrap}
+.nodo.fase{font-size:20px;background:var(--tarjeta);padding:10px 14px}
+.nodo.tram{background:var(--tarjeta)}
+.nodo small{display:block;font-size:12px;font-weight:600;color:var(--texto-2)}
+.punto{width:16px;height:16px;border-radius:50%;flex:none;border:2px solid #fff;box-shadow:0 0 0 1.5px currentColor;background:currentColor}
+.punto.grande{width:20px;height:20px}
+.rojo{color:var(--s-rojo)} .naranja{color:var(--s-naranja)} .amarillo{color:var(--s-amarillo)}
+.azul{color:var(--s-azul)} .gris{color:var(--s-gris)} .verde{color:var(--s-verde)}
+.nodo .t{color:var(--texto)}
+.porque{position:absolute;font-size:13px;font-weight:600;color:var(--texto-2);white-space:nowrap}
+.regla{position:absolute;font-size:16px;color:var(--texto-2);white-space:nowrap}
+.regla b{color:var(--texto)}
+
+/* El listado de seguimiento: una fila por solicitud */
+.listado{position:absolute;left:40px;top:540px;width:820px;border:2px solid var(--borde-fuerte);border-radius:10px;overflow:hidden;background:#fff}
+.listado .cab,.listado .fila{display:grid;grid-template-columns:80px 110px 1fr 104px 104px 104px 104px;align-items:center}
+.listado .cab{background:var(--tarjeta);font-size:13px;font-weight:700;color:var(--texto-2);text-transform:uppercase;letter-spacing:.4px}
+.listado .cab span,.listado .fila span{padding:7px 10px}
+.listado .fila{font-size:16px;border-top:1px solid var(--borde)}
+.et{display:inline-block;font-style:normal;font-size:12px;font-weight:700;letter-spacing:.4px;border-radius:6px;padding:3px 8px;color:#fff}
+.et.verde{background:var(--s-verde)} .et.amarillo{background:var(--s-amarillo);color:#2C2C2A} .et.gris{background:var(--s-gris)}
+
+/* La leyenda de colores */
+.leyenda{position:absolute;left:910px;top:430px;width:330px;display:flex;flex-direction:column;gap:7px}
+.leyenda h3{font-size:18px;font-weight:700;margin-bottom:2px}
+.leyenda div{display:flex;align-items:center;gap:10px;font-size:16px}
+.leyenda .punto{width:14px;height:14px}
+</style>
+</head>
+<body>
+
+<div id="escenario">
+  <div class="titulo">El estado se deriva, no se apunta</div>
+
+  <svg id="ramas" viewBox="0 0 1280 720" aria-hidden="true">
+    <g class="paso" data-paso="2">
+      <path d="M394 158 H416"/><path d="M551 158 H572"/><path d="M710 158 H731"/>
+      <path d="M394 258 H416"/>
+      <path d="M394 358 H416"/><path d="M551 358 H572"/>
+    </g>
+    <g class="paso" data-paso="3"><path d="M206 258 H226 V158 H246 M226 258 H246 M226 258 V358 H246"/></g>
+  </svg>
+
+  <!-- 2 · Las tareas: su color sale de sus documentos -->
+  <div class="nodo paso" data-paso="2" style="left:416px;top:138px"><span class="punto verde"></span><span class="t">ELABORAR<small>firmado</small></span></div>
+  <div class="nodo paso" data-paso="2" style="left:572px;top:138px"><span class="punto verde"></span><span class="t">NOTIFICAR<small>justificante</small></span></div>
+  <div class="nodo paso" data-paso="2" style="left:731px;top:138px"><span class="punto gris"></span><span class="t">ESPERAR PLAZO<small>corre el plazo</small></span></div>
+  <div class="nodo paso" data-paso="2" style="left:416px;top:238px;transition-delay:.15s"><span class="punto amarillo"></span><span class="t">ELABORAR<small>PDF para firma</small></span></div>
+  <div class="nodo paso" data-paso="2" style="left:416px;top:338px;transition-delay:.3s"><span class="punto verde"></span><span class="t">ELABORAR<small>firmado</small></span></div>
+  <div class="nodo paso" data-paso="2" style="left:572px;top:338px;transition-delay:.3s"><span class="punto azul"></span><span class="t">NOTIFICAR<small>falta el justificante</small></span></div>
+  <div class="regla paso" data-paso="2" style="left:960px;top:230px;transition-delay:.5s">el color de una tarea<br><b>sale de sus documentos</b></div>
+
+  <!-- 3 · Los trámites: el más urgente de sus tareas -->
+  <div class="nodo tram paso" data-paso="3" style="left:246px;top:138px"><span class="punto gris"></span><span class="t">Separata ADIF</span></div>
+  <div class="nodo tram paso" data-paso="3" style="left:246px;top:238px"><span class="punto amarillo"></span><span class="t">Separata Ayto.</span></div>
+  <div class="nodo tram paso" data-paso="3" style="left:246px;top:338px"><span class="punto azul"></span><span class="t">Separata CHG</span></div>
+
+  <!-- 4 · La fase: el más urgente de sus trámites -->
+  <div class="nodo fase paso" data-paso="4" style="left:40px;top:232px"><span class="punto grande amarillo"></span><span class="t">Consultas</span></div>
+  <div class="regla paso" data-paso="4" style="left:960px;top:330px;transition-delay:.2s">hacia arriba,<br><b>manda lo más urgente</b></div>
+
+  <!-- 5 · El listado de seguimiento: una fila por solicitud, una columna por fase -->
+  <div class="listado paso" data-paso="5">
+    <div class="cab"><span>N.º AT</span><span>Solicitud</span><span>Titular</span><span>Análisis</span><span>Consultas</span><span>IP</span><span>Resolución</span></div>
+    <div class="fila"><span><b>AT-7</b></span><span>AAP+AAC</span><span>Promotora Solar S.L.</span>
+      <span><i class="et verde">FIN</i></span><span><i class="et amarillo">FIRMA</i></span><span><i class="et gris">PLAZOS</i></span><span></span></div>
+  </div>
+  <div class="regla paso" data-paso="5" style="left:40px;top:480px;transition-delay:.2s">el listado lee el mismo cálculo: <b>nadie actualiza el estado a mano</b></div>
+
+  <!-- 6 · Los seis colores -->
+  <div class="leyenda paso" data-paso="6">
+    <h3>Qué dice cada color</h3>
+    <div><span class="punto rojo"></span>actúa el tramitador</div>
+    <div><span class="punto naranja"></span>gestión nuestra: cerrar, reintentar</div>
+    <div><span class="punto amarillo"></span>en firma</div>
+    <div><span class="punto azul"></span>espera a un externo</div>
+    <div><span class="punto gris"></span>corre un plazo</div>
+    <div><span class="punto verde"></span>terminado</div>
+  </div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var MAX = Math.max.apply(null, els.map(function(e){ return +e.getAttribute('data-paso'); }));
+  var paso = 1;
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var hs = location.hash, mm = hs.match(/paso=(\d+)/);
+  if (hs === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (mm) paso = Math.max(1, Math.min(MAX, +mm[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>

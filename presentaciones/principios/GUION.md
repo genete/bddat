@@ -283,6 +283,36 @@ Direcciones de notificación por rol. Al solicitante, la sede de su solicitud.
 
 ---
 
+## 8b. El estado se deriva, no se apunta — [propuesta, hueco] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_08b_estado.html`
+
+El principio 5 en imagen, y el listado de la antigua 18. Una fase de consultas con tres
+separatas en distinto punto.
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Las tareas con su color y por qué: ADIF (ELABORAR firmado 🟢 · NOTIFICAR justificante 🟢 · ESPERAR PLAZO corre el plazo ⚪), Ayuntamiento (ELABORAR PDF para firma 🟡), CHG (ELABORAR firmado 🟢 · NOTIFICAR falta el justificante 🔵) · «el color de una tarea sale de sus documentos» |
+| 3 | Los trámites toman el color más urgente de sus tareas: ⚪ · 🟡 · 🔵 |
+| 4 | La fase **Consultas**, 🟡 · «hacia arriba, manda lo más urgente» |
+| 5 | El **listado de seguimiento**: AT-7 · AAP+AAC · Análisis FIN · Consultas FIRMA · IP PLAZOS · «el listado lee el mismo cálculo: nadie actualiza el estado a mano» |
+| 6 | **Qué dice cada color**: actúa el tramitador · gestión nuestra · en firma · espera a un externo · corre un plazo · terminado |
+
+**Notas:** ningún nivel guarda su estado: se recorre el árbol de abajo arriba y prevalece
+el de mayor prioridad. El árbol y el listado leen el mismo cálculo, así que no pueden
+contradecirse. Rojo: el tramitador tiene que actuar (incluida la notificación agotada,
+que pide el edicto); naranja: gestión nuestra (cerrar una fase, segundo intento postal,
+puesta en sede); amarillo: en firma; azul: falta el justificante de la notificación;
+gris: corre un plazo; verde: terminado. Trabajar por lotes es filtrar el listado.
+
+**Fuente:** ADR-002; `docs/referencia/MODELO_ESTADOS_SEMAFORO.md` §2 y §5; ficha 9 de
+octubre.
+
+**Estado (interno):** hecho.
+
+---
+
 ## 9. Normas → Contexto → Reglas → Prohibición → Escape — [Carlos] ✔ hecha (primer intento, sin revisar)
 
 **Fichero:** `fichas/ficha_09_reglas.html` · título «De la norma al escape»
