@@ -486,11 +486,18 @@ pendientes.
 
 ---
 
-## 17. Almacén documental — [propuesta]
+## 17. Almacén documental — [propuesta] ✔ hecha (primer intento, sin revisar)
 
-**En pantalla:**
-- Los ficheros, fuera de BDDAT
-- Un manifiesto por expediente
+**Fichero:** `fichas/ficha_17_almacen.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Izquierda, **Antes**: Usuarios y BDDAT escriben en la misma Carpeta de red |
+| 3 | «✗ resolución.pdf, cambiada desde Windows» · «BDDAT no se entera: dos fuentes de la verdad» |
+| 4 | Derecha, **Ahora**: Usuarios → BDDAT → Almacén (archivador con candado) · «los usuarios no tocan los ficheros: solo BDDAT entra» |
+| 5 | **Con su huella**: «si cambia, se nota» |
+| 6 | **Un manifiesto por expediente**: «sin BDDAT, se recuperan las carpetas», con el árbol de carpetas de un AT |
 
 **Notas:** almacén propio por contenido, sin acceso directo de los usuarios; el
 manifiesto permite reconstruir las carpetas sin BDDAT. El pool son los documentos sin
