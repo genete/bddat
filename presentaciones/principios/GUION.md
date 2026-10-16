@@ -283,14 +283,22 @@ Direcciones de notificación por rol. Al solicitante, la sede de su solicitud.
 
 ---
 
-## 9. Normas → Contexto → Reglas → Prohibición → Escape — [Carlos]
+## 9. Normas → Contexto → Reglas → Prohibición → Escape — [Carlos] ✔ hecha (primer intento, sin revisar)
 
-**En pantalla:**
-- Normas
-- Contexto de tramitación
-- Reglas
-- Prohibición
-- Escape
+**Fichero:** `fichas/ficha_09_reglas.html` · título «De la norma al escape»
+
+Cinco columnas encadenadas con flechas, una por clic, con un mismo ejemplo de punta a
+punta (abrir la resolución con AAU y la información pública sin cerrar).
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | **Normas**: píldoras LSE · RD 1955/2000 · LPACAP · DL 26/2021 · Decreto 9/2011 · …; tarjeta azul «DL 26/2021 · DF 4.ª — Con AAU, la información pública es obligatoria» |
+| 3 | **Contexto**: «Dónde estoy» (Distribución › AAP, crear fase Resolución) y «Qué es cierto ahora» (instrumento ambiental AAU, información pública abierta, tensión 66 kV, plazo de la IP vencido) |
+| 4 | **Reglas**: la regla como fila (al crear Resolución · si AAU y la IP sin cerrar · efecto BLOQUEAR · norma); píldoras «un registro, no código», «con excepciones», «la vigencia es de la regla» |
+| 5 | **Prohibición**: Bloquea / Advierte y el aviso que ve el tramitador, con la norma enlazada |
+| 6 | **Escape**: «Seguir de todos modos», justificación obligatoria, flecha a la **Bitácora** (quién · cuándo · qué regla · por qué) |
+| 7 | Abajo, **Modo del motor**: el cursor recorre Inactivo → Solo avisa → Bloquea · «de la libertad al control, pasando por el aviso» |
 
 **Notas:** las reglas son registros, no código, y citan su norma; la vigencia es de la
 regla. Contexto: dónde estoy en la estructura y qué es cierto ahora (datos del

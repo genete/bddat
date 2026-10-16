@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 9 · De la norma al escape</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* lo que va */
+  --vuelta:#3B6D11;   /* lo que vuelve */
+  --plan:#854F0B;     /* reservado */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,#ayuda,.modo .cursor{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.titulo{position:absolute;left:0;right:0;top:34px;text-align:center;font-size:30px;font-weight:600}
+:root{--rojo:#A32D2D}
+
+/* Cinco columnas: una por eslabón de la cadena */
+.col{position:absolute;top:104px;width:224px;display:flex;flex-direction:column;align-items:stretch;gap:12px}
+.cab{background:var(--tarjeta);border:2px solid var(--borde-fuerte);border-radius:10px;padding:8px 10px;
+  font-size:25px;font-weight:700;text-align:center}
+.flecha{position:absolute;top:118px;width:22px;height:24px;color:var(--borde-fuerte)}
+.flecha path{fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+
+.et{font-size:14px;font-weight:700;color:var(--texto-2);text-transform:uppercase;letter-spacing:.4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:15px;font-weight:600;color:var(--texto-2);border:1.5px solid var(--borde-fuerte);border-radius:999px;
+  padding:2px 10px;background:#fff;white-space:nowrap}
+.tarjeta{border:2px solid var(--borde-fuerte);border-radius:10px;background:#fff;padding:9px 12px;font-size:16px;line-height:1.35}
+.tarjeta b{font-weight:700}
+.tarjeta.ida{border-color:var(--ida)}
+.tarjeta.ida .ref{color:var(--ida)}
+.ref{font-size:14px;font-weight:700}
+.dato{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:2px 0;border-top:1px solid var(--borde)}
+.dato:first-of-type{border-top:none}
+.dato span:first-child{color:var(--texto-2)}
+.dato b{white-space:nowrap}
+.dato.clave b{color:var(--ida)}
+
+/* La regla como fila de una tabla: sujeto, condición, efecto, norma */
+.regla .fila{display:grid;grid-template-columns:62px 1fr;gap:6px;font-size:15px;padding:3px 0;border-top:1px solid var(--borde)}
+.regla .fila:first-child{border-top:none}
+.regla .fila > span:first-child{color:var(--texto-2)}
+.efecto{display:inline-block;font-size:13px;font-weight:700;letter-spacing:.4px;border-radius:6px;padding:1px 7px;color:#fff;background:var(--rojo)}
+
+/* Prohibición: bloquea o advierte, siempre con su porqué */
+.dos{display:flex;gap:8px}
+.dos span{flex:1;text-align:center;font-size:16px;font-weight:700;border-radius:8px;padding:5px 0;border:2px solid var(--rojo)}
+.dos .bloq{background:var(--rojo);color:#fff}
+.dos .adv{color:var(--texto-2);border-color:var(--borde-fuerte)}
+.aviso{border:2px solid var(--rojo);border-left-width:6px;border-radius:8px;background:#FBEFEF;padding:8px 10px;font-size:15px;line-height:1.35}
+.aviso b{display:block;color:var(--rojo);font-size:15px}
+.aviso .ref{color:var(--rojo)}
+
+/* Escape: seguir justificándolo, y queda en la bitácora */
+.boton{align-self:center;font-size:16px;font-weight:700;border:2px solid var(--texto);border-radius:8px;padding:6px 14px;background:#fff}
+.campo{border:1.5px dashed var(--borde-fuerte);border-radius:8px;padding:7px 10px;font-size:15px;color:var(--texto-2);background:#fff}
+.campo i{display:block;margin-top:4px;height:2px;background:var(--borde);border-radius:2px}
+.baja{align-self:center;width:16px;height:22px;color:var(--borde-fuerte)}
+.baja path{fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.bitacora{display:flex;align-items:center;gap:10px;border:2px solid var(--texto);border-radius:10px;background:var(--tarjeta);padding:8px 12px}
+.bitacora svg{width:30px;height:34px;flex:none;color:var(--texto)}
+.bitacora .t{font-size:18px;font-weight:700}
+.bitacora .s{font-size:14px;color:var(--texto-2)}
+
+/* El modo del motor, abajo */
+.modos{position:absolute;left:0;right:0;top:570px;display:flex;align-items:center;justify-content:center;gap:22px}
+.modos .rot{font-size:20px;font-weight:600}
+.modo{position:relative;display:flex;border:2px solid var(--texto);border-radius:999px;background:#fff;overflow:hidden}
+.modo span{position:relative;z-index:1;width:150px;text-align:center;font-size:19px;font-weight:600;padding:7px 0;
+  transition:color .3s ease}
+.modo .cursor{position:absolute;z-index:0;top:0;bottom:0;width:150px;left:0;background:var(--texto);border-radius:999px;
+  transition:left .6s ease}
+.modos .nota{font-size:17px;color:var(--texto-2)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-cuaderno" viewBox="0 0 30 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M5 2h20v30H5z"/><path d="M10 2v30"/><path d="M14 10h7M14 15h7M14 20h5"/>
+  </symbol>
+</svg>
+
+<div id="escenario">
+  <div class="titulo">De la norma al escape</div>
+
+  <!-- 2 · Normas -->
+  <div class="col paso" data-paso="2" style="left:40px">
+    <div class="cab">Normas</div>
+    <div class="chips">
+      <span class="chip">LSE</span><span class="chip">RD 1955/2000</span><span class="chip">LPACAP</span>
+      <span class="chip">DL 26/2021</span><span class="chip">Decreto 9/2011</span><span class="chip">…</span>
+    </div>
+    <div class="tarjeta ida">
+      <div class="ref">DL 26/2021 · DF 4.ª</div>
+      Con AAU, la información pública es obligatoria
+    </div>
+  </div>
+
+  <svg class="flecha paso" data-paso="3" style="left:255px" viewBox="0 0 22 24"><path d="M3 12h15M12 5l7 7-7 7"/></svg>
+
+  <!-- 3 · Contexto de tramitación -->
+  <div class="col paso" data-paso="3" style="left:286px">
+    <div class="cab">Contexto</div>
+    <div class="et">Dónde estoy</div>
+    <div class="tarjeta">Distribución › AAP<br><b>crear fase Resolución</b></div>
+    <div class="et">Qué es cierto ahora</div>
+    <div class="tarjeta">
+      <div class="dato clave"><span>Instrumento ambiental</span><b>AAU</b></div>
+      <div class="dato clave"><span>Información pública</span><b>abierta</b></div>
+      <div class="dato"><span>Tensión</span><b>66 kV</b></div>
+      <div class="dato"><span>Plazo de la IP</span><b>vencido</b></div>
+    </div>
+  </div>
+
+  <svg class="flecha paso" data-paso="4" style="left:501px" viewBox="0 0 22 24"><path d="M3 12h15M12 5l7 7-7 7"/></svg>
+
+  <!-- 4 · Reglas -->
+  <div class="col paso" data-paso="4" style="left:532px">
+    <div class="cab">Reglas</div>
+    <div class="tarjeta regla">
+      <div class="fila"><span>Al crear</span><b>Resolución</b></div>
+      <div class="fila"><span>Si</span><span>AAU y la información pública sin cerrar</span></div>
+      <div class="fila"><span>Efecto</span><span><span class="efecto">BLOQUEAR</span></span></div>
+      <div class="fila"><span>Norma</span><b>DL 26/2021 DF 4.ª</b></div>
+    </div>
+    <div class="chips">
+      <span class="chip">un registro, no código</span><span class="chip">con excepciones</span>
+      <span class="chip">la vigencia es de la regla</span>
+    </div>
+  </div>
+
+  <svg class="flecha paso" data-paso="5" style="left:747px" viewBox="0 0 22 24"><path d="M3 12h15M12 5l7 7-7 7"/></svg>
+
+  <!-- 5 · Prohibición -->
+  <div class="col paso" data-paso="5" style="left:778px">
+    <div class="cab">Prohibición</div>
+    <div class="dos"><span class="bloq">Bloquea</span><span class="adv">Advierte</span></div>
+    <div class="aviso">
+      <b>No se puede crear la fase Resolución</b>
+      Falta cerrar la información pública
+      <div class="ref">DL 26/2021, DF 4.ª ↗</div>
+    </div>
+  </div>
+
+  <svg class="flecha paso" data-paso="6" style="left:993px" viewBox="0 0 22 24"><path d="M3 12h15M12 5l7 7-7 7"/></svg>
+
+  <!-- 6 · Escape -->
+  <div class="col paso" data-paso="6" style="left:1024px">
+    <div class="cab">Escape</div>
+    <div class="boton">Seguir de todos modos</div>
+    <div class="campo">Justificación (obligatoria)<i></i><i style="width:70%"></i></div>
+    <svg class="baja" viewBox="0 0 16 22"><path d="M8 2v16M3 13l5 6 5-6"/></svg>
+    <div class="bitacora">
+      <svg><use href="#i-cuaderno"/></svg>
+      <div><div class="t">Bitácora</div><div class="s">quién · cuándo · qué regla · por qué</div></div>
+    </div>
+  </div>
+
+  <!-- 7 · Los tres modos del motor -->
+  <div class="modos paso" data-paso="7">
+    <span class="rot">Modo del motor</span>
+    <div class="modo" id="modo">
+      <i class="cursor"></i><span>Inactivo</span><span>Solo avisa</span><span>Bloquea</span>
+    </div>
+    <span class="nota">de la libertad al control, pasando por el aviso</span>
+  </div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var MAX = Math.max.apply(null, els.map(function(e){ return +e.getAttribute('data-paso'); }));
+  var paso = 1;
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  /* El cursor del modo recorre Inactivo → Solo avisa → Bloquea al llegar al paso 7 */
+  var modo = document.getElementById('modo'), cursor = modo.querySelector('.cursor');
+  var opciones = [].slice.call(modo.querySelectorAll('span')), relojes = [];
+  function marcar(i){
+    cursor.style.left = (i * 150) + 'px';
+    opciones.forEach(function(s, k){ s.style.color = k === i ? '#fff' : ''; });
+  }
+  function recorrer(on){
+    relojes.forEach(clearTimeout); relojes = [];
+    if (!on) { marcar(0); return; }
+    marcar(0);
+    relojes.push(setTimeout(function(){ marcar(1); }, 900));
+    relojes.push(setTimeout(function(){ marcar(2); }, 1900));
+  }
+
+  function pintar(){
+    var antes = modo.parentNode.classList.contains('on');
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+    var ahora = paso >= 7;
+    if (ahora !== antes) recorrer(ahora);
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  marcar(0);
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var hs = location.hash, mm = hs.match(/paso=(\d+)/);
+  if (hs === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (mm) paso = Math.max(1, Math.min(MAX, +mm[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>
