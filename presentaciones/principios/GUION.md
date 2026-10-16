@@ -24,19 +24,32 @@
 
 ---
 
-## 1. Tramitación de expedientes de autorización de alta tensión — [Carlos]
+## 1. El procedimiento de autorización de instalaciones eléctricas — [Carlos] ✔ hecha
 
-**En pantalla:**
-- Un proyecto, un titular, varios actos
-- Fases, organismos, plazos
-- Caminos que se ramifican
+**Fichero:** `fichas/ficha_01_procedimiento.html`
 
-**Notas:** el expediente es siempre un proyecto de instalación; el titular pide AAP,
-AAC, DUP…; intervienen organismos, ayuntamientos y boletines; fases en paralelo,
-subsanaciones, traslados, reformados; plazos que corren, se suspenden y vencen. Hoy:
-hojas de cálculo y Access. *Nivel de referencia a la norma: se decide al hacer la ficha.*
+**En pantalla:** una nube de conceptos, unos más grandes que otros, que da impresión de
+complejidad. Principales en recuadro, secundarios en píldora. Los solapes son parte del
+juego.
 
-**Fuente:** ficha 5 de `../estado_oct_2026/`; `scripts/expedientes_dummy/`.
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | **Normativa** · RD 1955/2000 · LSE · RD 337/2014 · RD 223/2008 · decretos de simplificación · medidas urgentes |
+| 3 | **Promotor** |
+| 4 | **Distribuidora** |
+| 5 | **Información pública** |
+| 6 | **Organismos** |
+| 7 | **Solicitudes** · AAP · AAC · DUP · AE · AAT · Modificación · Cierre · … |
+| 8 | **Proyecto** · distribución · transporte · renovables |
+| 9 | **Documentación** |
+| 10 | **Recursos** |
+| 11 | **Plazos** |
+| 12 | **Excepciones** · suelo urbano · tensión |
+| 13 | **Figura ambiental** · AAU · Licencia ambiental |
+| 14–17 | Cuatro tandas de flechas curvas rotuladas que relacionan unos con otros (no pretenden ser exactas): requerimiento, requisitos, exime, separata, condicionados, espera de plazo, notificación, alegaciones, anuncio, informe, plazo, resolución, sin IP, exenta… Azul lo que va, verde lo que vuelve, morado lo que es tiempo |
+
+**Notas:** Carlos narra cada concepto al aparecer.
 
 **Estado (interno):** —
 
