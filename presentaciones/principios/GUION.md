@@ -177,6 +177,18 @@ ficha por principio.
 pregunta. No hay que modelar todos los caminos, solo los que la norma veda. Por eso se
 quitaron las listas blancas de combinaciones de la estructura.
 
+**Dónde se ve cada principio** (para ir ligándolos al narrar; no va en pantalla):
+
+| Principio | Fichas |
+|---|---|
+| 1 Todo permitido mientras no esté prohibido | 9 (las reglas solo prohíben), 19 (plantillas: «ver todas») |
+| 2 Las prohibiciones se pueden saltar, pero se justifican | 9 (escape y bitácora), 10 (los tres grados), 21 (expediente ajeno) |
+| 3 Una sola fuente de la verdad | 11 (entidades), 20 (almacén), 12 (las fechas solo salen de documentos) |
+| 4 El documento es el núcleo del dato | 4, 6, 7, 16 (el check documental), 26 (el expediente que sale) |
+| 5 El estado se deriva, no se apunta | 8, 15 (mientras no se emite, se calcula) |
+| 6 La semántica vive en los tipos | 5, 6, 14 (los actos salen del tipo de solicitud) |
+| 7 Las reglas son datos, no código | 9, 13 (catálogo de plazos), 16 (requisitos), 19 (plantillas) |
+
 **Fuente:** `DISEÑO_MOTOR_REGLAS.md` §Principio rector; ADR-007.
 
 **Estado (interno):** hecho.
@@ -328,6 +340,8 @@ contradecirse. Rojo: el tramitador tiene que actuar (incluida la notificación a
 que pide el edicto); naranja: gestión nuestra (cerrar una fase, segundo intento postal,
 puesta en sede); amarillo: en firma; azul: falta el justificante de la notificación;
 gris: corre un plazo; verde: terminado. Trabajar por lotes es filtrar el listado.
+El amarillo y el naranja de esta ficha son los del semáforo de BDDAT (los de la
+aplicación), no el ámbar que en `fundamentos` significa «plan».
 
 **Fuente:** ADR-002; `docs/referencia/MODELO_ESTADOS_SEMAFORO.md` §2 y §5; ficha 9 de
 octubre.
