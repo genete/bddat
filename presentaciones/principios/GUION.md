@@ -745,3 +745,33 @@ prueba de concepto de consulta de estado en Notifica-PNT.
 **Fuente:** ADR-021; ADR-049; ADR-051; `DISEÑO_ECOSISTEMA_MANAGERS.md`.
 
 **Estado (interno):** diseñado (ADR-021, implementación aparcada).
+
+---
+
+## 19d. El expediente que sale — [propuesta, post producción] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_19d_expediente_sale.html`
+
+Cierra el círculo con la ficha 4: el expediente que define el art. 70, cuando hay que
+mandarlo fuera.
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Izquierda, **Lo que ya está en BDDAT** («cada documento, en su sitio y con su fecha»): el árbol de AT-7 con sus documentos por fase, entre ellos un borrador y una nota interna |
+| 3 | El borrador y la nota se tachan · «borradores y notas: no forman parte (art. 70.4)» |
+| 4 | Centro, **Índice numerado** («en orden, con sus folios»): 1 Solicitud (1–4) · 2 Proyecto (5–212) · … · 31 Resolución (402–409) |
+| 5 | Derecha, el expediente **completo y foliado, con el índice autentificado** → al órgano del recurso de alzada («en diez días, con el informe, art. 121.2») · al juzgado («en el contencioso») |
+| 6 | Al pie: **Art. 70.3 LPACAP**: el expediente se remite «completo, foliado, autentificado y acompañado de un índice, asimismo autentificado» |
+
+**Notas:** hoy esto se hace a mano y es de lo más pesado del servicio. BDDAT ya tiene lo
+necesario para hacerlo solo: qué documentos pertenecen al expediente (los vinculados a
+una tarea y de un tipo que lo integra, ADR-027), su orden (la estructura) y su fecha
+administrativa. No confundir con la exportación en carpetas del almacén (ADR-050 §H),
+que es una copia de trabajo interna. Citas comprobadas en el BOE (arts. 70 y 121.2
+LPACAP, BOE-A-2015-10565).
+
+**Fuente:** ADR-027; ADR-050 §H; `INVENTARIO_BACKEND.md` §12.C; necesidad N057 de la
+matriz de cobertura; #573.
+
+**Estado (interno):** diseñado (ADR-027), sin código.
