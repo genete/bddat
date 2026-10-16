@@ -78,12 +78,19 @@ debe pasar y siempre hay salida justificada.
 
 ---
 
-## 3. Todo vale mientras no esté prohibido — [Carlos]
+## 3. Principios de diseño de BDDAT — [Carlos] ✔ hecha
 
-**En pantalla:**
-- ¿Está esto prohibido ahora?
+**Fichero:** `fichas/ficha_03_principios.html`
 
-**Notas:** lista negra, no lista blanca. El motor no genera el flujo: solo responde a esa
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2–8 | Un principio por clic, numerado: (1) Todo permitido mientras no esté prohibido · (2) Las prohibiciones se pueden saltar, pero siempre se justifican · (3) Una sola fuente de la verdad · (4) El documento es el núcleo del dato · (5) El estado se deriva, no se apunta · (6) La semántica vive en los tipos · (7) Las reglas son datos, no código |
+
+Son principios, no lo que se construye con ellos. Carlos los explica hablando: no hay
+ficha por principio.
+
+**Notas** (del antiguo punto «Todo vale mientras no esté prohibido»): lista negra, no lista blanca. El motor no genera el flujo: solo responde a esa
 pregunta. No hay que modelar todos los caminos, solo los que la norma veda. Por eso se
 quitaron las listas blancas de combinaciones de la estructura.
 
