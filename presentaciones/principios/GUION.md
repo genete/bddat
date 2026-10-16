@@ -160,13 +160,30 @@ desde la interfaz.
 
 ---
 
-## 6. Cuatro tareas — [propuesta]
+## 6. La tarea y el documento — [Carlos] ✔ hecha
 
-> Las cuatro ya aparecen como tipos de tarea en la ficha 5: queda por decidir si esta
-> ficha sigue o se funde con la 7.
+**Fichero:** `fichas/ficha_06_tareas.html`
 
-**En pantalla:**
-- ANALIZAR · ELABORAR · NOTIFICAR · ESPERAR PLAZO
+Una ficha secuencial para las cuatro tareas, sin acumular: cada una sustituye a la
+anterior. La tarea es la unidad mínima de trabajo; consume (N) y produce (1) documentos.
+
+Por tarea, cuatro clics:
+
+| Clic | Aparece |
+|---|---|
+| 1 | Arriba, el encuadre ESFTT con un ejemplo típico; en el centro, la tarea |
+| 2 | Izquierda: qué hace |
+| 3 | Derecha arriba: **Consume (N)** con icono de varios documentos y sus tipos; flecha en codo hasta la tarea |
+| 4 | Derecha abajo: **Produce (1)** con icono de un documento («uno de estos tipos» si puede ser varios); flecha en codo desde la tarea |
+
+| Tarea | Encuadre | Qué hace | Consume | Produce |
+|---|---|---|---|---|
+| ANALIZAR | Distribución › AAP › Análisis de solicitud › Análisis documental | Examina documentación y emite un diagnóstico | Modelo de solicitud · Proyecto técnico · Justificante de la tasa · Documentación de subsanación · Respuesta del organismo · Alegación de IP · … | Diagnóstico de análisis |
+| ELABORAR | … › Análisis de solicitud › Requerimiento de subsanación | Redacta y firma un escrito, en un solo acto | Borrador del escrito · Diagnóstico de análisis | Oficio de requerimiento ✍ · Oficio de consulta ✍ · Resolución ✍ · … |
+| NOTIFICAR | … › Consultas › Separata a organismo | Hace llegar el escrito a su destinatario | Los mismos escritos firmados ✍ · Acuse del primer intento postal · … | Justificante Notifica-PNT · BandeJA · SIR / ARIES · postal · … |
+| ESPERAR PLAZO | … › Consultas › Separata a organismo | Cuenta el plazo y recoge lo que llega | Justificante de la notificación · Justificante publicación BOE · … | Respuesta del organismo · Documentación de subsanación · Informe del Ministerio · Certificado de plazo cumplido · … |
+
+✍ = icono de firma (documento firmado).
 
 **Notas:** eran siete: REDACTAR y FIRMAR se funden en ELABORAR; PUBLICAR es una
 NOTIFICAR; INCORPORAR desaparece porque incorporar es vincular un documento. ANALIZAR

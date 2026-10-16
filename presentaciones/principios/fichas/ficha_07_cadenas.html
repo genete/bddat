@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 7 · Las tareas encadenan documentos</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* lo que va */
+  --vuelta:#3B6D11;   /* lo que vuelve */
+  --plan:#854F0B;     /* reservado */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.titulo{position:absolute;left:0;right:0;top:34px;text-align:center;font-size:30px;font-weight:600}
+
+/* Tres cadenas en columna, repartidas en horizontal */
+.cadena{position:absolute;top:96px;width:390px;display:flex;flex-direction:column;align-items:center}
+.cab{text-align:center;margin-bottom:12px}
+.cab .t{font-size:21px;font-weight:700}
+.cab .s{font-size:15px;color:var(--texto-2)}
+
+.tarea{background:var(--tarjeta);border:2.5px solid var(--texto);border-radius:10px;padding:5px 18px;
+  font-size:19px;font-weight:700;letter-spacing:.4px;white-space:nowrap;text-align:center}
+.tarea small{display:block;font-size:13px;font-weight:600;letter-spacing:0;color:var(--plan)}
+.tarea.doble{border-color:var(--plan)}
+.doc{display:flex;align-items:center;gap:7px;border:1.8px solid var(--borde-fuerte);border-radius:999px;
+  padding:3px 12px 3px 8px;background:#fff;font-size:15px;font-weight:600;white-space:nowrap;color:var(--texto)}
+.doc .i{width:16px;height:19px;flex:none;color:var(--texto-2)}
+.doc .f{width:22px;height:14px;flex:none;color:var(--texto-2)}
+.baja{width:14px;height:20px;color:var(--borde-fuerte);margin:2px 0}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-doc" viewBox="0 0 40 46" fill="#fff" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round">
+    <path d="M8 3h18l9 9v31H8z"/><path d="M26 3v9h9"/>
+    <path fill="none" stroke-width="2.2" stroke-linecap="round" d="M13 21h17M13 28h17M13 35h12"/>
+  </symbol>
+  <symbol id="i-firma" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 11c2-5 4-8 5-6s-1 7 1 7 3-6 5-6 1 5 3 5 3-3 4-4 2 1 3 1"/>
+    <path d="M2 15h22" stroke-width="1.4" opacity=".6"/>
+  </symbol>
+  <symbol id="i-baja" viewBox="0 0 14 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 2v15M3 13l4 5 4-5"/>
+  </symbol>
+</svg>
+
+<div id="escenario">
+  <div class="titulo">Las tareas encadenan documentos</div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  /* Tres trámites de ESTRUCTURA_FTT. Cadena: documento, tarea, documento, tarea…
+     Un documento entre dos tareas lo produce la de arriba y lo consume la de abajo.
+     Texto acabado en « (F)»: documento firmado. Tarea con «·»: lleva subtítulo. */
+  var CADENAS = [
+    { t: 'Requerimiento de subsanación', s: 'Fase: Análisis de solicitud', x: 213, items: [
+      'd:Diagnóstico de análisis', 't:ELABORAR', 'd:Oficio de requerimiento de subsanación (F)',
+      't:NOTIFICAR', 'd:Justificante Notifica-PNT', 't:ESPERAR PLAZO', 'd:Documentación de subsanación',
+      't:ANALIZAR', 'd:Diagnóstico de análisis'] },
+    { t: 'Separata a organismo', s: 'Fase: Consultas', x: 640, items: [
+      'd:Separata del proyecto', 't:ELABORAR', 'd:Oficio de consulta a organismo (F)',
+      't:NOTIFICAR', 'd:Justificante BandeJA', 't:ESPERAR PLAZO', 'd:Respuesta del organismo',
+      't:ANALIZAR', 'd:Diagnóstico de análisis'] },
+    { t: 'Anuncio en el BOP', s: 'Fase: Información pública', x: 1067, items: [
+      'd:Anuncio de información pública', 't:ELABORAR', 'd:Oficio de remisión del anuncio (F)',
+      't:NOTIFICAR', 'd:Justificante de remisión', 't:ESPERAR PLAZO·publicación',
+      'd:Anuncio publicado en el BOP', 't:ESPERAR PLAZO·alegaciones', 'd:Certificado de plazo cumplido'] },
+  ];
+  var esc = document.getElementById('escenario');
+
+  CADENAS.forEach(function(c, k){
+    var paso = 2 + k;
+    var col = document.createElement('div');
+    col.className = 'cadena';
+    col.style.left = (c.x - 195) + 'px';
+    var cab = document.createElement('div');
+    cab.className = 'cab paso';
+    cab.setAttribute('data-paso', paso);
+    cab.innerHTML = '<div class="t"></div><div class="s"></div>';
+    cab.firstChild.textContent = c.t;
+    cab.lastChild.textContent = c.s;
+    col.appendChild(cab);
+
+    var dobles = c.items.filter(function(it){ return it.indexOf('t:ESPERAR PLAZO·') === 0; }).length > 1;
+    c.items.forEach(function(it, i){
+      var retardo = .15 + i * .14;
+      if (i) {
+        var b = document.createElement('div');
+        b.className = 'paso';
+        b.setAttribute('data-paso', paso);
+        b.style.transitionDelay = (retardo - .07) + 's';
+        b.innerHTML = '<svg class="baja"><use href="#i-baja"/></svg>';
+        col.appendChild(b);
+      }
+      var e = document.createElement('div');
+      e.setAttribute('data-paso', paso);
+      e.style.transitionDelay = retardo + 's';
+      var tipo = it.slice(0, 2), txt = it.slice(2);
+      if (tipo === 't:') {
+        var partes = txt.split('·');
+        e.className = 'tarea paso' + (partes[1] && dobles ? ' doble' : '');
+        e.textContent = partes[0];
+        if (partes[1]) { var sm = document.createElement('small'); sm.textContent = partes[1]; e.appendChild(sm); }
+      } else {
+        var firmado = / \(F\)$/.test(txt);
+        e.className = 'doc paso';
+        e.innerHTML = '<svg class="i"><use href="#i-doc"/></svg><span></span>' +
+          (firmado ? '<svg class="f" aria-label="firmado"><use href="#i-firma"/></svg>' : '');
+        e.querySelector('span').textContent = firmado ? txt.slice(0, -4) : txt;
+      }
+      col.appendChild(e);
+    });
+    esc.appendChild(col);
+  });
+
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var MAX = Math.max.apply(null, els.map(function(e){ return +e.getAttribute('data-paso'); }));
+  var paso = 1;
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var hs = location.hash, mm = hs.match(/paso=(\d+)/);
+  if (hs === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (mm) paso = Math.max(1, Math.min(MAX, +mm[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>
