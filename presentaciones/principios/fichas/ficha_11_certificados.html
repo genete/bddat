@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 11 · Certificados: constatar y sellar</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* lo que va */
+  --vuelta:#3B6D11;   /* lo que vuelve */
+  --plan:#854F0B;     /* reservado */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N;
+   con data-hasta="M" se vuelve a ocultar al llegar a M */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.titulo{position:absolute;left:0;right:0;top:34px;text-align:center;font-size:30px;font-weight:600}
+:root{--rojo:#A32D2D}
+.c{position:absolute;translate:-50% -50%;white-space:nowrap}
+
+/* La vida de una solicitud, de izquierda a derecha */
+#trazos{position:absolute;left:0;top:0;width:1280px;height:720px;overflow:visible}
+#trazos path{fill:none;stroke:var(--borde-fuerte);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.grupo{font-size:15px;font-weight:700;color:var(--texto-2);text-transform:uppercase;letter-spacing:.5px}
+.fase{background:var(--tarjeta);border:2px solid var(--borde-fuerte);border-radius:10px;padding:6px 14px;
+  font-size:18px;font-weight:600;min-width:210px;text-align:center}
+.fase.grande{font-size:24px;font-weight:700;padding:10px 22px;min-width:0}
+.fase.grande small{display:block;font-size:14px;font-weight:600;color:var(--texto-2)}
+
+/* El sello de un certificado y lo que constata */
+.sello{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.sello svg{width:52px;height:52px}
+.sello.peq svg{width:34px;height:34px}
+.sello .n{font-size:17px;font-weight:700;white-space:nowrap}
+.sello.peq .n{font-size:14px}
+.sello .q{font-size:14px;color:var(--texto-2);line-height:1.3;white-space:nowrap}
+
+/* Abajo: «¿cómo voy?» y la emisión */
+.informe{position:absolute;left:150px;top:440px;width:520px;border:2px solid var(--borde-fuerte);border-radius:12px;
+  background:#fff;padding:14px 18px}
+.informe h3{font-size:21px;font-weight:700;margin-bottom:8px}
+.informe h3 span{font-size:15px;font-weight:600;color:var(--texto-2);margin-left:8px}
+.fila{position:relative;height:34px}
+.item{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:10px;font-size:17px;
+  border-top:1px solid var(--borde);padding:5px 0}
+.ok{color:var(--vuelta);font-weight:700;width:18px;text-align:center}
+.no{color:var(--rojo);font-weight:700;width:18px;text-align:center}
+.item.falta{color:var(--rojo)}
+.boton{position:absolute;right:18px;top:14px;font-size:16px;font-weight:700;border-radius:8px;padding:5px 14px;
+  border:2px solid var(--borde-fuerte);color:var(--borde-fuerte);background:#fff}
+.boton.listo{border-color:var(--texto);color:#fff;background:var(--texto)}
+.flecha{position:absolute;overflow:visible}
+.flecha path{fill:none;stroke:var(--texto);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.emitido{position:absolute;left:790px;top:445px;display:flex;align-items:center;gap:18px}
+.emitido .doc{position:relative;width:120px;height:150px}
+.emitido .doc svg{position:absolute}
+.emitido .t{font-size:22px;font-weight:700;line-height:1.3}
+.emitido .t span{display:block;font-size:17px;font-weight:400;color:var(--texto-2)}
+.lema{position:absolute;left:0;right:0;top:662px;text-align:center;font-size:19px;color:var(--texto-2)}
+.lema b{color:var(--texto)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- sello: roseta con una marca de visto -->
+  <symbol id="i-sello" viewBox="0 0 52 52">
+    <path fill="#fff" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"
+      d="M26 3l5 4 6-1 2 6 6 3-1 6 4 5-4 5 1 6-6 3-2 6-6-1-5 4-5-4-6 1-2-6-6-3 1-6-4-5 4-5-1-6 6-3 2-6 6 1z"/>
+    <circle cx="26" cy="26" r="12" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M20 26l4 4 8-8"/>
+  </symbol>
+  <symbol id="i-doc" viewBox="0 0 60 76">
+    <path fill="#fff" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" d="M3 3h38l16 16v54H3z"/>
+    <path fill="#F7F6F2" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" d="M41 3v16h16"/>
+    <path fill="none" stroke="#D3D1C7" stroke-width="2" stroke-linecap="round" d="M12 32h36M12 42h36M12 52h24"/>
+  </symbol>
+</svg>
+
+<div id="escenario">
+  <div class="titulo">Certificados: constatar y sellar</div>
+
+  <!-- 2 · La vida de una solicitud: instrucción (fases en paralelo) y resolución -->
+  <svg id="trazos" viewBox="0 0 1280 720" aria-hidden="true">
+    <g class="paso" data-paso="2">
+      <path d="M352 172 H392 V286 H352 M392 229 H580"/>
+      <path d="M800 229 H1180"/>
+    </g>
+  </svg>
+  <div class="c grupo paso" data-paso="2" style="left:236px;top:128px">Instrucción</div>
+  <div class="c fase paso" data-paso="2" style="left:236px;top:172px">Análisis de solicitud</div>
+  <div class="c fase paso" data-paso="2" style="left:236px;top:229px">Consultas</div>
+  <div class="c fase paso" data-paso="2" style="left:236px;top:286px">Información pública</div>
+  <div class="c fase grande paso" data-paso="2" style="left:690px;top:229px">Resolución<small>elaborar · notificar</small></div>
+
+  <!-- 3 · El más sencillo: el plazo que vence -->
+  <div class="c sello peq paso" data-paso="3" style="left:236px;top:356px">
+    <svg style="color:#7A3E9D"><use href="#i-sello"/></svg>
+    <div class="n">Plazo cumplido</div>
+  </div>
+
+  <!-- 4 · La bisagra -->
+  <div class="c sello paso" data-paso="4" style="left:486px;top:262px;background:#fff;padding:0 6px">
+    <svg><use href="#i-sello"/></svg>
+    <div class="n">Fin de instrucción</div>
+    <div class="q">sin él no se abre<br>la resolución</div>
+  </div>
+
+  <!-- 5 · Cierre de la fase finalizadora -->
+  <div class="c sello paso" data-paso="5" style="left:912px;top:262px;background:#fff;padding:0 6px">
+    <svg><use href="#i-sello"/></svg>
+    <div class="n">Cierre de fase</div>
+    <div class="q">notificado al solicitante<br>y nada pendiente</div>
+  </div>
+
+  <!-- 6 · Cierre de la solicitud -->
+  <div class="c sello paso" data-paso="6" style="left:1130px;top:253px;background:#fff;padding:0 6px">
+    <svg><use href="#i-sello"/></svg>
+    <div class="n">Cierre de solicitud</div>
+    <div class="q">cada acto: ¿en plazo?</div>
+  </div>
+
+  <!-- 7 · Antes de emitir: «¿cómo voy?», siempre calculado -->
+  <div class="informe paso" data-paso="7">
+    <h3>¿Cómo voy?<span>fin de instrucción</span></h3>
+    <div class="boton paso" data-paso="7" data-hasta="8">Emitir</div>
+    <div class="boton listo paso" data-paso="8">Emitir</div>
+    <div class="fila"><div class="item"><span class="ok">✓</span>Análisis de solicitud: cerrada</div></div>
+    <div class="fila"><div class="item"><span class="ok">✓</span>Consultas: cuatro organismos, cerrada</div></div>
+    <div class="fila">
+      <div class="item falta paso" data-paso="7" data-hasta="8"><span class="no">✗</span>Información pública: falta cerrar</div>
+      <div class="item paso" data-paso="8"><span class="ok">✓</span>Información pública: cerrada</div>
+    </div>
+  </div>
+
+  <!-- 8 · Sin pendientes: se emite y sella -->
+  <svg class="flecha paso" data-paso="8" width="1280" height="720" style="left:0;top:0">
+    <path d="M684 520 H770"/><path d="M760 511 l10 9 -10 9"/>
+  </svg>
+  <div class="emitido paso" data-paso="8" style="transition-delay:.25s">
+    <div class="doc">
+      <svg width="104" height="132" style="left:0;top:8px;color:#888780"><use href="#i-doc"/></svg>
+      <svg width="60" height="60" style="left:62px;top:86px;color:#2C2C2A"><use href="#i-sello"/></svg>
+    </div>
+    <div class="t">Emitido<span>lo que constata ya no se toca</span></div>
+  </div>
+  <div class="lema paso" data-paso="8" style="transition-delay:.5s">Mientras no se emite, <b>se calcula</b>; emitido, <b>se lee</b></div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var MAX = Math.max.apply(null, els.map(function(e){ return +e.getAttribute('data-paso'); }));
+  var paso = 1;
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){
+      var n = +e.getAttribute('data-paso'), hasta = e.getAttribute('data-hasta');
+      e.classList.toggle('on', n <= paso && (!hasta || paso < +hasta));
+    });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var hs = location.hash, mm = hs.match(/paso=(\d+)/);
+  if (hs === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (mm) paso = Math.max(1, Math.min(MAX, +mm[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>

@@ -336,15 +336,32 @@ no: se corrige con actos posteriores.
 
 ---
 
-## 11. Certificados: lo que toca hacer — [propuesta]
+## 11. Certificados: constatar y sellar — [propuesta] ✔ hecha (primer intento, sin revisar)
 
-**En pantalla:**
-- Cierre de fase · Fin de instrucción · Cierre de solicitud
+**Fichero:** `fichas/ficha_11_certificados.html`
 
-**Notas:** la acción siguiente se presenta como petición de un certificado. El de fin
-de instrucción revisa todas las reglas antes de resolver.
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | La vida de una solicitud: **Instrucción** (Análisis de solicitud, Consultas, Información pública, en paralelo) → **Resolución** (elaborar · notificar) |
+| 3 | Sello morado pequeño bajo la información pública: **Plazo cumplido** (el más sencillo: constata que un plazo venció) |
+| 4 | Sello **Fin de instrucción** en la bisagra: «sin él no se abre la resolución» |
+| 5 | Sello **Cierre de fase**: «notificado al solicitante y nada pendiente» |
+| 6 | Sello **Cierre de solicitud**: «cada acto: ¿en plazo?» |
+| 7 | Abajo, el informe **¿Cómo voy?** del fin de instrucción: dos fases ✓ y la información pública ✗ «falta cerrar»; el botón Emitir apagado |
+| 8 | La fila pasa a ✓, Emitir se enciende, flecha al documento con sello: **Emitido** «lo que constata ya no se toca» · «Mientras no se emite, se calcula; emitido, se lee» |
 
-**Fuente:** ADR-043; ficha 5 de octubre.
+**Notas:** un certificado no lo firma nadie del servicio ni viene de fuera: constata algo
+del expediente que no se ve leyendo BDDAT directamente, y al emitirse sella lo que dice.
+La acción siguiente se presenta como petición de un certificado: el informe «¿cómo voy?»
+está siempre disponible y solo se consolida sin pendientes. El de fin de instrucción es la
+bisagra del art. 82.1 LPACAP («instruidos los procedimientos…»): una regla impide abrir la
+resolución sin él (con escape), y un invariante impide emitirlo con fases sin cerrar
+(puerta cerrada: sería un documento que miente). El cierre de fase exige antes el de
+cumplimiento (notificado al solicitante). El de la solicitud resume por acto: plazo,
+fecha de resolución y si se cumplió.
+
+**Fuente:** ADR-043; ADR-049 §F; ficha 5 de octubre.
 
 **Estado (interno):** hecho.
 
