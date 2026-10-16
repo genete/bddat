@@ -473,6 +473,40 @@ notificación, de cumplimiento y de efectos. Notificación edictal.
 
 ---
 
+## 13b. Análisis de la solicitud — [propuesta, hueco] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_13b_analisis.html`
+
+La primera fase del procedimiento, y el arranque del ejemplo que recorre la
+presentación (requerimiento de subsanación: cadena, plazo, escrito).
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | **Este proyecto**: AAP · persona jurídica · con representante · sin DUP |
+| 3 | La lista de requisitos de esta solicitud y **por qué** se exige cada uno (siempre · persona jurídica · con representante · sin DUP); la relación de bienes y derechos, tachada («con DUP») |
+| 4 | La columna **Documento**: cada requisito con su fichero (✓) o «✗ falta» en la tasa · «Check documental: 5 de 6 · lo vincula el técnico; el sistema solo avisa» |
+| 5 | **Diagnóstico DESFAVORABLE** con tres defectos y su origen: del check documental, del catálogo de requerimientos y texto libre |
+| 6 | Flecha a **Requerimiento de subsanación** («con defectos: diez días para subsanar»); en gris y discontinua, **Comunicación de inicio** («sin defectos») |
+| 7 | Píldoras: «lo que se exige es catálogo, con condiciones como las reglas» · «sin la tasa no se pasa de fase · Ley 10/2021, art. 45.1» |
+
+**Notas:** los requisitos documentales son un catálogo con condiciones sobre los datos
+del proyecto (tensión, suelo, DUP, instrumento ambiental…), con el mismo mecanismo que
+las reglas. El técnico vincula cada requisito con el documento del pool que lo cumple;
+el sistema avisa si el tipo no casa, pero el juicio es suyo. Hay además un check técnico
+(contenido del proyecto según los reglamentos). Los defectos que se repiten salen del
+catálogo de requerimientos: imagen homogénea de la Administración. El diagnóstico es lo
+que produce ANALIZAR (6) y lo que consume el ELABORAR del requerimiento (escritos).
+Requerimiento y comunicación de inicio son excluyentes; la comunicación de inicio es
+obligatoria (art. 21.4 LPACAP) y en renovables acredita el hito 1 ante el gestor de red.
+
+**Fuente:** `docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md` §3, §4, §6 y §7; ADR-033;
+captura 12 de la demo de la ADA.
+
+**Estado (interno):** hecho.
+
+---
+
 ## 14. Organismos consultados — [propuesta] ✔ hecha (primer intento, sin revisar)
 
 **Fichero:** `fichas/ficha_14_organismos.html`

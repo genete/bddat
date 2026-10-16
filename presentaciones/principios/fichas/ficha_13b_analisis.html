@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha 13b · Análisis de la solicitud</title>
+<style>
+/* ===== Base común de las fichas BDDAT: copiar tal cual a cada ficha ===== */
+:root{
+  --fondo:#fff; --tarjeta:#F7F6F2; --borde:#D3D1C7; --borde-fuerte:#888780;
+  --texto:#2C2C2A; --texto-2:#5F5E5A;
+  --ida:#185FA5;      /* lo que va */
+  --vuelta:#3B6D11;   /* lo que vuelve */
+  --plan:#854F0B;     /* reservado */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--fondo);overflow:hidden}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
+
+/* Lienzo fijo de 1280x720 que se escala para caber en cualquier ventana */
+#escenario{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center}
+
+/* Aparición por pasos: cada elemento lleva data-paso="N" y se muestra al llegar a N */
+.paso{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+.paso.on{opacity:var(--op,1);transform:none}
+
+#ayuda{position:fixed;bottom:8px;left:0;right:0;text-align:center;font-size:14px;color:#B4B2A9;
+  transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.paso,#ayuda{transition:none}}
+
+/* ===== Propio de esta ficha ===== */
+.titulo{position:absolute;left:0;right:0;top:34px;text-align:center;font-size:30px;font-weight:600}
+:root{--rojo:#A32D2D}
+
+/* Arriba izquierda: qué es este proyecto */
+.hechos{position:absolute;left:40px;top:98px;display:flex;align-items:center;gap:8px}
+.hechos .et{font-size:15px;font-weight:700;color:var(--texto-2);text-transform:uppercase;letter-spacing:.4px;margin-right:4px}
+.hecho{font-size:16px;font-weight:600;border:1.5px solid var(--ida);color:var(--ida);border-radius:999px;padding:3px 12px;background:#fff}
+
+/* La lista de requisitos de esta solicitud */
+.tabla{position:absolute;left:40px;top:150px;width:780px;border:2px solid var(--borde-fuerte);border-radius:10px;background:#fff;overflow:hidden}
+.tabla .f{display:grid;grid-template-columns:330px 190px 1fr;align-items:center;border-top:1px solid var(--borde);font-size:16px;min-height:38px}
+.tabla .f:first-child{border-top:none}
+.tabla .f > span{padding:6px 12px}
+.tabla .cab{background:var(--tarjeta);font-size:13px;font-weight:700;color:var(--texto-2);text-transform:uppercase;letter-spacing:.4px;min-height:32px}
+.cond{display:inline-block;font-style:normal;font-size:13px;font-weight:700;color:var(--ida);border:1.5px solid var(--ida);border-radius:999px;padding:1px 9px;white-space:nowrap}
+.cond.siempre{color:var(--texto-2);border-color:var(--borde-fuerte)}
+.tabla .f.fuera{color:#B4B2A9}
+.tabla .f.fuera .req{text-decoration:line-through}
+.tabla .f.fuera .cond{color:#B4B2A9;border-color:#D3D1C7}
+.doc{display:flex;align-items:center;gap:8px;font-family:Consolas,"Courier New",monospace;font-size:14px}
+.ok{color:var(--vuelta);font-weight:700;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:17px}
+.no{color:var(--rojo);font-weight:700;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:15px}
+.cuenta{position:absolute;left:40px;top:490px;font-size:18px;font-weight:700}
+.cuenta span{font-weight:400;color:var(--texto-2);font-size:16px}
+
+/* Derecha: el diagnóstico y lo que habilita */
+.diag{position:absolute;left:860px;top:150px;width:380px;border:2.5px solid var(--texto);border-radius:12px;background:var(--tarjeta);padding:12px 16px}
+.diag h3{font-size:20px;font-weight:700;display:flex;align-items:center;gap:10px}
+.diag h3 i{font-style:normal;font-size:13px;font-weight:700;letter-spacing:.4px;color:#fff;background:var(--rojo);border-radius:6px;padding:2px 8px}
+.diag ul{list-style:none;padding:0;margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.diag li{font-size:16px;background:#fff;border:1.5px solid var(--borde-fuerte);border-radius:8px;padding:5px 10px}
+.diag li small{display:block;font-size:12px;font-weight:700;color:var(--texto-2);text-transform:uppercase;letter-spacing:.4px}
+.salida{position:absolute;left:860px;width:380px;display:flex;align-items:center;gap:10px;border:2px solid var(--ida);border-radius:10px;
+  background:#fff;padding:8px 12px;font-size:17px;font-weight:700;color:var(--ida)}
+.salida small{display:block;font-size:13px;font-weight:600;color:var(--texto-2)}
+.salida.no-va{border-color:#D3D1C7;color:#B4B2A9;border-style:dashed}
+.salida.no-va small{color:#B4B2A9}
+.flecha{position:absolute;overflow:visible}
+.flecha path{fill:none;stroke:var(--texto);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+
+.pies{position:absolute;left:40px;top:600px;display:flex;gap:10px}
+.pil{font-size:16px;font-weight:600;color:var(--texto-2);border:1.5px solid var(--borde-fuerte);border-radius:999px;padding:4px 13px;background:#fff}
+.pil b{color:var(--texto)}
+</style>
+</head>
+<body>
+
+<div id="escenario">
+  <div class="titulo">Análisis de la solicitud</div>
+
+  <!-- 2 · Lo que es el proyecto decide lo que se exige -->
+  <div class="hechos paso" data-paso="2">
+    <span class="et">Este proyecto</span>
+    <span class="hecho">AAP</span><span class="hecho">persona jurídica</span><span class="hecho">con representante</span>
+    <span class="hecho">sin DUP</span>
+  </div>
+
+  <!-- 3 · Los requisitos que le tocan, con su condición -->
+  <div class="tabla paso" data-paso="3">
+    <div class="f cab"><span>Requisito</span><span>Por qué</span><span class="paso" data-paso="4">Documento</span></div>
+    <div class="f"><span class="req">Modelo de solicitud</span><span><i class="cond siempre">siempre</i></span>
+      <span class="doc paso" data-paso="4"><span class="ok">✓</span>modelo_solicitud.pdf</span></div>
+    <div class="f"><span class="req">Proyecto técnico</span><span><i class="cond siempre">siempre</i></span>
+      <span class="doc paso" data-paso="4"><span class="ok">✓</span>proyecto.pdf</span></div>
+    <div class="f"><span class="req">Justificante de pago de la tasa</span><span><i class="cond siempre">siempre</i></span>
+      <span class="doc paso" data-paso="4"><span class="no">✗ falta</span></span></div>
+    <div class="f"><span class="req">Escritura de constitución</span><span><i class="cond">persona jurídica</i></span>
+      <span class="doc paso" data-paso="4"><span class="ok">✓</span>escritura.pdf</span></div>
+    <div class="f"><span class="req">Poder de representación</span><span><i class="cond">con representante</i></span>
+      <span class="doc paso" data-paso="4"><span class="ok">✓</span>poder.pdf</span></div>
+    <div class="f"><span class="req">Declaración de no necesitar DUP</span><span><i class="cond">sin DUP</i></span>
+      <span class="doc paso" data-paso="4"><span class="ok">✓</span>declaracion.pdf</span></div>
+    <div class="f fuera"><span class="req">Relación de bienes y derechos</span><span><i class="cond">con DUP</i></span>
+      <span class="doc paso" data-paso="4">no aplica</span></div>
+  </div>
+
+  <!-- 4 · El técnico vincula cada requisito con un documento -->
+  <div class="cuenta paso" data-paso="4">Check documental: 5 de 6 <span>· lo vincula el técnico; el sistema solo avisa</span></div>
+
+  <!-- 5 · El diagnóstico: defectos del catálogo y de texto libre -->
+  <div class="diag paso" data-paso="5">
+    <h3>Diagnóstico <i>DESFAVORABLE</i></h3>
+    <ul>
+      <li><small>del check documental</small>Falta el justificante de pago de la tasa</li>
+      <li><small>del catálogo de requerimientos</small>Plano de situación a escala insuficiente</li>
+      <li><small>texto libre</small>Aclarar el cruce con la carretera A-2002</li>
+    </ul>
+  </div>
+
+  <!-- 6 · Con defectos, requerimiento; sin ellos, comunicación de inicio -->
+  <svg class="flecha paso" data-paso="6" width="1280" height="720" style="left:0;top:0">
+    <path d="M1050 398 V420"/><path d="M1043 412 l7 8 7-8"/>
+  </svg>
+  <div class="salida paso" data-paso="6" style="top:428px">→<span>Requerimiento de subsanación<small>con defectos: diez días para subsanar</small></span></div>
+  <div class="salida no-va paso" data-paso="6" style="top:494px;transition-delay:.25s">→<span>Comunicación de inicio<small>sin defectos</small></span></div>
+
+  <!-- 7 · Dos reglas al pie -->
+  <div class="pies paso" data-paso="7">
+    <span class="pil">lo que se exige es <b>catálogo</b>, con condiciones como las reglas</span>
+    <span class="pil">sin la tasa <b>no se pasa de fase</b> · Ley 10/2021, art. 45.1</span>
+  </div>
+</div>
+
+<div id="ayuda">← → o clic para avanzar</div>
+
+<script>
+(function(){
+  var els = [].slice.call(document.querySelectorAll('[data-paso]'));
+  var MAX = Math.max.apply(null, els.map(function(e){ return +e.getAttribute('data-paso'); }));
+  var paso = 1;
+  var esc = document.getElementById('escenario');
+  var ayuda = document.getElementById('ayuda');
+
+  function pintar(){
+    els.forEach(function(e){ e.classList.toggle('on', +e.getAttribute('data-paso') <= paso); });
+  }
+  function ir(n){
+    paso = Math.max(1, Math.min(MAX, n));
+    pintar();
+    ayuda.style.opacity = 0;
+  }
+  function escalar(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    esc.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+
+  document.addEventListener('keydown', function(ev){
+    var k = ev.key;
+    if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter') { ir(paso + 1); ev.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { ir(paso - 1); ev.preventDefault(); }
+    else if (k === 'Home') ir(1);
+    else if (k === 'End') ir(MAX);
+  });
+  document.addEventListener('click', function(){ ir(paso + 1); });
+  window.addEventListener('resize', escalar);
+
+  escalar();
+  /* #todo muestra la ficha completa (útil para sacar una imagen); #paso=N empieza en el paso N */
+  var hs = location.hash, mm = hs.match(/paso=(\d+)/);
+  if (hs === '#todo') { paso = MAX; ayuda.style.display = 'none'; }
+  else if (mm) paso = Math.max(1, Math.min(MAX, +mm[1]));
+  requestAnimationFrame(pintar);
+})();
+</script>
+</body>
+</html>
