@@ -120,20 +120,25 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
     });
     cont.appendChild(p);
   }
-  /* flecha curva: de (x0,y0) a (x1,y1) */
-  function flecha(clase, paso, hasta, x0, y0, x1, y1, curva){
-    var NS = 'http://www.w3.org/2000/svg';
+  /* flecha en codo: tramo recto de (x0,y0) a la esquina (xc,yc), esquina redondeada y
+     tramo recto hasta (x1,y1), donde va la punta */
+  function flecha(clase, paso, hasta, x0, y0, xc, yc, x1, y1){
+    var NS = 'http://www.w3.org/2000/svg', R = 18;
     var svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('class', 'flecha paso ' + clase);
     svg.setAttribute('data-paso', paso);
     if (hasta) svg.setAttribute('data-hasta', hasta);
     svg.setAttribute('width', 1280); svg.setAttribute('height', 720);
     svg.setAttribute('style', 'left:0;top:0;transition-delay:.1s');
-    var qx = (x0 + x1) / 2, qy = (y0 + y1) / 2 + curva;
+    function unit(ax, ay, bx, by){ var l = Math.hypot(bx - ax, by - ay); return [(bx - ax) / l, (by - ay) / l]; }
+    var u1 = unit(x0, y0, xc, yc), u2 = unit(xc, yc, x1, y1);
     var path = document.createElementNS(NS, 'path');
-    path.setAttribute('d', 'M' + x0 + ' ' + y0 + ' Q' + qx + ' ' + qy + ' ' + x1 + ' ' + y1);
+    path.setAttribute('d', 'M' + x0 + ' ' + y0 +
+      ' L' + (xc - u1[0] * R) + ' ' + (yc - u1[1] * R) +
+      ' Q' + xc + ' ' + yc + ' ' + (xc + u2[0] * R) + ' ' + (yc + u2[1] * R) +
+      ' L' + x1 + ' ' + y1);
     svg.appendChild(path);
-    var tx = x1 - qx, ty = y1 - qy, tl = Math.hypot(tx, ty); tx /= tl; ty /= tl;
+    var tx = u2[0], ty = u2[1];
     var L = 16, W = 7.5;
     var pol = document.createElementNS(NS, 'polygon');
     pol.setAttribute('points', [x1, y1, x1 - tx * L - ty * W, y1 - ty * L + tx * W,
@@ -168,13 +173,15 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
     var gc = poner('grupo consume', p0 + 2, hasta, 'top:190px');
     gc.innerHTML = '<div class="et">Consume</div>';
     pildoras(gc, t.consume, p0 + 2, hasta);
-    flecha('consume', p0 + 2, hasta, 810, 250, TX + 40, TY - 46, 40);
+    /* de Consume, en horizontal, hasta encima de la tarea y bajando a ella */
+    flecha('consume', p0 + 2, hasta, 808, 241, TX, 241, TX, TY - 48);
 
     /* derecha abajo: produce, con flecha que sale de la tarea */
     var gp = poner('grupo produce', p0 + 3, hasta, 'top:500px');
     gp.innerHTML = '<div class="et">Produce</div>';
     pildoras(gp, t.produce, p0 + 3, hasta);
-    flecha('produce', p0 + 3, hasta, TX + 40, TY + 46, 810, 545, -40);
+    /* de la tarea, bajando y en horizontal, hasta Produce */
+    flecha('produce', p0 + 3, hasta, TX, TY + 48, TX, 552, 810, 552);
   });
 
   var els = [].slice.call(document.querySelectorAll('[data-paso]'));
