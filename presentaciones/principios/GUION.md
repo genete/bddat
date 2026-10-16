@@ -312,12 +312,18 @@ avisa, bloquea.
 
 ---
 
-## 10. Invariantes estructurales — [Carlos]
+## 10. Invariantes estructurales — [Carlos] ✔ hecha (primer intento, sin revisar)
 
-**En pantalla:**
-- La norma cambia: reglas
-- La estructura no: invariantes
-- Lo notificado no se deshace
+**Fichero:** `fichas/ficha_10_invariantes.html` · título «La norma cambia, la estructura no»
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | El recorrido de una acción: Acción → **Reglas** («la norma»: catálogo · modo del motor · escape) → Se hace, con un hueco antes de las reglas |
+| 3 | En el hueco, **Invariantes** («la estructura»: en el código · antes que las reglas · siempre activos) |
+| 4 | Tarjeta azul **Con escape justificado**: reabrir una fase cerrada (acto propio) · notificar sin destinatario — «se puede, explicando por qué» |
+| 5 | Tarjeta **Puerta cerrada**: borrar lo que tiene contenido · esperar un plazo sin haber notificado · certificar lo que no ha pasado — «se deshace hacia atrás, paso a paso» |
+| 6 | Tarjeta roja **Irreversible**: lo notificado no se deshace · resuelta y notificada, lo que venga es otra solicitud — «se corrige con actos posteriores» |
 
 **Notas:** fijos en el código y previos al motor. No borrar lo que tiene hijos ni una
 tarea con documentos; fase cerrada sellada (reabrir es un acto propio); toda
