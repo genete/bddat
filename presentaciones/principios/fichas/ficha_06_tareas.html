@@ -64,6 +64,7 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
 .grupo .pildoras{display:flex;flex-wrap:wrap;gap:8px}
 .pil{font-size:17px;font-weight:600;border:2px solid var(--borde-fuerte);border-radius:999px;
   padding:4px 13px;background:#fff;white-space:nowrap}
+.pil .firma{width:26px;height:16px;margin-left:8px;vertical-align:-2px}
 .consume .pil{border-color:var(--ida)}
 .produce .pil{border-color:var(--vuelta)}
 
@@ -82,6 +83,11 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
   <symbol id="i-doc" viewBox="0 0 40 46" fill="#fff" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round">
     <path d="M8 3h18l9 9v31H8z"/><path d="M26 3v9h9"/>
     <path fill="none" stroke-width="1.8" stroke-linecap="round" opacity=".55" d="M13 20h17M13 26h17M13 32h17M13 38h11"/>
+  </symbol>
+  <!-- firma: rúbrica con su línea -->
+  <symbol id="i-firma" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 11c2-5 4-8 5-6s-1 7 1 7 3-6 5-6 1 5 3 5 3-3 4-4 2 1 3 1"/>
+    <path d="M2 15h22" stroke-width="1.4" opacity=".6"/>
   </symbol>
   <!-- varios documentos, apilados -->
   <symbol id="i-docs" viewBox="0 0 40 46" fill="#fff" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round">
@@ -120,16 +126,16 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
       matiz: 'El borrador sale de una plantilla con los datos del expediente',
       consume: ['Diagnóstico de análisis', 'Proyecto técnico', 'Respuesta del organismo',
                 'Certificado de fin de instrucción', '…'],
-      produce: ['Oficio de requerimiento de subsanación', 'Oficio de consulta a organismo',
-                'Resolución de autorización', '…'],
+      produce: ['Oficio de requerimiento de subsanación (F)', 'Oficio de consulta a organismo (F)',
+                'Resolución de autorización (F)', '…'],
     },
     {
       nombre: 'NOTIFICAR',
       encuadre: ['Distribución', 'AAP', 'Consultas', 'Separata a organismo'],
       hace: 'Hace llegar el escrito a su destinatario',
       matiz: 'El canal no se elige: lo dice el justificante',
-      consume: ['Oficio de consulta a organismo', 'Oficio de requerimiento de subsanación',
-                'Resolución de autorización', 'Acuse del primer intento postal', '…'],
+      consume: ['Oficio de consulta a organismo (F)', 'Oficio de requerimiento de subsanación (F)',
+                'Resolución de autorización (F)', 'Acuse del primer intento postal', '…'],
       produce: ['Justificante Notifica-PNT', 'Justificante BandeJA', 'Justificante SIR / ARIES',
                 'Justificante notificación postal', '…'],
     },
@@ -167,7 +173,10 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
       s.setAttribute('data-paso', paso);
       if (hasta) s.setAttribute('data-hasta', hasta);
       s.style.transitionDelay = (.15 + i * .1) + 's';
-      s.textContent = t;
+      /* «(F)» al final: documento firmado, se pinta con el icono de firma */
+      var firmado = / \(F\)$/.test(t);
+      s.textContent = firmado ? t.slice(0, -4) : t;
+      if (firmado) s.insertAdjacentHTML('beforeend', '<svg class="firma" viewBox="0 0 26 16" aria-label="firmado"><use href="#i-firma"/></svg>');
       p.appendChild(s);
     });
     cont.appendChild(p);
