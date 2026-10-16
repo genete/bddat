@@ -1,28 +1,58 @@
-# Guion — «Cómo funciona BDDAT» (borrador 2)
+# Guion — «Cómo funciona BDDAT» (borrador 3)
 
-> ## Para retomar (traspaso del 16/10/2026)
+> ## Para retomar (traspaso del 16/10/2026, segunda sesión)
 >
-> **Rama:** `claude/stoic-wright-2w0sy3` (la de los documentos de traspaso y la ADA). Todo
-> está aquí: este guion y las fichas en `presentaciones/principios/fichas/`. No se trabaja
-> en `develop` ni en otra rama.
+> **Rama:** `claude/presentacion-ada-resto-fichas`, sacada de `claude/stoic-wright-2w0sy3`
+> para poder rebobinar o coger solo lo que interese. Commits atómicos: uno por ficha (el
+> HTML y su sección de este guion); la reordenación, la compilación y el enlace van en
+> commits propios.
 >
 > **Contexto:** presentación larga para el personal técnico de la ADA, tras la demo del
 > 16/10. Trata de los principios de funcionamiento de BDDAT; la tecnología está en
 > `../fundamentos/`, cuyo formato se copia (lienzo 1280×720, `data-paso`).
 >
-> **Hecho (8 fichas, cada una descrita abajo con ✔):**
-> 1 El procedimiento de autorización · 2 Flujo rígido frente a libertad total ·
-> 3 Principios de diseño · 4 El documento y el expediente · 5 Encapsulamiento y semántica ·
-> 6 La tarea y el documento · 7 Las tareas encadenan documentos · 8 Entidades.
+> **Hecho: 29 fichas en ocho bloques** (el índice de la portada), todas descritas abajo
+> con ✔. Las 8 primeras de Carlos están revisadas; el resto son «primer intento, sin
+> revisar», hechas en una sesión autónoma sin consultarle.
+> - **0** Portada con índice.
+> - **Bloque 1 · El problema y los principios:** 1 El procedimiento · 2 Rígido frente a
+>   libre · 3 Principios de diseño.
+> - **Bloque 2 · La estructura:** 4 Documento y expediente · 5 Encapsulamiento y semántica
+>   · 6 La tarea y el documento · 7 Las tareas encadenan documentos · 8 El estado se deriva.
+> - **Bloque 3 · El control:** 9 De la norma al escape · 10 La norma cambia, la estructura no.
+> - **Bloque 4 · Con quién y cuándo:** 11 Entidades · 12 Notificaciones · 13 Plazos ·
+>   14 Una solicitud, varios actos · 15 Certificados.
+> - **Bloque 5 · Fases del procedimiento:** 16 Análisis de la solicitud · 17 Organismos
+>   consultados · 18 Reformados.
+> - **Bloque 6 · Los documentos:** 19 Escritos y plantillas · 20 Almacén documental.
+> - **Bloque 7 · Las personas:** 21 Usuarios y roles.
+> - **Bloque 8 · De principio a fin, dónde estamos y lo que viene:** 22 Un expediente de
+>   principio a fin · 23 Dónde estamos · 24 Después de producción (mapa de ideas) ·
+>   25 Firmar y notificar sin salir · 26 El expediente que sale · 27 Ver venir los
+>   vencimientos · 28 La instalación en el mapa.
 >
-> **Siguiente:** la 9 (Normas → Contexto → Reglas → Prohibición → Escape), luego 10
-> (invariantes) y el resto del guion. La 20 (usuarios y roles) se añadió al final.
+> **Renumeración** (para leer los commits anteriores a la reordenación): Entidades 8 → 11 ·
+> Certificados 11 → 15 · Plazos 12 → 13 · Notificaciones 13 → 12 · Organismos 14 → 17 ·
+> Reformados 15 → 18 · Escritos 16 → 19 · Almacén 17 → 20 · Usuarios y roles 20 → 21 ·
+> Estado 19 → 23. Las nuevas nacieron como 8b (estado), 12b (actos), 13b (análisis),
+> 20b (recorrido) y 19b a 19f (después de producción). La antigua 18 («Roles, vistas y
+> bitácora») se repartió: roles a la 21, listado a la 8, bitácora a la 9 y la 21.
 >
-> **Pendiente:**
-> - Ficha 4: reordenar y añadir algo al lado del documento (lo dijo Carlos; aún sin concretar).
-> - Reordenar el conjunto al final. La 18 y la 20 se solapan (roles): una absorbe a la otra.
-> - Falta `compilar.py` e `index.html` (copiar los de `../fundamentos/` y poner `ORDEN`).
->   Hasta entonces cada ficha se abre sola en el navegador.
+> **Por qué este orden:** cada bloque se apoya en los anteriores. Notificaciones va antes
+> que plazos (los plazos del interesado corren desde la notificación); plazos y actos,
+> antes que certificados (el cierre dice, acto por acto, si se resolvió en plazo); el
+> análisis de la solicitud abre las fases porque arranca el ejemplo del requerimiento de
+> subsanación, que reaparece en las cadenas (7), los plazos (13) y los escritos (19).
+>
+> **Pendiente / a decidir por Carlos:**
+> - Revisar las fichas nuevas: texto en pantalla, animación y orden.
+> - Ficha 4: añadir algo al lado del documento (lo dijo Carlos; sigue sin concretar).
+> - Huecos que se dejan, por ser lo particular de cada fase: la información pública como
+>   ficha propia (anuncios, alegaciones), la consulta al Ministerio, los datos catastrales
+>   de la DUP. Y la importación de Access, que solo aparece en el estado.
+> - Varias fichas usan datos inventados (empresas, AT, personas, cifras): revisar que no
+>   choquen con nombres reales del servicio.
+> - Si cambia el estado antes de presentar, retocar la 23 (un array al principio del script).
 >
 > **Cómo se trabaja (acordado con Carlos):**
 > - Pocas palabras en pantalla, nada rimbombante; Carlos narra. Solo esquemas animados.
@@ -50,11 +80,12 @@
 > - **Estado (interno):** cómo está en el código; no se muestra.
 > - **[Carlos]** = punto pedido por Carlos; **[propuesta]** = añadido, a depurar.
 >
-> El orden se va ajustando ficha a ficha.
+> El orden es el de los bloques de la portada; cada bloque abre con su título en este
+> guion.
 
 ---
 
-## 0. Portada — ✔ hecha (primer intento, sin revisar)
+### 0. Portada — ✔ hecha (primer intento, sin revisar)
 
 **Fichero:** `fichas/ficha_00_portada.html`
 
@@ -68,7 +99,9 @@ apoyan en las anteriores.
 
 ---
 
-## 1. El procedimiento de autorización de instalaciones eléctricas — [Carlos] ✔ hecha
+## Bloque 1 · El problema y los principios
+
+### 1. El procedimiento de autorización de instalaciones eléctricas — [Carlos] ✔ hecha
 
 **Fichero:** `fichas/ficha_01_procedimiento.html`
 
@@ -99,7 +132,7 @@ juego.
 
 ---
 
-## 2. Flujo rígido frente a libertad total — [Carlos] ✔ hecha
+### 2. Flujo rígido frente a libertad total — [Carlos] ✔ hecha
 
 **Fichero:** `fichas/ficha_02_rigido_libre.html`
 
@@ -122,7 +155,7 @@ debe pasar y siempre hay salida justificada.
 
 ---
 
-## 3. Principios de diseño de BDDAT — [Carlos] ✔ hecha
+### 3. Principios de diseño de BDDAT — [Carlos] ✔ hecha
 
 **Fichero:** `fichas/ficha_03_principios.html`
 
@@ -144,7 +177,9 @@ quitaron las listas blancas de combinaciones de la estructura.
 
 ---
 
-## 4. El documento y el expediente — [Carlos] ✔ hecha (pendiente: reordenar y añadir algo al lado del documento)
+## Bloque 2 · La estructura
+
+### 4. El documento y el expediente — [Carlos] ✔ hecha (pendiente: reordenar y añadir algo al lado del documento)
 
 **Fichero:** `fichas/ficha_04_documento_expediente.html`
 
@@ -170,7 +205,7 @@ vincular no es del expediente (huérfano del pool).
 
 ---
 
-## 5. Encapsulamiento y semántica — [Carlos] ✔ hecha
+### 5. Encapsulamiento y semántica — [Carlos] ✔ hecha
 
 **Fichero:** `fichas/ficha_05_encapsulamiento_tipos.html`
 
@@ -204,7 +239,7 @@ desde la interfaz.
 
 ---
 
-## 6. La tarea y el documento — [Carlos] ✔ hecha
+### 6. La tarea y el documento — [Carlos] ✔ hecha
 
 **Fichero:** `fichas/ficha_06_tareas.html`
 
@@ -240,7 +275,7 @@ de octubre.
 
 ---
 
-## 7. Las tareas encadenan documentos — [Carlos] ✔ hecha
+### 7. Las tareas encadenan documentos — [Carlos] ✔ hecha
 
 **Fichero:** `fichas/ficha_07_cadenas.html`
 
@@ -265,37 +300,11 @@ recibir documentación de terceros exige un ANALIZAR después.
 
 ---
 
-## 8. Entidades — [Carlos] ✔ hecha
+### 8. El estado se deriva, no se apunta — [propuesta, hueco] ✔ hecha (primer intento, sin revisar)
 
-**Fichero:** `fichas/ficha_08_entidades.html`
+**Fichero:** `fichas/ficha_08_estado.html`
 
-| Paso | Aparece |
-|---|---|
-| 1 | Título |
-| 2 | Izquierda, **Una tabla por tipo**: Titulares, Organismos, Ayuntamientos; «Distribuidora del Sur S.A.» está en dos, con teléfonos distintos |
-| 3 | Las filas duplicadas se marcan en rojo: «La misma empresa, dos veces, con datos distintos» |
-| 4 | Derecha, **Una sola tabla: entidades con roles**: la ficha de la entidad (NIF, dirección, teléfono) y sus roles como interruptores (Titular ✔, Consultado ✔, Publicador ✗) |
-| 5 | Representación: «Gestora Técnica S.L. — actúa en su nombre», flecha «representa» |
-| 6 | Direcciones de notificación por rol: como titular → Dpto. de tramitaciones; como consultada → Área técnica |
-
-Nombres y datos ficticios. Fuera de pantalla: tipo de titular y la sede de la solicitud
-para el solicitante.
-
-**Notas:** titular en un expediente, organismo consultado en otro: roles, no una tabla
-por tipo, para no duplicar datos (una sola fuente de la verdad). Representación.
-Direcciones de notificación por rol. Al solicitante, la sede de su solicitud.
-
-**Fuente:** fichas 1 y 6 de octubre.
-
-**Estado (interno):** hecho; el tipo de titular aún solo sirve para filtrar.
-
----
-
-## 8b. El estado se deriva, no se apunta — [propuesta, hueco] ✔ hecha (primer intento, sin revisar)
-
-**Fichero:** `fichas/ficha_08b_estado.html`
-
-El principio 5 en imagen, y el listado de la antigua 18. Una fase de consultas con tres
+El principio 5 en imagen, y el listado de la antigua «Roles, vistas y bitácora». Una fase de consultas con tres
 separatas en distinto punto.
 
 | Paso | Aparece |
@@ -321,7 +330,9 @@ octubre.
 
 ---
 
-## 9. Normas → Contexto → Reglas → Prohibición → Escape — [Carlos] ✔ hecha (primer intento, sin revisar)
+## Bloque 3 · El control
+
+### 9. Normas → Contexto → Reglas → Prohibición → Escape — [Carlos] ✔ hecha (primer intento, sin revisar)
 
 **Fichero:** `fichas/ficha_09_reglas.html` · título «De la norma al escape»
 
@@ -350,7 +361,7 @@ avisa, bloquea.
 
 ---
 
-## 10. Invariantes estructurales — [Carlos] ✔ hecha (primer intento, sin revisar)
+### 10. Invariantes estructurales — [Carlos] ✔ hecha (primer intento, sin revisar)
 
 **Fichero:** `fichas/ficha_10_invariantes.html` · título «La norma cambia, la estructura no»
 
@@ -374,9 +385,115 @@ no: se corrige con actos posteriores.
 
 ---
 
-## 11. Certificados: constatar y sellar — [propuesta] ✔ hecha (primer intento, sin revisar)
+## Bloque 4 · Con quién y cuándo
 
-**Fichero:** `fichas/ficha_11_certificados.html`
+### 11. Entidades — [Carlos] ✔ hecha
+
+**Fichero:** `fichas/ficha_11_entidades.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Izquierda, **Una tabla por tipo**: Titulares, Organismos, Ayuntamientos; «Distribuidora del Sur S.A.» está en dos, con teléfonos distintos |
+| 3 | Las filas duplicadas se marcan en rojo: «La misma empresa, dos veces, con datos distintos» |
+| 4 | Derecha, **Una sola tabla: entidades con roles**: la ficha de la entidad (NIF, dirección, teléfono) y sus roles como interruptores (Titular ✔, Consultado ✔, Publicador ✗) |
+| 5 | Representación: «Gestora Técnica S.L. — actúa en su nombre», flecha «representa» |
+| 6 | Direcciones de notificación por rol: como titular → Dpto. de tramitaciones; como consultada → Área técnica |
+
+Nombres y datos ficticios. Fuera de pantalla: tipo de titular y la sede de la solicitud
+para el solicitante.
+
+**Notas:** titular en un expediente, organismo consultado en otro: roles, no una tabla
+por tipo, para no duplicar datos (una sola fuente de la verdad). Representación.
+Direcciones de notificación por rol. Al solicitante, la sede de su solicitud.
+
+**Fuente:** fichas 1 y 6 de octubre.
+
+**Estado (interno):** hecho; el tipo de titular aún solo sirve para filtrar.
+
+---
+
+### 12. Notificaciones — [propuesta] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_12_notificaciones.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Izquierda, **A quién** («una notificación por destinatario, con la dirección de su rol»): la resolución firmada se abre en cuatro NOTIFICAR (solicitante, dos organismos consultados, órgano ambiental) |
+| 3 | Quinta fila discontinua en rojo, «FALTA: Ayuntamiento de Jerez» · «el trámite no termina mientras falte alguien» |
+| 4 | Derecha, **Cómo** («el canal no se elige: lo dice el justificante»): Justificante Notifica-PNT → canales Notifica-PNT (marcado) · BandeJA · SIR · Postal · Edicto en el BOE |
+| 5 | **Cuándo** («dos fechas, cada una con su efecto»): 3 jun puesta a disposición, «cumple el deber de notificar» (azul) · 6 jun leída, «surte efectos: corren sus plazos» (verde) |
+| 6 | Abajo a la izquierda, **En papel**: 1.er intento fallido → 2.º intento fallido → anuncio en el BOE |
+
+**Notas:** el canal no se elige: se deduce del justificante vinculado. Fechas de
+notificación, de cumplimiento y de efectos. Notificación edictal.
+
+**Fuente:** ADR-034, ADR-049, ADR-051, ADR-052; `ESTRUCTURA_FTT.md` §Trámites transversales.
+
+**Estado (interno):** modelo hecho, y tramitar una notificación con su destinatario en el
+navegador (#929, zona A); quedan pantallas: aplicar el edicto (#1037), representante y
+sede del solicitante (#1038), fecha en la subida (#1036) y la visibilidad (zona E).
+
+---
+
+### 13. Plazos — [propuesta] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_13_plazos.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | Izquierda, una entrada del **Catálogo de plazos** (editable), la del requerimiento de subsanación: dónde · desde (el justificante de la notificación) · cuánto (10 días hábiles, en morado) · cumple (la documentación de subsanación) · si vence (se le tiene por desistido, en rojo) · norma (LPACAP art. 68.1) |
+| 3 | Derecha, el calendario del 4 al 18: el día del justificante, los fines de semana rayados, la cuenta 1…10 de hábiles y «vence» el 18 · «sin sábados, domingos ni festivos» |
+| 4 | «hoy» el 11: la barra morada corre hasta hoy · «En plazo · quedan 5 días» |
+| 5 | Llega la documentación de subsanación el 13: la barra para ahí, en verde · «Cumplido» · «Para en lo primero que llegue: cumplimiento, vencimiento u hoy» |
+| 6 | Abajo, el **Plazo de resolver y notificar** de la AAP (3 meses desde la solicitud): una barra de la solicitud al vencimiento |
+| 7 | El tramo del requerimiento queda rayado («suspende») y el vencimiento se desplaza: «más tarde» |
+
+**Notas:** cada plazo dice a qué se aplica, desde qué documento se cuenta, qué
+documento acredita el cumplimiento y qué pasa si vence (silencio, caducidad…).
+Suspensión como medida única. Plazo de resolver de cada acto.
+
+**Fuente:** ADR-041, ADR-048.
+
+**Estado (interno):** hecho, con el plazo de resolver de cada acto en el árbol (#922) y
+la suspensión por acto (#796); pendiente la proyección de plazos.
+
+---
+
+### 14. Una solicitud, varios actos — [propuesta, hueco] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_14_actos.html`
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | **Solicitud AAP + AAC + DUP**, que se abre en tres actos: AAP (autorización previa) · AAC (de construcción) · DUP (utilidad pública) |
+| 3 | Una barra morada por acto, desde la misma solicitud: 3 meses · 3 meses · 6 meses · «desde la misma solicitud: cada acto, su plazo» |
+| 4 | Detrás, al principio de las tres barras: «una instrucción común» |
+| 5 | **Resolución AAP y AAC** («juntas o por separado») y **Resolución DUP** («siempre en acto aparte») |
+| 6 | Abajo, por qué: **Autorizaciones** (se consideran dictadas por la Dirección General · recurso de alzada) frente a **Declaración de utilidad pública** (la Consejería · agota la vía administrativa: reposición) |
+
+**Notas:** una solicitud es un contenedor: no cumple ni incumple plazos; lo hace cada
+acto. El plazo corre desde la solicitud pero es de cada acto, y existe desde el primer
+día, antes de que exista la fase que lo resuelve. La instrucción se comparte (una ronda
+de consultas por organismo para todo lo que ampara el mismo proyecto). En Andalucía la
+autorización y la DUP no pueden ir en el mismo acto: no las dicta el mismo órgano ni
+agotan la misma vía (Resolución de la DG de Energía de 11/03/2022 y Orden de 05/06/2013,
+art. 5.6). La DUP no se puede declarar sin aprobar antes o a la vez el proyecto de
+ejecución. Conecta con la 13 (el plazo de resolver de la AAP) y con la 15, certificados
+(el cierre de la solicitud enumera por acto).
+
+**Fuente:** ADR-045, ADR-046, ADR-047, ADR-049 §E.
+
+**Estado (interno):** hecho; la fase de resolución de la DUP, en curso.
+
+---
+
+### 15. Certificados: constatar y sellar — [propuesta] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_15_certificados.html`
 
 | Paso | Aparece |
 |---|---|
@@ -405,87 +522,11 @@ fecha de resolución y si se cumplió.
 
 ---
 
-## 12. Plazos — [propuesta] ✔ hecha (primer intento, sin revisar)
+## Bloque 5 · Fases del procedimiento
 
-**Fichero:** `fichas/ficha_12_plazos.html`
+### 16. Análisis de la solicitud — [propuesta, hueco] ✔ hecha (primer intento, sin revisar)
 
-| Paso | Aparece |
-|---|---|
-| 1 | Título |
-| 2 | Izquierda, una entrada del **Catálogo de plazos** (editable), la del requerimiento de subsanación: dónde · desde (el justificante de la notificación) · cuánto (10 días hábiles, en morado) · cumple (la documentación de subsanación) · si vence (se le tiene por desistido, en rojo) · norma (LPACAP art. 68.1) |
-| 3 | Derecha, el calendario del 4 al 18: el día del justificante, los fines de semana rayados, la cuenta 1…10 de hábiles y «vence» el 18 · «sin sábados, domingos ni festivos» |
-| 4 | «hoy» el 11: la barra morada corre hasta hoy · «En plazo · quedan 5 días» |
-| 5 | Llega la documentación de subsanación el 13: la barra para ahí, en verde · «Cumplido» · «Para en lo primero que llegue: cumplimiento, vencimiento u hoy» |
-| 6 | Abajo, el **Plazo de resolver y notificar** de la AAP (3 meses desde la solicitud): una barra de la solicitud al vencimiento |
-| 7 | El tramo del requerimiento queda rayado («suspende») y el vencimiento se desplaza: «más tarde» |
-
-**Notas:** cada plazo dice a qué se aplica, desde qué documento se cuenta, qué
-documento acredita el cumplimiento y qué pasa si vence (silencio, caducidad…).
-Suspensión como medida única. Plazo de resolver de cada acto.
-
-**Fuente:** ADR-041, ADR-048.
-
-**Estado (interno):** hecho, con el plazo de resolver de cada acto en el árbol (#922) y
-la suspensión por acto (#796); pendiente la proyección de plazos.
-
----
-
-## 12b. Una solicitud, varios actos — [propuesta, hueco] ✔ hecha (primer intento, sin revisar)
-
-**Fichero:** `fichas/ficha_12b_actos.html`
-
-| Paso | Aparece |
-|---|---|
-| 1 | Título |
-| 2 | **Solicitud AAP + AAC + DUP**, que se abre en tres actos: AAP (autorización previa) · AAC (de construcción) · DUP (utilidad pública) |
-| 3 | Una barra morada por acto, desde la misma solicitud: 3 meses · 3 meses · 6 meses · «desde la misma solicitud: cada acto, su plazo» |
-| 4 | Detrás, al principio de las tres barras: «una instrucción común» |
-| 5 | **Resolución AAP y AAC** («juntas o por separado») y **Resolución DUP** («siempre en acto aparte») |
-| 6 | Abajo, por qué: **Autorizaciones** (se consideran dictadas por la Dirección General · recurso de alzada) frente a **Declaración de utilidad pública** (la Consejería · agota la vía administrativa: reposición) |
-
-**Notas:** una solicitud es un contenedor: no cumple ni incumple plazos; lo hace cada
-acto. El plazo corre desde la solicitud pero es de cada acto, y existe desde el primer
-día, antes de que exista la fase que lo resuelve. La instrucción se comparte (una ronda
-de consultas por organismo para todo lo que ampara el mismo proyecto). En Andalucía la
-autorización y la DUP no pueden ir en el mismo acto: no las dicta el mismo órgano ni
-agotan la misma vía (Resolución de la DG de Energía de 11/03/2022 y Orden de 05/06/2013,
-art. 5.6). La DUP no se puede declarar sin aprobar antes o a la vez el proyecto de
-ejecución. Conecta con la 12 (el plazo de resolver de la AAP) y con la de certificados
-(el cierre de la solicitud enumera por acto).
-
-**Fuente:** ADR-045, ADR-046, ADR-047, ADR-049 §E.
-
-**Estado (interno):** hecho; la fase de resolución de la DUP, en curso.
-
----
-
-## 13. Notificaciones — [propuesta] ✔ hecha (primer intento, sin revisar)
-
-**Fichero:** `fichas/ficha_13_notificaciones.html`
-
-| Paso | Aparece |
-|---|---|
-| 1 | Título |
-| 2 | Izquierda, **A quién** («una notificación por destinatario, con la dirección de su rol»): la resolución firmada se abre en cuatro NOTIFICAR (solicitante, dos organismos consultados, órgano ambiental) |
-| 3 | Quinta fila discontinua en rojo, «FALTA: Ayuntamiento de Jerez» · «el trámite no termina mientras falte alguien» |
-| 4 | Derecha, **Cómo** («el canal no se elige: lo dice el justificante»): Justificante Notifica-PNT → canales Notifica-PNT (marcado) · BandeJA · SIR · Postal · Edicto en el BOE |
-| 5 | **Cuándo** («dos fechas, cada una con su efecto»): 3 jun puesta a disposición, «cumple el deber de notificar» (azul) · 6 jun leída, «surte efectos: corren sus plazos» (verde) |
-| 6 | Abajo a la izquierda, **En papel**: 1.er intento fallido → 2.º intento fallido → anuncio en el BOE |
-
-**Notas:** el canal no se elige: se deduce del justificante vinculado. Fechas de
-notificación, de cumplimiento y de efectos. Notificación edictal.
-
-**Fuente:** ADR-034, ADR-049, ADR-051, ADR-052; `ESTRUCTURA_FTT.md` §Trámites transversales.
-
-**Estado (interno):** modelo hecho, y tramitar una notificación con su destinatario en el
-navegador (#929, zona A); quedan pantallas: aplicar el edicto (#1037), representante y
-sede del solicitante (#1038), fecha en la subida (#1036) y la visibilidad (zona E).
-
----
-
-## 13b. Análisis de la solicitud — [propuesta, hueco] ✔ hecha (primer intento, sin revisar)
-
-**Fichero:** `fichas/ficha_13b_analisis.html`
+**Fichero:** `fichas/ficha_16_analisis.html`
 
 La primera fase del procedimiento, y el arranque del ejemplo que recorre la
 presentación (requerimiento de subsanación: cadena, plazo, escrito).
@@ -506,7 +547,7 @@ las reglas. El técnico vincula cada requisito con el documento del pool que lo 
 el sistema avisa si el tipo no casa, pero el juicio es suyo. Hay además un check técnico
 (contenido del proyecto según los reglamentos). Los defectos que se repiten salen del
 catálogo de requerimientos: imagen homogénea de la Administración. El diagnóstico es lo
-que produce ANALIZAR (6) y lo que consume el ELABORAR del requerimiento (escritos).
+que produce ANALIZAR (6) y lo que consume el ELABORAR del requerimiento (19).
 Requerimiento y comunicación de inicio son excluyentes; la comunicación de inicio es
 obligatoria (art. 21.4 LPACAP) y en renovables acredita el hito 1 ante el gestor de red.
 
@@ -517,9 +558,9 @@ captura 12 de la demo de la ADA.
 
 ---
 
-## 14. Organismos consultados — [propuesta] ✔ hecha (primer intento, sin revisar)
+### 17. Organismos consultados — [propuesta] ✔ hecha (primer intento, sin revisar)
 
-**Fichero:** `fichas/ficha_14_organismos.html`
+**Fichero:** `fichas/ficha_17_organismos.html`
 
 Una calle por organismo, que avanza a su ritmo: lo que va en azul (separata, traslados),
 lo que vuelve en verde (la respuesta), el silencio en morado.
@@ -543,9 +584,9 @@ organismos por fase.
 
 ---
 
-## 15. Reformados de proyecto — [propuesta] ✔ hecha (primer intento, sin revisar)
+### 18. Reformados de proyecto — [propuesta] ✔ hecha (primer intento, sin revisar)
 
-**Fichero:** `fichas/ficha_15_reformados.html` · título «Reformados de proyecto: la versión como eje»
+**Fichero:** `fichas/ficha_18_reformados.html` · título «Reformados de proyecto: la versión como eje»
 
 | Paso | Aparece |
 |---|---|
@@ -566,9 +607,11 @@ la historia.
 
 ---
 
-## 16. Escritos y plantillas — [propuesta] ✔ hecha (primer intento, sin revisar)
+## Bloque 6 · Los documentos
 
-**Fichero:** `fichas/ficha_16_escritos.html`
+### 19. Escritos y plantillas — [propuesta] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_19_escritos.html`
 
 | Paso | Aparece |
 |---|---|
@@ -589,9 +632,9 @@ pendientes.
 
 ---
 
-## 17. Almacén documental — [propuesta] ✔ hecha (primer intento, sin revisar)
+### 20. Almacén documental — [propuesta] ✔ hecha (primer intento, sin revisar)
 
-**Fichero:** `fichas/ficha_17_almacen.html`
+**Fichero:** `fichas/ficha_20_almacen.html`
 
 | Paso | Aparece |
 |---|---|
@@ -612,19 +655,11 @@ vincular.
 
 ---
 
-## 18. Roles, vistas y bitácora — [propuesta] → absorbida
+## Bloque 7 · Las personas
 
-Se reparte: los roles van a la 20 (usuarios y roles); el listado que se calcula del
-árbol, a una ficha propia sobre el estado derivado; la bitácora, al escape (9) y al
-permiso blando (20).
+### 21. Usuarios y roles — [Carlos] ✔ hecha (primer intento, sin revisar; absorbe la antigua «Roles, vistas y bitácora»)
 
-**Fuente:** ADR-012, ADR-013, ADR-023, ADR-053; fichas 3, 4b y 9 de octubre.
-
----
-
-## 20. Usuarios y roles — [Carlos] ✔ hecha (primer intento, sin revisar; absorbe los roles de la 18)
-
-**Fichero:** `fichas/ficha_20_usuarios_roles.html`
+**Fichero:** `fichas/ficha_21_usuarios_roles.html`
 
 | Paso | Aparece |
 |---|---|
@@ -640,8 +675,10 @@ ya los calcula BDDAT). Supervisor: ve todos los expedientes, asigna, supervisa u
 configura catálogos y reglas. Administrador: configuración técnica y operaciones
 delicadas (bajas físicas, archivado). Mínimo privilegio y permisos blandos. Mi trabajo
 según el rol: cola de tareas (administrativo), seguimiento (tramitador), Control y
-Gestión (supervisor). Se solapa con la 18 (roles, vistas y bitácora): al reordenar, una
-de las dos absorbe a la otra.
+Gestión (supervisor). Restringir actos, no miradas (ADR-013): todos ven catálogos,
+reglas y plantillas; solo los cambia quien debe. Absorbe la antigua «Roles, vistas y
+bitácora»: los roles, aquí; el listado que se calcula del árbol, en la 8; la bitácora,
+en la 9 (escape) y aquí (expediente ajeno).
 
 **Fuente:** ficha 3 de octubre; ADR-012, ADR-013, ADR-017, ADR-028, ADR-029, ADR-038;
 `app/modules/mi_trabajo/routes.py`.
@@ -650,9 +687,11 @@ de las dos absorbe a la otra.
 
 ---
 
-## 20b. Un expediente de principio a fin — [propuesta, hueco] ✔ hecha (primer intento, sin revisar)
+## Bloque 8 · De principio a fin, dónde estamos y lo que viene
 
-**Fichero:** `fichas/ficha_20b_recorrido.html`
+### 22. Un expediente de principio a fin — [propuesta, hueco] ✔ hecha (primer intento, sin revisar)
+
+**Fichero:** `fichas/ficha_22_recorrido.html`
 
 La síntesis: liga las fichas con el procedimiento. Cada pieza ya se ha visto; aquí se ve
 dónde actúa.
@@ -676,12 +715,12 @@ una solicitud resuelta y notificada es otra solicitud (invariante de la 10).
 
 ---
 
-## 19. Estado de desarrollo — ✔ hecha (primer intento, sin revisar)
+### 23. Estado de desarrollo — ✔ hecha (primer intento, sin revisar)
 
-**Fichero:** `fichas/ficha_19_estado.html` · título «Dónde estamos»
+**Fichero:** `fichas/ficha_23_estado_desarrollo.html` · título «Dónde estamos»
 
 Una sola ficha para hecho, en curso y antes de producción; lo de después de producción
-va en fichas propias (19b y siguientes).
+va en fichas propias (24 y siguientes).
 
 | Paso | Aparece |
 |---|---|
@@ -698,12 +737,12 @@ lista en el propio HTML (un array al principio del script).
 
 ---
 
-## 19b. Después de producción — [propuesta] ✔ hecha (primer intento, sin revisar)
+### 24. Después de producción — [propuesta] ✔ hecha (primer intento, sin revisar)
 
-**Fichero:** `fichas/ficha_19b_despues.html` · «mejoras que no hacen falta para funcionar»
+**Fichero:** `fichas/ficha_24_despues.html` · «mejoras que no hacen falta para funcionar»
 
 Mapa de ideas en una rejilla de 3×3, una fila por clic. Las que tocan el procedimiento van
-en recuadro oscuro y tienen ficha propia a continuación (19c a 19f).
+en recuadro oscuro y tienen ficha propia a continuación (25 a 28).
 
 | Paso | Aparece |
 |---|---|
@@ -724,9 +763,9 @@ y encargos» amplía la bandeja de peticiones al supervisor que ya existe.
 
 ---
 
-## 19c. Firmar y notificar sin salir de BDDAT — [propuesta, post producción] ✔ hecha (primer intento, sin revisar)
+### 25. Firmar y notificar sin salir de BDDAT — [propuesta, post producción] ✔ hecha (primer intento, sin revisar)
 
-**Fichero:** `fichas/ficha_19c_firma_notifica.html`
+**Fichero:** `fichas/ficha_25_firma_notifica.html`
 
 | Paso | Aparece |
 |---|---|
@@ -735,7 +774,7 @@ y encargos» amplía la bandeja de peticiones al supervisor que ya existe.
 | 3 | **Después** («BDDAT hace los recados»): borrador listo → BDDAT lo envía a firma (azul) → vuelve solo: firmado, se reconoce por su pie y se coloca (verde) → BDDAT lo notifica al destinatario de la tarea (azul) → vuelve solo: justificante, fechas y resultado leídos (verde) |
 | 4 | Píldoras: «actúa en nombre del funcionario, con sus credenciales» · «todo queda en la bitácora» · «el procedimiento no cambia: se ahorran pasos» |
 
-**Notas:** une dos ideas de la 19b. Lo que ya está hecho la hace posible: el código del
+**Notas:** une dos ideas de la 24. Lo que ya está hecho la hace posible: el código del
 pie, el destinatario guardado en cada notificación (lo que necesita un envío automático,
 ADR-051) y las fechas que salen de los documentos (ADR-049). El automatismo usa un
 usuario virtual que actúa con las credenciales del funcionario, de modo que en BandeJA y
@@ -748,9 +787,9 @@ prueba de concepto de consulta de estado en Notifica-PNT.
 
 ---
 
-## 19d. El expediente que sale — [propuesta, post producción] ✔ hecha (primer intento, sin revisar)
+### 26. El expediente que sale — [propuesta, post producción] ✔ hecha (primer intento, sin revisar)
 
-**Fichero:** `fichas/ficha_19d_expediente_sale.html`
+**Fichero:** `fichas/ficha_26_expediente_sale.html`
 
 Cierra el círculo con la ficha 4: el expediente que define el art. 70, cuando hay que
 mandarlo fuera.
@@ -778,9 +817,9 @@ matriz de cobertura; #573.
 
 ---
 
-## 19e. Ver venir los vencimientos — [propuesta, post producción] ✔ hecha (primer intento, sin revisar)
+### 27. Ver venir los vencimientos — [propuesta, post producción] ✔ hecha (primer intento, sin revisar)
 
-**Fichero:** `fichas/ficha_19e_vencimientos.html`
+**Fichero:** `fichas/ficha_27_vencimientos.html`
 
 | Paso | Aparece |
 |---|---|
@@ -801,9 +840,9 @@ lo que se deja para después son las alertas y los informes. Las cifras son inve
 
 ---
 
-## 19f. La instalación, no solo el expediente — [propuesta, post producción] ✔ hecha (primer intento, sin revisar)
+### 28. La instalación, no solo el expediente — [propuesta, post producción] ✔ hecha (primer intento, sin revisar)
 
-**Fichero:** `fichas/ficha_19f_instalacion.html`
+**Fichero:** `fichas/ficha_28_instalacion.html`
 
 | Paso | Aparece |
 |---|---|
