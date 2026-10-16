@@ -34,10 +34,11 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
 /* La nube: cada concepto se coloca por su centro (data-x, data-y) */
 .c{position:absolute;translate:-50% -50%;white-space:nowrap;font-weight:600;line-height:1.05;z-index:2;
   text-shadow:0 0 4px #fff,0 0 8px #fff,0 0 12px #fff}
-.c.menor{font-weight:400;color:var(--texto-2)}
-.c.norma{font-weight:500;color:var(--texto-2);font-style:italic}
+/* Principal: recuadro. Secundario: píldora */
+.c.caja{background:var(--tarjeta);border:2px solid var(--borde-fuerte);border-radius:10px;
+  padding:8px 16px;text-shadow:none}
 .c.chip{font-size:16px;font-weight:600;color:var(--texto-2);border:1.5px solid var(--borde-fuerte);
-  border-radius:8px;padding:2px 8px;background:#fff;text-shadow:none}
+  border-radius:999px;padding:3px 12px;background:#fff;text-shadow:none}
 /* los satélites de un concepto entran un poco después que él */
 .c.tarde{transition-delay:.25s}
 .c.tarde2{transition-delay:.45s}
@@ -66,28 +67,28 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
   <svg id="rotulos" viewBox="0 0 1280 720" aria-hidden="true"></svg>
 
   <!-- 2 · Normativa -->
-  <div class="c paso" data-paso="2" id="normativa" data-x="250" data-y="205" style="font-size:56px">Normativa</div>
-  <div class="c norma paso tarde" data-paso="2" data-x="130" data-y="132" style="font-size:22px">RD 1955/2000</div>
-  <div class="c norma paso tarde" data-paso="2" data-x="372" data-y="128" style="font-size:24px">LSE</div>
-  <div class="c norma paso tarde" data-paso="2" data-x="96" data-y="268" style="font-size:19px">RD 337/2014</div>
-  <div class="c norma paso tarde" data-paso="2" data-x="404" data-y="262" style="font-size:19px">RD 223/2008</div>
-  <div class="c norma paso tarde2" data-paso="2" data-x="170" data-y="312" style="font-size:17px">decretos de simplificación</div>
-  <div class="c norma paso tarde2" data-paso="2" data-x="388" data-y="306" style="font-size:17px">medidas urgentes</div>
+  <div class="c caja paso" data-paso="2" id="normativa" data-x="250" data-y="205" style="font-size:56px">Normativa</div>
+  <div class="c chip paso tarde" data-paso="2" data-x="130" data-y="132" style="font-size:22px">RD 1955/2000</div>
+  <div class="c chip paso tarde" data-paso="2" data-x="372" data-y="128" style="font-size:24px">LSE</div>
+  <div class="c chip paso tarde" data-paso="2" data-x="96" data-y="268" style="font-size:19px">RD 337/2014</div>
+  <div class="c chip paso tarde" data-paso="2" data-x="440" data-y="250" style="font-size:19px">RD 223/2008</div>
+  <div class="c chip paso tarde2" data-paso="2" data-x="136" data-y="318" style="font-size:17px">decretos de simplificación</div>
+  <div class="c chip paso tarde2" data-paso="2" data-x="440" data-y="296" style="font-size:17px">medidas urgentes</div>
 
   <!-- 3 · Promotor -->
-  <div class="c paso" data-paso="3" id="promotor" data-x="720" data-y="160" style="font-size:48px">Promotor</div>
+  <div class="c caja paso" data-paso="3" id="promotor" data-x="720" data-y="160" style="font-size:48px">Promotor</div>
 
   <!-- 4 · Distribuidora -->
-  <div class="c paso" data-paso="4" id="distribuidora" data-x="1080" data-y="140" style="font-size:34px">Distribuidora</div>
+  <div class="c caja paso" data-paso="4" id="distribuidora" data-x="1080" data-y="140" style="font-size:34px">Distribuidora</div>
 
   <!-- 5 · Información pública -->
-  <div class="c paso" data-paso="5" id="ip" data-x="590" data-y="470" style="font-size:38px">Información pública</div>
+  <div class="c caja paso" data-paso="5" id="ip" data-x="590" data-y="470" style="font-size:38px">Información pública</div>
 
   <!-- 6 · Organismos -->
-  <div class="c paso" data-paso="6" id="organismos" data-x="1020" data-y="320" style="font-size:46px">Organismos</div>
+  <div class="c caja paso" data-paso="6" id="organismos" data-x="1020" data-y="320" style="font-size:46px">Organismos</div>
 
   <!-- 7 · Solicitudes simples -->
-  <div class="c paso" data-paso="7" id="solicitudes" data-x="700" data-y="270" style="font-size:32px">Solicitudes</div>
+  <div class="c caja paso" data-paso="7" id="solicitudes" data-x="700" data-y="270" style="font-size:32px">Solicitudes</div>
   <div class="c chip paso tarde" data-paso="7" data-x="586" data-y="322">AAP</div>
   <div class="c chip paso tarde" data-paso="7" data-x="646" data-y="322">AAC</div>
   <div class="c chip paso tarde" data-paso="7" data-x="706" data-y="322">DUP</div>
@@ -98,24 +99,24 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
   <div class="c chip paso tarde2" data-paso="7" data-x="808" data-y="360">…</div>
 
   <!-- 8 · Proyecto -->
-  <div class="c paso" data-paso="8" id="proyecto" data-x="300" data-y="430" style="font-size:52px">Proyecto</div>
+  <div class="c caja paso" data-paso="8" id="proyecto" data-x="300" data-y="430" style="font-size:52px">Proyecto</div>
 
   <!-- 9 · Documentación -->
-  <div class="c paso" data-paso="9" id="documentacion" data-x="160" data-y="570" style="font-size:30px">Documentación</div>
+  <div class="c caja paso" data-paso="9" id="documentacion" data-x="160" data-y="570" style="font-size:30px">Documentación</div>
 
   <!-- 10 · Recursos -->
-  <div class="c paso" data-paso="10" id="recursos" data-x="1170" data-y="450" style="font-size:28px">Recursos</div>
+  <div class="c caja paso" data-paso="10" id="recursos" data-x="1170" data-y="450" style="font-size:28px">Recursos</div>
 
   <!-- 11 · Plazos -->
-  <div class="c paso" data-paso="11" id="plazos" data-x="880" data-y="610" style="font-size:50px">Plazos</div>
+  <div class="c caja paso" data-paso="11" id="plazos" data-x="880" data-y="610" style="font-size:50px">Plazos</div>
 
   <!-- 12 · Excepciones -->
-  <div class="c paso" data-paso="12" id="excepciones" data-x="470" data-y="625" style="font-size:28px">Excepciones</div>
-  <div class="c menor paso tarde" data-paso="12" data-x="420" data-y="665" style="font-size:20px">suelo urbano</div>
-  <div class="c menor paso tarde" data-paso="12" data-x="545" data-y="665" style="font-size:20px">tensión</div>
+  <div class="c caja paso" data-paso="12" id="excepciones" data-x="470" data-y="625" style="font-size:28px">Excepciones</div>
+  <div class="c chip paso tarde" data-paso="12" data-x="420" data-y="665" style="font-size:20px">suelo urbano</div>
+  <div class="c chip paso tarde" data-paso="12" data-x="545" data-y="665" style="font-size:20px">tensión</div>
 
   <!-- 13 · Figura ambiental -->
-  <div class="c paso" data-paso="13" id="ambiental" data-x="1110" data-y="560" style="font-size:32px">Figura ambiental</div>
+  <div class="c caja paso" data-paso="13" id="ambiental" data-x="1110" data-y="560" style="font-size:32px">Figura ambiental</div>
 </div>
 
 <div id="ayuda">← → o clic para avanzar</div>
@@ -128,7 +129,9 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
     [14, 'promotor', 'solicitudes', 'solicitud', 'ida', .25],
     [14, 'promotor', 'proyecto', 'redacta', 'ida', -.18],
     [14, 'normativa', 'plazos', 'fija', 'tiempo', .22],
-    [14, 'documentacion', 'promotor', 'requerimiento', 'ida', .3],
+    [14, 'documentacion', 'promotor', 'requerimiento', 'ida', -.12],
+    [14, 'normativa', 'proyecto', 'requisitos', 'ida', -.15],
+    [14, 'normativa', 'excepciones', 'exime', 'ida', .32],
 
     [15, 'proyecto', 'organismos', 'separata', 'ida', .14],
     [15, 'organismos', 'promotor', 'condicionados', 'vuelta', .25],
@@ -162,7 +165,7 @@ body{font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto)}
   function caja(id){
     var c = document.getElementById(id);
     var x = +c.getAttribute('data-x'), y = +c.getAttribute('data-y');
-    return {x: x, y: y, w: c.offsetWidth / 2 + 8, h: c.offsetHeight / 2 + 6};
+    return {x: x, y: y, w: c.offsetWidth / 2 + 4, h: c.offsetHeight / 2 + 4};
   }
   /* Punto donde la recta del centro hacia (tx,ty) sale de la caja */
   function borde(b, tx, ty){
