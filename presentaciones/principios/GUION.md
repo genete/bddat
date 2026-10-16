@@ -425,8 +425,8 @@ Suspensión como medida única. Plazo de resolver de cada acto.
 
 **Fuente:** ADR-041, ADR-048.
 
-**Estado (interno):** hecho, con el plazo de resolver de cada acto en el árbol (#922);
-pendientes la proyección de plazos y conectar la suspensión al plazo del acto (#796).
+**Estado (interno):** hecho, con el plazo de resolver de cada acto en el árbol (#922) y
+la suspensión por acto (#796); pendiente la proyección de plazos.
 
 ---
 
@@ -477,7 +477,9 @@ notificación, de cumplimiento y de efectos. Notificación edictal.
 
 **Fuente:** ADR-034, ADR-049, ADR-051, ADR-052; `ESTRUCTURA_FTT.md` §Trámites transversales.
 
-**Estado (interno):** modelo hecho; falta la interfaz de varios destinatarios (#929).
+**Estado (interno):** modelo hecho, y tramitar una notificación con su destinatario en el
+navegador (#929, zona A); quedan pantallas: aplicar el edicto (#1037), representante y
+sede del solicitante (#1038), fecha en la subida (#1036) y la visibilidad (zona E).
 
 ---
 
@@ -674,9 +676,22 @@ una solicitud resuelta y notificada es otra solicitud (invariante de la 10).
 
 ---
 
-## 19. Estado de desarrollo (una o dos fichas)
+## 19. Estado de desarrollo — ✔ hecha (primer intento, sin revisar)
 
-**En pantalla:** hecho · en curso · antes de producción · después de producción.
+**Fichero:** `fichas/ficha_19_estado.html` · título «Dónde estamos»
 
-**Notas:** incluye los límites (portafirmas, Notifica). Se redacta al final, a partir de
-los «Estado (interno)» de este guion y de las fichas 10 a 12 de octubre.
+Una sola ficha para hecho, en curso y antes de producción; lo de después de producción
+va en fichas propias (19b y siguientes).
+
+| Paso | Aparece |
+|---|---|
+| 1 | Título |
+| 2 | **Hecho** (verde): estructura y árbol del expediente · reglas con escape e invariantes · plazos por acto, con su catálogo · certificados (fin de instrucción y cierres) · análisis de la solicitud y consultas · reformados de proyecto · notificaciones (destinatarios, fechas y edicto) · escritos desde plantillas y almacén · roles, listados y bitácora |
+| 3 | **En curso** (azul): interfaz (inspector y listados homogéneos) · notificaciones: las pantallas que faltan (edicto, sede del solicitante, visibilidad) · fase de resolución de la DUP |
+| 4 | **Antes de producción**: el resto de fases y lo particular de cada una · importar los expedientes de Access · almacén: lo que queda (exportar en ZIP, plantillas, PDF para firma, papelera) · proyección de plazos · puesta en producción (HTTPS, ENS, copias de seguridad, servidor) |
+| 5 | Abajo, en discontinua: **Fuera de BDDAT, por ahora**: la firma (Port@firmas) y el envío de las notificaciones (Notifica-PNT, BandeJA): se sube el resultado |
+
+**Notas:** sale de los «Estado (interno)» de este guion, de las fichas 10 y 11 de
+octubre y de los documentos de estado vivos (`ESTADO_ADR049`, `ESTADO_ADR050`,
+`ESTADO_ADR053`) a 16/10/2026. Si cambia algo antes de la presentación, se retoca la
+lista en el propio HTML (un array al principio del script).
