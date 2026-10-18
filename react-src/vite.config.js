@@ -1,24 +1,41 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
+import { realpathSync } from 'fs'
+
+// ---------------------------------------------------------------------------
+// Raíz canónica del proyecto (build).
+//
+// Vite escribe en manifest.json, como clave de cada chunk, path.relative(root,
+// rutaDelMódulo), y las rutas de los módulos importados salen ya resueltas a su
+// ruta real. Si el build se lanza desde un alias de la carpeta (p. ej. una unidad
+// que en un PC es un alias de C:\Users\…), raíz y módulos quedan en rutas de
+// «familias» distintas y las claves salen absolutas ("C:/Users/…") o "../../…"
+// en vez de "src/…": diff espurio en el manifest versionado.
+//
+// Por eso en modo build toda ruta parte de RAIZ (ruta real), no de __dirname.
+// En Linux/nube y con la carpeta en su ruta real, RAIZ === __dirname.
+// ---------------------------------------------------------------------------
+const RAIZ = realpathSync.native(__dirname)
 
 // ---------------------------------------------------------------------------
 // Registro de islas React (#499 — scaffolding multi-bundle, ADR-015).
 //
 // Cada entrada = una isla independiente. Para crear una isla nueva:
 //   1. Crear src/<nombre-isla>/index.jsx (auto-montaje con mountIsland).
-//   2. Añadir aquí la línea '<nombre-isla>': resolve(__dirname, 'src/<nombre>/index.jsx').
+//   2. Añadir aquí la línea '<nombre-isla>': resolve(RAIZ, 'src/<nombre>/index.jsx')
+//      (con RAIZ, no con __dirname: ver arriba).
 //   3. Montarla en un template con {{ react_bundle('<nombre-isla>') }}.
 //
 // El build genera un bundle ES por isla + un chunk compartido (React, etc.)
 // y un manifest.json (nombre con hash) que lee el helper Jinja react_bundle().
 // ---------------------------------------------------------------------------
 const ISLANDS = {
-  'diagrama-esftt':   resolve(__dirname, 'src/diagrama-esftt/index.jsx'),
-  'expediente-arbol': resolve(__dirname, 'src/expediente-arbol/index.jsx'),
-  'command-palette':  resolve(__dirname, 'src/command-palette/index.jsx'),
-  'mi-trabajo':       resolve(__dirname, 'src/mi-trabajo/index.jsx'),
-  'estadisticas':     resolve(__dirname, 'src/estadisticas/index.jsx'),
+  'diagrama-esftt':   resolve(RAIZ, 'src/diagrama-esftt/index.jsx'),
+  'expediente-arbol': resolve(RAIZ, 'src/expediente-arbol/index.jsx'),
+  'command-palette':  resolve(RAIZ, 'src/command-palette/index.jsx'),
+  'mi-trabajo':       resolve(RAIZ, 'src/mi-trabajo/index.jsx'),
+  'estadisticas':     resolve(RAIZ, 'src/estadisticas/index.jsx'),
 }
 
 export default defineConfig(({ command }) => {
@@ -39,6 +56,7 @@ export default defineConfig(({ command }) => {
 
   // Modo build: un bundle ES por isla, servido estático por Flask.
   return {
+    root: RAIZ,
     plugins: [react()],
     // React lee process.env.NODE_ENV — no existe en el navegador; se reemplaza.
     define: {
@@ -51,7 +69,7 @@ export default defineConfig(({ command }) => {
     // construye esas URLs a mano con url_for('static', ...).
     base: '/static/js/react/',
     build: {
-      outDir:      resolve(__dirname, '../app/static/js/react'),
+      outDir:      resolve(RAIZ, '../app/static/js/react'),
       emptyOutDir: true,
       // Vite escribe el manifest en <outDir>/manifest.json (nombre → fichero+hash).
       manifest: 'manifest.json',
