@@ -21,13 +21,13 @@
 //      la repite). Devuelve el nombre de la superficie o `undefined` para quedarse con el defecto.
 //   3. `defecto`.
 //
-// Las dos variantes de ANALIZAR y ELABORAR ya usan el diseño de datos de la tarea: lo que la
-// superficie tiene de dato son tarjetas —en lectura y en edición— y lo que tiene de acción (producir
-// el diagnóstico, generar el escrito) va a la zona de acciones, solo en edición. `ANALIZAR` es el de
+// Todas las superficies usan ya el diseño de datos de la tarea: lo que la superficie tiene de dato
+// son tarjetas —en lectura y en edición— y lo que tiene de acción (producir el diagnóstico, generar
+// el escrito) va a la zona de acciones, solo en edición. `ANALIZAR` es el de
 // los trámites con secciones extendidas (ANALISIS_DOCUMENTAL, REQUERIMIENTO_SUBSANACION) y
 // `ANALIZAR_SIMPLE` el de los demás. Las variantes de ELABORAR (si el trámite tiene destinatario y si
-// se elige) las resuelve su tarjeta con el endpoint del destinatario. NOTIFICAR sigue con su editor
-// hasta que la fase 3 la migre.
+// se elige) las resuelve su tarjeta con el endpoint del destinatario. Las de NOTIFICAR (aviso al
+// solicitante, destinatario, registro y justificantes previos) las pinta `TarjetasNotificar`.
 export const SUPERFICIES_TAREA = {
   ANALIZAR: {
     defecto: 'ANALIZAR',
@@ -41,7 +41,7 @@ export const SUPERFICIES_TAREA = {
 }
 
 // Superficies que ya usan el diseño de datos de la tarea (las demás siguen con su editor).
-const SUPERFICIES_CON_DISENO = new Set(['ANALIZAR', 'ANALIZAR_SIMPLE', 'ELABORAR'])
+const SUPERFICIES_CON_DISENO = new Set(['ANALIZAR', 'ANALIZAR_SIMPLE', 'ELABORAR', 'NOTIFICAR'])
 
 // ¿Pinta la tarea la zona de datos común? Sí si es genérica (sin superficie) o su superficie ya migró.
 export function tieneDisenoTarea(superficie) {

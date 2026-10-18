@@ -176,10 +176,11 @@ export const DISENO_TRAMITE = {
 // zona de datos, no tarjetas, y el análisis del ANALIZAR son sus propias tarjetas debajo de esta
 // (`AnalisisExtendido` en `AnalizarEditor.jsx`; `TarjetaResultadoDiagnostico` en `AnalizarSimple.jsx`),
 // como las notificaciones del trámite. «Estado» y «Tipo» están en la barra (el tipo, en su título).
-// «Resultado de notificación» solo lo trae NOTIFICAR, que no tiene diseño: si alguna vez llegara,
-// cae en «Otros datos» y no se pierde.
+// «Resultado de notificación» solo lo trae NOTIFICAR, y se oculta porque el mismo dato ya está en su
+// tarjeta «Registro de la notificación» (el campo «Resultado», de solo lectura en lectura y vivo en
+// edición): pintarlo también aquí lo duplicaría.
 export const DISENO_TAREA = {
-  ocultas: ['Estado', 'Tipo'],
+  ocultas: ['Estado', 'Tipo', 'Resultado de notificación'],
   tarjetas: [
     {
       titulo: 'Datos de la tarea', icono: 'fa-tasks',

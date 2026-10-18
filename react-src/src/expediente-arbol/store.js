@@ -959,6 +959,23 @@ export const useArbolStore = create((set, get) => ({
     }
   },
 
+  // Como `refrescarArbol` pero SIN vaciar el detalle: pide /arbol (estado y semáforo de los nodos) y
+  // el detalle del nodo seleccionado, y los sustituye al llegar. Lo usan los bloques de la
+  // NOTIFICAR (#1043), que guardan de inmediato y muestran avisos tras guardar: `refrescarArbol`
+  // vacía el detalle, desmonta la zona de datos y esos avisos y lo escrito en los demás campos se
+  // perderían. Solo actualiza el detalle si la selección sigue siendo la misma al volver.
+  refrescarArbolSilencioso: async () => {
+    const { expedienteId } = get()
+    if (!expedienteId) return
+    try {
+      const arbol = await getArbol(expedienteId)
+      set({ arbol, _detalleCache: {} })
+    } catch (e) {
+      showToast('No se pudo refrescar el árbol', 'danger')
+    }
+    await get().refrescarDetalleSilencioso()
+  },
+
   // Re-pide /arbol e invalida TODA la caché de detalle (una mutación puede recomputar
   // agregados/plazos de los ancestros → decisión F). Tras refrescar, re-dispara el
   // detalle de lectura del nodo seleccionado.

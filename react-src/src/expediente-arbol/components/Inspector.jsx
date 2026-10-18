@@ -20,7 +20,7 @@ import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
 import { AnalisisExtendido, AccionProducirDiagnostico } from './AnalizarEditor.jsx'
 import { AccionGenerarEscrito } from './ElaborarEditor.jsx'
 import TarjetaDestinatarioTramite from './notificar/DestinatarioTramite.jsx'
-import NotificarEditor from './NotificarEditor.jsx'
+import { TarjetasNotificar } from './NotificarEditor.jsx'
 import DatosNodo from './DatosNodo.jsx'
 import { disenoDeNodo } from '../disenosDatos.js'
 import { superficieDeNodoTarea, tieneDisenoTarea, idTramiteDeTarea } from '../superficiesTarea.js'
@@ -370,16 +370,15 @@ function Documentos({ documentos }) {
 //
 // Es la misma en lectura y en edición: en edición lo informativo no desaparece, se pueda editar
 // o no. La pintan en los dos modos los nodos que tienen un diseño en `disenosDatos.js`
-// (expediente, solicitud, versión, fase, organismo, trámite y la tarea genérica, ANALIZAR y
-// ELABORAR); las tareas NOTIFICAR, con superficie propia sin migrar, la pintan solo en lectura,
-// con la lista de texto plano, y su edición es su editor, hasta que la fase 3 las migre.
+// (expediente, solicitud, versión, fase, organismo, trámite y todas las tareas: la genérica,
+// ANALIZAR, ELABORAR y NOTIFICAR). Solo sin nodo en el árbol (no debería pasar) cae en la lista de
+// texto plano.
 function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
   const expedienteId = useArbolStore((s) => s.expedienteId)
   const arbol = useArbolStore((s) => s.arbol)
   const esHoja = tipo === 'tarea'
-  // La tarea solo tiene diseño si es genérica o su superficie ya migró (ANALIZAR simple): las de
-  // superficie propia sin migrar siguen con `Campos`.
+  // La tarea tiene diseño si es genérica o su superficie ya migró (todas hoy).
   const superficie = esHoja ? superficieDeNodoTarea(arbol, nodo) : null
   const tareaConDiseno = esHoja && !!nodo && tieneDisenoTarea(superficie)
   const diseno = disenoDeNodo(tipo, { tareaConDiseno })
@@ -402,6 +401,10 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
       {superficie === 'ELABORAR' && idTramiteDeTarea(arbol, Number(detalle.nodo.id)) != null && (
         <TarjetaDestinatarioTramite expedienteId={expedienteId}
                                     tramiteId={idTramiteDeTarea(arbol, Number(detalle.nodo.id))} />
+      )}
+      {superficie === 'NOTIFICAR' && (
+        <TarjetasNotificar expedienteId={expedienteId} tareaId={Number(detalle.nodo.id)}
+                           soloLectura={!modoEdicion} />
       )}
       {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
       <Plazo plazo={detalle.plazo} />
@@ -1188,28 +1191,24 @@ function InspectorEdicion({ nodo }) {
   // (`AccionGenerarEscrito`). La Despensa NO se deshabilita — sigue siendo el mecanismo genérico que
   // vincula el borrador de firma y el documento firmado.
   const esElaborar = superficie === 'ELABORAR'
-  // NOTIFICAR (#657/#658, ADR-034): contenedor bespoke, "Registrar envío"/"Completar resultado".
-  // Igual que ELABORAR, la Despensa NO se deshabilita.
-  const esNotificar = superficie === 'NOTIFICAR'
+  // NOTIFICAR (#657/#658, ADR-034; #1043): ya usa el diseño de datos de la tarea. Aviso, destinatario,
+  // registro y justificantes previos son tarjetas de datos —en lectura y en edición— con sus controles
+  // vivos dentro (`TarjetasNotificar`); no tiene acciones propias. Igual que ELABORAR, la Despensa NO se
+  // deshabilita.
   // Tarea con diseño de datos (#1043): la genérica (sin superficie propia: hoy ESPERAR_PLAZO, y lo
   // será cualquier tipo de tarea o trámite que no figure en la tabla) y la de superficie ya migrada
-  // (las dos variantes de ANALIZAR).
+  // (hoy todas).
   const tareaConDiseno = seleccion.tipo === 'tarea' && !!nodo && tieneDisenoTarea(superficie)
-  // Nodos con diseño de datos (#1043, lectura ≈ edición: todos salvo las tareas con superficie
-  // propia sin migrar): la edición pinta la misma zona de datos que la lectura y debajo las
-  // acciones y el pie.
+  // Todos los nodos tienen diseño de datos (#1043, lectura ≈ edición): la edición pinta la misma zona
+  // de datos que la lectura y debajo las acciones y el pie.
   const detalle      = useArbolStore((s) => s.detalle)
   const cargandoDet  = useArbolStore((s) => s.detalleCargando)
   const seleccionar  = useArbolStore((s) => s.seleccionar)
   const hayDetalle   = !!detalle && !cargandoDet
-  const migrado      = !!disenoDeNodo(seleccion.tipo, { tareaConDiseno })
   // ESPERAR_PLAZO (#766): sin editor bespoke — solo la ayuda de la Despensa sobre
   // qué documento es el producido cuando en la recepción llegan varios (regla de
   // #764). Es la única tarea cuyo producido es un documento recibido de fuera.
   const esEsperarPlazo = tareaConDiseno && nodo.tipo_codigo === 'ESPERAR_PLAZO'
-  // El editor bespoke que queda (NOTIFICAR) no trae su propio control de borrado — #742. Fase
-  // cerrada no aplica aquí: seleccion.tipo es siempre 'tarea', nunca 'fase'.
-  const puedeBorrarTarea = !!superficie && puedeEditarNodo('tarea')
   // Fase CONSULTAS (ADR-042 §C, #396 bloque 5): acción propia de la fase, en la zona de acciones
   // (mismo criterio que ReabrirFase).
   const esFaseConsultas = seleccion.tipo === 'fase' && nodo && nodo.tipo_codigo === 'CONSULTAS'
@@ -1236,80 +1235,59 @@ function InspectorEdicion({ nodo }) {
   // frecuente, con su panel a la vista—, después las propias del nodo (la bisagra de la
   // solicitud; las consultas, el cumplimiento, el cierre y la reapertura de la fase) y, al
   // fondo, «Borrar», por destructivo.
-  if (migrado) {
-    // Fase cerrada (#720, ADR-036): dentro no se crea ni se borra nada; su único camino es reabrirla.
-    const faseCerrada = esFase && !!nodo && nodo.estado === 'FINALIZADA'
-    const puedeBorrar = seleccion.tipo !== 'expediente' && puedeEditarNodo(seleccion.tipo) && !faseCerrada
-    // Las acciones propias solo se pintan si hay alguna, para no dejar un separador vacío.
-    // Cumplimiento y cierre solo existen en las finalizadoras (el backend trae su certificado
-    // solo en ellas); «Enviar consultas» solo con organismos pendientes.
-    const hayPropias = esSolicitud || faseCerrada
-      || (esFaseConsultas && organismosPendientesSeparata(nodo).length > 0)
-      || (esFase && hayDetalle && !!(detalle.cert_cumplimiento || detalle.cert_cierre))
-      || hayNotifTramite
-      || hayDiagnosticoPendiente
-      || esElaborar
-    return (
-      <div className="p-3 d-flex flex-column h-100">
-        {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
-        {hayDetalle && (
-          <ZonaDatos nodo={nodo} tipo={seleccion.tipo} detalle={detalle} seleccionar={seleccionar} />
-        )}
-        {borrarPendienteConfirm
-          ? <ConfirmacionBorrado nodo={nodo} />
-          : (
-            <>
-              {/* ADR-033 §1: en ANALIZAR extendido casar un requisito documental deriva el consumido,
-                  así que la Despensa queda sin uso legítimo y se oculta. En el simple sigue viva. En
-                  los dos el documento producido lo genera el diagnóstico, no se vincula a mano. */}
-              {!esAnalizarExtendido && (
-                <div className="border-top mt-3 pt-3">
-                  <Despensa deshabilitarProducido={esAnalizar} esEsperarPlazo={esEsperarPlazo} />
-                </div>
-              )}
-              {hayPropias && (
-                <div className="border-top mt-3 pt-3">
-                  {esSolicitud && <CertFinInstruccion />}
-                  {esSolicitud && <CierreSolicitud />}
-                  {esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
-                  {esFase && <CertCumplimientoFase />}
-                  {esFase && <CierreFase nodo={nodo} />}
-                  {faseCerrada && <ReabrirFase />}
-                  {esTramite && (
-                    <AccionNotificacionesTramite expedienteId={expedienteId} tramiteId={Number(seleccion.id)} />
-                  )}
-                  {esAnalizar && (
-                    <AccionProducirDiagnostico expedienteId={expedienteId} tareaId={Number(seleccion.id)} />
-                  )}
-                  {esElaborar && <AccionGenerarEscrito tareaId={seleccion.id} nodo={nodo} />}
-                </div>
-              )}
-              {puedeBorrar && <div className="mb-3"><BotonBorrar /></div>}
-            </>
-          )}
-        {esSolicitud && <ModalInformeFinInstruccion />}
-        {esFase && <ModalConfirmacionCierre />}
-        {hayDetalle && <Acciones referencia={detalle.referencia} />}
-      </div>
-    )
-  }
-  // Solo llegan aquí las tareas NOTIFICAR, la única superficie de trabajo propia sin migrar
-  // (la fase 3 de #1043 la migrará).
+  // Fase cerrada (#720, ADR-036): dentro no se crea ni se borra nada; su único camino es reabrirla.
+  const faseCerrada = esFase && !!nodo && nodo.estado === 'FINALIZADA'
+  const puedeBorrar = seleccion.tipo !== 'expediente' && puedeEditarNodo(seleccion.tipo) && !faseCerrada
+  // Las acciones propias solo se pintan si hay alguna, para no dejar un separador vacío.
+  // Cumplimiento y cierre solo existen en las finalizadoras (el backend trae su certificado
+  // solo en ellas); «Enviar consultas» solo con organismos pendientes.
+  const hayPropias = esSolicitud || faseCerrada
+    || (esFaseConsultas && organismosPendientesSeparata(nodo).length > 0)
+    || (esFase && hayDetalle && !!(detalle.cert_cumplimiento || detalle.cert_cierre))
+    || hayNotifTramite
+    || hayDiagnosticoPendiente
+    || esElaborar
   return (
-    <div className="p-3">
+    <div className="p-3 d-flex flex-column h-100">
       {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
+      {hayDetalle && (
+        <ZonaDatos nodo={nodo} tipo={seleccion.tipo} detalle={detalle} seleccionar={seleccionar} />
+      )}
       {borrarPendienteConfirm
         ? <ConfirmacionBorrado nodo={nodo} />
-        : esNotificar
-          ? <NotificarEditor tareaId={seleccion.id} />
-          : null
-      }
-      {!borrarPendienteConfirm && puedeBorrarTarea && <BotonBorrar />}
-      {!borrarPendienteConfirm && (
-        <div className="border-top mt-3 pt-3">
-          <Despensa />
-        </div>
-      )}
+        : (
+          <>
+            {/* ADR-033 §1: en ANALIZAR extendido casar un requisito documental deriva el consumido,
+                así que la Despensa queda sin uso legítimo y se oculta. En el simple sigue viva. En
+                los dos el documento producido lo genera el diagnóstico, no se vincula a mano. */}
+            {!esAnalizarExtendido && (
+              <div className="border-top mt-3 pt-3">
+                <Despensa deshabilitarProducido={esAnalizar} esEsperarPlazo={esEsperarPlazo} />
+              </div>
+            )}
+            {hayPropias && (
+              <div className="border-top mt-3 pt-3">
+                {esSolicitud && <CertFinInstruccion />}
+                {esSolicitud && <CierreSolicitud />}
+                {esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
+                {esFase && <CertCumplimientoFase />}
+                {esFase && <CierreFase nodo={nodo} />}
+                {faseCerrada && <ReabrirFase />}
+                {esTramite && (
+                  <AccionNotificacionesTramite expedienteId={expedienteId} tramiteId={Number(seleccion.id)} />
+                )}
+                {esAnalizar && (
+                  <AccionProducirDiagnostico expedienteId={expedienteId} tareaId={Number(seleccion.id)} />
+                )}
+                {esElaborar && <AccionGenerarEscrito tareaId={seleccion.id} nodo={nodo} />}
+              </div>
+            )}
+            {puedeBorrar && <div className="mb-3"><BotonBorrar /></div>}
+          </>
+        )}
+      {esSolicitud && <ModalInformeFinInstruccion />}
+      {esFase && <ModalConfirmacionCierre />}
+      {hayDetalle && <Acciones referencia={detalle.referencia} />}
     </div>
   )
 }

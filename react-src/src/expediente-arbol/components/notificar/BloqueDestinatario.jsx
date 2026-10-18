@@ -1,4 +1,11 @@
-// BloqueDestinatario.jsx — a quién se notifica en una NOTIFICAR (#929, A2; ADR-051 §B, §D, §H).
+// BloqueDestinatario.jsx — a quién se notifica en una NOTIFICAR (#929, A2; ADR-051 §B, §D, §H;
+// #1043, ADR-053 §C).
+//
+// Tarjeta de la zona de datos, en lectura y en edición (criterio de Carlos, 13/10/2026: lo que sale
+// en edición también se ve en lectura). En lectura es la copia congelada del destinatario; en
+// edición, esa misma copia y, dentro de la misma tarjeta, los controles vivos: el selector, «Refrescar
+// datos» y «Fijar / Tomar destinatario». La copia no se sustituye por el selector (*interpretación*):
+// es lo que se enviará, y el selector es lo que se elegiría de nuevo.
 //
 // Componente aparte del registro (`BloqueRegistro`) porque son dos asuntos con dos
 // ritmos: el destinatario se fija antes del primer justificante y desde entonces
@@ -6,7 +13,8 @@
 // `GET …/notificar` (`notificaciones[0].destinatario` es la copia congelada;
 // `destinatario` dice si se puede cambiar y si bloquea; `eleccion_destinatario`,
 // cómo se elige) y escribe con `PUT …/notificar/destinatario`, que devuelve el
-// payload nuevo.
+// payload nuevo. Esos PUT guardan de inmediato, fuera del borrador del marco: viene de #929 y está
+// anotado en #1055.
 //
 // Quién lo elige depende de la fuente (`se_elige_en`):
 //   - 'NOTIFICAR'  boletín, ayuntamiento, ministerio, órgano superior u órgano
@@ -20,6 +28,7 @@ import React from 'react'
 import { useArbolStore } from '../../store.js'
 import { putNotificarDestinatario } from '../../api.js'
 import { showToast } from '../../../shared/ui/toast.js'
+import { TarjetaDatos, CampoDato, ValorSoloLectura } from '../TarjetaDatos.jsx'
 import SelectorEntidad from './SelectorEntidad.jsx'
 
 const fechaCorta = (iso) => (iso ? new Date(iso).toLocaleDateString('es-ES') : null)
@@ -31,35 +40,47 @@ function lineaDireccion(d) {
 }
 
 // La copia congelada en la fila (ADR-051 §B): lo que se enviará, no lo que diga hoy la ficha.
-function CopiaDestinatario({ copia }) {
+function CamposCopia({ copia }) {
   const direccion = lineaDireccion(copia)
+  const nombre = `${copia.nombre || '—'}${copia.nif ? ` · ${copia.nif}` : ''}`
+  const enNombreDe = copia.en_nombre_de
+    ? `${copia.en_nombre_de}${copia.en_nombre_de_nif ? ` · ${copia.en_nombre_de_nif}` : ''}` : null
+  const dir3sir = [copia.dir3 ? `DIR3 ${copia.dir3}` : '', copia.sir ? `SIR ${copia.sir}` : '']
+    .filter(Boolean).join(' · ')
   return (
-    <div className="small mb-2">
-      <div className="fw-semibold">
-        {copia.nombre || '—'}{copia.nif ? <span className="text-muted fw-normal"> · {copia.nif}</span> : null}
-      </div>
-      {copia.en_nombre_de && (
-        <div>
-          en nombre de <span className="fw-semibold">{copia.en_nombre_de}</span>
-          {copia.en_nombre_de_nif ? <span className="text-muted"> · {copia.en_nombre_de_nif}</span> : null}
-        </div>
+    <>
+      <CampoDato rotulo="Destinatario">
+        <ValorSoloLectura rotulo="Destinatario" valor={nombre} />
+      </CampoDato>
+      {enNombreDe && (
+        <CampoDato rotulo="En nombre de">
+          <ValorSoloLectura rotulo="En nombre de" valor={enNombreDe} />
+        </CampoDato>
       )}
-      <div className={direccion ? '' : 'text-muted fst-italic'}>{direccion || 'Sin dirección postal'}</div>
-      {copia.email && <div>{copia.email}</div>}
-      {(copia.dir3 || copia.sir) && (
-        <div className="text-muted">
-          {copia.dir3 ? `DIR3 ${copia.dir3}` : ''}{copia.dir3 && copia.sir ? ' · ' : ''}{copia.sir ? `SIR ${copia.sir}` : ''}
-        </div>
+      <CampoDato rotulo="Dirección">
+        <ValorSoloLectura rotulo="Dirección" valor={direccion || 'Sin dirección postal'} />
+      </CampoDato>
+      {copia.email && (
+        <CampoDato rotulo="Correo electrónico">
+          <ValorSoloLectura rotulo="Correo electrónico" valor={copia.email} />
+        </CampoDato>
+      )}
+      {dir3sir && (
+        <CampoDato rotulo="DIR3 / SIR">
+          <ValorSoloLectura rotulo="DIR3 / SIR" valor={dir3sir} />
+        </CampoDato>
       )}
       {copia.fijado_en && (
-        <div className="text-muted">Copiado el {fechaCorta(copia.fijado_en)}</div>
+        <CampoDato rotulo="Copiado el">
+          <ValorSoloLectura rotulo="Copiado el" valor={fechaCorta(copia.fijado_en)} />
+        </CampoDato>
       )}
-    </div>
+    </>
   )
 }
 
-export default function BloqueDestinatario({ expedienteId, tareaId, payload, onPayload }) {
-  const refrescarArbol = useArbolStore((s) => s.refrescarArbol)
+export default function BloqueDestinatario({ expedienteId, tareaId, payload, onPayload, soloLectura }) {
+  const refrescarArbolSilencioso = useArbolStore((s) => s.refrescarArbolSilencioso)
   const notif = payload.notificaciones[0] || null
   const copia = notif ? notif.destinatario : null
   const estado = payload.destinatario
@@ -84,7 +105,7 @@ export default function BloqueDestinatario({ expedienteId, tareaId, payload, onP
       const data = await putNotificarDestinatario(expedienteId, tareaId, body)
       onPayload(data)
       showToast(mensaje, 'success')
-      await refrescarArbol()
+      await refrescarArbolSilencioso()
     } catch (e) {
       if (e.status === 401 || e.status === 403) return
       setError((e.payload && (e.payload.motivo || e.payload.error)) || e.message
@@ -106,66 +127,70 @@ export default function BloqueDestinatario({ expedienteId, tareaId, payload, onP
   )
 
   return (
-    <div className="card mb-3">
-      <div className="card-header card-header-accent fw-semibold small d-flex justify-content-between">
-        <span>Destinatario</span>
-        <span className="fw-normal text-muted">{eleccion.fuente_etiqueta}</span>
-      </div>
-      <div className="card-body card-body-tinted">
-        {estado.escape_sin_destinatario ? (
+    <TarjetaDatos titulo="Destinatario" icono="fa-address-card">
+      {copia && !estado.escape_sin_destinatario && <CamposCopia copia={copia} />}
+      <CampoDato rotulo="Fuente">
+        <ValorSoloLectura rotulo="Fuente" valor={eleccion.fuente_etiqueta || '—'} />
+      </CampoDato>
+
+      {estado.escape_sin_destinatario ? (
+        <div className="col-12">
           <div className="alert alert-secondary py-2 px-3 small mb-0">
             Esta notificación avanzó sin destinatario por un escape justificado (queda en la
             bitácora) y ya no admite fijarlo.
           </div>
-        ) : copia ? (
-          <>
-            <CopiaDestinatario copia={copia} />
-            {estado.editable ? (
-              <>
-                {puedeElegir && <div className="mt-2">{selector('Cambiar destinatario', 'Destinatario cambiado')}</div>}
-                <div className={puedeElegir ? 'mt-2' : ''}>
-                  <button type="button" className="btn btn-sm btn-outline-secondary" disabled={enviando}
-                          title="Vuelve a copiar la dirección que tiene hoy la entidad"
-                          onClick={() => enviar({}, 'Destinatario refrescado')}>
-                    {enviando ? '…' : 'Refrescar datos'}
-                  </button>
-                  <span className="small text-muted ms-2">Posible hasta el primer justificante.</span>
-                </div>
-              </>
-            ) : (
-              <div className="small text-muted">
-                Fijo desde el primer justificante: ya se envió algo a este destinatario.
+        </div>
+      ) : copia ? (
+        estado.editable ? (
+          !soloLectura && (
+            <div className="col-12">
+              {puedeElegir && <div className="mb-2">{selector('Cambiar destinatario', 'Destinatario cambiado')}</div>}
+              <div>
+                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={enviando}
+                        title="Vuelve a copiar la dirección que tiene hoy la entidad"
+                        onClick={() => enviar({}, 'Destinatario refrescado')}>
+                  {enviando ? '…' : 'Refrescar datos'}
+                </button>
+                <span className="small text-muted ms-2">Posible hasta el primer justificante.</span>
               </div>
-            )}
-          </>
+            </div>
+          )
         ) : (
-          <>
-            <div className="alert alert-warning py-2 px-3 small mb-2">
-              <div className="fw-semibold">Sin destinatario no se puede vincular ningún documento.</div>
-              {eleccion.motivo && <div>{eleccion.motivo}.</div>}
+          <div className="col-12 small text-muted">
+            Fijo desde el primer justificante: ya se envió algo a este destinatario.
+          </div>
+        )
+      ) : (
+        <div className="col-12">
+          <div className="alert alert-warning py-2 px-3 small mb-2">
+            <div className="fw-semibold">Sin destinatario no se puede vincular ningún documento.</div>
+            {eleccion.motivo && <div>{eleccion.motivo}.</div>}
+          </div>
+          {!soloLectura && puedeElegir && selector('Fijar destinatario', 'Destinatario fijado')}
+          {eleccion.se_elige_en === 'ELABORAR' && (
+            <div className="small">
+              Se elige al elaborar el escrito del trámite: hazlo desde su tarea Elaborar y
+              vuelve aquí.
             </div>
-            {puedeElegir && selector('Fijar destinatario', 'Destinatario fijado')}
-            {eleccion.se_elige_en === 'ELABORAR' && (
-              <div className="small">
-                Se elige al elaborar el escrito del trámite: hazlo desde su tarea Elaborar y
-                vuelve aquí.
-              </div>
-            )}
-            {!eleccion.se_elige_en && !eleccion.motivo && (
-              <button type="button" className="btn btn-sm btn-primary" disabled={enviando}
-                      onClick={() => enviar({}, 'Destinatario fijado')}>
-                {enviando ? 'Guardando…' : 'Tomar el destinatario que corresponde'}
-              </button>
-            )}
-            <div className="small text-muted mt-2">
-              Vincular un documento sin destinatario exige una justificación y es irreversible:
-              la tarea queda sin destinatario para siempre y el certificado de cierre lo
-              relata como salvado.
-            </div>
-          </>
-        )}
-        {error && <div className="alert alert-danger py-2 px-3 small mt-2 mb-0">{error}</div>}
-      </div>
-    </div>
+          )}
+          {!soloLectura && !eleccion.se_elige_en && !eleccion.motivo && (
+            <button type="button" className="btn btn-sm btn-primary" disabled={enviando}
+                    onClick={() => enviar({}, 'Destinatario fijado')}>
+              {enviando ? 'Guardando…' : 'Tomar el destinatario que corresponde'}
+            </button>
+          )}
+          <div className="small text-muted mt-2">
+            Vincular un documento sin destinatario exige una justificación y es irreversible:
+            la tarea queda sin destinatario para siempre y el certificado de cierre lo
+            relata como salvado.
+          </div>
+        </div>
+      )}
+      {error && (
+        <div className="col-12">
+          <div className="alert alert-danger py-2 px-3 small mb-0">{error}</div>
+        </div>
+      )}
+    </TarjetaDatos>
   )
 }

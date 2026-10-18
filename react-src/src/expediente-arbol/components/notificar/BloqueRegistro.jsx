@@ -1,4 +1,10 @@
-// BloqueRegistro.jsx — registro de la notificación (#929, A1; ADR-049 §B-§D, ADR-052).
+// BloqueRegistro.jsx — registro de la notificación (#929, A1; ADR-049 §B-§D, ADR-052; #1043,
+// ADR-053 §C).
+//
+// Tarjeta de la zona de datos, en lectura y en edición (criterio de Carlos, 13/10/2026: lo que sale
+// en edición también se ve en lectura): los mismos campos, de solo lectura en lectura y vivos en
+// edición, en el mismo sitio y con el mismo rótulo. En edición lleva su propio «Guardar» (no se toca
+// cómo guarda, decisión de Carlos del 18/10/2026; el aviso de «interior sucio» es de #1055).
 //
 // Escribe con `PATCH …/notificar`, que devuelve el payload nuevo, de modo que lo que
 // ve la pantalla tras guardar es lo que dice el servidor. Persiste por su cuenta, fuera
@@ -24,6 +30,7 @@ import { useArbolStore } from '../../store.js'
 import { patchNotificar, postNotificarParsearDocumento } from '../../api.js'
 import { showToast } from '../../../shared/ui/toast.js'
 import { BloqueoForzar } from '../TiposCreablesCompartido.jsx'
+import { TarjetaDatos, CampoDato, ValorSoloLectura } from '../TarjetaDatos.jsx'
 import EnlaceDocumento from './EnlaceDocumento.jsx'
 
 const ETIQUETA_CANAL = {
@@ -94,11 +101,11 @@ function FilaFecha({ rotulo, ayuda, fecha }) {
   )
 }
 
-export default function BloqueRegistro({ expedienteId, tareaId, payload, onPayload }) {
+export default function BloqueRegistro({ expedienteId, tareaId, payload, onPayload, soloLectura }) {
   const pool = useArbolStore((s) => s.pool)
   const poolCargando = useArbolStore((s) => s.poolCargando)
   const cargarPool = useArbolStore((s) => s.cargarPool)
-  const refrescarArbol = useArbolStore((s) => s.refrescarArbol)
+  const refrescarArbolSilencioso = useArbolStore((s) => s.refrescarArbolSilencioso)
   const sincronizarProducidoNotificar = useArbolStore((s) => s.sincronizarProducidoNotificar)
 
   const notif = payload.notificaciones[0] || null
@@ -115,7 +122,8 @@ export default function BloqueRegistro({ expedienteId, tareaId, payload, onPaylo
   const [bloqueo, setBloqueo] = React.useState(null)
   const [justificacion, setJustificacion] = React.useState('')
 
-  React.useEffect(() => { cargarPool() }, [cargarPool])
+  // El pool solo hace falta para elegir el justificante final: en lectura no se pide.
+  React.useEffect(() => { if (!soloLectura) cargarPool() }, [cargarPool, soloLectura])
 
   const poner = (campo) => (valor) => setForm((f) => ({ ...f, [campo]: valor }))
 
@@ -203,7 +211,8 @@ export default function BloqueRegistro({ expedienteId, tareaId, payload, onPaylo
       setNotaPreview(null)
       setJustificacion('')
       onPayload(data)
-      await refrescarArbol()
+      // Sin vaciar el detalle: los avisos de arriba (advertencia, bloqueo) tienen que seguir a la vista.
+      await refrescarArbolSilencioso()
     } catch (e) {
       if (e.status === 401 || e.status === 403) return
       const p = e.payload || {}
@@ -229,48 +238,62 @@ export default function BloqueRegistro({ expedienteId, tareaId, payload, onPaylo
     guardarReal()
   }
 
+  // En lectura, el valor tal como lo dice el servidor (no el formulario: no hay nada sin guardar).
+  const etiquetaResultado = notif.resultado ? (ETIQUETA_RESULTADO[notif.resultado] || notif.resultado) : '—'
+
   return (
-    <div className="card mb-3">
-      <div className="card-header card-header-accent fw-semibold small">Registro de la notificación</div>
-      <div className="card-body card-body-tinted">
-        <div className="small mb-2">
-          <span className="text-muted">Canal: </span>
-          {notif.canal
-            ? <span className="fw-semibold">{ETIQUETA_CANAL[notif.canal] || notif.canal}</span>
-            : <span className="text-muted fst-italic">sin fijar (lo fija el primer justificante)</span>}
-          <span className="text-muted ms-3">Intentos postales fallidos: </span>
-          <span className="fw-semibold">{notif.intentos_fallidos}</span>
-          <span className="text-muted"> de 2</span>
-        </div>
+    <TarjetaDatos titulo="Registro de la notificación" icono="fa-paper-plane">
+      <CampoDato rotulo="Canal" col={6}>
+        <ValorSoloLectura
+          rotulo="Canal"
+          valor={notif.canal ? (ETIQUETA_CANAL[notif.canal] || notif.canal) : 'Sin fijar'} />
+      </CampoDato>
+      <CampoDato rotulo="Intentos postales fallidos" col={6}>
+        <ValorSoloLectura rotulo="Intentos postales fallidos" valor={`${notif.intentos_fallidos} de 2`} />
+      </CampoDato>
+      {!notif.canal && (
+        <div className="col-12 small text-muted fst-italic">El canal lo fija el primer justificante.</div>
+      )}
 
-        {!hayJustificante && (
-          <div className="alert alert-info py-2 px-3 small">
-            Aún no hay ningún justificante vinculado. Vincula el que corresponda desde la Despensa
-            (los previos, como consumidos) o elige abajo el justificante final.
+      {!hayJustificante && (
+        <div className="col-12">
+          <div className="alert alert-info py-2 px-3 small mb-0">
+            {soloLectura
+              ? 'Aún no hay ningún justificante vinculado.'
+              : 'Aún no hay ningún justificante vinculado. Vincula el que corresponda desde la Despensa '
+                + '(los previos, como consumidos) o elige abajo el justificante final.'}
           </div>
-        )}
-
-        <div className="mb-2">
-          <label className="form-label small text-muted mb-1">Justificante final</label>
-          <select className="form-select form-select-sm" value={form.documentoId}
-                  disabled={poolCargando || previsualizando || enviando} onChange={seleccionarDocumento}>
-            {!producido && <option value="">— Selecciona documento —</option>}
-            {documentosFinales.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.nombre}{d.tipo_doc ? ` — ${d.tipo_doc}` : ''}{d.fecha ? ` · ${d.fecha}` : ''}
-              </option>
-            ))}
-          </select>
-          {previsualizando && <div className="text-muted small mt-1">Previsualizando…</div>}
-          {notaPreview && (
-            <div className={`small mt-1 text-${notaPreview.tipo === 'success' ? 'success' : 'warning-emphasis'}`}>
-              {notaPreview.texto}
-            </div>
-          )}
         </div>
+      )}
 
-        {confirmandoSustitucion && (
-          <div className="alert alert-warning py-2 px-3 mb-2 small">
+      <CampoDato rotulo="Justificante final">
+        {soloLectura ? (
+          <ValorSoloLectura rotulo="Justificante final" valor={producido ? producido.nombre : '—'} />
+        ) : (
+          <>
+            <select className="form-select form-select-sm" value={form.documentoId}
+                    aria-label="Justificante final"
+                    disabled={poolCargando || previsualizando || enviando} onChange={seleccionarDocumento}>
+              {!producido && <option value="">— Selecciona documento —</option>}
+              {documentosFinales.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.nombre}{d.tipo_doc ? ` — ${d.tipo_doc}` : ''}{d.fecha ? ` · ${d.fecha}` : ''}
+                </option>
+              ))}
+            </select>
+            {previsualizando && <div className="text-muted small mt-1">Previsualizando…</div>}
+            {notaPreview && (
+              <div className={`small mt-1 text-${notaPreview.tipo === 'success' ? 'success' : 'warning-emphasis'}`}>
+                {notaPreview.texto}
+              </div>
+            )}
+          </>
+        )}
+      </CampoDato>
+
+      {!soloLectura && confirmandoSustitucion && (
+        <div className="col-12">
+          <div className="alert alert-warning py-2 px-3 mb-0 small">
             <div className="mb-2">
               Vas a sustituir el documento producido actual («{producido && producido.nombre}») por el
               seleccionado. El anterior volverá al pool.
@@ -285,59 +308,81 @@ export default function BloqueRegistro({ expedienteId, tareaId, payload, onPaylo
               </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        <div className="mb-2">
-          <label className="form-label small text-muted mb-1">Resultado</label>
-          <select className="form-select form-select-sm" value={form.resultado}
-                  disabled={enviando || form.opciones.length === 0}
-                  onChange={(e) => poner('resultado')(e.target.value)}>
-            <option value="">— Sin resultado —</option>
-            {form.opciones.map((cod) => (
-              <option key={cod} value={cod}>{ETIQUETA_RESULTADO[cod] || cod}</option>
-            ))}
-          </select>
-          {form.opciones.length === 0 && (
-            <div className="small text-muted mt-1">
-              Los resultados posibles dependen del canal: aparecerán al vincular un justificante.
+      <CampoDato rotulo="Resultado">
+        {soloLectura ? (
+          <ValorSoloLectura rotulo="Resultado" valor={etiquetaResultado} />
+        ) : (
+          <>
+            <select className="form-select form-select-sm" value={form.resultado}
+                    aria-label="Resultado"
+                    disabled={enviando || form.opciones.length === 0}
+                    onChange={(e) => poner('resultado')(e.target.value)}>
+              <option value="">— Sin resultado —</option>
+              {form.opciones.map((cod) => (
+                <option key={cod} value={cod}>{ETIQUETA_RESULTADO[cod] || cod}</option>
+              ))}
+            </select>
+            {form.opciones.length === 0 && (
+              <div className="small text-muted mt-1">
+                Los resultados posibles dependen del canal: aparecerán al vincular un justificante.
+              </div>
+            )}
+          </>
+        )}
+      </CampoDato>
+
+      <CampoDato rotulo="Identificador de envío">
+        {soloLectura ? (
+          <ValorSoloLectura rotulo="Identificador de envío" valor={notif.identificador_envio || '—'} />
+        ) : (
+          <>
+            <input type="text" className="form-control form-control-sm" value={form.identificador}
+                   aria-label="Identificador de envío"
+                   maxLength={MAX_IDENTIFICADOR} disabled={enviando}
+                   onChange={(e) => poner('identificador')(e.target.value)} />
+            <div className="small text-muted text-end">{form.identificador.length}/{MAX_IDENTIFICADOR}</div>
+          </>
+        )}
+      </CampoDato>
+
+      {sede.aplica && (
+        <div className="col-12">
+          <div className="text-muted small fw-semibold mb-1">Sede electrónica (art. 42.1 LPACAP)</div>
+          {sede.estado && ESTADO_SEDE[sede.estado] && (
+            <div className={`alert alert-${ESTADO_SEDE[sede.estado][0]} py-1 px-2 small mb-0`}>
+              {ESTADO_SEDE[sede.estado][1]}
             </div>
           )}
         </div>
+      )}
+      {sede.aplica && sede.estado !== 'PUESTA' && (
+        <CampoDato rotulo="Justificación de no poner en sede">
+          {soloLectura ? (
+            <ValorSoloLectura rotulo="Justificación de no poner en sede" multilinea
+                              valor={notif.sede_justificacion || ''} />
+          ) : (
+            <textarea className="form-control form-control-sm" rows={3} value={form.sedeJustificacion}
+                      aria-label="Justificación de no poner en sede" disabled={enviando}
+                      onChange={(e) => poner('sedeJustificacion')(e.target.value)} />
+          )}
+        </CampoDato>
+      )}
 
-        <div className="mb-2">
-          <label className="form-label small text-muted mb-1">Identificador de envío</label>
-          <input type="text" className="form-control form-control-sm" value={form.identificador}
-                 maxLength={MAX_IDENTIFICADOR} disabled={enviando}
-                 onChange={(e) => poner('identificador')(e.target.value)} />
-          <div className="small text-muted text-end">{form.identificador.length}/{MAX_IDENTIFICADOR}</div>
-        </div>
-
-        {sede.aplica && (
-          <div className="mb-2">
-            <div className="text-muted small fw-semibold mb-1">Sede electrónica (art. 42.1 LPACAP)</div>
-            {sede.estado && ESTADO_SEDE[sede.estado] && (
-              <div className={`alert alert-${ESTADO_SEDE[sede.estado][0]} py-1 px-2 small mb-1`}>
-                {ESTADO_SEDE[sede.estado][1]}
-              </div>
-            )}
-            {sede.estado !== 'PUESTA' && (
-              <>
-                <label className="form-label small text-muted mb-1">Justificación de no poner en sede</label>
-                <textarea className="form-control form-control-sm" rows={2} value={form.sedeJustificacion}
-                          disabled={enviando}
-                          onChange={(e) => poner('sedeJustificacion')(e.target.value)} />
-              </>
-            )}
-          </div>
+      <CampoDato rotulo="Observaciones">
+        {soloLectura ? (
+          <ValorSoloLectura rotulo="Observaciones" multilinea valor={notif.observaciones || ''} />
+        ) : (
+          <textarea className="form-control form-control-sm" rows={3} value={form.observaciones}
+                    aria-label="Observaciones" disabled={enviando}
+                    onChange={(e) => poner('observaciones')(e.target.value)} />
         )}
+      </CampoDato>
 
-        <div className="mb-3">
-          <label className="form-label small text-muted mb-1">Observaciones</label>
-          <textarea className="form-control form-control-sm" rows={2} value={form.observaciones}
-                    disabled={enviando} onChange={(e) => poner('observaciones')(e.target.value)} />
-        </div>
-
-        <div className="small border-top pt-2 mb-3">
+      <div className="col-12">
+        <div className="small border-top pt-2">
           <FilaFecha rotulo="Cumplimiento del deber de notificar" fecha={payload.fechas.cumplimiento}
                      ayuda="sin justificante con fecha" />
           <FilaFecha rotulo="Efectos frente al interesado" fecha={payload.fechas.efectos}
@@ -346,37 +391,45 @@ export default function BloqueRegistro({ expedienteId, tareaId, payload, onPaylo
             Las fechas salen de los justificantes: para corregirlas, corrige la fecha del documento.
           </div>
         </div>
-
-        {bloqueo && (
-          <div className="mb-2">
-            <BloqueoForzar
-              bloqueo={bloqueo}
-              titulo="Este registro necesita justificación"
-              textoAccion="Registrar igualmente"
-              placeholder="Motivo por el que se registra igualmente (queda en bitácora)"
-              justificacion={justificacion}
-              setJustificacion={setJustificacion}
-              creando={enviando}
-              onForzar={() => guardarReal({ bypass: true, justificacion: justificacion.trim() })}
-              onCancelar={() => setBloqueo(null)}
-            />
-            {payload.destinatario.bloquea && (
-              <div className="small text-muted mt-1">
-                Registrarlo sin destinatario es irreversible: la tarea queda sin destinatario para siempre.
-              </div>
-            )}
-          </div>
-        )}
-
-        {error && <div className="alert alert-danger py-2 px-3 small mb-2">{error}</div>}
-        {advertencia && <div className="alert alert-warning py-2 px-3 small mb-2">{advertencia}</div>}
-
-        <button type="button" className="btn btn-sm btn-primary"
-                disabled={enviando || confirmandoSustitucion || !hayCambios || !hayJustificante}
-                onClick={guardar}>
-          {enviando ? 'Guardando…' : 'Guardar'}
-        </button>
       </div>
-    </div>
+
+      {!soloLectura && bloqueo && (
+        <div className="col-12">
+          <BloqueoForzar
+            bloqueo={bloqueo}
+            titulo="Este registro necesita justificación"
+            textoAccion="Registrar igualmente"
+            placeholder="Motivo por el que se registra igualmente (queda en bitácora)"
+            justificacion={justificacion}
+            setJustificacion={setJustificacion}
+            creando={enviando}
+            onForzar={() => guardarReal({ bypass: true, justificacion: justificacion.trim() })}
+            onCancelar={() => setBloqueo(null)}
+          />
+          {payload.destinatario.bloquea && (
+            <div className="small text-muted mt-1">
+              Registrarlo sin destinatario es irreversible: la tarea queda sin destinatario para siempre.
+            </div>
+          )}
+        </div>
+      )}
+
+      {!soloLectura && error && (
+        <div className="col-12"><div className="alert alert-danger py-2 px-3 small mb-0">{error}</div></div>
+      )}
+      {!soloLectura && advertencia && (
+        <div className="col-12"><div className="alert alert-warning py-2 px-3 small mb-0">{advertencia}</div></div>
+      )}
+
+      {!soloLectura && (
+        <div className="col-12">
+          <button type="button" className="btn btn-sm btn-primary"
+                  disabled={enviando || confirmandoSustitucion || !hayCambios || !hayJustificante}
+                  onClick={guardar}>
+            {enviando ? 'Guardando…' : 'Guardar'}
+          </button>
+        </div>
+      )}
+    </TarjetaDatos>
   )
 }
