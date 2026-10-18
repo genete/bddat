@@ -1,1 +1,5 @@
 *.pdf -text
+
+# Lo escribe Vite siempre con LF: con core.autocrlf=true (Git for Windows) un
+# checkout en CRLF lo marcaría " M" tras cada "Build React" sin diff real.
+app/static/js/react/manifest.json text eol=lf
