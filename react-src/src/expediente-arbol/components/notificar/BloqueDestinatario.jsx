@@ -13,8 +13,9 @@
 // `GET …/notificar` (`notificaciones[0].destinatario` es la copia congelada;
 // `destinatario` dice si se puede cambiar y si bloquea; `eleccion_destinatario`,
 // cómo se elige) y escribe con `PUT …/notificar/destinatario`, que devuelve el
-// payload nuevo. Esos PUT guardan de inmediato, fuera del borrador del marco: viene de #929 y está
-// anotado en #1055.
+// payload nuevo. Esos PUT guardan de inmediato, fuera del borrador del marco (viene de #929; #1055
+// lo deja así, igual que el destinatario de ELABORAR). Mientras la entidad elegida no se confirma,
+// el bloque avisa al marco (`useInteriorSucio`) y la barra dice «Cancelar».
 //
 // Quién lo elige depende de la fuente (`se_elige_en`):
 //   - 'NOTIFICAR'  boletín, ayuntamiento, ministerio, órgano superior u órgano
@@ -26,6 +27,7 @@
 //                  se elige; si falta algo, el motivo dice dónde ponerlo.
 import React from 'react'
 import { useArbolStore } from '../../store.js'
+import { useInteriorSucio } from '../../interiorSucio.js'
 import { putNotificarDestinatario } from '../../api.js'
 import { showToast } from '../../../shared/ui/toast.js'
 import { TarjetaDatos, CampoDato, ValorSoloLectura } from '../TarjetaDatos.jsx'
@@ -97,6 +99,10 @@ export default function BloqueDestinatario({ expedienteId, tareaId, payload, onP
 
   const puedeElegir = eleccion.se_elige_en === 'NOTIFICAR' && estado.editable
   const cambia = entidadId !== '' && entidadId !== elegidaAhora
+  // Una entidad elegida en el selector y sin confirmar se perdería al salir (#1055). «Refrescar datos»
+  // y «Tomar el destinatario» son acciones inmediatas, sin texto pendiente: no cuentan.
+  useInteriorSucio('destinatario-notificacion', 'el destinatario de la notificación',
+                   !soloLectura && puedeElegir && cambia)
 
   const enviar = async (body, mensaje) => {
     setEnviando(true)

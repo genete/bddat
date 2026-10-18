@@ -38,11 +38,14 @@
  *
  *  2) El árbol del expediente (React), con AppInspector.setFrame(desc): { modo, titulo, tipo,
  *     estado, candado, semaforo: { color, titulo }, puedeEditar, minWidth, hayCambios,
- *     guardando, onEditar, onGuardar, onSalir }.
+ *     interiorSucio, guardando, onEditar, onGuardar, onSalir }.
  *
  * «Guardar» está deshabilitado mientras no haya cambios; el botón de salida dice «Cerrar» si
- * no los hay y «Cancelar» si los hay (ADR-023 §5 bis). En un fragmento Jinja hay cambios
- * cuando el usuario ha tocado el formulario: eventos input/change dentro del form. Todo
+ * no los hay y «Cancelar» si los hay (ADR-023 §5 bis). `interiorSucio` (#1055) es texto sin
+ * guardar en un bloque que guarda por su cuenta: no enciende «Guardar» (el bloque tiene su
+ * botón) pero sí cuenta como algo que se perdería al salir, así que el botón dice «Cancelar».
+ * Los fragmentos Jinja no lo usan: su único «sucio» es el del formulario, que se da cuando
+ * el usuario lo ha tocado (eventos input/change dentro del form). Todo
  * script que cambie campos sin que el usuario teclee (añadir o quitar una fila, escribir un
  * campo oculto) debe disparar un `change` que burbujee, o «Guardar» no se enciende.
  */
@@ -64,7 +67,7 @@
   var FRAME_DEFECTOS = {
     modo: 'ver', titulo: '', tipo: '', estado: '', candado: false, semaforo: null,
     puedeEditar: false, rotuloEditar: 'Editar', rotuloGuardar: 'Guardar',
-    hayCambios: false, guardando: false, sinFormulario: false,
+    hayCambios: false, interiorSucio: false, guardando: false, sinFormulario: false,
     minWidth: 0,   // ancho mínimo del cuerpo en px; 0 = sin mínimo (el cuerpo se encoge)
     onEditar: null, onGuardar: null, onSalir: null
   };
@@ -152,7 +155,7 @@
     var salir = _q(bar, '[data-frame-salir]');
     salir.hidden = f.modo !== 'editar';
     salir.disabled = !!f.guardando;
-    salir.textContent = f.hayCambios ? 'Cancelar' : 'Cerrar';
+    salir.textContent = (f.hayCambios || f.interiorSucio) ? 'Cancelar' : 'Cerrar';
   }
 
   // Mezcla un cambio parcial en el marco ya pintado (no hace nada si no hay marco).
@@ -221,7 +224,7 @@
   // «Cerrar» (formulario limpio) y «Cancelar» (con cambios): vuelven a lectura. Solo avisa de
   // descarte si de verdad había algo que perder (ADR-023 §5 bis).
   function _salirEdicion() {
-    var habiaCambios = !!(_frame && _frame.hayCambios);
+    var habiaCambios = !!(_frame && (_frame.hayCambios || _frame.interiorSucio));
     setLocked(false);
     _formDirty = false;
     _restoreReadFragment();

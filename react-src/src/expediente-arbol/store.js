@@ -60,6 +60,13 @@ export const useArbolStore = create((set, get) => ({
                                 // consumir #419/#711, desfavorable sin respaldo #765) llegaban con
                                 // puede_escapar:true y morían en un toast, sin vía de forzado.
   creando: false,
+  // Interior sucio (#1055): bloques del inspector que guardan por su cuenta y llevan texto sin
+  // guardar —ítem técnico y requerimientos de ANALIZAR, registro y destinatario de NOTIFICAR,
+  // destinatario de ELABORAR—. No pasan por el borrador, así que `selectHayCambios` no los ve;
+  // cada bloque se apunta aquí con `useInteriorSucio` y la barra del marco los trata como
+  // cambios que se perderían al salir. {id del bloque: rótulo que se enseña al usuario}.
+  interiorSucio: {},
+  avisoGuardarInterior: false,  // el «Guardar» de la barra se pulsó con interior sucio: espera decisión
 
   // --- pool de documentos (S3b-3) ---
   pool: [],                       // [{id, nombre, tipo_doc, fecha}] del expediente
@@ -186,7 +193,7 @@ export const useArbolStore = create((set, get) => ({
     set({ seleccion: sel, modoEdicion: true, edicionCargando: true,
           editableCampos: [], borrador: {}, borradorInicial: {},
           tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '', fuenteCrear: '',
-          bloqueoGuardar: null,
+          bloqueoGuardar: null, avisoGuardarInterior: false,
           docVinculandoPendiente: null,
           menuCtx: null, menuDetalle: null, borrarPendienteConfirm: false })
     const expedienteId = get().expedienteId
@@ -211,18 +218,36 @@ export const useArbolStore = create((set, get) => ({
 
   setCampo: (campo, valor) => set((s) => ({ borrador: { ...s.borrador, [campo]: valor } })),
 
+  // Un bloque interior apunta (rotulo) o borra (null) lo que lleva sin guardar (#1055). Idempotente:
+  // no toca el estado si no cambia nada, para no repintar el marco con cada tecla.
+  marcarInteriorSucio: (id, rotulo) => set((s) => {
+    if ((s.interiorSucio[id] || null) === (rotulo || null)) return {}
+    const { [id]: _quitado, ...resto } = s.interiorSucio
+    return { interiorSucio: rotulo ? { ...resto, [id]: rotulo } : resto }
+  }),
+
+  // «Guardar» de la barra (#1055). Guardar sale a lectura y tira lo que los bloques llevan sin
+  // guardar, igual que «Cancelar»: con interior sucio no se guarda a ciegas, se pide decisión
+  // (`AvisoGuardarInterior`, en el inspector).
+  pedirGuardar: () => {
+    if (Object.keys(get().interiorSucio).length > 0) { set({ avisoGuardarInterior: true }); return }
+    get().guardar()
+  },
+  seguirEditando: () => set({ avisoGuardarInterior: false }),
+
   cancelar: () => {
     const { seleccion } = get()
-    const habiaCambios = selectHayCambios(get())
+    const habiaCambios = selectHayCambios(get()) || selectHayInteriorSucio(get())
     set({ modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {}, edicionCargando: false,
           tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '', fuenteCrear: '',
-          bloqueoGuardar: null,
+          bloqueoGuardar: null, avisoGuardarInterior: false,
           docVinculandoPendiente: null,
           borrarPendienteConfirm: false,
           detalle: null, detalleCargando: false, detalleError: null })
     get().cargarDetalle(seleccion)
     // Solo avisa de descarte si de verdad había algo que perder (ADR-023 §5 bis:
     // en limpio "sale a lectura sin revertir nada" — sin toast que sugiera lo contrario).
+    // Los bloques interiores se desmontan al salir de la edición y con ellos lo que llevaban escrito.
     if (habiaCambios) showToast('Cambios descartados', 'info')
   },
 
@@ -266,7 +291,7 @@ export const useArbolStore = create((set, get) => ({
         showToast(typeof a === 'string' ? a : (a.motivo || 'Revisa la advertencia'), 'warning')
       }
       set({ guardando: false, modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {},
-            bloqueoGuardar: null })
+            bloqueoGuardar: null, avisoGuardarInterior: false })
       await get().refrescarArbol()
     } catch (e) {
       set({ guardando: false })
@@ -1014,3 +1039,8 @@ window.addEventListener('bddat:motor-modo-cambio', () => {
 // este nodo" y debe ser inequívoco desde el primer momento. Lo gobierna `modoEdicion`.
 export const selectHayCambios = (s) =>
   JSON.stringify(s.borrador) !== JSON.stringify(s.borradorInicial)
+
+// Texto sin guardar en un bloque que guarda por su cuenta (#1055). Aparte de `hayCambios`: no
+// enciende «Guardar» (el bloque tiene su propio botón), pero sí hace que salir sea «Cancelar»,
+// avise del descarte y arme el aviso de cerrar la pestaña.
+export const selectHayInteriorSucio = (s) => Object.keys(s.interiorSucio).length > 0

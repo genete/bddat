@@ -5,7 +5,7 @@
 // El Inspector real es S3 (aquí solo Viewbar + Arbol).
 import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useArbolStore, selectHayCambios } from './store.js'
+import { useArbolStore, selectHayCambios, selectHayInteriorSucio } from './store.js'
 import { showToast } from '../shared/ui/toast.js'
 import Viewbar from './components/Viewbar.jsx'
 import Arbol from './components/Arbol.jsx'
@@ -62,6 +62,7 @@ export default function App() {
   const arbol = useArbolStore((s) => s.arbol)
   const enEdicion = useArbolStore((s) => s.modoEdicion)
   const hayCambios = useArbolStore(selectHayCambios)
+  const interiorSucio = useArbolStore(selectHayInteriorSucio)
 
   // Carga inicial + restaurar selección desde la URL. (En dev standalone no hay
   // data-expediente-id: el mock se preinyecta en el store desde main.jsx.)
@@ -126,13 +127,14 @@ export default function App() {
   }, [enEdicion])
 
   // beforeunload (diálogo nativo "cambios sin guardar"): solo si hay cambios reales que
-  // perder. El overlay ya impide navegar dentro de la app durante la edición.
+  // perder, también los que llevan sin guardar los bloques interiores (#1055). El overlay ya
+  // impide navegar dentro de la app durante la edición.
   useEffect(() => {
-    if (!(enEdicion && hayCambios)) return
+    if (!(enEdicion && (hayCambios || interiorSucio))) return
     const handler = (e) => { e.preventDefault(); e.returnValue = '' }
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
-  }, [enEdicion, hayCambios])
+  }, [enEdicion, hayCambios, interiorSucio])
 
   if (cargando) return <div className="p-4 text-muted">Cargando árbol…</div>
   if (error) {

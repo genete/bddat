@@ -17,10 +17,13 @@
 //     justificante de la NOTIFICAR (§D).
 //
 // El cambio se guarda al pulsar el botón (`PUT …/tramite/<id>/destinatario`), de inmediato y fuera
-// del borrador del marco: no es nuevo de #1043 (viene de #929) y está anotado en #1055. El estado
-// lo comparten la tarjeta y el generador de escritos (`destinatarioEstado.js`).
+// del borrador del marco (viene de #929). Decisión de #1055: se queda así, porque el generador de
+// escritos necesita el destinatario guardado dentro de la misma edición; mientras la entidad elegida
+// no se confirma, el bloque avisa al marco (`useInteriorSucio`). El estado lo comparten la tarjeta y
+// el generador de escritos (`destinatarioEstado.js`).
 import React from 'react'
 import { useArbolStore } from '../../store.js'
+import { useInteriorSucio } from '../../interiorSucio.js'
 import { useDestinatarioTramite } from '../../destinatarioEstado.js'
 import { TarjetaDatos, CampoDato, ValorSoloLectura } from '../TarjetaDatos.jsx'
 import SelectorEntidad from './SelectorEntidad.jsx'
@@ -40,12 +43,16 @@ export default function TarjetaDestinatarioTramite({ expedienteId, tramiteId }) 
   React.useEffect(() => { cargar(expedienteId, tramiteId) }, [cargar, expedienteId, tramiteId])
   React.useEffect(() => { setEntidadId(elegidaAhora) }, [elegidaAhora])
 
+  const puedeElegir = modoEdicion && !!d && d.se_elige && d.cambiable
+  const cambia = entidadId !== '' && entidadId !== elegidaAhora
+  // Una entidad elegida en el selector y sin confirmar se perdería al salir (#1055). Antes de las
+  // salidas de abajo: un hook no puede ir después de un `return` condicional.
+  useInteriorSucio('destinatario-escrito', 'el destinatario del escrito', puedeElegir && cambia)
+
   if (error && !d) return <div className="text-danger small mb-3">{error}</div>
   if (!d || !d.aplica) return null
 
   const dest = d.destinatario
-  const puedeElegir = modoEdicion && d.se_elige && d.cambiable
-  const cambia = entidadId !== '' && entidadId !== elegidaAhora
   const textoBoton = dest ? 'Cambiar destinatario' : 'Elegir destinatario'
 
   return (
