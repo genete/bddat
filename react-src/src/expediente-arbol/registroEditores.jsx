@@ -18,9 +18,10 @@
 // hechos de `useHechosDelNodo`. Las funciones de una entrada son puras: un hook no puede ir dentro de una entrada (no se
 // llamaría siempre), así que lo que depende de un store se calcula en `useHechosDelNodo` y la entrada solo lo lee.
 //
-// `entradaDe` devuelve `null` para los tipos que aún no tienen entrada; el contenedor sigue con sus banderas
-// para ellos hasta que se migren (#1047, tipo a tipo). La clave de cada elemento es la de la entrada, sin el id del
-// nodo: dos nodos del mismo tipo comparten componente, igual que antes, y no se pierde lo escrito al cambiar de uno a otro.
+// `entradaDe` siempre devuelve una entrada: las tareas la eligen por su superficie (`superficiesTarea.js`) y una tarea
+// que no figura en esa tabla —o una superficie sin entrada aquí— es genérica. Para añadir un tipo de nodo o una
+// superficie basta una entrada nueva y su alta en `POR_TIPO` o `POR_SUPERFICIE`. La clave de cada elemento es la de la
+// entrada, sin el id del nodo: dos nodos del mismo tipo comparten componente y no se pierde lo escrito al cambiar de uno a otro.
 import React from 'react'
 import { superficieDeNodoTarea, idTramiteDeTarea } from './superficiesTarea.js'
 import {
@@ -49,8 +50,11 @@ export function useHechosDelNodo(id) {
   }
 }
 
-// Expediente: sin «Borrar» (el expediente no se borra desde el árbol).
-const EXPEDIENTE = entrada({ borrable: false })
+// Expediente: sin «Borrar» (el expediente no se borra desde el árbol). La versión del proyecto no se edita desde
+// el inspector (sin botón «Editar»); su entrada es la misma y sirve también de red para un tipo de nodo desconocido.
+const NODO_SIN_BORRADO = entrada({ borrable: false })
+const EXPEDIENTE = NODO_SIN_BORRADO
+const VERSION = NODO_SIN_BORRADO
 
 const ORGANISMO = entrada({})
 
@@ -174,7 +178,8 @@ const TAREA_NOTIFICAR = entrada({
 })
 
 const POR_TIPO = {
-  expediente: EXPEDIENTE, solicitud: SOLICITUD, fase: FASE, organismo: ORGANISMO, tramite: TRAMITE,
+  expediente: EXPEDIENTE, solicitud: SOLICITUD, version: VERSION, fase: FASE, organismo: ORGANISMO,
+  tramite: TRAMITE,
 }
 
 // Entrada de cada superficie propia de las tareas (`superficiesTarea.js`).
@@ -183,14 +188,14 @@ const POR_SUPERFICIE = {
   NOTIFICAR: TAREA_NOTIFICAR,
 }
 
-// La entrada del nodo seleccionado (`nodo` = su entrada en el árbol), o `null` si su tipo aún no está migrado.
+// La entrada del nodo seleccionado (`nodo` = su entrada en el árbol).
 export function entradaDe(tipo, nodo, arbol) {
   if (tipo === 'tarea') {
     const superficie = superficieDeNodoTarea(arbol, nodo)
     if (superficie === null) {
       return nodo && nodo.tipo_codigo === 'ESPERAR_PLAZO' ? TAREA_ESPERAR_PLAZO : TAREA_GENERICA
     }
-    return Object.hasOwn(POR_SUPERFICIE, superficie) ? POR_SUPERFICIE[superficie] : null
+    return Object.hasOwn(POR_SUPERFICIE, superficie) ? POR_SUPERFICIE[superficie] : TAREA_GENERICA
   }
-  return Object.hasOwn(POR_TIPO, tipo) ? POR_TIPO[tipo] : null
+  return Object.hasOwn(POR_TIPO, tipo) ? POR_TIPO[tipo] : NODO_SIN_BORRADO
 }

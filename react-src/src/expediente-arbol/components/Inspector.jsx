@@ -368,7 +368,7 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
   const expedienteId = useArbolStore((s) => s.expedienteId)
   const arbol = useArbolStore((s) => s.arbol)
   const esHoja = tipo === 'tarea'
-  // Las tarjetas propias de los tipos ya migrados al registro de editores (#1047).
+  // Las tarjetas propias del nodo las declara su entrada del registro de editores (#1047).
   const entrada = entradaDe(tipo, nodo, arbol)
   const ctx = { tipo, id: detalle.nodo.id, nodo, detalle, expedienteId, arbol, modoEdicion }
   // La tarea tiene diseño si es genérica o su superficie ya migró (todas hoy).
@@ -382,7 +382,7 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
       {diseno
         ? <DatosNodo diseno={diseno} detalle={detalle} nodo={nodo} bloqueado={faseCerrada} />
         : <Campos campos={detalle.campos} />}
-      {entrada && entrada.tarjetas.map((t) => <React.Fragment key={t.clave}>{t.render(ctx)}</React.Fragment>)}
+      {entrada.tarjetas.map((t) => <React.Fragment key={t.clave}>{t.render(ctx)}</React.Fragment>)}
       {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
       <Plazo plazo={detalle.plazo} />
       <PlazosActos nodo={nodo} tipo={tipo} />
@@ -554,12 +554,9 @@ function InspectorEdicion({ nodo }) {
   const seleccion             = useArbolStore((s) => s.seleccion)
   const borrarPendienteConfirm = useArbolStore((s) => s.borrarPendienteConfirm)
   const arbol                 = useArbolStore((s) => s.arbol)
-  // Qué lleva este nodo, según el registro de editores (#1047). Los tipos que aún no tienen entrada
-  // (`null`) siguen por las banderas de abajo, que se retiran a medida que se migran.
+  // Qué lleva este nodo —tarjetas, acciones, modales, Despensa y «Borrar»— lo declara su entrada del registro de
+  // editores (#1047). Las tareas eligen entrada por su superficie (`superficiesTarea.js`).
   const entrada = entradaDe(seleccion.tipo, nodo, arbol)
-  // La superficie de trabajo propia de la tarea sale de una única tabla por tipo de tarea y trámite
-  // (`superficiesTarea.js`); una tarea que no figura en ella es genérica (más abajo).
-  const superficie = seleccion.tipo === 'tarea' ? superficieDeNodoTarea(arbol, nodo) : null
   // Todos los nodos tienen diseño de datos (#1043, lectura ≈ edición): la edición pinta la misma zona
   // de datos que la lectura y debajo las acciones y el pie.
   const detalle      = useArbolStore((s) => s.detalle)
@@ -568,21 +565,17 @@ function InspectorEdicion({ nodo }) {
   const hayDetalle   = !!detalle && !cargandoDet
   // Los hechos que salen de un store (hooks que van siempre): los leen las entradas del registro.
   const hechos = useHechosDelNodo(Number(seleccion.id))
-  // Nodos migrados (#1043): la misma columna que la lectura (alto completo, pie pegado abajo) y
-  // tres zonas en este orden: datos (la misma zona que en lectura), acciones y creación (solo
-  // en edición, debajo de los datos) y pie. En las acciones va primero la Despensa —lo
-  // frecuente, con su panel a la vista—, después las propias del nodo (la bisagra de la
-  // solicitud; las consultas, el cumplimiento, el cierre y la reapertura de la fase) y, al
-  // fondo, «Borrar», por destructivo.
+  // La misma columna que la lectura (alto completo, pie pegado abajo) y tres zonas en este orden: datos (la misma
+  // zona que en lectura), acciones y creación (solo en edición, debajo de los datos) y pie. En las acciones va
+  // primero la Despensa —lo frecuente, con su panel a la vista—, después las propias del nodo y, al fondo,
+  // «Borrar», por destructivo.
   const ctx = { tipo: seleccion.tipo, id: seleccion.id, nodo, detalle, hayDetalle, expedienteId, arbol, modoEdicion: true, ...hechos }
-  // «Borrar» y la Despensa del nodo: de su entrada, o de las banderas mientras el tipo no esté migrado.
-  const borrable = !entrada ? seleccion.tipo !== 'expediente'
-    : (typeof entrada.borrable === 'function' ? entrada.borrable(ctx) : entrada.borrable)
+  const borrable = typeof entrada.borrable === 'function' ? entrada.borrable(ctx) : entrada.borrable
   const puedeBorrar = borrable && puedeEditarNodo(seleccion.tipo)
-  const despensa = entrada ? entrada.despensa : {}
+  const despensa = entrada.despensa
   // Las acciones propias solo se pintan si hay alguna, para no dejar un separador vacío: con que una de las de
   // la entrada tenga algo que enseñar (`hay`) se pinta la zona y entonces van todas, cada una decide si dice algo.
-  const hayPropias = !!entrada && entrada.acciones.some((a) => a.hay(ctx))
+  const hayPropias = entrada.acciones.some((a) => a.hay(ctx))
   return (
     <div className="p-3 d-flex flex-column h-100">
       {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
@@ -602,13 +595,13 @@ function InspectorEdicion({ nodo }) {
             )}
             {hayPropias && (
               <div className="border-top mt-3 pt-3">
-                {entrada && entrada.acciones.map((a) => <React.Fragment key={a.clave}>{a.render(ctx)}</React.Fragment>)}
+                {entrada.acciones.map((a) => <React.Fragment key={a.clave}>{a.render(ctx)}</React.Fragment>)}
               </div>
             )}
             {puedeBorrar && <div className="mb-3"><BotonBorrar /></div>}
           </>
         )}
-      {entrada && entrada.modales.map((m) => <React.Fragment key={m.clave}>{m.render(ctx)}</React.Fragment>)}
+      {entrada.modales.map((m) => <React.Fragment key={m.clave}>{m.render(ctx)}</React.Fragment>)}
       {hayDetalle && <Acciones referencia={detalle.referencia} />}
     </div>
   )
