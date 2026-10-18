@@ -27,6 +27,7 @@
 - No squash merge — preservar historial completo de commits
 - **Crear la rama antes de la primera edición**, no después de commitear en `develop`. Vale también al reanudar un issue tras mergear su fase anterior: la rama activa vuelve a ser `develop` y el paso hay que repetirlo.
 - **Verificar la rama con `git status` antes de commitear o pushear.** El estado del inicio de la sesión caduca: el usuario puede trabajar en paralelo en el mismo directorio. Si la rama no es la esperada, crear una de seguridad desde `develop` en vez de tocar la del usuario, y devolver el repo a su rama al terminar.
+- **Sesiones en la nube:** no se usa la rama `claude/*` que asigna la plataforma; se crea desde `develop`, antes de la primera edición, la rama con la nomenclatura de abajo (ver `.claude/rules/flujo-git.md`).
 - **Sin worktrees.** Se probaron en #776 (2026-08-22) y se descartaron: cada uno exige reconstruir el bundle de React y `node_modules`. No proponerlos salvo que el usuario lo pida.
 
 **Naming:** `feature/issue-XX-descripcion` · `bugfix/issue-XX-descripcion` · `refactor/descripcion` · `docs/descripcion`

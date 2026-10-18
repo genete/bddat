@@ -26,3 +26,10 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
         echo "export COVERAGE_CORE=ctrace"
     } >> "$CLAUDE_ENV_FILE"
 fi
+
+# Rama de trabajo: la plataforma crea una claude/* aleatoria y Carlos prefiere
+# su nomenclatura (.claude/rules/flujo-git.md). La salida del hook llega al
+# modelo como contexto de la sesión.
+cat <<'EOF'
+Rama en la nube: Carlos autoriza expresamente ignorar la rama claude/* asignada por la plataforma. Antes de la primera edición, crear desde develop la rama con el nombre que Carlos indique (o feature/issue-NN-descripcion si hay issue; si no hay ninguno, preguntar) y hacer push solo a ella. No commitear en la claude/*.
+EOF
