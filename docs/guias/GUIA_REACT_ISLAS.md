@@ -390,7 +390,13 @@ front. Una superficie nueva se añade a la tabla, a `SUPERFICIES_CON_DISENO` y a
   destinatario de ELABORAR) no pasa por el borrador del marco. Si al guardar refresca el árbol, usa
   `refrescarArbolSilencioso` o `refrescarDetalleSilencioso` (no `refrescarArbol`/`cargarDetalle`, que
   vacían el detalle y remontan la zona de datos: se perdería lo escrito en las demás tarjetas, como
-  Notas sin guardar). El aviso de «Cerrar» sobre lo que quede sin guardar es #1055.
+  Notas sin guardar). Lo que el bloque lleve escrito sin guardar se lo avisa al marco con
+  `useInteriorSucio(id, rótulo, sucio)` (`interiorSucio.js`, #1055): mientras `sucio` sea cierto, la barra
+  dice «Cancelar», el «Guardar» de la barra pide decisión antes de tirar ese texto y el cierre de la
+  pestaña avisa. El hook va antes de cualquier `return` condicional del componente; el bloque se
+  desapunta solo al quedar limpio o desmontarse. `rótulo` es lo que lee el usuario en el aviso («Hay
+  texto sin guardar en …»). Todo bloque nuevo que guarde por su cuenta y tenga texto, selector o lista
+  editable lo lleva.
 - **El estado que comparten una tarjeta y su acción** (notificaciones del trámite, análisis,
   destinatario, notificar) vive en un store de zustand con el id del nodo (`notificarEstado.js`,
   `analizarEstado.js`, `destinatarioEstado.js`, `useNotificacionesTramite`), para no parpadear al

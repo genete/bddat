@@ -621,14 +621,16 @@ estado:
 AppInspector.setFrame({
   modo: 'ver' | 'editar', tipo, titulo, estado, candado,        // cabecera
   semaforo: { color, titulo },                                  // semáforo del nodo (o null)
-  puedeEditar, hayCambios, guardando, minWidth,
+  puedeEditar, hayCambios, interiorSucio, guardando, minWidth,
   onEditar, onGuardar, onSalir,                                 // los tres gestos
 })
 ```
 
-Los gestos ejecutan las acciones del store (`entrarEdicion`, `guardar()` —nunca con el evento del
-clic: su primer argumento es la justificación del escape— y `cancelar`). `hayCambios` es el del
-borrador global del store.
+Los gestos ejecutan las acciones del store (`entrarEdicion`, `pedirGuardar()` —nunca `guardar` con el
+evento del clic: su primer argumento es la justificación del escape— y `cancelar`). `hayCambios` es el
+del borrador global del store. `interiorSucio` (#1055) es texto sin guardar en un bloque que guarda por
+su cuenta: no enciende «Guardar» pero hace que el botón de salida diga «Cancelar». Los fragmentos Jinja
+no lo declaran. Cómo avisa un bloque: `useInteriorSucio` en `GUIA_REACT_ISLAS.md`.
 
 **Ancho mínimo (D11).** El cuerpo hace scroll vertical y horizontal; la barra queda fuera. Cada
 caso declara el ancho por debajo del cual su contenido no se encoge más (`data-min-width`, o

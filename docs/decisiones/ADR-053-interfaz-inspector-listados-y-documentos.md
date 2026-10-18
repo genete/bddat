@@ -28,7 +28,7 @@ ADR-022 y ADR-023 fijan el estándar: un listado con `ScrollInfinito` en modo se
 
 ### A — Un marco único, pintado por el shell (D9, D10, D12)
 
-El inspector es el primer estándar para todos los casos: la isla del árbol (por ahora la única) y los fragmentos Jinja. Se monta **un marco** que estandariza ver / editar y guardar / cancelar / cerrar, y **lo pinta el shell una sola vez**. El árbol deja de pintar su barra y pasa a alimentar al shell con su estado de borrador (`hayCambios`, `guardando`, guardar, cancelar): es el «puente».
+El inspector es el primer estándar para todos los casos: la isla del árbol (por ahora la única) y los fragmentos Jinja. Se monta **un marco** que estandariza ver / editar y guardar / cancelar / cerrar, y **lo pinta el shell una sola vez**. El árbol deja de pintar su barra y pasa a alimentar al shell con su estado de borrador (`hayCambios`, `interiorSucio`, `guardando`, guardar, cancelar): es el «puente».
 
 - **En vista:** cabecera y botón Editar, sin cruz. El inspector se cierra con clic exterior (no en otra fila, que cambia la selección), `Escape` o un clic en la franja de redimensionado.
 - **En edición:** Guardar y Cancelar, solo habilitados con borrador vivo, y «Cerrar» siempre presente. El contrato de salida de ADR-023 §5 bis no cambia: con la superficie limpia, «Cerrar» sale sin revertir nada; con cambios sin guardar, la salida se comporta como Cancelar.
@@ -82,7 +82,7 @@ Se definió implementando nodo a nodo, de arriba abajo y de genérico a especial
 
 **Lo que se deja como estaba, por decisión de Carlos**
 
-- Los bloques que guardan por su cuenta —secciones de ANALIZAR, registro y destinatario de NOTIFICAR, destinatario de ELABORAR— no pasan por el borrador del marco, y «Cerrar» no avisa de lo escrito en ellos: es #1055. Que el destinatario guarde con un `PUT` inmediato lo cuestiona Carlos y está anotado allí.
+- Los bloques que guardan por su cuenta —secciones de ANALIZAR, registro y destinatario de NOTIFICAR, destinatario de ELABORAR— no pasan por el borrador del marco. Lo que llevan escrito sin guardar sí avisa al marco por otro canal (#1055, 18/10/2026; *interpretación*, decidido al implementar y pendiente de confirmar por Carlos): el botón de salida pasa a «Cancelar» y descarta con el aviso de siempre, «Guardar» no se enciende (el bloque tiene su botón), el «Guardar» de la barra pide decisión antes de tirar ese texto y el cierre de la pestaña avisa. El destinatario sigue guardando con un `PUT` inmediato, porque el generador de escritos de ELABORAR lo necesita guardado dentro de la misma edición; solo cuenta como «sin guardar» la entidad elegida y sin confirmar.
 - Los mismos documentos salen en más de un sitio (la lista «Documentos» de la zona de datos, la de la Despensa, el select del registro de NOTIFICAR) hasta que #1044 los unifique.
 - Las incoherencias que puedan ser un bug no se corrigen en #1043: están anotadas como hallazgos.
 - El texto «Tarea ejecutada» de ELABORAR sigue siendo opcional: lo pinta quien calcula el estado a partir de los documentos vinculados.
