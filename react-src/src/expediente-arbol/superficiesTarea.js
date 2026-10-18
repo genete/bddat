@@ -21,11 +21,13 @@
 //      la repite). Devuelve el nombre de la superficie o `undefined` para quedarse con el defecto.
 //   3. `defecto`.
 //
-// Las dos variantes de ANALIZAR ya usan el diseño de datos de la tarea: su análisis son tarjetas de
-// datos —en lectura y en edición— y producir el diagnóstico, una acción de la zona de acciones.
-// `ANALIZAR` es el de los trámites con secciones extendidas (ANALISIS_DOCUMENTAL,
-// REQUERIMIENTO_SUBSANACION) y `ANALIZAR_SIMPLE` el de los demás. ELABORAR y NOTIFICAR siguen con su
-// editor hasta que la fase 3 las migre.
+// Las dos variantes de ANALIZAR y ELABORAR ya usan el diseño de datos de la tarea: lo que la
+// superficie tiene de dato son tarjetas —en lectura y en edición— y lo que tiene de acción (producir
+// el diagnóstico, generar el escrito) va a la zona de acciones, solo en edición. `ANALIZAR` es el de
+// los trámites con secciones extendidas (ANALISIS_DOCUMENTAL, REQUERIMIENTO_SUBSANACION) y
+// `ANALIZAR_SIMPLE` el de los demás. Las variantes de ELABORAR (si el trámite tiene destinatario y si
+// se elige) las resuelve su tarjeta con el endpoint del destinatario. NOTIFICAR sigue con su editor
+// hasta que la fase 3 la migre.
 export const SUPERFICIES_TAREA = {
   ANALIZAR: {
     defecto: 'ANALIZAR',
@@ -39,23 +41,35 @@ export const SUPERFICIES_TAREA = {
 }
 
 // Superficies que ya usan el diseño de datos de la tarea (las demás siguen con su editor).
-const SUPERFICIES_CON_DISENO = new Set(['ANALIZAR', 'ANALIZAR_SIMPLE'])
+const SUPERFICIES_CON_DISENO = new Set(['ANALIZAR', 'ANALIZAR_SIMPLE', 'ELABORAR'])
 
 // ¿Pinta la tarea la zona de datos común? Sí si es genérica (sin superficie) o su superficie ya migró.
 export function tieneDisenoTarea(superficie) {
   return !superficie || SUPERFICIES_CON_DISENO.has(superficie)
 }
 
-// Código del tipo de trámite al que pertenece la tarea, buscado en el árbol ya cargado.
-export function codigoTramiteDeTarea(arbol, tareaId) {
+// El trámite (su nodo del árbol) al que pertenece la tarea, buscado en el árbol ya cargado.
+function tramiteDeTarea(arbol, tareaId) {
   for (const sol of (arbol && arbol.solicitudes) || []) {
     for (const fase of sol.fases || []) {
       for (const tr of fase.tramites || []) {
-        if ((tr.tareas || []).some((ta) => ta.id === tareaId)) return tr.tipo_codigo || null
+        if ((tr.tareas || []).some((ta) => ta.id === tareaId)) return tr
       }
     }
   }
   return null
+}
+
+// Código del tipo de trámite al que pertenece la tarea, o null.
+export function codigoTramiteDeTarea(arbol, tareaId) {
+  const tr = tramiteDeTarea(arbol, tareaId)
+  return tr ? (tr.tipo_codigo || null) : null
+}
+
+// Id del trámite al que pertenece la tarea, o null.
+export function idTramiteDeTarea(arbol, tareaId) {
+  const tr = tramiteDeTarea(arbol, tareaId)
+  return tr ? tr.id : null
 }
 
 // Nombre de la superficie propia de la combinación, o null si la tarea es genérica. `nodo` es la

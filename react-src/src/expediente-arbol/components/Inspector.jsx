@@ -18,11 +18,12 @@ import { barraDeActo, fechaLarga } from '../plazoActo.js'
 import Despensa from './Despensa.jsx'
 import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
 import { AnalisisExtendido, AccionProducirDiagnostico } from './AnalizarEditor.jsx'
-import ElaborarEditor from './ElaborarEditor.jsx'
+import { AccionGenerarEscrito } from './ElaborarEditor.jsx'
+import TarjetaDestinatarioTramite from './notificar/DestinatarioTramite.jsx'
 import NotificarEditor from './NotificarEditor.jsx'
 import DatosNodo from './DatosNodo.jsx'
 import { disenoDeNodo } from '../disenosDatos.js'
-import { superficieDeNodoTarea, tieneDisenoTarea } from '../superficiesTarea.js'
+import { superficieDeNodoTarea, tieneDisenoTarea, idTramiteDeTarea } from '../superficiesTarea.js'
 import { TarjetaResultadoDiagnostico } from './AnalizarSimple.jsx'
 import { useDiagnosticoPendiente } from '../analizarEstado.js'
 import {
@@ -369,9 +370,9 @@ function Documentos({ documentos }) {
 //
 // Es la misma en lectura y en edición: en edición lo informativo no desaparece, se pueda editar
 // o no. La pintan en los dos modos los nodos que tienen un diseño en `disenosDatos.js`
-// (expediente, solicitud, versión, fase, organismo, trámite y la tarea genérica); las tareas con
-// superficie propia (ANALIZAR, ELABORAR, NOTIFICAR) la pintan solo en lectura, con la lista de
-// texto plano, y su edición es su editor, hasta que la fase 3 las migre.
+// (expediente, solicitud, versión, fase, organismo, trámite y la tarea genérica, ANALIZAR y
+// ELABORAR); las tareas NOTIFICAR, con superficie propia sin migrar, la pintan solo en lectura,
+// con la lista de texto plano, y su edición es su editor, hasta que la fase 3 las migre.
 function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
   const expedienteId = useArbolStore((s) => s.expedienteId)
@@ -397,6 +398,10 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
       )}
       {superficie === 'ANALIZAR' && (
         <AnalisisExtendido expedienteId={expedienteId} tareaId={Number(detalle.nodo.id)} />
+      )}
+      {superficie === 'ELABORAR' && idTramiteDeTarea(arbol, Number(detalle.nodo.id)) != null && (
+        <TarjetaDestinatarioTramite expedienteId={expedienteId}
+                                    tramiteId={idTramiteDeTarea(arbol, Number(detalle.nodo.id))} />
       )}
       {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
       <Plazo plazo={detalle.plazo} />
@@ -1177,12 +1182,14 @@ function InspectorEdicion({ nodo }) {
   const esAnalizarExtendido = superficie === 'ANALIZAR'
   const esAnalizarSimple = superficie === 'ANALIZAR_SIMPLE'
   const esAnalizar = esAnalizarExtendido || esAnalizarSimple
-  // ELABORAR (#608): idem, para enganchar "Generar escrito" (backend #167, huérfano
-  // de UI desde la eliminación del sistema BC en #500).
+  // ELABORAR (#608, #1043): ya usa el diseño de datos de la tarea. El destinatario del escrito es
+  // una tarjeta de datos —en lectura y en edición— y "Generar escrito" (backend #167, huérfano de UI
+  // desde la eliminación del sistema BC en #500), una acción de la zona de acciones
+  // (`AccionGenerarEscrito`). La Despensa NO se deshabilita — sigue siendo el mecanismo genérico que
+  // vincula el borrador de firma y el documento firmado.
   const esElaborar = superficie === 'ELABORAR'
-  // NOTIFICAR (#657/#658, ADR-034): idem, "Registrar envío"/"Completar resultado".
-  // Igual que ELABORAR, la Despensa NO se deshabilita — sigue siendo el mecanismo
-  // genérico que vincula el documento producido (desacoplado de estos formularios).
+  // NOTIFICAR (#657/#658, ADR-034): contenedor bespoke, "Registrar envío"/"Completar resultado".
+  // Igual que ELABORAR, la Despensa NO se deshabilita.
   const esNotificar = superficie === 'NOTIFICAR'
   // Tarea con diseño de datos (#1043): la genérica (sin superficie propia: hoy ESPERAR_PLAZO, y lo
   // será cualquier tipo de tarea o trámite que no figure en la tabla) y la de superficie ya migrada
@@ -1200,8 +1207,8 @@ function InspectorEdicion({ nodo }) {
   // qué documento es el producido cuando en la recepción llegan varios (regla de
   // #764). Es la única tarea cuyo producido es un documento recibido de fuera.
   const esEsperarPlazo = tareaConDiseno && nodo.tipo_codigo === 'ESPERAR_PLAZO'
-  // Los editores bespoke que quedan (ELABORAR y NOTIFICAR) no traen su propio control de borrado
-  // — #742. Fase cerrada no aplica aquí: seleccion.tipo es siempre 'tarea', nunca 'fase'.
+  // El editor bespoke que queda (NOTIFICAR) no trae su propio control de borrado — #742. Fase
+  // cerrada no aplica aquí: seleccion.tipo es siempre 'tarea', nunca 'fase'.
   const puedeBorrarTarea = !!superficie && puedeEditarNodo('tarea')
   // Fase CONSULTAS (ADR-042 §C, #396 bloque 5): acción propia de la fase, en la zona de acciones
   // (mismo criterio que ReabrirFase).
@@ -1241,6 +1248,7 @@ function InspectorEdicion({ nodo }) {
       || (esFase && hayDetalle && !!(detalle.cert_cumplimiento || detalle.cert_cierre))
       || hayNotifTramite
       || hayDiagnosticoPendiente
+      || esElaborar
     return (
       <div className="p-3 d-flex flex-column h-100">
         {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
@@ -1273,6 +1281,7 @@ function InspectorEdicion({ nodo }) {
                   {esAnalizar && (
                     <AccionProducirDiagnostico expedienteId={expedienteId} tareaId={Number(seleccion.id)} />
                   )}
+                  {esElaborar && <AccionGenerarEscrito tareaId={seleccion.id} nodo={nodo} />}
                 </div>
               )}
               {puedeBorrar && <div className="mb-3"><BotonBorrar /></div>}
@@ -1284,18 +1293,16 @@ function InspectorEdicion({ nodo }) {
       </div>
     )
   }
-  // Solo llegan aquí las tareas con superficie de trabajo propia sin migrar, ELABORAR y NOTIFICAR
-  // (la fase 3 de #1043 las migrará).
+  // Solo llegan aquí las tareas NOTIFICAR, la única superficie de trabajo propia sin migrar
+  // (la fase 3 de #1043 la migrará).
   return (
     <div className="p-3">
       {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
       {borrarPendienteConfirm
         ? <ConfirmacionBorrado nodo={nodo} />
-        : esElaborar
-          ? <ElaborarEditor tareaId={seleccion.id} nodo={nodo} />
-          : esNotificar
-            ? <NotificarEditor tareaId={seleccion.id} />
-            : null
+        : esNotificar
+          ? <NotificarEditor tareaId={seleccion.id} />
+          : null
       }
       {!borrarPendienteConfirm && puedeBorrarTarea && <BotonBorrar />}
       {!borrarPendienteConfirm && (

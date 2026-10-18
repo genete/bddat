@@ -1,10 +1,10 @@
 // BloqueNotas.jsx — campo directo `notas` de la tarea dentro de un contenedor
 // bespoke (#688).
 //
-// Los contenedores de superficie-de-trabajo (ANALIZAR/ELABORAR/NOTIFICAR)
-// sustituyen al diseño de tarea genérica, que es quien pinta las Notas (superficiesTarea.js).
-// Sin este bloque, `notas` —único campo directo de una tarea— quedaría
-// sin superficie donde escribirse: es lo que ocurría en ELABORAR y NOTIFICAR,
+// Los contenedores de superficie-de-trabajo sin migrar (hoy solo NOTIFICAR; ANALIZAR y ELABORAR ya
+// usan el diseño de datos de la tarea, que pinta las Notas: superficiesTarea.js)
+// sustituyen a ese diseño. Sin este bloque, `notas` —único campo directo de una tarea— quedaría
+// sin superficie donde escribirse: es lo que ocurría en NOTIFICAR (y antes en ELABORAR),
 // donde el campo era simplemente inaccesible desde el árbol.
 //
 // No lleva Guardar propio a propósito: escribe en `borrador.notas` del store y
