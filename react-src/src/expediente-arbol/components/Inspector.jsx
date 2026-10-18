@@ -16,7 +16,6 @@ import BarraPlazo from './nodos/BarraPlazo.jsx'
 import { barraDeActo, fechaLarga } from '../plazoActo.js'
 import Despensa from './Despensa.jsx'
 import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
-import { TarjetasNotificar } from './NotificarEditor.jsx'
 import DatosNodo from './DatosNodo.jsx'
 import { disenoDeNodo } from '../disenosDatos.js'
 import { superficieDeNodoTarea, tieneDisenoTarea } from '../superficiesTarea.js'
@@ -384,10 +383,6 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
         ? <DatosNodo diseno={diseno} detalle={detalle} nodo={nodo} bloqueado={faseCerrada} />
         : <Campos campos={detalle.campos} />}
       {entrada && entrada.tarjetas.map((t) => <React.Fragment key={t.clave}>{t.render(ctx)}</React.Fragment>)}
-      {superficie === 'NOTIFICAR' && (
-        <TarjetasNotificar expedienteId={expedienteId} tareaId={Number(detalle.nodo.id)}
-                           soloLectura={!modoEdicion} />
-      )}
       {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
       <Plazo plazo={detalle.plazo} />
       <PlazosActos nodo={nodo} tipo={tipo} />
@@ -565,10 +560,6 @@ function InspectorEdicion({ nodo }) {
   // La superficie de trabajo propia de la tarea sale de una única tabla por tipo de tarea y trámite
   // (`superficiesTarea.js`); una tarea que no figura en ella es genérica (más abajo).
   const superficie = seleccion.tipo === 'tarea' ? superficieDeNodoTarea(arbol, nodo) : null
-  // NOTIFICAR (#657/#658, ADR-034; #1043): ya usa el diseño de datos de la tarea. Aviso, destinatario,
-  // registro y justificantes previos son tarjetas de datos —en lectura y en edición— con sus controles
-  // vivos dentro (`TarjetasNotificar`); no tiene acciones propias. Igual que ELABORAR, la Despensa NO se
-  // deshabilita.
   // Todos los nodos tienen diseño de datos (#1043, lectura ≈ edición): la edición pinta la misma zona
   // de datos que la lectura y debajo las acciones y el pie.
   const detalle      = useArbolStore((s) => s.detalle)

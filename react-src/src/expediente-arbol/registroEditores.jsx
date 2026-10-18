@@ -26,6 +26,7 @@ import { superficieDeNodoTarea, idTramiteDeTarea } from './superficiesTarea.js'
 import {
   TarjetaNotificacionesTramite, AccionNotificacionesTramite, useHayNotificacionesTramite,
 } from './components/notificar/NotificacionesTramite.jsx'
+import { TarjetasNotificar } from './components/NotificarEditor.jsx'
 import { AccionGenerarEscrito } from './components/ElaborarEditor.jsx'
 import TarjetaDestinatarioTramite from './components/notificar/DestinatarioTramite.jsx'
 import { AnalisisExtendido, AccionProducirDiagnostico } from './components/AnalizarEditor.jsx'
@@ -162,13 +163,24 @@ const TAREA_ELABORAR = entrada({
   }],
 })
 
+// NOTIFICAR (#657/#658, ADR-034; #1043): aviso, destinatario, registro y justificantes previos son tarjetas de dato
+// —en lectura y en edición— con sus controles vivos dentro (`TarjetasNotificar`); no tiene acciones propias. Igual
+// que ELABORAR, la Despensa NO se deshabilita.
+const TAREA_NOTIFICAR = entrada({
+  tarjetas: [{
+    clave: 'notificar',
+    render: (c) => <TarjetasNotificar expedienteId={c.expedienteId} tareaId={Number(c.id)} soloLectura={!c.modoEdicion} />,
+  }],
+})
+
 const POR_TIPO = {
   expediente: EXPEDIENTE, solicitud: SOLICITUD, fase: FASE, organismo: ORGANISMO, tramite: TRAMITE,
 }
 
-// Entrada de cada superficie propia de las tareas (`superficiesTarea.js`); falta NOTIFICAR.
+// Entrada de cada superficie propia de las tareas (`superficiesTarea.js`).
 const POR_SUPERFICIE = {
   ANALIZAR: TAREA_ANALIZAR_EXTENDIDO, ANALIZAR_SIMPLE: TAREA_ANALIZAR_SIMPLE, ELABORAR: TAREA_ELABORAR,
+  NOTIFICAR: TAREA_NOTIFICAR,
 }
 
 // La entrada del nodo seleccionado (`nodo` = su entrada en el árbol), o `null` si su tipo aún no está migrado.
@@ -178,7 +190,6 @@ export function entradaDe(tipo, nodo, arbol) {
     if (superficie === null) {
       return nodo && nodo.tipo_codigo === 'ESPERAR_PLAZO' ? TAREA_ESPERAR_PLAZO : TAREA_GENERICA
     }
-    // NOTIFICAR sigue por las banderas hasta su migración.
     return Object.hasOwn(POR_SUPERFICIE, superficie) ? POR_SUPERFICIE[superficie] : null
   }
   return Object.hasOwn(POR_TIPO, tipo) ? POR_TIPO[tipo] : null
