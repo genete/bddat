@@ -36,7 +36,7 @@ al hub, el código muerto y la documentación obsoleta.
 | 6 | **#1044** | **Mini-listados de documentos** (D6, D13, D14): fila común con tres modos (vinculados, selector, edición); macro Jinja y componente React; estudio caso a caso de los sitios de §6.12, incluido pintar `subrol` | Frontend + backend (contrato del dato) | Abierto (11/10/2026), en cinco fases; la fase 1 es de definición, sin código, y no ha empezado |
 | 7 | **#1045** | **Estudio de la forma del contrato** editor ↔ poseedor del dato (D13, §8.16) | Estudio | Abierto (11/10/2026), sin profundizar. Sin urgencia; puede acabar en «no se estandariza» |
 | 8 | **#1046** | **Huérfano: «Vincular aquí»** va en un `<script>` en línea dentro de un fragmento, que el overlay no ejecuta (§7.3, §8.8) | Frontend | Abierto (11/10/2026), sin profundizar. Fallo de código por lectura, sin reproducir: reproducir antes de arreglar |
-| 9 | **#1047** | **Refactor del despacho de editores por tipo** en el árbol, 7 banderas (§8.11) | Frontend | Abierto (11/10/2026), sin profundizar. Mismos ficheros que #929, #1010, #1042 y #1043: cuidado con el orden |
+| 9 | **#1047** | **Refactor del despacho de editores por tipo** en el árbol, 7 banderas (§8.11) | Frontend | **Implementado** el 18/10/2026 (rama de trabajo, sin PR): registro de editores en `registroEditores.jsx`, ocho pasos, sin diferencias contra la base de comparación. Ver la entrada del 18/10 del historial |
 | 10 | **#1048** | **El alta** (§8.6): issue propio y, si al estudiarlo lo merece, ADR | Frontend | Abierto (11/10/2026), sin profundizar. #793 (modales de alta con recarga) se mantiene abierto, condicionado a lo que se decida |
 
 Orden propuesto por dependencias, no por prioridad: 1 antes de 4 (inspector), 5 y 2 porque los tres usan
@@ -163,3 +163,19 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   registro, `beforeunload` y el aviso del «Guardar»; el destinatario de ELABORAR, con la respuesta del servidor
   simulada. **No comprobado**: el ítem técnico (la semilla no trae ítems técnicos) y el destinatario de
   NOTIFICAR (la semilla no tiene un caso con selector).
+- **18/10/2026** — **#1047 implementado** (rama de trabajo, sin PR). El despacho de editores por tipo pasa de
+  banderas a un **registro** (`expediente-arbol/registroEditores.jsx`): cada tipo de nodo y cada superficie de
+  tarea declara sus tarjetas, acciones, modales, Despensa y si se borra, y `InspectorEdicion` y `ZonaDatos` solo
+  ejecutan la entrada. Decisiones de Carlos: el registro vive en un fichero nuevo (`superficiesTarea.js` se queda
+  como la parte de las tareas), ADR-053 no se toca, los hooks van en un único `useHechosDelNodo` (las entradas son
+  puras) y la migración se hace tipo a tipo, con el camino viejo y el nuevo conviviendo hasta terminar. Se hizo en
+  ocho pasos, cada uno comparado con una base capturada **sobre el código original**: 29 nodos en lectura y edición,
+  23 escenarios de interacción sin guardado y 7 que guardan (elegir y cambiar destinatario, enviar consultas,
+  producir el diagnóstico), sin una diferencia. Para tener esos casos se crearon datos sintéticos en la BD de la
+  nube (ítem técnico, segunda entidad publicadora, fases de Información pública y de consultas en el expediente 5,
+  y el expediente de resolución «sin notificar»): con ellos quedan comprobados en pantalla los tres casos que #1055
+  dejó sin comprobar (ítem técnico, y destinatario con selector de NOTIFICAR y de ELABORAR). *Interpretación*,
+  pendiente de confirmar por Carlos: las acciones de la solicitud y la fase salieron de `Inspector.jsx` a
+  `components/AccionesNodo.jsx` para evitar un ciclo de imports, y `visible` pasó a `hay` (la zona de acciones se
+  pinta si alguna tiene algo que enseñar y entonces van todas, que es lo que hacía el código anterior). El patrón,
+  en [`GUIA_REACT_ISLAS.md`](../guias/GUIA_REACT_ISLAS.md) §«El registro de editores del árbol».

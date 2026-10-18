@@ -367,18 +367,19 @@ en cada nodo está en la tabla del anexo a ADR-053 §C. El código, en `expedien
 | `disenosDatos.js` | Un diseño por nodo (`DISENO_*`) y `disenoDeNodo(tipo, {tareaConDiseno})`: tarjetas, campos (`etiqueta` del payload, `campo` del esquema editable, `col`, `control`, `visibleSi`, `valorDe`, `opcional`) y `ocultas` (lo que ya está en la barra del marco). Lo que el payload trae y el diseño no conoce cae en «Otros datos»: no se pierde nada en silencio |
 | `components/DatosNodo.jsx` | Pinta un diseño igual en los dos modos: control de solo lectura en lectura, vivo en edición, en el mismo sitio y con el mismo rótulo |
 | `components/TarjetaDatos.jsx` | `TarjetaDatos`, `CampoDato`, `ValorSoloLectura`, `CasillaSoloLectura`, `ControlCampo` (el select conserva el tipo del valor de la opción) |
-| `components/Inspector.jsx` | `ZonaDatos` (el diseño y las tarjetas propias del nodo) e `InspectorEdicion` (datos → Despensa → acciones propias → «Borrar» → pie «Copiar referencia») |
+| `components/Inspector.jsx` | `ZonaDatos` (el diseño y las tarjetas propias del nodo) e `InspectorEdicion` (datos → Despensa → acciones propias → «Borrar» → pie «Copiar referencia»). Ninguno de los dos pregunta por el tipo de nodo: leen su entrada del registro |
+| `registroEditores.jsx` | **Qué lleva cada nodo**: una entrada por tipo de nodo y por superficie de tarea (ver «El registro de editores del árbol», abajo) |
+| `components/AccionesNodo.jsx` | Las acciones propias de la solicitud (fin de instrucción, cierre, informe) y de la fase (consultas, cumplimiento, cierre, reapertura y su confirmación) |
 | `superficiesTarea.js` | Qué superficie lleva una tarea: tabla `SUPERFICIES_TAREA` con `defecto`, `variante(nodo)` y `porTramite` |
 
-**Para migrar o crear un nodo:** añadir su diseño en `disenosDatos.js`; si tiene bloques propios,
-llevar los de dato a `ZonaDatos` (tarjetas, en los dos modos) y los de acción al grupo de acciones de
-`InspectorEdicion` (`hayPropias`), solo en edición. Nada más cambia.
+**Para migrar o crear un nodo:** añadir su diseño en `disenosDatos.js` y su entrada en
+`registroEditores.jsx` (ver abajo). `Inspector.jsx` no se toca.
 
 **Una tarea es genérica por ausencia.** Su superficie la decide la combinación (tipo de tarea, trámite)
 en `superficiesTarea.js`; lo que no figura en la tabla usa el diseño común sin tocar nada, aunque la
 semilla no tenga ningún caso. Una variante la dice el nodo del árbol con un dato que pone el backend (el
 de ANALIZAR, `analisis_extendido`, sale de una única lista de trámites), no una lista repetida en el
-front. Una superficie nueva se añade a la tabla, a `SUPERFICIES_CON_DISENO` y a `ZonaDatos`.
+front. Una superficie nueva se añade a la tabla, a `SUPERFICIES_CON_DISENO` y a `POR_SUPERFICIE` del registro.
 
 **Criterios que no son obvios**
 
@@ -419,21 +420,44 @@ contenedor dentro de `#app-inspector-body`.
 {% endblock %}
 ```
 
-### Excepciones de los editores de tarea (bespoke)
+### El registro de editores del árbol (ADR-053 §C, #1047)
 
-*(Desde #1043 los editores de ANALIZAR, ELABORAR y NOTIFICAR son tarjetas de datos y acciones del
-diseño común; el criterio de abajo sigue valiendo para lo que `InspectorEdicion` condiciona por
-superficie, que #1047 sustituirá por un registro de editores.)*
+Qué lleva cada nodo en el inspector —tarjetas propias, acciones, modales, Despensa y «Borrar»— no lo
+decide un condicional en `InspectorEdicion`: lo **declara una entrada** de
+`expediente-arbol/registroEditores.jsx`, y `ZonaDatos` e `InspectorEdicion` solo la ejecutan. Antes eran
+banderas (`esAnalizar`, `esSolicitud`…) y cada tipo nuevo añadía otra.
 
-Los editores de ANALIZAR, ELABORAR y NOTIFICAR condicionan a veces algo del contenedor
-común (`InspectorEdicion`). Criterio para factorizar una excepción en un patrón
-compartido: no basta con contar apariciones. Una excepción que aparece en un solo editor
-sigue siendo un caso único (factorizarla sería generalizar a partir de N=1). Pero si una
-**segunda** excepción nace de la **misma causa raíz** (p. ej. «el editor gestiona su
-propio vínculo de documento y por eso el mecanismo genérico deja de tener sentido»), ya
-es un patrón: señalarlo como candidato a factorizar con una interfaz (cada editor declara
-si gestiona su propio vínculo) y no seguir apilando condicionales `esAnalizar`/`esX` en el
-contenedor. No esperar a una tercera aparición ni copiar el condicional sin más.
+| Campo de la entrada | Qué declara |
+|---|---|
+| `tarjetas` `[{clave, render(c)}]` | Tarjetas de dato propias, tras los datos del nodo; en lectura y en edición |
+| `acciones` `[{clave, hay(c), render(c)}]` | Acciones propias, solo en edición y en ese orden. La zona se pinta si alguna tiene algo que enseñar (`hay`); entonces van todas y cada `render` devuelve `null` si no dice nada |
+| `modales` `[{clave, render(c)}]` | Modales del nodo, solo en edición, al final del inspector |
+| `despensa` `{oculta, deshabilitarProducido, ayudaRecepcion}` | Cómo se comporta la Despensa (todo falso por defecto) |
+| `borrable` | Booleano o `(c) => booleano` (p. ej. una fase cerrada no se borra); además de los permisos |
+
+`c` es el contexto de la llamada: `{ tipo, id, nodo, detalle, hayDetalle, expedienteId, arbol, modoEdicion }`
+más los hechos de `useHechosDelNodo`. `entradaDe(tipo, nodo, arbol)` siempre devuelve una entrada: las
+tareas la eligen por su superficie (`POR_SUPERFICIE`) y una tarea sin superficie es genérica
+(`TAREA_GENERICA`; `TAREA_ESPERAR_PLAZO` añade la ayuda de recepción de la Despensa).
+
+**Reglas**
+
+- **Las funciones de una entrada son puras.** Un hook no puede ir dentro de una entrada (no se llamaría
+  siempre), así que lo que sale de un store de zustand —hoy, si el trámite tiene notificaciones y si hay un
+  diagnóstico por producir— se calcula en `useHechosDelNodo(id)` y la entrada solo lo lee. Un hecho nuevo es
+  una línea más ahí.
+- **Las claves son las de la entrada, sin el id del nodo.** Dos nodos del mismo tipo comparten componente
+  al cambiar de uno a otro, como antes, y no se pierde lo escrito en una tarjeta.
+- **Los componentes que usa una entrada no viven en `Inspector.jsx`**: el registro los importaría de un
+  fichero que a su vez lo importa a él (ciclo). Los de la solicitud y la fase están en `AccionesNodo.jsx`.
+
+**Para añadir** un tipo de nodo o una superficie de tarea: una entrada nueva y su alta en `POR_TIPO` o
+`POR_SUPERFICIE` (la superficie, además, en `superficiesTarea.js` y `SUPERFICIES_CON_DISENO`). Para
+añadir una tarjeta o una acción a un tipo que ya existe: una línea más en su lista. En los dos casos,
+`Inspector.jsx` no se toca.
+
+Es el patrón al que apuntaba el criterio de factorización de antes: a la segunda excepción con la misma
+causa raíz, una interfaz que cada tipo rellena y no más condicionales en el contenedor.
 
 ---
 
