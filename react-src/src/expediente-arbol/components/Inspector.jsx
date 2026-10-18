@@ -16,7 +16,6 @@ import BarraPlazo from './nodos/BarraPlazo.jsx'
 import { barraDeActo, fechaLarga } from '../plazoActo.js'
 import Despensa from './Despensa.jsx'
 import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
-import { AnalisisExtendido, AccionProducirDiagnostico } from './AnalizarEditor.jsx'
 import { AccionGenerarEscrito } from './ElaborarEditor.jsx'
 import TarjetaDestinatarioTramite from './notificar/DestinatarioTramite.jsx'
 import { TarjetasNotificar } from './NotificarEditor.jsx'
@@ -24,8 +23,6 @@ import DatosNodo from './DatosNodo.jsx'
 import { disenoDeNodo } from '../disenosDatos.js'
 import { superficieDeNodoTarea, tieneDisenoTarea, idTramiteDeTarea } from '../superficiesTarea.js'
 import { entradaDe, useHechosDelNodo } from '../registroEditores.jsx'
-import { TarjetaResultadoDiagnostico } from './AnalizarSimple.jsx'
-import { useDiagnosticoPendiente } from '../analizarEstado.js'
 
 export const ETIQUETA_TIPO = {
   expediente: 'Expediente',
@@ -389,12 +386,6 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
         ? <DatosNodo diseno={diseno} detalle={detalle} nodo={nodo} bloqueado={faseCerrada} />
         : <Campos campos={detalle.campos} />}
       {entrada && entrada.tarjetas.map((t) => <React.Fragment key={t.clave}>{t.render(ctx)}</React.Fragment>)}
-      {superficie === 'ANALIZAR_SIMPLE' && (
-        <TarjetaResultadoDiagnostico expedienteId={expedienteId} tareaId={Number(detalle.nodo.id)} />
-      )}
-      {superficie === 'ANALIZAR' && (
-        <AnalisisExtendido expedienteId={expedienteId} tareaId={Number(detalle.nodo.id)} />
-      )}
       {superficie === 'ELABORAR' && idTramiteDeTarea(arbol, Number(detalle.nodo.id)) != null && (
         <TarjetaDestinatarioTramite expedienteId={expedienteId}
                                     tramiteId={idTramiteDeTarea(arbol, Number(detalle.nodo.id))} />
@@ -580,13 +571,6 @@ function InspectorEdicion({ nodo }) {
   // La superficie de trabajo propia de la tarea sale de una única tabla por tipo de tarea y trámite
   // (`superficiesTarea.js`); una tarea que no figura en ella es genérica (más abajo).
   const superficie = seleccion.tipo === 'tarea' ? superficieDeNodoTarea(arbol, nodo) : null
-  // ANALIZAR (#442, #1043): las dos variantes ya usan el diseño de datos de la tarea. El análisis
-  // son tarjetas de datos —en lectura y en edición— y producir el diagnóstico, una acción de la zona
-  // de acciones. Con secciones extendidas (ADR-033: check documental, técnico y requerimientos) lo
-  // pinta `AnalisisExtendido`; sin ellas (trámites tipo CONSULTA_SEPARATA), `AnalizarSimple.jsx`.
-  const esAnalizarExtendido = superficie === 'ANALIZAR'
-  const esAnalizarSimple = superficie === 'ANALIZAR_SIMPLE'
-  const esAnalizar = esAnalizarExtendido || esAnalizarSimple
   // ELABORAR (#608, #1043): ya usa el diseño de datos de la tarea. El destinatario del escrito es
   // una tarjeta de datos —en lectura y en edición— y "Generar escrito" (backend #167, huérfano de UI
   // desde la eliminación del sistema BC en #500), una acción de la zona de acciones
@@ -605,9 +589,6 @@ function InspectorEdicion({ nodo }) {
   const hayDetalle   = !!detalle && !cargandoDet
   // Los hechos que salen de un store (hooks que van siempre): los leen las entradas del registro.
   const hechos = useHechosDelNodo(Number(seleccion.id))
-  // Diagnóstico por producir de un ANALIZAR (#1043): mientras falte, la zona de acciones lleva la
-  // acción de producirlo. Mismo hook-siempre que arriba.
-  const hayDiagnosticoPendiente = useDiagnosticoPendiente(Number(seleccion.id)) && esAnalizar
   // Nodos migrados (#1043): la misma columna que la lectura (alto completo, pie pegado abajo) y
   // tres zonas en este orden: datos (la misma zona que en lectura), acciones y creación (solo
   // en edición, debajo de los datos) y pie. En las acciones va primero la Despensa —lo
@@ -619,11 +600,10 @@ function InspectorEdicion({ nodo }) {
   const borrable = !entrada ? seleccion.tipo !== 'expediente'
     : (typeof entrada.borrable === 'function' ? entrada.borrable(ctx) : entrada.borrable)
   const puedeBorrar = borrable && puedeEditarNodo(seleccion.tipo)
-  const despensa = entrada ? entrada.despensa : { oculta: esAnalizarExtendido, deshabilitarProducido: esAnalizar }
+  const despensa = entrada ? entrada.despensa : {}
   // Las acciones propias solo se pintan si hay alguna, para no dejar un separador vacío: con que una de las de
   // la entrada tenga algo que enseñar (`hay`) se pinta la zona y entonces van todas, cada una decide si dice algo.
   const hayPropias = (!!entrada && entrada.acciones.some((a) => a.hay(ctx)))
-    || hayDiagnosticoPendiente
     || esElaborar
   return (
     <div className="p-3 d-flex flex-column h-100">
@@ -636,9 +616,6 @@ function InspectorEdicion({ nodo }) {
         ? <ConfirmacionBorrado nodo={nodo} />
         : (
           <>
-            {/* ADR-033 §1: en ANALIZAR extendido casar un requisito documental deriva el consumido,
-                así que la Despensa queda sin uso legítimo y se oculta. En el simple sigue viva. En
-                los dos el documento producido lo genera el diagnóstico, no se vincula a mano. */}
             {!despensa.oculta && (
               <div className="border-top mt-3 pt-3">
                 <Despensa deshabilitarProducido={!!despensa.deshabilitarProducido}
@@ -648,9 +625,6 @@ function InspectorEdicion({ nodo }) {
             {hayPropias && (
               <div className="border-top mt-3 pt-3">
                 {entrada && entrada.acciones.map((a) => <React.Fragment key={a.clave}>{a.render(ctx)}</React.Fragment>)}
-                {esAnalizar && (
-                  <AccionProducirDiagnostico expedienteId={expedienteId} tareaId={Number(seleccion.id)} />
-                )}
                 {esElaborar && <AccionGenerarEscrito tareaId={seleccion.id} nodo={nodo} />}
               </div>
             )}

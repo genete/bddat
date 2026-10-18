@@ -26,6 +26,9 @@ import { superficieDeNodoTarea } from './superficiesTarea.js'
 import {
   TarjetaNotificacionesTramite, AccionNotificacionesTramite, useHayNotificacionesTramite,
 } from './components/notificar/NotificacionesTramite.jsx'
+import { AnalisisExtendido, AccionProducirDiagnostico } from './components/AnalizarEditor.jsx'
+import { TarjetaResultadoDiagnostico } from './components/AnalizarSimple.jsx'
+import { useDiagnosticoPendiente } from './analizarEstado.js'
 import {
   CertFinInstruccion, CierreSolicitud, ModalInformeFinInstruccion,
   AccionesFaseConsultas, organismosPendientesSeparata, CertCumplimientoFase, CierreFase, ReabrirFase,
@@ -39,6 +42,7 @@ const entrada = (def) => ({ tarjetas: [], acciones: [], modales: [], despensa: {
 export function useHechosDelNodo(id) {
   return {
     hayNotificacionesTramite: useHayNotificacionesTramite(id),
+    hayDiagnosticoPendiente: useDiagnosticoPendiente(id),
   }
 }
 
@@ -106,16 +110,53 @@ const TAREA_GENERICA = entrada({})
 // recibido de fuera.
 const TAREA_ESPERAR_PLAZO = entrada({ despensa: { ayudaRecepcion: true } })
 
+// ANALIZAR (#442, #1043): el análisis son tarjetas de dato —en lectura y en edición— y producir el diagnóstico, una
+// acción de la zona de acciones mientras falte producirlo. Con secciones extendidas (ADR-033: check documental,
+// técnico y requerimientos) las pinta `AnalisisExtendido`; sin ellas (trámites tipo CONSULTA_SEPARATA),
+// `AnalizarSimple.jsx`. En los dos el documento producido lo genera el diagnóstico, no se vincula a mano.
+const ACCION_PRODUCIR = {
+  clave: 'producir-diagnostico',
+  hay: (c) => c.hayDiagnosticoPendiente,
+  render: (c) => <AccionProducirDiagnostico expedienteId={c.expedienteId} tareaId={Number(c.id)} />,
+}
+
+// Con secciones extendidas casar un requisito documental deriva el consumido, así que la Despensa queda sin uso
+// legítimo y se oculta (ADR-033 §1).
+const TAREA_ANALIZAR_EXTENDIDO = entrada({
+  tarjetas: [{
+    clave: 'analisis',
+    render: (c) => <AnalisisExtendido expedienteId={c.expedienteId} tareaId={Number(c.id)} />,
+  }],
+  acciones: [ACCION_PRODUCIR],
+  despensa: { oculta: true },
+})
+
+// En el simple la Despensa sigue viva, con el producido deshabilitado.
+const TAREA_ANALIZAR_SIMPLE = entrada({
+  tarjetas: [{
+    clave: 'resultado',
+    render: (c) => <TarjetaResultadoDiagnostico expedienteId={c.expedienteId} tareaId={Number(c.id)} />,
+  }],
+  acciones: [ACCION_PRODUCIR],
+  despensa: { deshabilitarProducido: true },
+})
+
 const POR_TIPO = {
   expediente: EXPEDIENTE, solicitud: SOLICITUD, fase: FASE, organismo: ORGANISMO, tramite: TRAMITE,
 }
 
+// Entrada de cada superficie propia de las tareas (`superficiesTarea.js`); falta ELABORAR y NOTIFICAR.
+const POR_SUPERFICIE = { ANALIZAR: TAREA_ANALIZAR_EXTENDIDO, ANALIZAR_SIMPLE: TAREA_ANALIZAR_SIMPLE }
+
 // La entrada del nodo seleccionado (`nodo` = su entrada en el árbol), o `null` si su tipo aún no está migrado.
 export function entradaDe(tipo, nodo, arbol) {
   if (tipo === 'tarea') {
-    // ANALIZAR, ELABORAR y NOTIFICAR tienen superficie propia y siguen por las banderas hasta su migración.
-    if (superficieDeNodoTarea(arbol, nodo) !== null) return null
-    return nodo && nodo.tipo_codigo === 'ESPERAR_PLAZO' ? TAREA_ESPERAR_PLAZO : TAREA_GENERICA
+    const superficie = superficieDeNodoTarea(arbol, nodo)
+    if (superficie === null) {
+      return nodo && nodo.tipo_codigo === 'ESPERAR_PLAZO' ? TAREA_ESPERAR_PLAZO : TAREA_GENERICA
+    }
+    // ELABORAR y NOTIFICAR siguen por las banderas hasta su migración.
+    return Object.hasOwn(POR_SUPERFICIE, superficie) ? POR_SUPERFICIE[superficie] : null
   }
   return Object.hasOwn(POR_TIPO, tipo) ? POR_TIPO[tipo] : null
 }
