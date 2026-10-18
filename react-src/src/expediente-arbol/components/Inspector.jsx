@@ -24,12 +24,9 @@ import { TarjetasNotificar } from './NotificarEditor.jsx'
 import DatosNodo from './DatosNodo.jsx'
 import { disenoDeNodo } from '../disenosDatos.js'
 import { superficieDeNodoTarea, tieneDisenoTarea, idTramiteDeTarea } from '../superficiesTarea.js'
-import { entradaDe } from '../registroEditores.jsx'
+import { entradaDe, useHechosDelNodo } from '../registroEditores.jsx'
 import { TarjetaResultadoDiagnostico } from './AnalizarSimple.jsx'
 import { useDiagnosticoPendiente } from '../analizarEstado.js'
-import {
-  TarjetaNotificacionesTramite, AccionNotificacionesTramite, useHayNotificacionesTramite,
-} from './notificar/NotificacionesTramite.jsx'
 import ModalConfirmacionFrase from './ModalConfirmacionFrase.jsx'
 
 export const ETIQUETA_TIPO = {
@@ -379,6 +376,9 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
   const expedienteId = useArbolStore((s) => s.expedienteId)
   const arbol = useArbolStore((s) => s.arbol)
   const esHoja = tipo === 'tarea'
+  // Las tarjetas propias de los tipos ya migrados al registro de editores (#1047).
+  const entrada = entradaDe(tipo, nodo, arbol)
+  const ctx = { tipo, id: detalle.nodo.id, nodo, detalle, expedienteId, arbol, modoEdicion }
   // La tarea tiene diseño si es genérica o su superficie ya migró (todas hoy).
   const superficie = esHoja ? superficieDeNodoTarea(arbol, nodo) : null
   const tareaConDiseno = esHoja && !!nodo && tieneDisenoTarea(superficie)
@@ -390,9 +390,7 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
       {diseno
         ? <DatosNodo diseno={diseno} detalle={detalle} nodo={nodo} bloqueado={faseCerrada} />
         : <Campos campos={detalle.campos} />}
-      {tipo === 'tramite' && (
-        <TarjetaNotificacionesTramite expedienteId={expedienteId} tramiteId={Number(detalle.nodo.id)} />
-      )}
+      {entrada && entrada.tarjetas.map((t) => <React.Fragment key={t.clave}>{t.render(ctx)}</React.Fragment>)}
       {superficie === 'ANALIZAR_SIMPLE' && (
         <TarjetaResultadoDiagnostico expedienteId={expedienteId} tareaId={Number(detalle.nodo.id)} />
       )}
@@ -1253,12 +1251,8 @@ function InspectorEdicion({ nodo }) {
   // decide el backend (`cert_cumplimiento`/`cert_cierre` solo vienen en las
   // finalizadoras).
   const esFase = seleccion.tipo === 'fase'
-  // Notificaciones del trámite (#929, ADR-051 §D): a quién falta notificar (tarjeta de datos, en
-  // los dos modos) y el botón de añadirlas (acciones, solo aquí). Si el trámite no notifica a
-  // nadie según el catálogo, ni la tarjeta ni el botón se pintan. El hook va siempre (reglas de
-  // los hooks) y solo cuenta si el nodo es un trámite: un id de tarea puede coincidir con el último.
-  const esTramite = seleccion.tipo === 'tramite'
-  const hayNotifTramite = useHayNotificacionesTramite(Number(seleccion.id)) && esTramite
+  // Los hechos que salen de un store (hooks que van siempre): los leen las entradas del registro.
+  const hechos = useHechosDelNodo(Number(seleccion.id))
   // Diagnóstico por producir de un ANALIZAR (#1043): mientras falte, la zona de acciones lleva la
   // acción de producirlo. Mismo hook-siempre que arriba.
   const hayDiagnosticoPendiente = useDiagnosticoPendiente(Number(seleccion.id)) && esAnalizar
@@ -1274,13 +1268,15 @@ function InspectorEdicion({ nodo }) {
   const puedeBorrar = borrable && puedeEditarNodo(seleccion.tipo) && !faseCerrada
   // La Despensa del nodo: de su entrada, o de las banderas mientras el tipo no esté migrado.
   const despensa = entrada ? entrada.despensa : { oculta: esAnalizarExtendido, deshabilitarProducido: esAnalizar }
+  // Las acciones propias de la entrada que están a la vista, y las de los tipos aún no migrados.
+  const ctx = { tipo: seleccion.tipo, id: seleccion.id, nodo, detalle, expedienteId, arbol, modoEdicion: true, ...hechos }
+  const acciones = entrada ? entrada.acciones.filter((a) => a.visible(ctx)) : []
   // Las acciones propias solo se pintan si hay alguna, para no dejar un separador vacío.
   // Cumplimiento y cierre solo existen en las finalizadoras (el backend trae su certificado
   // solo en ellas); «Enviar consultas» solo con organismos pendientes.
-  const hayPropias = esSolicitud || faseCerrada
+  const hayPropias = acciones.length > 0 || esSolicitud || faseCerrada
     || (esFaseConsultas && organismosPendientesSeparata(nodo).length > 0)
     || (esFase && hayDetalle && !!(detalle.cert_cumplimiento || detalle.cert_cierre))
-    || hayNotifTramite
     || hayDiagnosticoPendiente
     || esElaborar
   return (
@@ -1305,15 +1301,13 @@ function InspectorEdicion({ nodo }) {
             )}
             {hayPropias && (
               <div className="border-top mt-3 pt-3">
+                {acciones.map((a) => <React.Fragment key={a.clave}>{a.render(ctx)}</React.Fragment>)}
                 {esSolicitud && <CertFinInstruccion />}
                 {esSolicitud && <CierreSolicitud />}
                 {esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
                 {esFase && <CertCumplimientoFase />}
                 {esFase && <CierreFase nodo={nodo} />}
                 {faseCerrada && <ReabrirFase />}
-                {esTramite && (
-                  <AccionNotificacionesTramite expedienteId={expedienteId} tramiteId={Number(seleccion.id)} />
-                )}
                 {esAnalizar && (
                   <AccionProducirDiagnostico expedienteId={expedienteId} tareaId={Number(seleccion.id)} />
                 )}
