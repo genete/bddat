@@ -75,10 +75,15 @@ En `react-src/vite.config.js`, añade la isla al objeto `ISLANDS`:
 
 ```js
 const ISLANDS = {
-  'diagrama-esftt': resolve(__dirname, 'src/diagrama-esftt/index.jsx'),
-  'mi-isla':        resolve(__dirname, 'src/mi-isla/index.jsx'),   // ← nueva
+  'diagrama-esftt': resolve(RAIZ, 'src/diagrama-esftt/index.jsx'),
+  'mi-isla':        resolve(RAIZ, 'src/mi-isla/index.jsx'),   // ← nueva (RAIZ, no __dirname)
 }
 ```
+
+`RAIZ` está definida al principio del propio `vite.config.js` (ruta real del proyecto). No uses
+`__dirname` en el modo build: si el build se lanza desde un alias de la carpeta (la unidad `D:` de un
+PC es un alias de `C:\Users\…`), las claves del `manifest.json` versionado salen con rutas absolutas y
+`git diff` marca cambios que no son reales.
 
 ### 3. Montarla en un template Jinja
 
