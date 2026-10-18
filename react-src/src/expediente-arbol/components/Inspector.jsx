@@ -24,6 +24,7 @@ import { TarjetasNotificar } from './NotificarEditor.jsx'
 import DatosNodo from './DatosNodo.jsx'
 import { disenoDeNodo } from '../disenosDatos.js'
 import { superficieDeNodoTarea, tieneDisenoTarea, idTramiteDeTarea } from '../superficiesTarea.js'
+import { entradaDe } from '../registroEditores.jsx'
 import { TarjetaResultadoDiagnostico } from './AnalizarSimple.jsx'
 import { useDiagnosticoPendiente } from '../analizarEstado.js'
 import {
@@ -1212,6 +1213,9 @@ function InspectorEdicion({ nodo }) {
   const seleccion             = useArbolStore((s) => s.seleccion)
   const borrarPendienteConfirm = useArbolStore((s) => s.borrarPendienteConfirm)
   const arbol                 = useArbolStore((s) => s.arbol)
+  // Qué lleva este nodo, según el registro de editores (#1047). Los tipos que aún no tienen entrada
+  // (`null`) siguen por las banderas de abajo, que se retiran a medida que se migran.
+  const entrada = entradaDe(seleccion.tipo, nodo, arbol)
   // La superficie de trabajo propia de la tarea sale de una única tabla por tipo de tarea y trámite
   // (`superficiesTarea.js`); una tarea que no figura en ella es genérica (más abajo).
   const superficie = seleccion.tipo === 'tarea' ? superficieDeNodoTarea(arbol, nodo) : null
@@ -1232,20 +1236,12 @@ function InspectorEdicion({ nodo }) {
   // registro y justificantes previos son tarjetas de datos —en lectura y en edición— con sus controles
   // vivos dentro (`TarjetasNotificar`); no tiene acciones propias. Igual que ELABORAR, la Despensa NO se
   // deshabilita.
-  // Tarea con diseño de datos (#1043): la genérica (sin superficie propia: hoy ESPERAR_PLAZO, y lo
-  // será cualquier tipo de tarea o trámite que no figure en la tabla) y la de superficie ya migrada
-  // (hoy todas).
-  const tareaConDiseno = seleccion.tipo === 'tarea' && !!nodo && tieneDisenoTarea(superficie)
   // Todos los nodos tienen diseño de datos (#1043, lectura ≈ edición): la edición pinta la misma zona
   // de datos que la lectura y debajo las acciones y el pie.
   const detalle      = useArbolStore((s) => s.detalle)
   const cargandoDet  = useArbolStore((s) => s.detalleCargando)
   const seleccionar  = useArbolStore((s) => s.seleccionar)
   const hayDetalle   = !!detalle && !cargandoDet
-  // ESPERAR_PLAZO (#766): sin editor bespoke — solo la ayuda de la Despensa sobre
-  // qué documento es el producido cuando en la recepción llegan varios (regla de
-  // #764). Es la única tarea cuyo producido es un documento recibido de fuera.
-  const esEsperarPlazo = tareaConDiseno && nodo.tipo_codigo === 'ESPERAR_PLAZO'
   // Fase CONSULTAS (ADR-042 §C, #396 bloque 5): acción propia de la fase, en la zona de acciones
   // (mismo criterio que ReabrirFase).
   const esFaseConsultas = seleccion.tipo === 'fase' && nodo && nodo.tipo_codigo === 'CONSULTAS'
@@ -1274,7 +1270,10 @@ function InspectorEdicion({ nodo }) {
   // fondo, «Borrar», por destructivo.
   // Fase cerrada (#720, ADR-036): dentro no se crea ni se borra nada; su único camino es reabrirla.
   const faseCerrada = esFase && !!nodo && nodo.estado === 'FINALIZADA'
-  const puedeBorrar = seleccion.tipo !== 'expediente' && puedeEditarNodo(seleccion.tipo) && !faseCerrada
+  const borrable = entrada ? entrada.borrable : seleccion.tipo !== 'expediente'
+  const puedeBorrar = borrable && puedeEditarNodo(seleccion.tipo) && !faseCerrada
+  // La Despensa del nodo: de su entrada, o de las banderas mientras el tipo no esté migrado.
+  const despensa = entrada ? entrada.despensa : { oculta: esAnalizarExtendido, deshabilitarProducido: esAnalizar }
   // Las acciones propias solo se pintan si hay alguna, para no dejar un separador vacío.
   // Cumplimiento y cierre solo existen en las finalizadoras (el backend trae su certificado
   // solo en ellas); «Enviar consultas» solo con organismos pendientes.
@@ -1298,9 +1297,10 @@ function InspectorEdicion({ nodo }) {
             {/* ADR-033 §1: en ANALIZAR extendido casar un requisito documental deriva el consumido,
                 así que la Despensa queda sin uso legítimo y se oculta. En el simple sigue viva. En
                 los dos el documento producido lo genera el diagnóstico, no se vincula a mano. */}
-            {!esAnalizarExtendido && (
+            {!despensa.oculta && (
               <div className="border-top mt-3 pt-3">
-                <Despensa deshabilitarProducido={esAnalizar} esEsperarPlazo={esEsperarPlazo} />
+                <Despensa deshabilitarProducido={!!despensa.deshabilitarProducido}
+                          esEsperarPlazo={!!despensa.ayudaRecepcion} />
               </div>
             )}
             {hayPropias && (
