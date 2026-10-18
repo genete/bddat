@@ -352,6 +352,49 @@ descriptor y el resto del contrato (qué enciende «Guardar», ancho mínimo, r�
 `GUIA_COMPONENTES_INTERACTIVOS.md` §«Marco único del inspector». El cuerpo de la isla (lo que
 hay debajo de la barra) no hace scroll por su cuenta: hace scroll el cuerpo del shell.
 
+### El cuerpo del inspector del árbol: un diseño por nodo (ADR-053 §C, #1043)
+
+Lectura y edición pintan **la misma zona de datos**; la edición añade debajo las acciones. Qué se ve
+en cada nodo está en la tabla del anexo a ADR-053 §C. El código, en `expediente-arbol/`:
+
+| Pieza | Qué hace |
+|---|---|
+| `disenosDatos.js` | Un diseño por nodo (`DISENO_*`) y `disenoDeNodo(tipo, {tareaConDiseno})`: tarjetas, campos (`etiqueta` del payload, `campo` del esquema editable, `col`, `control`, `visibleSi`, `valorDe`, `opcional`) y `ocultas` (lo que ya está en la barra del marco). Lo que el payload trae y el diseño no conoce cae en «Otros datos»: no se pierde nada en silencio |
+| `components/DatosNodo.jsx` | Pinta un diseño igual en los dos modos: control de solo lectura en lectura, vivo en edición, en el mismo sitio y con el mismo rótulo |
+| `components/TarjetaDatos.jsx` | `TarjetaDatos`, `CampoDato`, `ValorSoloLectura`, `CasillaSoloLectura`, `ControlCampo` (el select conserva el tipo del valor de la opción) |
+| `components/Inspector.jsx` | `ZonaDatos` (el diseño y las tarjetas propias del nodo) e `InspectorEdicion` (datos → Despensa → acciones propias → «Borrar» → pie «Copiar referencia») |
+| `superficiesTarea.js` | Qué superficie lleva una tarea: tabla `SUPERFICIES_TAREA` con `defecto`, `variante(nodo)` y `porTramite` |
+
+**Para migrar o crear un nodo:** añadir su diseño en `disenosDatos.js`; si tiene bloques propios,
+llevar los de dato a `ZonaDatos` (tarjetas, en los dos modos) y los de acción al grupo de acciones de
+`InspectorEdicion` (`hayPropias`), solo en edición. Nada más cambia.
+
+**Una tarea es genérica por ausencia.** Su superficie la decide la combinación (tipo de tarea, trámite)
+en `superficiesTarea.js`; lo que no figura en la tabla usa el diseño común sin tocar nada, aunque la
+semilla no tenga ningún caso. Una variante la dice el nodo del árbol con un dato que pone el backend (el
+de ANALIZAR, `analisis_extendido`, sale de una única lista de trámites), no una lista repetida en el
+front. Una superficie nueva se añade a la tabla, a `SUPERFICIES_CON_DISENO` y a `ZonaDatos`.
+
+**Criterios que no son obvios**
+
+- **Estado y Tipo solo en la barra del marco.** No se repiten en el cuerpo (`ocultas`).
+- **No se toca el payload ni el esquema editable** para igualar lectura y edición; el diseño decide el
+  orden y qué es editable. Las incoherencias que parezcan un bug se anotan como hallazgo, no se
+  corrigen de paso.
+- **Un bloque que guarda por su cuenta** (secciones de ANALIZAR, registro y destinatario de NOTIFICAR,
+  destinatario de ELABORAR) no pasa por el borrador del marco. Si al guardar refresca el árbol, usa
+  `refrescarArbolSilencioso` o `refrescarDetalleSilencioso` (no `refrescarArbol`/`cargarDetalle`, que
+  vacían el detalle y remontan la zona de datos: se perdería lo escrito en las demás tarjetas, como
+  Notas sin guardar). El aviso de «Cerrar» sobre lo que quede sin guardar es #1055.
+- **El estado que comparten una tarjeta y su acción** (notificaciones del trámite, análisis,
+  destinatario, notificar) vive en un store de zustand con el id del nodo (`notificarEstado.js`,
+  `analizarEstado.js`, `destinatarioEstado.js`, `useNotificacionesTramite`), para no parpadear al
+  refrescar el árbol y para que la acción actualice la tarjeta sin depender de un remonte.
+- **Un bloque que copia el payload a un formulario** (el registro de NOTIFICAR) no se pinta hasta que
+  llega el payload de esa visita: el formulario se inicializa al montarse.
+- **Medida:** ningún campo de texto por debajo de 110 px a 320 px de inspector; por eso se reparte 6+6 y
+  no 8+4, y no se declara `minWidth`.
+
 ### Slot Jinja para islas
 
 El `{% block inspector %}` sirve como punto de montaje para islas que pientan dentro
@@ -366,6 +409,10 @@ contenedor dentro de `#app-inspector-body`.
 ```
 
 ### Excepciones de los editores de tarea (bespoke)
+
+*(Desde #1043 los editores de ANALIZAR, ELABORAR y NOTIFICAR son tarjetas de datos y acciones del
+diseño común; el criterio de abajo sigue valiendo para lo que `InspectorEdicion` condiciona por
+superficie, que #1047 sustituirá por un registro de editores.)*
 
 Los editores de ANALIZAR, ELABORAR y NOTIFICAR condicionan a veces algo del contenedor
 común (`InspectorEdicion`). Criterio para factorizar una excepción en un patrón
