@@ -22,10 +22,12 @@
 // para ellos hasta que se migren (#1047, tipo a tipo). La clave de cada elemento es la de la entrada, sin el id del
 // nodo: dos nodos del mismo tipo comparten componente, igual que antes, y no se pierde lo escrito al cambiar de uno a otro.
 import React from 'react'
-import { superficieDeNodoTarea } from './superficiesTarea.js'
+import { superficieDeNodoTarea, idTramiteDeTarea } from './superficiesTarea.js'
 import {
   TarjetaNotificacionesTramite, AccionNotificacionesTramite, useHayNotificacionesTramite,
 } from './components/notificar/NotificacionesTramite.jsx'
+import { AccionGenerarEscrito } from './components/ElaborarEditor.jsx'
+import TarjetaDestinatarioTramite from './components/notificar/DestinatarioTramite.jsx'
 import { AnalisisExtendido, AccionProducirDiagnostico } from './components/AnalizarEditor.jsx'
 import { TarjetaResultadoDiagnostico } from './components/AnalizarSimple.jsx'
 import { useDiagnosticoPendiente } from './analizarEstado.js'
@@ -141,12 +143,33 @@ const TAREA_ANALIZAR_SIMPLE = entrada({
   despensa: { deshabilitarProducido: true },
 })
 
+// ELABORAR (#608, #1043): el destinatario del escrito es una tarjeta de dato —en lectura y en edición, si el trámite
+// tiene uno— y «Generar escrito» (backend #167, huérfano de UI desde la eliminación del sistema BC en #500), una
+// acción de la zona de acciones, siempre a la vista. La Despensa NO se deshabilita: sigue siendo el mecanismo
+// genérico que vincula el borrador de firma y el documento firmado.
+const TAREA_ELABORAR = entrada({
+  tarjetas: [{
+    clave: 'destinatario',
+    render: (c) => {
+      const tramiteId = idTramiteDeTarea(c.arbol, Number(c.id))
+      return tramiteId != null ? <TarjetaDestinatarioTramite expedienteId={c.expedienteId} tramiteId={tramiteId} /> : null
+    },
+  }],
+  acciones: [{
+    clave: 'generar-escrito',
+    hay: () => true,
+    render: (c) => <AccionGenerarEscrito tareaId={c.id} nodo={c.nodo} />,
+  }],
+})
+
 const POR_TIPO = {
   expediente: EXPEDIENTE, solicitud: SOLICITUD, fase: FASE, organismo: ORGANISMO, tramite: TRAMITE,
 }
 
-// Entrada de cada superficie propia de las tareas (`superficiesTarea.js`); falta ELABORAR y NOTIFICAR.
-const POR_SUPERFICIE = { ANALIZAR: TAREA_ANALIZAR_EXTENDIDO, ANALIZAR_SIMPLE: TAREA_ANALIZAR_SIMPLE }
+// Entrada de cada superficie propia de las tareas (`superficiesTarea.js`); falta NOTIFICAR.
+const POR_SUPERFICIE = {
+  ANALIZAR: TAREA_ANALIZAR_EXTENDIDO, ANALIZAR_SIMPLE: TAREA_ANALIZAR_SIMPLE, ELABORAR: TAREA_ELABORAR,
+}
 
 // La entrada del nodo seleccionado (`nodo` = su entrada en el árbol), o `null` si su tipo aún no está migrado.
 export function entradaDe(tipo, nodo, arbol) {
@@ -155,7 +178,7 @@ export function entradaDe(tipo, nodo, arbol) {
     if (superficie === null) {
       return nodo && nodo.tipo_codigo === 'ESPERAR_PLAZO' ? TAREA_ESPERAR_PLAZO : TAREA_GENERICA
     }
-    // ELABORAR y NOTIFICAR siguen por las banderas hasta su migración.
+    // NOTIFICAR sigue por las banderas hasta su migración.
     return Object.hasOwn(POR_SUPERFICIE, superficie) ? POR_SUPERFICIE[superficie] : null
   }
   return Object.hasOwn(POR_TIPO, tipo) ? POR_TIPO[tipo] : null

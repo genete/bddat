@@ -16,12 +16,10 @@ import BarraPlazo from './nodos/BarraPlazo.jsx'
 import { barraDeActo, fechaLarga } from '../plazoActo.js'
 import Despensa from './Despensa.jsx'
 import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
-import { AccionGenerarEscrito } from './ElaborarEditor.jsx'
-import TarjetaDestinatarioTramite from './notificar/DestinatarioTramite.jsx'
 import { TarjetasNotificar } from './NotificarEditor.jsx'
 import DatosNodo from './DatosNodo.jsx'
 import { disenoDeNodo } from '../disenosDatos.js'
-import { superficieDeNodoTarea, tieneDisenoTarea, idTramiteDeTarea } from '../superficiesTarea.js'
+import { superficieDeNodoTarea, tieneDisenoTarea } from '../superficiesTarea.js'
 import { entradaDe, useHechosDelNodo } from '../registroEditores.jsx'
 
 export const ETIQUETA_TIPO = {
@@ -386,10 +384,6 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
         ? <DatosNodo diseno={diseno} detalle={detalle} nodo={nodo} bloqueado={faseCerrada} />
         : <Campos campos={detalle.campos} />}
       {entrada && entrada.tarjetas.map((t) => <React.Fragment key={t.clave}>{t.render(ctx)}</React.Fragment>)}
-      {superficie === 'ELABORAR' && idTramiteDeTarea(arbol, Number(detalle.nodo.id)) != null && (
-        <TarjetaDestinatarioTramite expedienteId={expedienteId}
-                                    tramiteId={idTramiteDeTarea(arbol, Number(detalle.nodo.id))} />
-      )}
       {superficie === 'NOTIFICAR' && (
         <TarjetasNotificar expedienteId={expedienteId} tareaId={Number(detalle.nodo.id)}
                            soloLectura={!modoEdicion} />
@@ -571,12 +565,6 @@ function InspectorEdicion({ nodo }) {
   // La superficie de trabajo propia de la tarea sale de una única tabla por tipo de tarea y trámite
   // (`superficiesTarea.js`); una tarea que no figura en ella es genérica (más abajo).
   const superficie = seleccion.tipo === 'tarea' ? superficieDeNodoTarea(arbol, nodo) : null
-  // ELABORAR (#608, #1043): ya usa el diseño de datos de la tarea. El destinatario del escrito es
-  // una tarjeta de datos —en lectura y en edición— y "Generar escrito" (backend #167, huérfano de UI
-  // desde la eliminación del sistema BC en #500), una acción de la zona de acciones
-  // (`AccionGenerarEscrito`). La Despensa NO se deshabilita — sigue siendo el mecanismo genérico que
-  // vincula el borrador de firma y el documento firmado.
-  const esElaborar = superficie === 'ELABORAR'
   // NOTIFICAR (#657/#658, ADR-034; #1043): ya usa el diseño de datos de la tarea. Aviso, destinatario,
   // registro y justificantes previos son tarjetas de datos —en lectura y en edición— con sus controles
   // vivos dentro (`TarjetasNotificar`); no tiene acciones propias. Igual que ELABORAR, la Despensa NO se
@@ -603,8 +591,7 @@ function InspectorEdicion({ nodo }) {
   const despensa = entrada ? entrada.despensa : {}
   // Las acciones propias solo se pintan si hay alguna, para no dejar un separador vacío: con que una de las de
   // la entrada tenga algo que enseñar (`hay`) se pinta la zona y entonces van todas, cada una decide si dice algo.
-  const hayPropias = (!!entrada && entrada.acciones.some((a) => a.hay(ctx)))
-    || esElaborar
+  const hayPropias = !!entrada && entrada.acciones.some((a) => a.hay(ctx))
   return (
     <div className="p-3 d-flex flex-column h-100">
       {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
@@ -625,7 +612,6 @@ function InspectorEdicion({ nodo }) {
             {hayPropias && (
               <div className="border-top mt-3 pt-3">
                 {entrada && entrada.acciones.map((a) => <React.Fragment key={a.clave}>{a.render(ctx)}</React.Fragment>)}
-                {esElaborar && <AccionGenerarEscrito tareaId={seleccion.id} nodo={nodo} />}
               </div>
             )}
             {puedeBorrar && <div className="mb-3"><BotonBorrar /></div>}
