@@ -40,8 +40,8 @@ export const useDestinatarioTramite = create((set, get) => ({
     set((s) => ({ version: s.version + 1 }))
   },
 
-  // Guarda de inmediato (PUT), fuera del borrador del marco: viene de #929 zona A y está anotado
-  // en #1055 como bloque que guarda por su cuenta.
+  // Guarda de inmediato (PUT), fuera del borrador del marco: viene de #929 zona A y #1055 lo deja
+  // así (el generador de escritos lo necesita guardado dentro de la misma edición).
   elegir: async (expedienteId, tramiteId, entidadId, refrescarArbol) => {
     set({ enviando: true, error: null })
     try {

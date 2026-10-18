@@ -25,6 +25,7 @@
 // el aviso de «interior sucio» al salir es de #1055.
 import React from 'react'
 import { useArbolStore } from '../store.js'
+import { useInteriorSucio } from '../interiorSucio.js'
 import { useAnalisisTarea } from '../analizarEstado.js'
 import {
   postAnalizar, revertirDiagnostico,
@@ -509,6 +510,8 @@ function FilaItemTecnico({ item, expedienteId, tareaId, producido, onRecargar, s
   const justificacion = useConfirmacionJustificada()
 
   const hayCambios = texto !== (item.texto || '') || cubierto !== item.cubierto
+  // Guarda por su cuenta: el marco no lo ve en el borrador, así que se lo avisamos (#1055).
+  useInteriorSucio(`tecnico-${item.item_tecnico_id}`, 'la verificación técnica', hayCambios)
 
   // Puede necesitar justificación (#724) si este guardado marca el ítem "no
   // cumple" y ya se exigió al titular en una vuelta notificada anterior.
@@ -650,6 +653,9 @@ const ETIQUETA_CATEGORIA = Object.fromEntries(CATEGORIAS_REQUERIMIENTO)
 function FilaSeleccionado({ item, idx, total, esRondaSubsanacion, onQuitar, onMover, onEditar, onToggleResuelto, soloLectura }) {
   const [editando, setEditando] = React.useState(false)
   const [texto, setTexto] = React.useState(item.texto)
+  // Una edición abierta con el texto cambiado y sin confirmar con ✓ también se perdería (#1055).
+  useInteriorSucio(`requerimiento-edicion-${item._key}`, 'los requerimientos',
+                   editando && texto.trim() !== (item.texto || '').trim())
 
   const empezarEdicion = () => { setTexto(item.texto); setEditando(true) }
 
@@ -788,6 +794,10 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsan
   React.useEffect(() => { cargar() }, [cargar])
 
   const marcarCambio = (fn) => (...args) => { fn(...args); setHayCambiosShuttle(true) }
+
+  // La lista sin guardar y el requerimiento libre escrito sin pulsar «Añadir» (#1055).
+  useInteriorSucio(`requerimientos-${tareaId}`, 'los requerimientos',
+                   hayCambiosShuttle || textoLibre.trim() !== '')
 
   const idsCatalogoSeleccionados = new Set(
     seleccionados.filter((s) => s.catalogo_requerimientos_id).map((s) => s.catalogo_requerimientos_id)

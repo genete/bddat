@@ -1146,6 +1146,43 @@ function BloqueoGuardarForzable() {
   )
 }
 
+// «Guardar» de la barra con texto sin guardar en un bloque interior (#1055): guardar sale a lectura y
+// lo tiraría, igual que «Cancelar», así que antes se pregunta (`pedirGuardar`, en el store). Va como
+// el aviso de arriba: en el flujo del panel, no en un diálogo.
+function AvisoGuardarInterior() {
+  const aviso     = useArbolStore((s) => s.avisoGuardarInterior)
+  const interior  = useArbolStore((s) => s.interiorSucio)
+  const guardando = useArbolStore((s) => s.guardando)
+  const guardar   = useArbolStore((s) => s.guardar)
+  const seguir    = useArbolStore((s) => s.seguirEditando)
+  const ref       = React.useRef(null)
+
+  // El «Guardar» está en la barra fija: con el panel desplazado, el aviso queda fuera de vista.
+  React.useEffect(() => {
+    if (aviso && ref.current) ref.current.scrollIntoView({ block: 'nearest' })
+  }, [aviso])
+
+  if (!aviso) return null
+  const rotulos = [...new Set(Object.values(interior))]
+
+  return (
+    <div ref={ref} className="alert alert-warning py-2 px-3 small mb-3">
+      <div className="fw-semibold">Hay texto sin guardar en {rotulos.length ? rotulos.join(', ') : 'un bloque'}.</div>
+      <div>Cada bloque se guarda con su propio botón. Si guardas ahora, ese texto se perderá.</div>
+      <div className="d-flex gap-2 mt-2">
+        <button type="button" className="btn btn-sm btn-warning" disabled={guardando}
+                onClick={() => { seguir(); guardar() }}>
+          Guardar igualmente
+        </button>
+        <button type="button" className="btn btn-sm btn-outline-secondary" disabled={guardando}
+                onClick={seguir}>
+          Seguir editando
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // Control de borrado compartido por los tres editores bespoke de tarea (ANALIZAR/
 // ELABORAR/NOTIFICAR, #742) y por los nodos con diseño de datos (#1043): ninguno de los tres
 // bespoke lo trae de fábrica — se hoistea aquí, al nivel de InspectorEdicion, en vez de triplicarlo
@@ -1250,6 +1287,7 @@ function InspectorEdicion({ nodo }) {
   return (
     <div className="p-3 d-flex flex-column h-100">
       {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
+      {!borrarPendienteConfirm && <AvisoGuardarInterior />}
       {hayDetalle && (
         <ZonaDatos nodo={nodo} tipo={seleccion.tipo} detalle={detalle} seleccionar={seleccionar} />
       )}

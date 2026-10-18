@@ -60,11 +60,9 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 
 - ~~**El puente del marco con el estado del árbol** (`hayCambios`, `guardando`, `guardar`)~~ — resuelto el
   13/10 en #1042: el hook `usePuenteInspector` empuja un descriptor al shell con `AppInspector.setFrame`.
-- **«Cerrar» descarta sin avisar lo escrito en los bloques interiores del árbol** (ítem técnico y shuttle
-  de requerimientos de ANALIZAR; registro de la notificación de NOTIFICAR): guardan por su cuenta y no
-  encienden la barra del marco, que sigue diciendo «Cerrar». Carlos lo separó de #1042 el 13/10. Issue
-  **#1055** (creado el 13/10 con las opciones y las dudas dentro, que se deciden allí): opción A, un canal
-  «interior sucio» hacia el marco, o B, solo confirmación al salir. Sin empezar.
+- ~~**«Cerrar» descarta sin avisar lo escrito en los bloques interiores del árbol**~~ — implementado el 18/10
+  en #1055 (rama de trabajo, sin PR): opción A, un canal «interior sucio» hacia el marco
+  (`useInteriorSucio`); ver la entrada del 18/10 más abajo.
 - **Dónde se aloja la edición del documento:** el inspector del pool o, desde otros sitios, el modal grande.
   Depende del marco y de que el formulario de edición del pool quepa en el inspector (§8.10, PRE-ADR §10).
 - ~~**#755 frente al issue de D16**~~ — resuelto el 11/10: #1041 absorbió #755 y #644 (los dos cerrados), y
@@ -153,3 +151,15 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   y pool (#1044, #881 con #1036, y de ADR-050 #1012, #1008 y #1009); 4) Cola y listados (#1039, #1041 y
   la zona E de #929). Sin bloque: #1045, #1046, #1048. Lo que #1043 deja desbloqueado: #1038 (la tarjeta
   «Solicitante» está preparada) y #1037.
+- **18/10/2026** — **#1055 implementado** (rama de trabajo, sin PR). Carlos delega las dudas del issue en la
+  implementación (*interpretación*: lo decidido queda pendiente de su confirmación): **opción A** (los
+  bloques avisan al marco; la barra dice «Cancelar» sin encender «Guardar»); «Cancelar» descarta directo con
+  el toast de siempre; sin «Descartar» propio en cada bloque; el destinatario de ELABORAR y de NOTIFICAR
+  **sigue guardando con el `PUT` inmediato** (el generador de escritos lo necesita guardado dentro de la misma
+  edición) y solo cuenta como «sin guardar» la entidad elegida y sin confirmar. Hueco añadido: el «Guardar» de
+  la barra con interior sucio pide decisión (guardar sale a lectura y tiraría ese texto) y el cierre de la
+  pestaña también avisa. Cubre ítem técnico, requerimientos (lista y texto libre y edición en curso), registro
+  de la notificación y los dos destinatarios. Comprobado en el navegador con la BD sintética: requerimientos,
+  registro, `beforeunload` y el aviso del «Guardar»; el destinatario de ELABORAR, con la respuesta del servidor
+  simulada. **No comprobado**: el ítem técnico (la semilla no trae ítems técnicos) y el destinatario de
+  NOTIFICAR (la semilla no tiene un caso con selector).

@@ -27,6 +27,7 @@
 // REGLAS_DESARROLLO «Rutas que editan un registro existente»).
 import React from 'react'
 import { useArbolStore } from '../../store.js'
+import { useInteriorSucio } from '../../interiorSucio.js'
 import { patchNotificar, postNotificarParsearDocumento } from '../../api.js'
 import { showToast } from '../../../shared/ui/toast.js'
 import { BloqueoForzar } from '../TiposCreablesCompartido.jsx'
@@ -132,30 +133,36 @@ export default function BloqueRegistro({ expedienteId, tareaId, payload, onPaylo
     [pool],
   )
 
+  const documentoNuevo = form.documentoId !== '' && form.documentoId !== (producido ? producido.id : '')
+
+  // Solo lo que ha cambiado: lo ausente se conserva, y vaciar un campo es mandar null.
+  const cuerpo = {}
+  if (notif) {
+    if (form.resultado !== (notif.resultado || '')) cuerpo.resultado = form.resultado || null
+    if (form.identificador.trim() !== (notif.identificador_envio || '')) {
+      cuerpo.identificador_envio = form.identificador.trim() || null
+    }
+    if (form.observaciones.trim() !== (notif.observaciones || '')) {
+      cuerpo.observaciones = form.observaciones.trim() || null
+    }
+    if (sede.aplica && form.sedeJustificacion.trim() !== (notif.sede_justificacion || '')) {
+      cuerpo.sede_justificacion = form.sedeJustificacion.trim() || null
+    }
+    if (documentoNuevo) cuerpo.documento_id = form.documentoId
+  }
+  const hayCambios = Object.keys(cuerpo).length > 0
+  // Guarda por su cuenta, con su propio botón: el marco no lo ve en el borrador (#1055). Antes del
+  // `return` de abajo, porque un hook no puede ir después de una salida condicional.
+  useInteriorSucio('registro-notificacion', 'el registro de la notificación', hayCambios)
+
   if (!notif) {
     return (
       <div className="alert alert-danger small">La tarea no tiene ficha de notificación.</div>
     )
   }
 
-  const documentoNuevo = form.documentoId !== '' && form.documentoId !== (producido ? producido.id : '')
   const hayJustificante = !!notif.canal || documentoNuevo
   const sustituye = documentoNuevo && !!producido
-
-  // Solo lo que ha cambiado: lo ausente se conserva, y vaciar un campo es mandar null.
-  const cuerpo = {}
-  if (form.resultado !== (notif.resultado || '')) cuerpo.resultado = form.resultado || null
-  if (form.identificador.trim() !== (notif.identificador_envio || '')) {
-    cuerpo.identificador_envio = form.identificador.trim() || null
-  }
-  if (form.observaciones.trim() !== (notif.observaciones || '')) {
-    cuerpo.observaciones = form.observaciones.trim() || null
-  }
-  if (sede.aplica && form.sedeJustificacion.trim() !== (notif.sede_justificacion || '')) {
-    cuerpo.sede_justificacion = form.sedeJustificacion.trim() || null
-  }
-  if (documentoNuevo) cuerpo.documento_id = form.documentoId
-  const hayCambios = Object.keys(cuerpo).length > 0
 
   // Acto 1 del flujo de dos actos (#712): elegir el documento solo previsualiza —no se
   // vincula ni se guarda nada— y propone el resultado; el usuario lo revisa y Guardar

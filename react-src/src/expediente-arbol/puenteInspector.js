@@ -6,12 +6,14 @@
 // (tipo, título, estado, candado, semáforo) y el estado del borrador (`hayCambios`,
 // `guardando`), más los tres gestos, que ejecutan las acciones del store.
 //
-// El interior no cambia: «Guardar» solo cubre lo que cuelga del borrador global (los campos
-// directos del nodo, ADR-023 §5 bis rev. 2026-07-29, #688). Lo que cada contenedor bespoke
-// (ANALIZAR, ELABORAR, NOTIFICAR) persiste por su cuenta y de inmediato no toca el borrador y
-// no enciende «Guardar», como hasta ahora.
+// «Guardar» solo cubre lo que cuelga del borrador global (los campos directos del nodo,
+// ADR-023 §5 bis rev. 2026-07-29, #688). Lo que cada contenedor bespoke (ANALIZAR, ELABORAR,
+// NOTIFICAR) persiste por su cuenta, con su propio botón, no toca el borrador y no enciende
+// «Guardar». Pero sí puede llevar texto sin guardar: eso viaja aparte, como `interiorSucio`
+// (#1055, `interiorSucio.js`), y hace que el botón de salida diga «Cancelar» sin encender
+// «Guardar».
 import React from 'react'
-import { useArbolStore, selectHayCambios } from './store.js'
+import { useArbolStore, selectHayCambios, selectHayInteriorSucio } from './store.js'
 import { puedeEditarNodo } from '../shared/auth.js'
 import { estaSellado } from './sellado.js'
 import { SIGNIFICADO } from './components/nodos/Semaforo.jsx'
@@ -24,13 +26,14 @@ const GESTOS = {
     const { seleccion, entrarEdicion } = useArbolStore.getState()
     if (seleccion) entrarEdicion(seleccion)
   },
-  // `() => guardar()` y no `guardar` a secas: desde #765 el primer argumento de `guardar` es la
+  // `() => pedirGuardar()` y no la acción a secas: desde #765 el primer argumento de `guardar` es la
   // justificación del escape, y pasarle el evento del clic lo convertiría en un bypass
-  // involuntario.
-  onGuardar: () => useArbolStore.getState().guardar(),
+  // involuntario. `pedirGuardar` es `guardar` salvo que haya interior sucio (#1055): guardar sale a
+  // lectura y lo tiraría, así que antes pide decisión.
+  onGuardar: () => useArbolStore.getState().pedirGuardar(),
   // El mismo `cancelar` para «Cancelar» y «Cerrar»: solo cambia el rótulo según haya borrador
-  // vivo (lo pone el shell). La confirmación en sucio la impone el bloqueo de light-dismiss
-  // (ADR-023 §5 bis), no un diálogo aparte.
+  // vivo o interior sucio (lo pone el shell). La confirmación en sucio la impone el bloqueo de
+  // light-dismiss (ADR-023 §5 bis), no un diálogo aparte.
   onSalir: () => useArbolStore.getState().cancelar(),
 }
 
@@ -40,6 +43,7 @@ export function usePuenteInspector() {
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
   const guardando  = useArbolStore((s) => s.guardando)
   const hayCambios = useArbolStore(selectHayCambios)
+  const interiorSucio = useArbolStore(selectHayInteriorSucio)
   const ultima = React.useRef(null)
 
   React.useEffect(() => {
@@ -63,6 +67,7 @@ export function usePuenteInspector() {
       semaforo: sem ? { color: sem.color, titulo: SIGNIFICADO[sem.color] || '' } : null,
       puedeEditar,
       hayCambios,
+      interiorSucio,
       guardando,
     }
     // El borrador cambia con cada tecla; el descriptor, casi nunca: solo se empuja si difiere.
@@ -70,5 +75,5 @@ export function usePuenteInspector() {
     if (clave === ultima.current) return
     ultima.current = clave
     window.AppInspector.setFrame({ ...plano, ...GESTOS })
-  }, [seleccion, arbol, modoEdicion, guardando, hayCambios])
+  }, [seleccion, arbol, modoEdicion, guardando, hayCambios, interiorSucio])
 }
