@@ -46,7 +46,46 @@ El interior se deja como lo necesite cada caso, flexible al ancho. **Cada caso d
 
 ### C — Lectura ≈ edición, también en el árbol (D15)
 
-Lo que se ve antes de editar es casi lo mismo que se ve en modo edición: cambian ligeramente los componentes del formulario, para indicar que se está editando. Es el criterio de Carlos en todos los formularios, y busca coherencia visual. Los fragmentos Jinja ya lo cumplen; el inspector del árbol no, y se lleva a #1043. Qué bloques de lectura se quedan en edición y cuáles solo existen en ella se define en la fase 1 de ese issue.
+Lo que se ve antes de editar es casi lo mismo que se ve en modo edición: cambian ligeramente los componentes del formulario, para indicar que se está editando. Es el criterio de Carlos en todos los formularios, y busca coherencia visual. Los fragmentos Jinja ya lo cumplen; el inspector del árbol no, y se lleva a #1043. Qué bloques de lectura se quedan en edición y cuáles solo existen en ella se define en la fase 1 de ese issue: la tabla definitiva está en el [anexo a §C](#anexo-a-c--tabla-definitiva-del-inspector-del-árbol-1043).
+
+#### Anexo a §C — tabla definitiva del inspector del árbol (#1043)
+
+Se definió implementando nodo a nodo, de arriba abajo y de genérico a especializado, con Carlos (13 a 18/10/2026). La lectura y la edición pintan **la misma zona de datos**; la edición añade debajo las acciones y, al final, «Borrar».
+
+**Criterio, en este orden de zonas**
+
+1. **Datos**, idéntica en los dos modos: tarjetas, y debajo los plazos, los organismos y los documentos del nodo. Lo editable es un control de solo lectura en lectura y uno vivo en edición, en el mismo sitio y con el mismo rótulo. Lo que sale en edición también se ve en lectura.
+2. **Acciones y creación**, solo en edición: Despensa → lo propio del nodo → «Borrar».
+3. **Pie**: «Copiar referencia», en los dos modos.
+
+«Estado» y «Tipo» solo en la barra del marco (§A). No se tocan el payload `detalle_de_nodo`, el esquema editable ni dónde se edita cada dato.
+
+**Tabla**
+
+| Nodo | Tarjetas de la zona de datos (los dos modos) | Editable | Acciones (solo edición, antes de «Borrar») |
+|---|---|---|---|
+| Expediente | «Datos administrativos» (tipo, heredado, responsable, titular, NIF, nº de solicitudes) y «Datos del proyecto» (título, finalidad, emplazamiento) | Nada en el nodo (se edita en el listado) | Despensa |
+| Solicitud | «Datos de la solicitud» y «Solicitante» | Observaciones | Despensa → certificado de fin de instrucción y cierre de la solicitud |
+| Versión | «Datos de la versión» | Nada | — |
+| Fase | «Datos de la fase» (resultado, nº de trámites, documento resultado, observaciones) | Resultado, documento resultado, observaciones | Despensa → consultas, cumplimiento, cierre, reabrir (según fase) |
+| Organismo | «Datos del organismo» | Vía, resultado, dirección, documento | Despensa |
+| Trámite | «Datos del trámite» y «Notificaciones del trámite» (a quién falta o sobra notificar) | Observaciones | Despensa → «Añadir las notificaciones que faltan» |
+| Tarea genérica | «Datos de la tarea» | Notas | Despensa |
+| ANALIZAR simple | «Datos de la tarea» y «Resultado diagnóstico» | Notas | Despensa (sin «+ Producido») → «Producir diagnóstico» mientras falte |
+| ANALIZAR extendido | «Datos de la tarea», Check documental, Check técnico, Requerimientos y «Borrador defectos» o «Resultado diagnóstico» | Notas y cada sección (guardan por su cuenta, con la reversión y la justificación de ADR-033) | «Producir diagnóstico» mientras falte (sin Despensa, ADR-033 §1) |
+| ELABORAR | «Datos de la tarea» y «Destinatario del escrito» (solo si el trámite tiene destinatario único) | Notas; el destinatario, con su selector dentro de la tarjeta | Despensa → «Generar escrito» |
+| NOTIFICAR | «Datos de la tarea», aviso «Notificación al solicitante», «Destinatario», «Registro de la notificación» y «Justificantes previos» | Notas; el registro, con su «Guardar» propio; el destinatario, con sus controles dentro de la tarjeta | Despensa |
+
+«Borrar» es lo último de las acciones, y no se ofrece en el expediente, en la versión ni en una fase cerrada; en esta última, dentro no se crea ni se borra nada y su único camino es «Reabrir fase».
+
+**Qué superficie lleva una tarea.** Lo decide la combinación (tipo de tarea, trámite) en `superficiesTarea.js`, no el tipo solo: una combinación que no figura en la tabla es **genérica** y usa el diseño común, aunque la semilla no tenga ningún caso. La variante de ANALIZAR la dice el nodo del árbol (`analisis_extendido`, de la lista única `TRAMITES_CON_SECCIONES_ANALISIS`); la de ELABORAR (si hay destinatario y si se elige) y la de NOTIFICAR (si va al solicitante) las resuelven sus tarjetas con el endpoint de la tarea. Es el germen del registro de editores de #1047.
+
+**Lo que se deja como estaba, por decisión de Carlos**
+
+- Los bloques que guardan por su cuenta —secciones de ANALIZAR, registro y destinatario de NOTIFICAR, destinatario de ELABORAR— no pasan por el borrador del marco, y «Cerrar» no avisa de lo escrito en ellos: es #1055. Que el destinatario guarde con un `PUT` inmediato lo cuestiona Carlos y está anotado allí.
+- Los mismos documentos salen en más de un sitio (la lista «Documentos» de la zona de datos, la de la Despensa, el select del registro de NOTIFICAR) hasta que #1044 los unifique.
+- Las incoherencias que puedan ser un bug no se corrigen en #1043: están anotadas como hallazgos.
+- El texto «Tarea ejecutada» de ELABORAR sigue siendo opcional: lo pinta quien calcula el estado a partir de los documentos vinculados.
 
 ### D — Dos renderizadores, un contrato; el cuerpo del árbol sigue en React (D13)
 
@@ -101,7 +140,7 @@ Lo que se ve antes de editar es casi lo mismo que se ve en modo edición: cambia
 - El contenedor de la edición del documento y qué más comparten los dos renderizadores (clases CSS, otros).
 - El pool cargado una vez por vida de la isla, cómo se pinta `subrol` y si la cola conserva su cruz.
 - Las decisiones por página de los cinco listados (#1041), y el destino de `SubirDocumento` y la viewbar de la isla `mi-trabajo` (#1039).
-- Qué bloques de lectura se quedan en edición en el árbol (fase 1 de #1043).
+- ~~Qué bloques de lectura se quedan en edición en el árbol (fase 1 de #1043)~~: decidido, en el anexo a §C.
 - Si el scroll horizontal del cuerpo se ve como señal en el navegador de la Consejería: los Chromium recientes en Windows pueden pintar barras superpuestas que se ocultan solas. Sin comprobar.
 - El tamaño del modal grande (un máximo fijo y un mínimo definido por quien lo use): planes de Carlos, otro asunto.
 - El sitio del botón «Exportar expediente» de #1008.

@@ -1,0 +1,209 @@
+// disenosDatos.js — El «diseño» de la zona de datos de cada nodo del árbol (#1043, ADR-053 §C).
+//
+// Un diseño dice en qué tarjetas va cada dato del payload de `detalle_de_nodo` y qué dato es
+// editable, con los rótulos y el orden de los inspectores del listado. Lo pinta `DatosNodo`,
+// igual en lectura que en edición. Un nodo sin diseño (las tareas con superficie propia) sigue con la
+// lista de texto plano (`Campos`) y su editor, hasta que la fase 3 las migre.
+//
+// Cada dato: { etiqueta, rotulo?, col?, casilla?, opcional?, campo?, control? }
+//   etiqueta  clave del payload (`detalle.campos[].etiqueta`)
+//   rotulo    solo si se pinta con otro nombre
+//   col       ancho sobre 12 columnas (por defecto 12)
+//   casilla   se pinta como casilla de solo lectura («Sí» / «No» en el payload)
+//   opcional  si el payload no lo trae, no se pinta (por defecto sale con «—», como en el listado)
+//   campo     clave del esquema editable (`esquema_de_nodo`): en edición es el control vivo
+//   control   'textarea' para los textos largos (alto igual en lectura y en edición)
+//   visibleSi ({detalle, nodo}) => bool: el dato solo existe en ciertos nodos, y en los dos modos
+//             a la vez (si no hay control en edición, tampoco hay dato en lectura)
+//   valorDe   ({detalle, nodo}) => texto: el valor de lectura no viene en `detalle.campos` sino de
+//             otra parte del payload, que no se cambia
+//
+// `ocultas`: etiquetas que el payload sigue trayendo y no se pintan en el cuerpo porque ya están
+// en la barra del marco (decisión de Carlos, 13/10/2026). Cualquier otra que el payload traiga y
+// el diseño no conozca cae en una tarjeta «Otros datos»: nunca se pierde información en silencio.
+
+export const DISENO_EXPEDIENTE = {
+  ocultas: [],
+  tarjetas: [
+    {
+      titulo: 'Datos administrativos', icono: 'fa-file-alt',
+      campos: [
+        { etiqueta: 'Tipo de expediente', col: 8 },
+        { etiqueta: 'Heredado', col: 4, casilla: true },
+        { etiqueta: 'Responsable' },
+        { etiqueta: 'Titular' },
+        { etiqueta: 'NIF', col: 6 },
+        { etiqueta: 'Nº de solicitudes', col: 6 },
+      ],
+    },
+    {
+      titulo: 'Datos del proyecto', icono: 'fa-bolt',
+      campos: [
+        // El payload lo llama «Proyecto»; dentro de «Datos del proyecto» es el título, como en el listado.
+        { etiqueta: 'Proyecto', rotulo: 'Título' },
+        { etiqueta: 'Finalidad' },
+        { etiqueta: 'Emplazamiento' },
+      ],
+    },
+  ],
+}
+
+export const DISENO_SOLICITUD = {
+  // Estado y Tipo están en la barra (estado, y título «siglas — descripción»).
+  ocultas: ['Estado', 'Tipo'],
+  tarjetas: [
+    {
+      titulo: 'Datos de la solicitud', icono: 'fa-file-alt',
+      campos: [
+        { etiqueta: 'Fecha de presentación', col: 6 },
+        { etiqueta: 'Nº de fases', col: 6 },
+        { etiqueta: 'Afecta a', opcional: true },
+        // El único campo editable de la solicitud hoy (`esquema_editable._esquema_solicitud`).
+        { etiqueta: 'Observaciones', campo: 'observaciones', control: 'textarea' },
+      ],
+    },
+    {
+      // Aquí entrarán el representante y la sede de notificación (#1038), editables.
+      titulo: 'Solicitante', icono: 'fa-user',
+      campos: [
+        // 6 + 6 y no 8 + 4: con 4 columnas el NIF baja de 110 px a 320 px de inspector, el umbral
+        // de un campo de texto en las mediciones de #1042 (GUIA_COMPONENTES_INTERACTIVOS).
+        { etiqueta: 'Solicitante', col: 6 },
+        { etiqueta: 'NIF', col: 6 },
+      ],
+    },
+  ],
+}
+
+// La versión es un nodo sintético informativo, sin edición (`puedeEditarNodo('version')` = false):
+// solo cambia el aspecto de la lectura.
+export const DISENO_VERSION = {
+  ocultas: [],
+  tarjetas: [
+    {
+      titulo: 'Datos de la versión', icono: 'fa-file-alt',
+      campos: [
+        { etiqueta: 'Origen', opcional: true },   // solo los reformados
+        { etiqueta: 'Nº de fases que cubre', col: 6 },
+      ],
+    },
+  ],
+}
+
+// Lo que se ve en lectura se ve en edición y al revés (criterio de Carlos, 13/10): los cuatro datos
+// de la fase salen en los dos modos, y lo editable es de solo lectura o control vivo. No se corrige
+// ninguna incoherencia de hoy: «Resultado» se lee del payload, que solo lo trae si la fase está
+// finalizada, aunque en edición el select lo muestre guardado.
+export const DISENO_FASE = {
+  // Estado está en la barra, con el candado.
+  ocultas: ['Estado'],
+  tarjetas: [
+    {
+      titulo: 'Datos de la fase', icono: 'fa-file-alt',
+      campos: [
+        { etiqueta: 'Resultado', campo: 'resultado_fase_id', control: 'select', col: 8 },
+        { etiqueta: 'Nº de trámites', col: 4 },
+        {
+          // Las finalizadoras se cierran con su certificado, no eligiendo un documento (#956): el
+          // esquema editable no lo ofrece y el payload trae `cert_cierre` solo en ellas.
+          etiqueta: 'Documento resultado', campo: 'documento_resultado_id', control: 'select',
+          visibleSi: ({ detalle }) => !detalle.cert_cierre,
+          // En una fase no finalizadora el único documento producido es el del resultado.
+          valorDe: ({ detalle }) => {
+            const doc = (detalle.documentos || []).find((d) => d.rol === 'PRODUCIDO')
+            return doc ? doc.nombre : undefined
+          },
+        },
+        { etiqueta: 'Observaciones', campo: 'observaciones', control: 'textarea' },
+      ],
+    },
+  ],
+}
+
+// Los cinco datos del organismo salen en los dos modos y los cuatro editables son de solo lectura o
+// select vivo (criterio de Carlos, 13/10). No se corrige ninguna incoherencia de hoy: «Dirección de
+// notificación» enseña en lectura la dirección resuelta (payload) y en edición la descripción de la
+// opción (esquema), y «Vía» y «Resultado» llevan el código interno, sin rótulo legible.
+// Vía, Resultado y Dirección ocupan el ancho completo porque sus valores son largos
+// («cerrado_con_condicionados», «declaracion_responsable»); NIF y plazo, 6 + 6 (umbral de 110 px a 320 px).
+export const DISENO_ORGANISMO = {
+  ocultas: [],
+  tarjetas: [
+    {
+      titulo: 'Datos del organismo', icono: 'fa-landmark',
+      campos: [
+        { etiqueta: 'NIF', col: 6 },
+        { etiqueta: 'Plazo legal del oficio', col: 6 },
+        { etiqueta: 'Vía', campo: 'via', control: 'select' },
+        { etiqueta: 'Resultado', campo: 'resultado', control: 'select' },
+        { etiqueta: 'Dirección de notificación', campo: 'direccion_notificacion_id', control: 'select' },
+        {
+          // El esquema lo ofrece siempre, así que en lectura sale siempre, con «—» si no hay (decisión de
+          // Carlos). El payload lo trae solo como documento de la lista «Documentos» (CONSUMIDO).
+          etiqueta: 'Documento (declaración responsable)', campo: 'documento_id', control: 'select',
+          valorDe: ({ detalle }) => {
+            const doc = (detalle.documentos || []).find((d) => d.rol === 'CONSUMIDO')
+            return doc ? doc.nombre : undefined
+          },
+        },
+      ],
+    },
+  ],
+}
+
+// Los dos datos del trámite salen en los dos modos y Observaciones es de solo lectura o textarea vivo
+// (criterio de Carlos, 13/10). Las notificaciones del trámite (#929) no son un dato del payload
+// sino su propia tarjeta, justo debajo de esta: la pinta `ZonaDatos`
+// (`notificar/NotificacionesTramite.jsx`), y su botón va a las acciones, solo en edición.
+export const DISENO_TRAMITE = {
+  // Estado está en la barra.
+  ocultas: ['Estado'],
+  tarjetas: [
+    {
+      titulo: 'Datos del trámite', icono: 'fa-file-alt',
+      campos: [
+        { etiqueta: 'Nº de tareas', col: 6 },
+        { etiqueta: 'Observaciones', campo: 'observaciones', control: 'textarea' },
+      ],
+    },
+  ],
+}
+
+// La tarea con diseño es la genérica, la que no tiene superficie de trabajo propia
+// (`superficiesTarea.js`): hoy ESPERAR_PLAZO, y cualquier combinación de tipo de tarea y trámite que
+// no figure en esa tabla; y el ANALIZAR, en sus dos variantes, cuya superficie ya migró. Su único
+// dato es «Notas» (`esquema_editable._esquema_tarea`); el plazo y los documentos son bloques de la
+// zona de datos, no tarjetas, y el análisis del ANALIZAR son sus propias tarjetas debajo de esta
+// (`AnalisisExtendido` en `AnalizarEditor.jsx`; `TarjetaResultadoDiagnostico` en `AnalizarSimple.jsx`),
+// como las notificaciones del trámite. «Estado» y «Tipo» están en la barra (el tipo, en su título).
+// «Resultado de notificación» solo lo trae NOTIFICAR, y se oculta porque el mismo dato ya está en su
+// tarjeta «Registro de la notificación» (el campo «Resultado», de solo lectura en lectura y vivo en
+// edición): pintarlo también aquí lo duplicaría.
+export const DISENO_TAREA = {
+  ocultas: ['Estado', 'Tipo', 'Resultado de notificación'],
+  tarjetas: [
+    {
+      titulo: 'Datos de la tarea', icono: 'fa-tasks',
+      campos: [
+        { etiqueta: 'Notas', campo: 'notas', control: 'textarea' },
+      ],
+    },
+  ],
+}
+
+const DISENOS = {
+  expediente: DISENO_EXPEDIENTE,
+  solicitud: DISENO_SOLICITUD,
+  version: DISENO_VERSION,
+  fase: DISENO_FASE,
+  organismo: DISENO_ORGANISMO,
+  tramite: DISENO_TRAMITE,
+}
+
+// El diseño del nodo, o null si todavía no está migrado. La tarea solo tiene diseño si la
+// superficie lo permite (`tareaConDiseno`, de `tieneDisenoTarea`): las que tienen una superficie
+// propia sin migrar siguen con su editor hasta la fase 3.
+export function disenoDeNodo(tipo, { tareaConDiseno = false } = {}) {
+  if (tipo === 'tarea') return tareaConDiseno ? DISENO_TAREA : null
+  return DISENOS[tipo] || null
+}

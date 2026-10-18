@@ -11,8 +11,12 @@ export const UMBRAL_BUSCADOR = 12
 
 const normalizar = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
+//
+// `etiqueta` vacía (`null`) omite el rótulo: lo pone quien lo usa dentro de una tarjeta de datos
+// (#1043), con el rótulo del campo; `ariaLabel` lo nombra para los lectores de pantalla.
 export default function SelectorEntidad({
   entidades, valor, onChange, disabled, etiqueta = 'Entidad', textoVacio = '— Selecciona —',
+  ariaLabel,
 }) {
   const [filtro, setFiltro] = React.useState('')
   const hayBuscador = entidades.length > UMBRAL_BUSCADOR
@@ -24,13 +28,14 @@ export default function SelectorEntidad({
 
   return (
     <div className="mb-2">
-      <label className="form-label small text-muted mb-1">{etiqueta}</label>
+      {etiqueta && <label className="form-label small text-muted mb-1">{etiqueta}</label>}
       {hayBuscador && (
         <input type="search" className="form-control form-control-sm mb-1" value={filtro}
                placeholder="Filtrar por nombre o NIF…" disabled={disabled}
                onChange={(e) => setFiltro(e.target.value)} />
       )}
       <select className="form-select form-select-sm" value={valor} disabled={disabled}
+              aria-label={ariaLabel || etiqueta || undefined}
               onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}>
         <option value="">{textoVacio}</option>
         {visibles.map((e) => (

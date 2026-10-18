@@ -1,7 +1,10 @@
-// ElaborarEditor.jsx — contenedor de la tarea ELABORAR (#608).
+// ElaborarEditor.jsx — la acción de generar el escrito de la tarea ELABORAR (#608; #1043).
 //
-// Reemplaza al Editor genérico cuando la tarea seleccionada es de tipo ELABORAR
-// (ver Inspector.jsx). Engancha el backend de generación de escritos (#167,
+// La tarea ELABORAR usa el diseño de datos de la tarea (Notas, plazo y documentos, en
+// `DatosNodo`/`ZonaDatos`) y, en lectura y en edición, la tarjeta del destinatario del escrito
+// (`notificar/DestinatarioTramite.jsx`). Lo que queda aquí es su acción propia, de la zona de acciones
+// del inspector y solo en edición: `AccionGenerarEscrito` (tabla de superficies en
+// superficiesTarea.js; ver Inspector.jsx). Engancha el backend de generación de escritos (#167,
 // app/routes/api_escritos.py) ya existente y completo, huérfano de UI desde que
 // el sistema Jinja "BC" que lo alojaba se eliminó en #500.
 //
@@ -25,16 +28,16 @@
 // El par Guardar/Cancelar que persiste lo que la Despensa apila vive en la
 // barra del marco del shell (#688, #1042), no en el pie de este contenedor.
 //
-// Destinatario (#929, ADR-051 §H): encima de "Generar escrito", el bloque
-// `BloqueDestinatarioTramite` dice a quién va el escrito y, si el trámite lo elige el
-// usuario, deja elegirlo o cambiarlo sin generar nada. Sin destinatario el servidor no
-// genera (422 `elegir_destinatario`).
+// Destinatario (#929, ADR-051 §H): la tarjeta del destinatario dice a quién va el escrito y, si
+// el trámite lo elige el usuario, deja elegirlo o cambiarlo sin generar nada. Sin destinatario el
+// servidor no genera (422 `elegir_destinatario`). Comparte con esta acción el estado
+// (`destinatarioEstado.js`): al cambiar el destinatario el generador reinicia su vista previa.
 import React from 'react'
 import { useArbolStore } from '../store.js'
+import { useDestinatarioTramite } from '../destinatarioEstado.js'
+import { idTramiteDeTarea } from '../superficiesTarea.js'
 import { getEscritosPlantillas, getEscritosPreview, postEscritosGenerar } from '../api.js'
 import { showToast } from '../../shared/ui/toast.js'
-import BloqueNotas from './BloqueNotas.jsx'
-import BloqueDestinatarioTramite from './notificar/BloqueDestinatarioTramite.jsx'
 
 // Qué pasó al generar (#730, ADR-050): sin borrador se genera; con borrador, si el
 // contenido es el mismo no pasa nada y si es distinto se sustituye sin preguntar
@@ -85,18 +88,6 @@ function PreviewCampos({ campos }) {
         ))}
     </div>
   )
-}
-
-// Id del trámite al que pertenece la tarea, buscado en el árbol ya cargado.
-function tramiteIdDeTarea(arbol, tareaId) {
-  for (const sol of (arbol && arbol.solicitudes) || []) {
-    for (const fase of sol.fases || []) {
-      for (const tr of fase.tramites || []) {
-        if ((tr.tareas || []).some((ta) => ta.id === tareaId)) return tr.id
-      }
-    }
-  }
-  return null
 }
 
 // Núcleo: generar un escrito desde plantilla. Vive siempre en el Inspector de
@@ -160,7 +151,9 @@ function GenerarEscrito({ tareaId, onGenerado, onFaltaDestinatario }) {
 
   return (
     <div className="card mb-3">
-      <div className="card-header card-header-accent fw-semibold small">Generar escrito</div>
+      <div className="card-header card-header-accent fw-semibold">
+        <i className="fas fa-file-signature me-1" />Generar escrito
+      </div>
       <div className="card-body card-body-tinted">
         {cargandoPlantillas ? (
           <div className="text-muted small fst-italic">Cargando plantillas…</div>
@@ -230,16 +223,22 @@ function GenerarEscrito({ tareaId, onGenerado, onFaltaDestinatario }) {
   )
 }
 
-export default function ElaborarEditor({ tareaId, nodo }) {
+// La acción de la zona de acciones de una tarea ELABORAR (solo edición). Qué enseña depende de si la
+// tarea está ejecutada, y eso lo dice quien dibuja su estado a partir de los documentos vinculados
+// (`Tarea.ejecutada` = hay un PRODUCIDO; el árbol lo da en `doc_producido.presente`): sin producido,
+// el generador; con él, solo el aviso de dónde está el documento.
+export function AccionGenerarEscrito({ tareaId, nodo }) {
   const ejecutada = !!(nodo && nodo.doc_producido && nodo.doc_producido.presente)
   const expedienteId = useArbolStore((s) => s.expedienteId)
   const arbol = useArbolStore((s) => s.arbol)
-  const tramiteId = tramiteIdDeTarea(arbol, tareaId)
-  // Sube cuando cambia el destinatario del trámite (o falla un generar por no tenerlo):
-  // el bloque lo vuelve a pedir y el generador reinicia su preview, que lleva
-  // `destinatario_*` y se quedaría con el anterior.
-  const [version, setVersion] = React.useState(0)
-  const otraVersion = () => setVersion((v) => v + 1)
+  const tramiteId = idTramiteDeTarea(arbol, tareaId)
+  // Sube cuando cambia el destinatario del trámite (o falla un generar por no tenerlo): el
+  // generador reinicia su preview, que lleva `destinatario_*` y se quedaría con el anterior.
+  const version = useDestinatarioTramite((s) => (s.tramiteId === tramiteId ? s.version : 0))
+  const recargarTrasFalta = useDestinatarioTramite((s) => s.recargarTrasFalta)
+  const alFaltarDestinatario = () => {
+    if (tramiteId != null) recargarTrasFalta(expedienteId, tramiteId)
+  }
 
   // Vincula el .docx recién generado como CONSUMIDO y persiste de inmediato —
   // reutiliza el mismo circuito que la Despensa (borrador.documentos_consumidos_ids
@@ -255,28 +254,20 @@ export default function ElaborarEditor({ tareaId, nodo }) {
     await useArbolStore.getState().guardar()
   }
 
-  return (
-    <div>
-      {tramiteId != null && (
-        <BloqueDestinatarioTramite expedienteId={expedienteId} tramiteId={tramiteId}
-                                   version={version} onCambio={otraVersion} />
-      )}
-      {ejecutada ? (
-        <div className="card mb-3">
-          <div className="card-header card-header-accent fw-semibold small">Generar escrito</div>
-          <div className="card-body card-body-tinted">
-            <div className="text-muted small">
-              Tarea ejecutada — el documento producido (PDF firmado) está en el
-              bloque «Documentos» del modo lectura.
-            </div>
-          </div>
+  return ejecutada ? (
+    <div className="card mb-3">
+      <div className="card-header card-header-accent fw-semibold">
+        <i className="fas fa-file-signature me-1" />Generar escrito
+      </div>
+      <div className="card-body card-body-tinted">
+        <div className="text-muted small">
+          Tarea ejecutada — el documento producido (PDF firmado) está en la
+          lista «Documentos».
         </div>
-      ) : (
-        <GenerarEscrito key={version} tareaId={tareaId} onGenerado={onGenerado}
-                        onFaltaDestinatario={otraVersion} />
-      )}
-
-      <BloqueNotas />
+      </div>
     </div>
+  ) : (
+    <GenerarEscrito key={version} tareaId={tareaId} onGenerado={onGenerado}
+                    onFaltaDestinatario={alFaltarDestinatario} />
   )
 }

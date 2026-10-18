@@ -357,6 +357,25 @@
   text-decoration: none;
 }
 
+/* btn-outline-danger, -success y -warning: el mismo caso que primary y secondary. La regla .btn
+ * superior (border: 1px solid transparent) aplasta el borde que el tema de la Junta define con
+ * --bs-btn-border-color, y «Borrar», «Eliminar», «Desactivar» o «Activar» se veían como texto de
+ * color sin borde. Se restaura con esa misma variable, no con un color nuevo: en reposo, hueco con
+ * borde y texto del color de la variante; con el ratón encima, relleno (eso ya lo da el
+ * `.btn:hover` del tema) y la misma elevación que el resto de variantes. (#1043) */
+.btn-outline-danger,
+.btn-outline-success,
+.btn-outline-warning {
+  border-color: var(--bs-btn-border-color);
+}
+
+.btn-outline-danger:hover,
+.btn-outline-success:hover,
+.btn-outline-warning:hover {
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
 /* Botón warning (subsanar) */
 .btn-warning {
   background: var(--warning);

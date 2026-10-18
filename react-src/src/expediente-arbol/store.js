@@ -32,12 +32,6 @@ export const useArbolStore = create((set, get) => ({
   edicionCargando: false,
   guardando: false,
 
-  // --- ANALIZAR (#442/#677): flag conocido tras el primer getAnalizar de la
-  // sesión de edición actual. null mientras se desconoce (o nodo no-ANALIZAR)
-  // — Inspector.jsx lo trata como "no ocultar Despensa" hasta confirmar true,
-  // para no ocultarla de golpe en ANALIZAR simple (donde sigue viva).
-  analizarSeccionesExtendidas: null,
-
   // --- creación de hijo (S3b-2) ---
   _tiposCreablesCache: {},    // { 'tipo-id': payload } — compartida con menú contextual S3b-4
   tiposCreables: null,        // payload de GET tipos-creables del nodo seleccionado
@@ -193,7 +187,7 @@ export const useArbolStore = create((set, get) => ({
           editableCampos: [], borrador: {}, borradorInicial: {},
           tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '', fuenteCrear: '',
           bloqueoGuardar: null,
-          docVinculandoPendiente: null, analizarSeccionesExtendidas: null,
+          docVinculandoPendiente: null,
           menuCtx: null, menuDetalle: null, borrarPendienteConfirm: false })
     const expedienteId = get().expedienteId
     if (!expedienteId) { set({ edicionCargando: false }); return }  // mock standalone: editor vacío
@@ -216,8 +210,6 @@ export const useArbolStore = create((set, get) => ({
   },
 
   setCampo: (campo, valor) => set((s) => ({ borrador: { ...s.borrador, [campo]: valor } })),
-
-  setAnalizarSeccionesExtendidas: (v) => set({ analizarSeccionesExtendidas: v }),
 
   cancelar: () => {
     const { seleccion } = get()
@@ -938,10 +930,51 @@ export const useArbolStore = create((set, get) => ({
   // hasta que el usuario reseleccione el nodo. `borradorInicial` se actualiza igual
   // que `borrador` (mismo patrón que entrarEdicion) para que hayCambios no marque
   // como "pendiente de guardar" un campo que ya se persistió por su cuenta.
+  //
+  // También la usa producir el diagnóstico de un ANALIZAR simple (`AnalizarSimple.jsx`, #1043):
+  // el POST fija el producido por su cuenta, y sin esta sincronización un Guardar completo
+  // posterior (si se tocan vínculos en la Despensa en la misma edición) llevaría
+  // `documento_producido_id` anterior y `editar_tarea` desvincularía el diagnóstico recién producido.
   sincronizarProducidoNotificar: (documentoId) => set((s) => ({
     borrador: { ...s.borrador, documento_producido_id: documentoId },
     borradorInicial: { ...s.borradorInicial, documento_producido_id: documentoId },
   })),
+
+  // Vuelve a pedir el detalle del nodo seleccionado SIN vaciarlo mientras llega (a diferencia de
+  // `cargarDetalle`, que pone `detalle: null` y desmonta la zona de datos). Lo usan las secciones del
+  // ANALIZAR extendido (#1043): casar un requisito cambia los documentos de la tarea y la lista
+  // «Documentos» debe ponerse al día, pero remontar las secciones haría perder lo que el técnico lleva
+  // escrito en las demás. Solo actualiza si la selección sigue siendo la misma al volver la respuesta.
+  refrescarDetalleSilencioso: async () => {
+    const { expedienteId, seleccion } = get()
+    if (!expedienteId || !seleccion) return
+    const key = `${seleccion.tipo}-${seleccion.id}`
+    try {
+      const data = await getNodo(expedienteId, seleccion.tipo, seleccion.id)
+      const actual = get().seleccion
+      if (!actual || `${actual.tipo}-${actual.id}` !== key) return
+      set((s) => ({ detalle: data, _detalleCache: { ...s._detalleCache, [key]: data } }))
+    } catch (e) {
+      if (e.status !== 401 && e.status !== 403) showToast('No se pudo refrescar el detalle', 'danger')
+    }
+  },
+
+  // Como `refrescarArbol` pero SIN vaciar el detalle: pide /arbol (estado y semáforo de los nodos) y
+  // el detalle del nodo seleccionado, y los sustituye al llegar. Lo usan los bloques de la
+  // NOTIFICAR (#1043), que guardan de inmediato y muestran avisos tras guardar: `refrescarArbol`
+  // vacía el detalle, desmonta la zona de datos y esos avisos y lo escrito en los demás campos se
+  // perderían. Solo actualiza el detalle si la selección sigue siendo la misma al volver.
+  refrescarArbolSilencioso: async () => {
+    const { expedienteId } = get()
+    if (!expedienteId) return
+    try {
+      const arbol = await getArbol(expedienteId)
+      set({ arbol, _detalleCache: {} })
+    } catch (e) {
+      showToast('No se pudo refrescar el árbol', 'danger')
+    }
+    await get().refrescarDetalleSilencioso()
+  },
 
   // Re-pide /arbol e invalida TODA la caché de detalle (una mutación puede recomputar
   // agregados/plazos de los ancestros → decisión F). Tras refrescar, re-dispara el
