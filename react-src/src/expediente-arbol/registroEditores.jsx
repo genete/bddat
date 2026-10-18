@@ -9,6 +9,7 @@
 //   tarjetas  [{ clave, render(c) }]            tarjetas de dato propias, tras los datos del nodo: en lectura y en edición
 //   acciones  [{ clave, visible(c), render(c) }] acciones propias, solo en edición y en este orden. El separador
 //                                                 solo se pinta si alguna es visible
+//   modales   [{ clave, render(c) }]            modales del nodo, solo en edición, al final del inspector
 //   despensa  { oculta, deshabilitarProducido, ayudaRecepcion }  cómo se comporta la Despensa (todo falso por defecto)
 //   borrable  si el nodo admite «Borrar» (además de los permisos y de que su fase no esté cerrada)
 //
@@ -24,8 +25,9 @@ import { superficieDeNodoTarea } from './superficiesTarea.js'
 import {
   TarjetaNotificacionesTramite, AccionNotificacionesTramite, useHayNotificacionesTramite,
 } from './components/notificar/NotificacionesTramite.jsx'
+import { CertFinInstruccion, CierreSolicitud, ModalInformeFinInstruccion } from './components/AccionesNodo.jsx'
 
-const entrada = (def) => ({ tarjetas: [], acciones: [], despensa: {}, borrable: true, ...def })
+const entrada = (def) => ({ tarjetas: [], acciones: [], modales: [], despensa: {}, borrable: true, ...def })
 
 // Los hechos del nodo que salen de un store de zustand. Se llaman siempre (reglas de los hooks), con el id del nodo
 // seleccionado: un id de tarea puede coincidir con el de un trámite, y cada hecho solo lo lee la entrada de su tipo.
@@ -39,6 +41,17 @@ export function useHechosDelNodo(id) {
 const EXPEDIENTE = entrada({ borrable: false })
 
 const ORGANISMO = entrada({})
+
+// Solicitud: la bisagra instrucción → resolución (#827, ADR-043 §E) y el cierre de la solicitud (#996, ADR-049 §F),
+// en la zona de acciones y siempre visibles (cada componente decide si tiene algo que decir), y el modal con el
+// informe de la revisión cuando no se consolida.
+const SOLICITUD = entrada({
+  acciones: [
+    { clave: 'fin-instruccion', visible: () => true, render: () => <CertFinInstruccion /> },
+    { clave: 'cierre-solicitud', visible: () => true, render: () => <CierreSolicitud /> },
+  ],
+  modales: [{ clave: 'informe-fin-instruccion', render: () => <ModalInformeFinInstruccion /> }],
+})
 
 // Notificaciones del trámite (#929, ADR-051 §D): a quién falta notificar (tarjeta de dato, en los dos modos) y el
 // botón de añadirlas (acción, solo en edición). Si el trámite no notifica a nadie según el catálogo, ni la tarjeta
@@ -63,7 +76,7 @@ const TAREA_GENERICA = entrada({})
 // recibido de fuera.
 const TAREA_ESPERAR_PLAZO = entrada({ despensa: { ayudaRecepcion: true } })
 
-const POR_TIPO = { expediente: EXPEDIENTE, organismo: ORGANISMO, tramite: TRAMITE }
+const POR_TIPO = { expediente: EXPEDIENTE, solicitud: SOLICITUD, organismo: ORGANISMO, tramite: TRAMITE }
 
 // La entrada del nodo seleccionado (`nodo` = su entrada en el árbol), o `null` si su tipo aún no está migrado.
 export function entradaDe(tipo, nodo, arbol) {
