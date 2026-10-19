@@ -3,8 +3,8 @@
 // La tarea ELABORAR usa el diseño de datos de la tarea (Notas, plazo y documentos, en
 // `DatosNodo`/`ZonaDatos`) y, en lectura y en edición, la tarjeta del destinatario del escrito
 // (`notificar/DestinatarioTramite.jsx`). Lo que queda aquí es su acción propia, de la zona de acciones
-// del inspector y solo en edición: `AccionGenerarEscrito` (tabla de superficies en
-// superficiesTarea.js; ver Inspector.jsx). Engancha el backend de generación de escritos (#167,
+// del inspector y solo en edición: `AccionGenerarEscrito` (la declara la entrada de ELABORAR en
+// registroEditores.jsx). Engancha el backend de generación de escritos (#167,
 // app/routes/api_escritos.py) ya existente y completo, huérfano de UI desde que
 // el sistema Jinja "BC" que lo alojaba se eliminó en #500.
 //

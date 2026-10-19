@@ -8,7 +8,6 @@
 // guardar / cancelar los pinta el shell, no este fichero (marco único, ADR-053 §A, #1042):
 // los alimenta `puenteInspector.js` con el estado del store.
 import React from 'react'
-import { createPortal } from 'react-dom'
 import { useArbolStore } from '../store.js'
 import { showToast } from '../../shared/ui/toast.js'
 import { puedeEditarNodo } from '../../shared/auth.js'
@@ -17,19 +16,10 @@ import BarraPlazo from './nodos/BarraPlazo.jsx'
 import { barraDeActo, fechaLarga } from '../plazoActo.js'
 import Despensa from './Despensa.jsx'
 import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
-import { AnalisisExtendido, AccionProducirDiagnostico } from './AnalizarEditor.jsx'
-import { AccionGenerarEscrito } from './ElaborarEditor.jsx'
-import TarjetaDestinatarioTramite from './notificar/DestinatarioTramite.jsx'
-import { TarjetasNotificar } from './NotificarEditor.jsx'
 import DatosNodo from './DatosNodo.jsx'
 import { disenoDeNodo } from '../disenosDatos.js'
-import { superficieDeNodoTarea, tieneDisenoTarea, idTramiteDeTarea } from '../superficiesTarea.js'
-import { TarjetaResultadoDiagnostico } from './AnalizarSimple.jsx'
-import { useDiagnosticoPendiente } from '../analizarEstado.js'
-import {
-  TarjetaNotificacionesTramite, AccionNotificacionesTramite, useHayNotificacionesTramite,
-} from './notificar/NotificacionesTramite.jsx'
-import ModalConfirmacionFrase from './ModalConfirmacionFrase.jsx'
+import { superficieDeNodoTarea, tieneDisenoTarea } from '../superficiesTarea.js'
+import { entradaDe, useHechosDelNodo } from '../registroEditores.jsx'
 
 export const ETIQUETA_TIPO = {
   expediente: 'Expediente',
@@ -378,6 +368,9 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
   const expedienteId = useArbolStore((s) => s.expedienteId)
   const arbol = useArbolStore((s) => s.arbol)
   const esHoja = tipo === 'tarea'
+  // Las tarjetas propias del nodo las declara su entrada del registro de editores (#1047).
+  const entrada = entradaDe(tipo, nodo, arbol)
+  const ctx = { tipo, id: detalle.nodo.id, nodo, detalle, expedienteId, arbol, modoEdicion }
   // La tarea tiene diseño si es genérica o su superficie ya migró (todas hoy).
   const superficie = esHoja ? superficieDeNodoTarea(arbol, nodo) : null
   const tareaConDiseno = esHoja && !!nodo && tieneDisenoTarea(superficie)
@@ -389,23 +382,7 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
       {diseno
         ? <DatosNodo diseno={diseno} detalle={detalle} nodo={nodo} bloqueado={faseCerrada} />
         : <Campos campos={detalle.campos} />}
-      {tipo === 'tramite' && (
-        <TarjetaNotificacionesTramite expedienteId={expedienteId} tramiteId={Number(detalle.nodo.id)} />
-      )}
-      {superficie === 'ANALIZAR_SIMPLE' && (
-        <TarjetaResultadoDiagnostico expedienteId={expedienteId} tareaId={Number(detalle.nodo.id)} />
-      )}
-      {superficie === 'ANALIZAR' && (
-        <AnalisisExtendido expedienteId={expedienteId} tareaId={Number(detalle.nodo.id)} />
-      )}
-      {superficie === 'ELABORAR' && idTramiteDeTarea(arbol, Number(detalle.nodo.id)) != null && (
-        <TarjetaDestinatarioTramite expedienteId={expedienteId}
-                                    tramiteId={idTramiteDeTarea(arbol, Number(detalle.nodo.id))} />
-      )}
-      {superficie === 'NOTIFICAR' && (
-        <TarjetasNotificar expedienteId={expedienteId} tareaId={Number(detalle.nodo.id)}
-                           soloLectura={!modoEdicion} />
-      )}
+      {entrada.tarjetas.map((t) => <React.Fragment key={t.clave}>{t.render(ctx)}</React.Fragment>)}
       {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
       <Plazo plazo={detalle.plazo} />
       <PlazosActos nodo={nodo} tipo={tipo} />
@@ -473,641 +450,6 @@ function ConfirmacionBorrado({ nodo }) {
 }
 
 // --- Edición (S3b-1): editor genérico + split editor/despensa ------------------
-
-// Bloque de reapertura (#720, ADR-036 §6 capa 4): única vía para tocar el interior
-// de una fase cerrada. Justificación siempre obligatoria (validada también
-// server-side) — mismo patrón visual que el forzado de creación (Despensa.jsx).
-function ReabrirFase() {
-  const [justificacion, setJustificacion] = React.useState('')
-  const reabriendo  = useArbolStore((s) => s.reabriendoFase)
-  const reabrirFase = useArbolStore((s) => s.reabrirFase)
-
-  return (
-    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border bg-warning-subtle border-warning-subtle mb-3">
-      <span className="small">
-        <i className="bi bi-lock-fill me-1" /><strong>Fase cerrada.</strong> Su interior está congelado.
-      </span>
-      <span className="small text-muted">
-        Para modificarla, reábrala primero. La reapertura queda registrada en bitácora.
-      </span>
-      <textarea
-        className="form-control form-control-sm"
-        rows={2}
-        placeholder="Justificación obligatoria para reabrir la fase"
-        value={justificacion}
-        onChange={(e) => setJustificacion(e.target.value)}
-        disabled={reabriendo}
-      />
-      <button
-        type="button"
-        className="btn btn-sm btn-warning"
-        disabled={reabriendo || !justificacion.trim()}
-        onClick={() => reabrirFase(justificacion.trim())}
-      >
-        {reabriendo ? 'Reabriendo…' : '🔓 Reabrir fase'}
-      </button>
-    </div>
-  )
-}
-
-// Organismos vía consulta de la fase sin ninguna CONSULTA_SEPARATA vinculada
-// (ADR-042 §C, #396 bloque 5) — mismo criterio estructural que el backend
-// (consultas_organismos.organismos_pendientes_separata), derivado aquí del
-// payload del árbol ya cargado (fase.organismos[].tramite_ids + fase.tramites)
-// en vez de pedir un recuento aparte al backend.
-function organismosPendientesSeparata(fase) {
-  const tramitesPorId = new Map((fase.tramites || []).map((t) => [t.id, t]))
-  return (fase.organismos || []).filter((org) => {
-    if (org.via !== 'consulta') return false
-    return !(org.tramite_ids || []).some((tid) => {
-      const t = tramitesPorId.get(tid)
-      return t && t.tipo_codigo === 'CONSULTA_SEPARATA'
-    })
-  })
-}
-
-// Acción de fase CONSULTAS en modo edición (ADR-042 §C, #396 bloque 5): vive
-// en la zona de acciones, junto a las demás — resultado_fase_id/documento_
-// resultado_id de esta fase siguen editándose igual que en cualquier otra.
-// Oculto sin organismos pendientes: el botón no tiene nada útil que decir.
-function AccionesFaseConsultas({ nodo }) {
-  const enviarConsultas = useArbolStore((s) => s.enviarConsultas)
-  const enviando = useArbolStore((s) => s.enviandoConsultas)
-  const pendientes = organismosPendientesSeparata(nodo)
-  if (pendientes.length === 0) return null
-  return (
-    <div className="mb-3">
-      <button type="button" className="btn btn-sm btn-primary"
-              disabled={enviando} onClick={enviarConsultas}>
-        {enviando ? 'Enviando…' : `📤 Enviar consultas pendientes (${pendientes.length})`}
-      </button>
-    </div>
-  )
-}
-
-// Bisagra instrucción → resolución (#827, ADR-043 §E): el gesto con el que el
-// técnico pregunta cómo va la instrucción y, si no queda nada pendiente, la declara
-// terminada. Hasta que el certificado consta, el motor bloquea la apertura de la
-// fase finalizadora citando el art. 82.1 LPACAP.
-//
-// Vive en la zona de acciones, como AccionesFaseConsultas y ReabrirFase.
-// Siempre visible en la solicitud, y con el botón SIEMPRE activo: el
-// gesto dejó de ser una puerta que se concede o se deniega. Preguntar «¿cómo va
-// esto?» no tiene precondiciones —se puede desde el primer día— y la respuesta es
-// un informe, no un error. Por eso el inspector ya no trae el motivo del «todavía
-// no»: lo dice el informe al pulsar, con mucho más detalle del que cabía aquí.
-function CertFinInstruccion() {
-  const detalle      = useArbolStore((s) => s.detalle)
-  const certificando = useArbolStore((s) => s.certificandoFinInstruccion)
-  const certificar   = useArbolStore((s) => s.certificarFinInstruccion)
-
-  const cert = detalle && detalle.cert_fin_instruccion
-  if (!cert) return null
-
-  if (cert.emitido) return <SelloInstruccion />
-
-  return (
-    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border bg-light mb-3">
-      <span className="small">
-        <i className="bi bi-hourglass-split me-1" />
-        <strong>Instrucción en curso.</strong> La fase de resolución no puede abrirse
-        hasta que conste terminada (art. 82.1 LPACAP).
-      </span>
-      <span className="small text-muted">
-        Revise el estado cuando quiera: si no falta nada, el certificado se emite en
-        el acto; si falta algo, verá qué es y no se creará ningún documento.
-      </span>
-      <button
-        type="button"
-        className="btn btn-sm btn-primary"
-        disabled={certificando}
-        onClick={certificar}
-      >
-        {certificando ? 'Revisando…' : '📜 Certificar fin de instrucción'}
-      </button>
-    </div>
-  )
-}
-
-// El sello, con su vía de salida (#838, ADR-043 §F). Emitido el certificado, la
-// instrucción queda declarada terminada y ninguna fase de instrucción se abre ni se
-// reabre. Lo que este bloque tiene que decir es doble: que está sellada, y qué hacer
-// si aun así falta algo.
-//
-// Las dos vías van escritas, no solo la que tiene botón: la primera —recabar algo
-// más dentro de la fase que resuelve, art. 87— no necesita nada de aquí, y quien la
-// necesite debe encontrarla antes que el botón de deshacer, que es la cara. Mismo
-// motivo por el que el bloqueo del backend las nombra en vez de prohibir a secas.
-//
-// El formulario está plegado por defecto, al revés que ReabrirFase, que lo muestra
-// siempre: allí la fase cerrada está pidiendo abrirse para poder trabajar, y aquí el
-// estado normal es que el sello se quede puesto. Desplegarlo es ya parte del acto.
-function SelloInstruccion() {
-  const [abierto, setAbierto] = React.useState(false)
-  const [justificacion, setJustificacion] = React.useState('')
-  const deshaciendo = useArbolStore((s) => s.deshaciendoFinInstruccion)
-  const deshacer    = useArbolStore((s) => s.deshacerFinInstruccion)
-
-  return (
-    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border border-success-subtle bg-success-subtle mb-3">
-      <span className="small">
-        <i className="bi bi-patch-check-fill me-1" />
-        <strong>Instrucción terminada.</strong> El certificado de fin de instrucción
-        está emitido y la fase de resolución puede abrirse.
-      </span>
-      <span className="small text-muted">
-        Mientras conste, no se abre ninguna fase de instrucción nueva ni se reabre una
-        cerrada. Si falta recabar algo antes de resolver, acuérdelo dentro de la fase
-        que resuelve, sin volver a la instrucción (art. 87 LPACAP).
-      </span>
-
-      {!abierto ? (
-        <button type="button" className="btn btn-sm btn-link text-danger p-0 text-start"
-                onClick={() => setAbierto(true)}>
-          La instrucción no estaba terminada: deshacer el certificado
-        </button>
-      ) : (
-        <>
-          <span className="small text-muted">
-            Se borrará el certificado y volverá a haber instrucción abierta. Antes hay
-            que haber deshecho y borrado la fase que resuelve, si ya se creó. Queda
-            registrado en bitácora y el próximo certificado lo hará constar.
-          </span>
-          <textarea
-            className="form-control form-control-sm"
-            rows={2}
-            placeholder="Justificación obligatoria para deshacer el certificado"
-            value={justificacion}
-            onChange={(e) => setJustificacion(e.target.value)}
-            disabled={deshaciendo}
-          />
-          <div className="d-flex gap-2">
-            <button
-              type="button"
-              className="btn btn-sm btn-danger"
-              disabled={deshaciendo || !justificacion.trim()}
-              onClick={() => deshacer(justificacion.trim())}
-            >
-              {deshaciendo ? 'Deshaciendo…' : '↩️ Deshacer el certificado'}
-            </button>
-            <button type="button" className="btn btn-sm btn-outline-secondary"
-                    disabled={deshaciendo}
-                    onClick={() => { setAbierto(false); setJustificacion('') }}>
-              Cancelar
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-// Cierre de la solicitud (#996, ADR-049 §F): el certificado que cuenta cómo terminó la
-// solicitud entera —el plazo de resolver de cada acto, la instrucción y copia de los
-// certificados de cierre de sus fases—. Junto al fin de instrucción, con el gesto del
-// cumplimiento de la fase: el botón siempre responde con la vista HTML en el modal
-// grande, que dice qué falta o enseña el certificado.
-function CierreSolicitud() {
-  const detalle      = useArbolStore((s) => s.detalle)
-  const certificando = useArbolStore((s) => s.certificandoCierreSolicitud)
-  const certificar   = useArbolStore((s) => s.certificarCierreSolicitud)
-
-  const cert = detalle && detalle.cert_cierre
-  if (!cert) return null
-
-  if (cert.emitido) return <SelloCierreSolicitud cert={cert} />
-
-  return (
-    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border bg-light mb-3">
-      <span className="small">
-        <i className="bi bi-flag me-1" />
-        <strong>Cierre de la solicitud.</strong> El certificado cuenta cómo terminó: el
-        plazo de resolver de cada acto, la instrucción y los certificados de cierre de sus
-        fases.
-      </span>
-      <span className="small text-muted">
-        Se emite cuando cada acto tiene su fase de resolución cerrada con su certificado. Si
-        falta algo, verá qué es y no se creará ningún documento.
-      </span>
-      <button type="button" className="btn btn-sm btn-primary"
-              disabled={certificando} onClick={certificar}>
-        {certificando ? 'Revisando…' : '📜 Certificar el cierre de la solicitud'}
-      </button>
-    </div>
-  )
-}
-
-// El certificado emitido, con su salida (D4). Mismo esquema que SelloInstruccion: el
-// estado normal es que se quede, y el formulario para retirarlo está plegado.
-function SelloCierreSolicitud({ cert }) {
-  const [abierto, setAbierto] = React.useState(false)
-  const [justificacion, setJustificacion] = React.useState('')
-  const retirando = useArbolStore((s) => s.retirandoCierreSolicitud)
-  const retirar   = useArbolStore((s) => s.retirarCierreSolicitud)
-
-  return (
-    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border border-success-subtle bg-success-subtle mb-3">
-      <span className="small">
-        <i className="bi bi-patch-check-fill me-1" />
-        <strong>Cierre de la solicitud certificado.</strong> Su contenido se fijó al
-        emitirlo y no se recalcula.
-      </span>
-      <button type="button" className="btn btn-sm btn-outline-success align-self-start"
-              onClick={() => window.AppModalLarge && window.AppModalLarge.open(
-                cert.enlace_vista, { title: 'Certificado de cierre de la solicitud' })}>
-        <i className="bi bi-eye me-1" />Ver el certificado
-      </button>
-
-      {!abierto ? (
-        <button type="button" className="btn btn-sm btn-link text-danger p-0 text-start"
-                onClick={() => setAbierto(true)}>
-          El resumen del plazo no es correcto: retirar el certificado
-        </button>
-      ) : (
-        <>
-          <span className="small text-muted">
-            Se borrará el certificado; después podrá corregir lo que fallaba y volver a
-            emitirlo. No se puede si alguna tarea lo tiene vinculado. Queda registrado en
-            bitácora y el próximo certificado lo hará constar.
-          </span>
-          <textarea
-            className="form-control form-control-sm"
-            rows={2}
-            placeholder="Justificación obligatoria para retirar el certificado"
-            value={justificacion}
-            onChange={(e) => setJustificacion(e.target.value)}
-            disabled={retirando}
-          />
-          <div className="d-flex gap-2">
-            <button type="button" className="btn btn-sm btn-danger"
-                    disabled={retirando || !justificacion.trim()}
-                    onClick={() => retirar(justificacion.trim())}>
-              {retirando ? 'Retirando…' : '↩️ Retirar el certificado'}
-            </button>
-            <button type="button" className="btn btn-sm btn-outline-secondary"
-                    disabled={retirando}
-                    onClick={() => { setAbierto(false); setJustificacion('') }}>
-              Cancelar
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-// Cumplimiento del plazo de resolver (#947, ADR-049 §F): el botón de la fase
-// finalizadora. Mismo gesto que el fin de instrucción —siempre activo, nunca un
-// error—, pero la respuesta no es un informe propio: es la vista HTML del
-// certificado, la misma para el borrador calculado (qué documento se citaría, o qué
-// falta) y para el emitido, que se abre en el modal grande. Por eso aquí no hay
-// modal que montar (a diferencia de ModalInformeFinInstruccion).
-//
-// Aparece con la fase abierta y también cerrada: emitir con la fase cerrada se
-// permite (sella lo que ADR-036 ya sella); deshacer, no, y el backend lo explica.
-function CertCumplimientoFase() {
-  const detalle      = useArbolStore((s) => s.detalle)
-  const certificando = useArbolStore((s) => s.certificandoCumplimiento)
-  const certificar   = useArbolStore((s) => s.certificarCumplimiento)
-
-  const cert = detalle && detalle.cert_cumplimiento
-  if (!cert) return null
-
-  if (cert.emitido) return <SelloCumplimiento cert={cert} />
-
-  return (
-    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border bg-light mb-3">
-      <span className="small">
-        <i className="bi bi-hourglass-split me-1" />
-        <strong>Cumplimiento del plazo sin certificar.</strong> El plazo de resolver de
-        los actos de esta fase se calcula en cada lectura desde la notificación al titular.
-      </span>
-      <span className="small text-muted">
-        Si consta la notificación, el certificado se emite en el acto y fija el documento
-        que la acredita; si no, verá qué falta y no se creará ningún documento.
-      </span>
-      <button type="button" className="btn btn-sm btn-primary"
-              disabled={certificando} onClick={certificar}>
-        {certificando ? 'Revisando…' : '📜 Certificar el cumplimiento'}
-      </button>
-    </div>
-  )
-}
-
-// El sello del cumplimiento, con su salida (#947). Mismo esquema que
-// SelloInstruccion: el estado, qué implica, y el deshacer plegado — el estado
-// normal es que el sello se quede puesto, y desplegarlo es ya parte del acto.
-function SelloCumplimiento({ cert }) {
-  const [abierto, setAbierto] = React.useState(false)
-  const [justificacion, setJustificacion] = React.useState('')
-  const deshaciendo = useArbolStore((s) => s.deshaciendoCumplimiento)
-  const deshacer    = useArbolStore((s) => s.deshacerCumplimiento)
-
-  return (
-    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border border-success-subtle bg-success-subtle mb-3">
-      <span className="small">
-        <i className="bi bi-patch-check-fill me-1" />
-        <strong>Cumplimiento certificado.</strong> El plazo de resolver de los actos de
-        esta fase se lee del certificado.
-      </span>
-      <span className="small text-muted">
-        Mientras conste, el documento que cita no puede modificarse, desvincularse ni
-        borrarse. El resto de la notificación sigue abierta a lo que llegue después.
-      </span>
-      <button type="button" className="btn btn-sm btn-outline-success align-self-start"
-              onClick={() => window.AppModalLarge && window.AppModalLarge.open(
-                cert.enlace_vista, { title: 'Certificado de cumplimiento de la fase' })}>
-        <i className="bi bi-eye me-1" />Ver el certificado
-      </button>
-
-      {!abierto ? (
-        <button type="button" className="btn btn-sm btn-link text-danger p-0 text-start"
-                onClick={() => setAbierto(true)}>
-          El documento citado no es el correcto: deshacer el certificado
-        </button>
-      ) : (
-        <>
-          <span className="small text-muted">
-            Se borrará el certificado y el plazo volverá a calcularse. Solo con la fase
-            abierta. Queda registrado en bitácora, con el documento que citaba.
-          </span>
-          <textarea
-            className="form-control form-control-sm"
-            rows={2}
-            placeholder="Justificación obligatoria para deshacer el certificado"
-            value={justificacion}
-            onChange={(e) => setJustificacion(e.target.value)}
-            disabled={deshaciendo}
-          />
-          <div className="d-flex gap-2">
-            <button type="button" className="btn btn-sm btn-danger"
-                    disabled={deshaciendo || !justificacion.trim()}
-                    onClick={() => deshacer(justificacion.trim())}>
-              {deshaciendo ? 'Deshaciendo…' : '↩️ Deshacer el certificado'}
-            </button>
-            <button type="button" className="btn btn-sm btn-outline-secondary"
-                    disabled={deshaciendo}
-                    onClick={() => { setAbierto(false); setJustificacion('') }}>
-              Cancelar
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-// Frase del cierre irreversible (D5). La compara también el backend
-// (`cert_cierre_fase.FRASE_CONFIRMACION`): si se cambia aquí, cambiarla allí.
-const FRASE_CIERRE_FINALIZADORA = 'cerrar finalizadora'
-
-// Cierre de la fase finalizadora (#956, ADR-049 §F): se cierra con su certificado de
-// cierre, no eligiendo un documento en el editor (D6). Junto a «Cumplimiento del
-// plazo», con el mismo gesto: el botón pregunta y, si no falta nada, cierra; si
-// falta, abre el informe con lo que falta y no crea nada. «Ver cómo va» abre ese
-// mismo informe sin intentar cerrar.
-//
-// Emitido, solo queda verlo: reabrir la fase —que en una finalizadora es deshacer el
-// certificado— sigue siendo ReabrirFase, sin cambios de interfaz.
-function CierreFase({ nodo }) {
-  const detalle   = useArbolStore((s) => s.detalle)
-  const cerrando  = useArbolStore((s) => s.cerrandoFase)
-  const solicitar = useArbolStore((s) => s.solicitarCierreFase)
-
-  const cert = detalle && detalle.cert_cierre
-  if (!cert) return null
-
-  const verVista = () => window.AppModalLarge && window.AppModalLarge.open(
-    cert.enlace_vista, { title: 'Certificado de cierre de la fase' })
-
-  // Cerrada antes de #956 con un documento del pool: no hay certificado que ver, y
-  // para cerrarla con él hay que reabrirla (ReabrirFase, debajo).
-  if (!cert.emitido && nodo && nodo.estado === 'FINALIZADA') {
-    return (
-      <div className="small text-muted px-2 py-2 rounded border bg-light mb-3">
-        <i className="bi bi-info-circle me-1" />
-        Esta fase se cerró antes de existir el certificado de cierre, con un documento
-        de resultado. Para cerrarla con su certificado, reábrala.
-      </div>
-    )
-  }
-
-  if (cert.emitido) {
-    return (
-      <div className="d-flex flex-column gap-2 px-2 py-2 rounded border border-success-subtle bg-success-subtle mb-3">
-        <span className="small">
-          <i className="bi bi-lock-fill me-1" />
-          <strong>Fase cerrada con su certificado de cierre.</strong> Consta hecho todo
-          lo obligatorio, incluida la notificación al titular.
-        </span>
-        <button type="button" className="btn btn-sm btn-outline-success align-self-start"
-                onClick={verVista}>
-          <i className="bi bi-eye me-1" />Ver el certificado
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border bg-light mb-3">
-      <span className="small">
-        <i className="bi bi-flag me-1" />
-        <strong>Cierre de la fase.</strong> Se cierra con su certificado de cierre, que
-        exige el resultado fijado, los trámites completos y el cumplimiento certificado.
-      </span>
-      <span className="small text-muted">
-        Si no falta nada, la fase se cierra en el acto; si falta algo, verá qué es y no
-        se creará ningún documento. Los escapes se hacen en la tarea o el trámite, no aquí.
-      </span>
-      {cert.cierra_solicitud && (
-        <span className="small text-danger">
-          <i className="bi bi-exclamation-octagon me-1" />
-          Cerrarla deja la solicitud resuelta: el cierre será irreversible.
-        </span>
-      )}
-      <div className="d-flex gap-2">
-        <button type="button" className="btn btn-sm btn-primary"
-                disabled={cerrando} onClick={solicitar}>
-          {cerrando ? 'Revisando…' : '🔒 Cerrar la fase'}
-        </button>
-        <button type="button" className="btn btn-sm btn-outline-secondary"
-                disabled={cerrando} onClick={verVista}>
-          Ver cómo va
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// Las dos confirmaciones del cierre (D5), en el mismo modal reutilizable: normal si
-// la solicitud sigue abierta después (se puede reabrir), con la frase escrita si el
-// cierre la deja resuelta y ya no hay vuelta atrás dentro de BDDAT.
-function ModalConfirmacionCierre() {
-  const modo     = useArbolStore((s) => s.confirmacionCierre)
-  const cerrando = useArbolStore((s) => s.cerrandoFase)
-  const cerrar   = useArbolStore((s) => s.cerrarFase)
-  const cancelar = useArbolStore((s) => s.cancelarCierreFase)
-
-  const irreversible = modo === 'frase'
-  return (
-    <ModalConfirmacionFrase
-      abierto={modo !== null}
-      titulo={irreversible ? 'Cerrar la fase y resolver la solicitud' : 'Cerrar la fase'}
-      frase={irreversible ? FRASE_CIERRE_FINALIZADORA : null}
-      textoAccion="Cerrar la fase"
-      variante={irreversible ? 'danger' : 'primary'}
-      enviando={cerrando}
-      onConfirmar={(frase) => cerrar(frase)}
-      onCancelar={cancelar}
-    >
-      {irreversible ? (
-        <>
-          <p className="mb-2">
-            No falta nada: la fase puede cerrarse. Al hacerlo la solicitud queda
-            <strong> resuelta</strong> y, como la resolución ya está notificada,
-            <strong> ninguna de sus fases podrá reabrirse</strong> dentro de BDDAT.
-          </p>
-          <p className="mb-0 text-muted">
-            Cualquier corrección posterior exigirá un acto administrativo expreso
-            (revocación, rectificación…), fuera de este flujo.
-          </p>
-        </>
-      ) : (
-        <p className="mb-0">
-          Se revisará la fase y, si no falta nada, quedará cerrada con su certificado
-          de cierre. Si falta algo, verá qué es y no se cerrará. Podrá reabrirla después,
-          con justificación.
-        </p>
-      )}
-    </ModalConfirmacionFrase>
-  )
-}
-
-// El informe de la revisión cuando NO se consolidó (#827, ADR-043 §E). Modal propio
-// con clases de Bootstrap y sin su JS: el bundle de la isla no carga bootstrap.js y
-// el contenido viene de la respuesta del POST, no de una URL — así que ni
-// AppModalLarge (capa 3, que abre una url) ni un data-attribute declarativo sirven.
-//
-// Va por `createPortal` a <body>: montado en su sitio del árbol de componentes, el
-// `position: fixed` del modal se resolvía respecto al panel del inspector y no
-// respecto a la ventana —basta un ancestro con `transform` para que eso ocurra—, de
-// modo que el diálogo salía encajado en la mitad derecha y el backdrop no cubría el
-// árbol. Verificado en navegador antes y después.
-//
-// Tres bloques, en el orden en que se leen: lo que falta (con el porqué), lo salvado
-// bajo criterio propio, y el relato de lo instruido hasta ahora. Los tres llegan ya
-// redactados por el backend — cada nodo del árbol escribe lo suyo (§E bis) — y aquí
-// no se compone ninguna frase.
-function ModalInformeFinInstruccion() {
-  const informe = useArbolStore((s) => s.informeFinInstruccion)
-  const cerrar  = useArbolStore((s) => s.cerrarInformeFinInstruccion)
-  const seleccionar = useArbolStore((s) => s.seleccionar)
-
-  React.useEffect(() => {
-    if (!informe) return undefined
-    const alEscape = (e) => { if (e.key === 'Escape') cerrar() }
-    document.addEventListener('keydown', alEscape)
-    return () => document.removeEventListener('keydown', alEscape)
-  }, [informe, cerrar])
-
-  if (!informe) return null
-
-  const pendientes = informe.pendientes || []
-  const salvados   = informe.salvados || []
-  const relato     = (informe.bloques || []).flatMap((b) => b.relato || [])
-
-  // "Ir al nodo" cierra el modal y selecciona: el técnico venía a arreglar algo.
-  const irAlNodo = (nodo) => {
-    if (!nodo) return
-    cerrar()
-    seleccionar({ tipo: nodo.tipo, id: nodo.id })
-  }
-
-  return createPortal(
-    <>
-      <div className="modal-backdrop fade show" onClick={cerrar} />
-      <div className="modal fade show d-block" role="dialog" aria-modal="true"
-           aria-label="Informe de fin de instrucción">
-        <div className="modal-dialog modal-lg modal-dialog-scrollable">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title h6 mb-0">
-                <i className="bi bi-clipboard-check me-2" />
-                La instrucción todavía no puede certificarse
-              </h5>
-              <button type="button" className="btn-close" aria-label="Cerrar"
-                      onClick={cerrar} />
-            </div>
-            <div className="modal-body">
-              <p className="small text-muted">
-                No se ha creado ningún documento. Resuelva lo que falta y vuelva a
-                pedir el certificado cuando quiera.
-              </p>
-
-              <h6 className="small text-uppercase text-muted mt-3">Qué falta</h6>
-              <ul className="list-group list-group-flush mb-3">
-                {pendientes.map((b, i) => (
-                  <li className="list-group-item px-0 py-2" key={`p-${i}`}>
-                    <div className="small fw-semibold">{b.titulo}</div>
-                    {(b.pendiente || []).map((linea, j) => (
-                      <div className="small" key={j}>{linea}</div>
-                    ))}
-                    {b.nodo && (
-                      <button type="button"
-                              className="btn btn-link btn-sm p-0 mt-1 small"
-                              onClick={() => irAlNodo(b.nodo)}>
-                        Ir al nodo →
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-
-              {salvados.length > 0 && (
-                <>
-                  <h6 className="small text-uppercase text-muted">
-                    Actos salvados con criterio del tramitador
-                  </h6>
-                  <p className="small text-muted mb-2">
-                    No impiden certificar. Constarán en el certificado, porque la
-                    resolución que se dicte debe motivarlos.
-                  </p>
-                  <ul className="list-group list-group-flush mb-3">
-                    {salvados.map((b, i) => (
-                      <li className="list-group-item px-0 py-2" key={`s-${i}`}>
-                        <div className="small fw-semibold">{b.titulo}</div>
-                        {(b.salvado || []).map((linea, j) => (
-                          <div className="small text-muted" key={j}>{linea}</div>
-                        ))}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-
-              {relato.length > 0 && (
-                <>
-                  <h6 className="small text-uppercase text-muted">
-                    Lo instruido hasta ahora
-                  </h6>
-                  {relato.map((linea, i) => (
-                    <div className="small text-muted" key={`r-${i}`}>{linea}</div>
-                  ))}
-                </>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-sm btn-secondary" onClick={cerrar}>
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>,
-    document.body,
-  )
-}
 
 // Vía de escape del Guardar cuando el backend devuelve un bloqueo FORZABLE
 // (#765). Hasta ahora `puede_escapar:true` solo se ofrecía al CREAR: los tres
@@ -1212,78 +554,28 @@ function InspectorEdicion({ nodo }) {
   const seleccion             = useArbolStore((s) => s.seleccion)
   const borrarPendienteConfirm = useArbolStore((s) => s.borrarPendienteConfirm)
   const arbol                 = useArbolStore((s) => s.arbol)
-  // La superficie de trabajo propia de la tarea sale de una única tabla por tipo de tarea y trámite
-  // (`superficiesTarea.js`); una tarea que no figura en ella es genérica (más abajo).
-  const superficie = seleccion.tipo === 'tarea' ? superficieDeNodoTarea(arbol, nodo) : null
-  // ANALIZAR (#442, #1043): las dos variantes ya usan el diseño de datos de la tarea. El análisis
-  // son tarjetas de datos —en lectura y en edición— y producir el diagnóstico, una acción de la zona
-  // de acciones. Con secciones extendidas (ADR-033: check documental, técnico y requerimientos) lo
-  // pinta `AnalisisExtendido`; sin ellas (trámites tipo CONSULTA_SEPARATA), `AnalizarSimple.jsx`.
-  const esAnalizarExtendido = superficie === 'ANALIZAR'
-  const esAnalizarSimple = superficie === 'ANALIZAR_SIMPLE'
-  const esAnalizar = esAnalizarExtendido || esAnalizarSimple
-  // ELABORAR (#608, #1043): ya usa el diseño de datos de la tarea. El destinatario del escrito es
-  // una tarjeta de datos —en lectura y en edición— y "Generar escrito" (backend #167, huérfano de UI
-  // desde la eliminación del sistema BC en #500), una acción de la zona de acciones
-  // (`AccionGenerarEscrito`). La Despensa NO se deshabilita — sigue siendo el mecanismo genérico que
-  // vincula el borrador de firma y el documento firmado.
-  const esElaborar = superficie === 'ELABORAR'
-  // NOTIFICAR (#657/#658, ADR-034; #1043): ya usa el diseño de datos de la tarea. Aviso, destinatario,
-  // registro y justificantes previos son tarjetas de datos —en lectura y en edición— con sus controles
-  // vivos dentro (`TarjetasNotificar`); no tiene acciones propias. Igual que ELABORAR, la Despensa NO se
-  // deshabilita.
-  // Tarea con diseño de datos (#1043): la genérica (sin superficie propia: hoy ESPERAR_PLAZO, y lo
-  // será cualquier tipo de tarea o trámite que no figure en la tabla) y la de superficie ya migrada
-  // (hoy todas).
-  const tareaConDiseno = seleccion.tipo === 'tarea' && !!nodo && tieneDisenoTarea(superficie)
+  // Qué lleva este nodo —tarjetas, acciones, modales, Despensa y «Borrar»— lo declara su entrada del registro de
+  // editores (#1047). Las tareas eligen entrada por su superficie (`superficiesTarea.js`).
+  const entrada = entradaDe(seleccion.tipo, nodo, arbol)
   // Todos los nodos tienen diseño de datos (#1043, lectura ≈ edición): la edición pinta la misma zona
   // de datos que la lectura y debajo las acciones y el pie.
   const detalle      = useArbolStore((s) => s.detalle)
   const cargandoDet  = useArbolStore((s) => s.detalleCargando)
   const seleccionar  = useArbolStore((s) => s.seleccionar)
   const hayDetalle   = !!detalle && !cargandoDet
-  // ESPERAR_PLAZO (#766): sin editor bespoke — solo la ayuda de la Despensa sobre
-  // qué documento es el producido cuando en la recepción llegan varios (regla de
-  // #764). Es la única tarea cuyo producido es un documento recibido de fuera.
-  const esEsperarPlazo = tareaConDiseno && nodo.tipo_codigo === 'ESPERAR_PLAZO'
-  // Fase CONSULTAS (ADR-042 §C, #396 bloque 5): acción propia de la fase, en la zona de acciones
-  // (mismo criterio que ReabrirFase).
-  const esFaseConsultas = seleccion.tipo === 'fase' && nodo && nodo.tipo_codigo === 'CONSULTAS'
-  // Bisagra instrucción → resolución (#827): acción de la solicitud, mismo criterio
-  // de emplazamiento que la de CONSULTAS.
-  const esSolicitud = seleccion.tipo === 'solicitud'
-  // Cumplimiento del plazo (#947) y cierre de la fase (#956): acciones de la fase
-  // finalizadora, mismo emplazamiento. Qué fases las tienen lo
-  // decide el backend (`cert_cumplimiento`/`cert_cierre` solo vienen en las
-  // finalizadoras).
-  const esFase = seleccion.tipo === 'fase'
-  // Notificaciones del trámite (#929, ADR-051 §D): a quién falta notificar (tarjeta de datos, en
-  // los dos modos) y el botón de añadirlas (acciones, solo aquí). Si el trámite no notifica a
-  // nadie según el catálogo, ni la tarjeta ni el botón se pintan. El hook va siempre (reglas de
-  // los hooks) y solo cuenta si el nodo es un trámite: un id de tarea puede coincidir con el último.
-  const esTramite = seleccion.tipo === 'tramite'
-  const hayNotifTramite = useHayNotificacionesTramite(Number(seleccion.id)) && esTramite
-  // Diagnóstico por producir de un ANALIZAR (#1043): mientras falte, la zona de acciones lleva la
-  // acción de producirlo. Mismo hook-siempre que arriba.
-  const hayDiagnosticoPendiente = useDiagnosticoPendiente(Number(seleccion.id)) && esAnalizar
-  // Nodos migrados (#1043): la misma columna que la lectura (alto completo, pie pegado abajo) y
-  // tres zonas en este orden: datos (la misma zona que en lectura), acciones y creación (solo
-  // en edición, debajo de los datos) y pie. En las acciones va primero la Despensa —lo
-  // frecuente, con su panel a la vista—, después las propias del nodo (la bisagra de la
-  // solicitud; las consultas, el cumplimiento, el cierre y la reapertura de la fase) y, al
-  // fondo, «Borrar», por destructivo.
-  // Fase cerrada (#720, ADR-036): dentro no se crea ni se borra nada; su único camino es reabrirla.
-  const faseCerrada = esFase && !!nodo && nodo.estado === 'FINALIZADA'
-  const puedeBorrar = seleccion.tipo !== 'expediente' && puedeEditarNodo(seleccion.tipo) && !faseCerrada
-  // Las acciones propias solo se pintan si hay alguna, para no dejar un separador vacío.
-  // Cumplimiento y cierre solo existen en las finalizadoras (el backend trae su certificado
-  // solo en ellas); «Enviar consultas» solo con organismos pendientes.
-  const hayPropias = esSolicitud || faseCerrada
-    || (esFaseConsultas && organismosPendientesSeparata(nodo).length > 0)
-    || (esFase && hayDetalle && !!(detalle.cert_cumplimiento || detalle.cert_cierre))
-    || hayNotifTramite
-    || hayDiagnosticoPendiente
-    || esElaborar
+  // Los hechos que salen de un store (hooks que van siempre): los leen las entradas del registro.
+  const hechos = useHechosDelNodo(Number(seleccion.id))
+  // La misma columna que la lectura (alto completo, pie pegado abajo) y tres zonas en este orden: datos (la misma
+  // zona que en lectura), acciones y creación (solo en edición, debajo de los datos) y pie. En las acciones va
+  // primero la Despensa —lo frecuente, con su panel a la vista—, después las propias del nodo y, al fondo,
+  // «Borrar», por destructivo.
+  const ctx = { tipo: seleccion.tipo, id: seleccion.id, nodo, detalle, hayDetalle, expedienteId, arbol, modoEdicion: true, ...hechos }
+  const borrable = typeof entrada.borrable === 'function' ? entrada.borrable(ctx) : entrada.borrable
+  const puedeBorrar = borrable && puedeEditarNodo(seleccion.tipo)
+  const despensa = entrada.despensa
+  // Las acciones propias solo se pintan si hay alguna, para no dejar un separador vacío: con que una de las de
+  // la entrada tenga algo que enseñar (`hay`) se pinta la zona y entonces van todas, cada una decide si dice algo.
+  const hayPropias = entrada.acciones.some((a) => a.hay(ctx))
   return (
     <div className="p-3 d-flex flex-column h-100">
       {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
@@ -1295,36 +587,21 @@ function InspectorEdicion({ nodo }) {
         ? <ConfirmacionBorrado nodo={nodo} />
         : (
           <>
-            {/* ADR-033 §1: en ANALIZAR extendido casar un requisito documental deriva el consumido,
-                así que la Despensa queda sin uso legítimo y se oculta. En el simple sigue viva. En
-                los dos el documento producido lo genera el diagnóstico, no se vincula a mano. */}
-            {!esAnalizarExtendido && (
+            {!despensa.oculta && (
               <div className="border-top mt-3 pt-3">
-                <Despensa deshabilitarProducido={esAnalizar} esEsperarPlazo={esEsperarPlazo} />
+                <Despensa deshabilitarProducido={!!despensa.deshabilitarProducido}
+                          esEsperarPlazo={!!despensa.ayudaRecepcion} />
               </div>
             )}
             {hayPropias && (
               <div className="border-top mt-3 pt-3">
-                {esSolicitud && <CertFinInstruccion />}
-                {esSolicitud && <CierreSolicitud />}
-                {esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
-                {esFase && <CertCumplimientoFase />}
-                {esFase && <CierreFase nodo={nodo} />}
-                {faseCerrada && <ReabrirFase />}
-                {esTramite && (
-                  <AccionNotificacionesTramite expedienteId={expedienteId} tramiteId={Number(seleccion.id)} />
-                )}
-                {esAnalizar && (
-                  <AccionProducirDiagnostico expedienteId={expedienteId} tareaId={Number(seleccion.id)} />
-                )}
-                {esElaborar && <AccionGenerarEscrito tareaId={seleccion.id} nodo={nodo} />}
+                {entrada.acciones.map((a) => <React.Fragment key={a.clave}>{a.render(ctx)}</React.Fragment>)}
               </div>
             )}
             {puedeBorrar && <div className="mb-3"><BotonBorrar /></div>}
           </>
         )}
-      {esSolicitud && <ModalInformeFinInstruccion />}
-      {esFase && <ModalConfirmacionCierre />}
+      {entrada.modales.map((m) => <React.Fragment key={m.clave}>{m.render(ctx)}</React.Fragment>)}
       {hayDetalle && <Acciones referencia={detalle.referencia} />}
     </div>
   )
