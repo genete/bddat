@@ -308,6 +308,27 @@ React y dependencias comunes** en un chunk entre todas las islas (con IIFE cada 
 duplicaría React). El navegador resuelve los imports del módulo automáticamente; `react_bundle()`
 además emite `modulepreload` de los chunks compartidos.
 
+### El `manifest.json` versionado
+
+Es lo único compilado que se versiona. Hace de marca de versión: `scripts/nube/arrancar_app.sh`
+compila si algún fichero que nombra no existe en el contenedor, así que un manifest desfasado
+deja la nube con bundles viejos sin avisar. El hash sale del contenido del código: no depende
+de la versión de Node, de npm ni del sistema operativo (comprobado el 2026-10-22 entre Windows
+con Node 24.14.1 y la nube con Node 22.22.0: mismo hash).
+
+| Situación | Qué hacer |
+|---|---|
+| He cambiado algo en `react-src/` (código, CSS, `vite.config.js`, dependencias) | Build React **antes del commit** y el manifest va **en el mismo commit** que el cambio |
+| Un build deja el manifest modificado y **no** he tocado `react-src/` | El repo estaba desfasado: no es ruido. Corregirlo en un commit aparte, solo con el manifest |
+| Tras un `pull`, la isla no carga | Build React; el manifest ya viene del `pull` |
+
+Nunca restaurar el manifest con `git checkout` tras un build: la app local dejaría de encontrar
+los bundles. Añadir los ficheros por nombre, no con `git add -A`.
+
+Lo exige `.claude/hooks/reglas_manifest_guard.py` (PreToolUse sobre Bash, al hacer `git commit`):
+deniega un commit que prepara ficheros de `react-src/` sin el manifest. No comprueba que el
+manifest esté recompilado de verdad, solo que viaje en el commit.
+
 ---
 
 ## Inspector overlay desde una isla React (ADR-023)
