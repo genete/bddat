@@ -220,6 +220,10 @@ class FlaskControlGUI:
         try:
             env = os.environ.copy()
             env["PYTHONUNBUFFERED"] = "1"
+            # El hijo escribe en UTF-8 y la consola lo lee igual; sin esto, Python 3.14+
+            # en Windows mezcla cp1252 y utf-8 y read_logs revienta con caracteres como «—»
+            env["PYTHONUTF8"] = "1"
+            env["PYTHONIOENCODING"] = "utf-8"
             env["FORCE_COLOR"] = "1"
             env["FLASK_HOST"] = host
             env["SQLALCHEMY_ECHO"] = "true" if self.echo_sql.get() else "false"
@@ -229,6 +233,8 @@ class FlaskControlGUI:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 cwd=BDDAT_DIR,
                 env=env,
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
