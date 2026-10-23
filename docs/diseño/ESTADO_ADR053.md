@@ -77,7 +77,7 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 | **#929, zona A** | Independiente del marco. La decisión 1 (atajo de subida por tipo en el editor) se resolvió en «no» (PRE-ADR D1); `ESTADO_ADR049` lo tenía como «sin tomar» y se corrige el 11/10 |
 | **#1036** (fecha en la subida) | Vive en `pool_documentos.html`, que #881 reescribe. Decidir si se arregla antes o dentro de #881. Con la decisión 1 en «no», no aplica la regla de fecha por tipo en el editor |
 | **#1037** (aplicar el anuncio del edicto) | Sin choque con el marco. Es una acción nueva sobre documentos: no debe crear un selector propio (D14) |
-| **#1038** (representante y sede de la solicitud) | Acoplado al marco y a D15: toca el editor de la solicitud del árbol, el genérico con solo «observaciones», que hoy tiene lectura ≠ edición |
+| **#1038** (representante y sede de la solicitud) | **Hecho** (PR #1081, 23/10/2026). Tocaba el editor de la solicitud del árbol: la tarjeta «Solicitante» lee y edita representante y sede con el mismo texto (D15). El contrato del select quedó en la guía y solo lo cumple `ControlCampo` (#1080 alinea el resto) |
 | **Zona E de #929** (sin issue) | Tres de sus ocho puntos tocan lo decidido o lo pendiente: inspector en lectura (D15), Mi trabajo (D8) y radar de huérfanos (fila provisional de Seguimiento y huérfanos). *Propuesta:* no abrirla antes del marco ni de la Cola |
 
 ### Con la cadena de ADR-050
@@ -179,3 +179,13 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   `components/AccionesNodo.jsx` para evitar un ciclo de imports, y `visible` pasó a `hay` (la zona de acciones se
   pinta si alguna tiene algo que enseñar y entonces van todas, que es lo que hacía el código anterior). El patrón,
   en [`GUIA_REACT_ISLAS.md`](../guias/GUIA_REACT_ISLAS.md) §«El registro de editores del árbol».
+- **23/10/2026** — **#1038 cerrado** (PR #1081): la solicitud del árbol muestra y edita representante y sede, con
+  el mismo texto en lectura y en edición (D15). `ControlCampo` gana el **contrato de un selector** (el texto del
+  vacío dice qué implica no elegir; «!» con el motivo si el valor guardado no es una opción, también en lectura;
+  elegir «nada» de nuevo sin perder el foco) y `shared/ui/toast.js` gana `showAvisos` (un toast resumen y cada
+  aviso como línea del panel Avisos). Se aplica a todos los select del esquema: con los datos de la nube ninguno
+  de fase, organismo ni solicitud tiene hoy el valor fuera de sus opciones, pero un organismo de vía «declaración
+  responsable» sí lo tendría (`exonerado`, #1065). Decisión de Carlos: crear solicitud no lleva campos. El
+  contrato, en [`GUIA_COMPONENTES_INTERACTIVOS.md`](../guias/GUIA_COMPONENTES_INTERACTIVOS.md) §«Contrato de un
+  selector»; alinear el resto de selectores es **#1080**. Medido: dentro de un `input-group` de Bootstrap el tema
+  pinta el campo más alto y con más letra que el suelto, así que la marca va superpuesta en el propio control.
