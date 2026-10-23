@@ -30,9 +30,9 @@ ENDPOINTS:
         sus direcciones activas de rol titular y sin otro NIF.
         Devuelve {data: [{v, t}, ...]}
 
-VERSIÓN: 1.5
-FECHA: 2026-09-30
-ISSUE: #137, #461, #989
+VERSIÓN: 1.6
+FECHA: 2026-10-23
+ISSUE: #137, #461, #989, #1038
 """
 
 from flask import Blueprint, request, jsonify
@@ -42,6 +42,9 @@ from app import db
 from app.models.entidad import Entidad
 from app.models.autorizados_titular import AutorizadoTitular
 from app.models.direccion_notificacion import DireccionNotificacion
+from app.services.notificaciones import (
+    representantes_posibles, sedes_posibles, texto_representante, texto_sede,
+)
 
 api_entidades_bp = Blueprint('api_entidades', __name__, url_prefix='/api')
 
@@ -368,12 +371,8 @@ def listar_autorizados(titular_id):
     if not titular or not titular.rol_titular:
         return jsonify({'error': 'Titular no encontrado'}), 404
 
-    def _label(e):
-        return f'{e.nombre_completo} ({e.nif})' if e.nif else e.nombre_completo
-
-    autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(titular_id, solo_activos=True)
-    data = [{'id': aut.autorizado.id, 'text': _label(aut.autorizado)}
-            for aut in autorizaciones if aut.autorizado]
+    data = [{'id': e.id, 'text': texto_representante(e)}
+            for e in representantes_posibles(titular)]
 
     return jsonify({'data': data}), 200
 
@@ -396,28 +395,10 @@ def listar_sedes(titular_id):
         200 OK  con la lista (vacía si no tiene sedes: se usa la ficha).
         404 Not Found si la entidad no existe.
     """
-    from app.services.notificaciones import sede_invalida
     titular = Entidad.query.get(titular_id)
     if not titular:
         return jsonify({'error': 'Entidad no encontrada'}), 404
-    direcciones = (
-        DireccionNotificacion.query
-        .filter(DireccionNotificacion.entidad_id == titular_id,
-                DireccionNotificacion.activo == True,
-                DireccionNotificacion.tipo_rol.op('&')(1) > 0)
-        .order_by(DireccionNotificacion.descripcion, DireccionNotificacion.id)
-        .all()
-    )
-    data = []
-    for d in direcciones:
-        if sede_invalida(d, titular) is not None:
-            continue
-        s = _serializar_dir_consultado(d)
-        partes = [p for p in (s['descripcion'], s['direccion']) if p]
-        texto = ' — '.join(partes) or f'Dirección {d.id}'
-        if s['email']:
-            texto += f' ({s["email"]})'
-        data.append({'v': str(d.id), 't': texto})
+    data = [{'v': str(d.id), 't': texto_sede(d)} for d in sedes_posibles(titular)]
     return jsonify({'data': data}), 200
 
 
