@@ -58,18 +58,23 @@ export const DISENO_SOLICITUD = {
         { etiqueta: 'Fecha de presentación', col: 6 },
         { etiqueta: 'Nº de fases', col: 6 },
         { etiqueta: 'Afecta a', opcional: true },
-        // El único campo editable de la solicitud hoy (`esquema_editable._esquema_solicitud`).
         { etiqueta: 'Observaciones', campo: 'observaciones', control: 'textarea' },
       ],
     },
     {
-      // Aquí entrarán el representante y la sede de notificación (#1038), editables.
       titulo: 'Solicitante', icono: 'fa-user',
       campos: [
         // 6 + 6 y no 8 + 4: con 4 columnas el NIF baja de 110 px a 320 px de inspector, el umbral
         // de un campo de texto en las mediciones de #1042 (GUIA_COMPONENTES_INTERACTIVOS).
         { etiqueta: 'Solicitante', col: 6 },
         { etiqueta: 'NIF', col: 6 },
+        // Representante y sede (#1038, ADR-051 §K): a ancho completo porque sus textos son largos
+        // («Sede Sevilla — Avda. de la Borbolla 5 — 41004 Sevilla (correo)»), como la dirección del
+        // organismo. Sin elegir, el payload trae el texto de qué implica (`SIN_REPRESENTANTE`,
+        // `SIN_SEDE`) y el esquema el mismo como `texto_vacio`; con un valor que ya no vale, los dos
+        // traen un `aviso` y el control pinta el «!».
+        { etiqueta: 'Representante', campo: 'representante_entidad_id', control: 'select' },
+        { etiqueta: 'Sede de notificación', campo: 'direccion_notificacion_id', control: 'select' },
       ],
     },
   ],

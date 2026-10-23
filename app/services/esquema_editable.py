@@ -4,11 +4,14 @@ esquema_editable.py — Esquema de campos editables de un nodo del árbol (ADR-0
 Devuelve el contrato genérico que el inspector usa para pintar el formulario editor:
     {
       "nodo": {"tipo": str, "id": int},
-      "campos": [{"campo", "etiqueta", "control", "valor", "opciones"?}, ...]
+      "campos": [{"campo", "etiqueta", "control", "valor", "opciones"?,
+                  "texto_vacio"?, "aviso"?}, ...]
     }
 
 `control` ∈ {text, textarea, select}.
 `campo` mapea 1:1 a la clave que espera el PATCH editar de ese nivel.
+Solo en los select: `texto_vacio` es lo que dice la opción de no elegir (por defecto
+«—») y `aviso`, por qué el valor guardado ya no es una opción posible (#1038).
 
 Defensivo ante catálogo no disponible: degrada a campos:[] (igual que detalle_nodo).
 ValueError si el nodo no pertenece al expediente (la ruta lo traduce a 404).
@@ -28,8 +31,9 @@ from app.models.documentos import Documento
 from app.models.tipos_resultados_fases import TipoResultadoFase
 from app.models.organismos_expediente import OrganismoExpediente, VIAS_ORGANISMO, RESULTADOS_ORGANISMO
 from app.models.direccion_notificacion import DireccionNotificacion
+from app.services import notificaciones as notif_svc
 
-log = logging.getLogger(__name__)
+log =logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -79,9 +83,15 @@ def _campo_textarea(campo: str, etiqueta: str, valor) -> dict:
 
 
 def _campo_select(campo: str, etiqueta: str, valor,
-                  opciones: list[dict]) -> dict:
-    return {'campo': campo, 'etiqueta': etiqueta, 'control': 'select',
-            'valor': valor, 'opciones': opciones}
+                  opciones: list[dict], *, texto_vacio: Optional[str] = None,
+                  aviso: Optional[str] = None) -> dict:
+    d = {'campo': campo, 'etiqueta': etiqueta, 'control': 'select',
+         'valor': valor, 'opciones': opciones}
+    if texto_vacio:
+        d['texto_vacio'] = texto_vacio
+    if aviso:
+        d['aviso'] = aviso
+    return d
 
 
 # ---------------------------------------------------------------------------
@@ -100,10 +110,29 @@ def _esquema_solicitud(exp, sol_id: int) -> dict:
     if sol is None or sol.expediente_id != exp.id:
         raise ValueError(f'Solicitud {sol_id} no encontrada en el expediente {exp.id}')
 
+    # Representante y sede (#1038, ADR-051 §K): se eligen de las mismas listas que ofrece
+    # el alta y que acepta el guardado. Si el valor guardado ya no es una opción (se
+    # revocó la autorización, se dio de baja la sede), llega tal cual con el `aviso` del
+    # motivo, en vez de desaparecer: el desplegable lo enseña vacío y marcado.
+    solicitante = sol.entidad
+    representantes = notif_svc.representantes_posibles(solicitante) if solicitante else []
+    sedes = notif_svc.sedes_posibles(solicitante) if solicitante else []
+    no_vigentes = notif_svc.datos_no_vigentes(sol)
+
     return {
         'nodo': {'tipo': 'solicitud', 'id': sol.id},
         'campos': [
             _campo_textarea('observaciones', 'Observaciones', sol.observaciones),
+            _campo_select(
+                'representante_entidad_id', 'Representante', sol.representante_entidad_id,
+                [{'valor': e.id, 'texto': notif_svc.texto_representante(e)} for e in representantes],
+                texto_vacio=notif_svc.SIN_REPRESENTANTE,
+                aviso=no_vigentes.get('representante_entidad_id')),
+            _campo_select(
+                'direccion_notificacion_id', 'Sede de notificación', sol.direccion_notificacion_id,
+                [{'valor': d.id, 'texto': notif_svc.texto_sede(d)} for d in sedes],
+                texto_vacio=notif_svc.SIN_SEDE,
+                aviso=no_vigentes.get('direccion_notificacion_id')),
         ],
     }
 

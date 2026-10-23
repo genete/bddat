@@ -8,7 +8,7 @@
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
 import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCertificarFinInstruccion, deleteCertFinInstruccion, postCertificarCumplimiento, deleteCertCumplimiento, postCerrarFaseFinalizadora, postCertificarCierreSolicitud, deleteCertCierreSolicitud, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
-import { showToast } from '../shared/ui/toast.js'
+import { showToast, showAvisos } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
 let _detalleAbort = null
@@ -286,9 +286,11 @@ export const useArbolStore = create((set, get) => ({
       showToast(justificacion
         ? 'Cambios guardados con justificación — queda en la bitácora'
         : 'Cambios guardados', justificacion ? 'warning' : 'success')
-      if (data && data.advertencia) {                 // fase: justificantes huérfanos en el pool (#738)
+      if (data && data.advertencia) {
         const a = data.advertencia
-        showToast(typeof a === 'string' ? a : (a.motivo || 'Revisa la advertencia'), 'warning')
+        // La solicitud (#1038) trae cada aviso por separado en `avisos`; la fase (#738), un texto.
+        if (a && Array.isArray(a.avisos) && a.avisos.length > 0) showAvisos(a.avisos)
+        else showToast(typeof a === 'string' ? a : (a.motivo || 'Revisa la advertencia'), 'warning')
       }
       set({ guardando: false, modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {},
             bloqueoGuardar: null, avisoGuardarInterior: false })

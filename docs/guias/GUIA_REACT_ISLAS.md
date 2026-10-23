@@ -245,8 +245,9 @@ Los wrappers de `shared/ui/` lo orquestan sin arrastrar CSS propio.
 Toast (imperativo, desde cualquier JS):
 
 ```js
-import { showToast } from '../shared/ui/toast.js'
+import { showToast, showAvisos } from '../shared/ui/toast.js'
 showToast('Guardado', 'success')   // success | danger | warning | info
+showAvisos(['Primer aviso', 'Segundo aviso'])   // uno: un toast; varios: un toast resumen y cada uno como línea del panel Avisos
 ```
 
 Toast (declarativo, desde React):
@@ -387,7 +388,7 @@ en cada nodo está en la tabla del anexo a ADR-053 §C. El código, en `expedien
 |---|---|
 | `disenosDatos.js` | Un diseño por nodo (`DISENO_*`) y `disenoDeNodo(tipo, {tareaConDiseno})`: tarjetas, campos (`etiqueta` del payload, `campo` del esquema editable, `col`, `control`, `visibleSi`, `valorDe`, `opcional`) y `ocultas` (lo que ya está en la barra del marco). Lo que el payload trae y el diseño no conoce cae en «Otros datos»: no se pierde nada en silencio |
 | `components/DatosNodo.jsx` | Pinta un diseño igual en los dos modos: control de solo lectura en lectura, vivo en edición, en el mismo sitio y con el mismo rótulo |
-| `components/TarjetaDatos.jsx` | `TarjetaDatos`, `CampoDato`, `ValorSoloLectura`, `CasillaSoloLectura`, `ControlCampo` (el select conserva el tipo del valor de la opción) |
+| `components/TarjetaDatos.jsx` | `TarjetaDatos`, `CampoDato`, `ValorSoloLectura`, `CasillaSoloLectura`, `ControlCampo` (el select conserva el tipo del valor de la opción, dice qué implica no elegir con `texto_vacio` y marca con un «!» el valor guardado que no está entre las opciones: ver `GUIA_COMPONENTES_INTERACTIVOS.md` §«Contrato de un selector»). `ValorSoloLectura` pinta el mismo «!» con `aviso` |
 | `components/Inspector.jsx` | `ZonaDatos` (el diseño y las tarjetas propias del nodo) e `InspectorEdicion` (datos → Despensa → acciones propias → «Borrar» → pie «Copiar referencia»). Ninguno de los dos pregunta por el tipo de nodo: leen su entrada del registro |
 | `registroEditores.jsx` | **Qué lleva cada nodo**: una entrada por tipo de nodo y por superficie de tarea (ver «El registro de editores del árbol», abajo) |
 | `components/AccionesNodo.jsx` | Las acciones propias de la solicitud (fin de instrucción, cierre, informe) y de la fase (consultas, cumplimiento, cierre, reapertura y su confirmación) |

@@ -831,24 +831,23 @@ _NO_TOCAR = object()
 def validar_representante(solicitante_id: int, representante_id: Optional[int]
                           ) -> Optional[str]:
     """Error del representante de una solicitud (ADR-051 §K), o `None` si vale
-    o no se indica. Tiene que ser un autorizado activo del solicitante en
-    `autorizados_titular`, y no el propio solicitante. No admite escape: si la
-    entidad no está autorizada, se da de alta como autorizada desde la ficha
-    del titular y después se elige. La usan las tres puertas: el alta de
-    expediente, `crear_solicitud` y `editar_solicitud`."""
+    o no se indica. Tiene que ser uno de `notif_svc.representantes_posibles`
+    —un autorizado activo del solicitante—, la misma lista de la que se elige
+    en el alta y en el inspector: lo que se ofrece y lo que se acepta no pueden
+    discrepar. No admite escape: si la entidad no está autorizada, se da de
+    alta como autorizada desde la ficha del titular y después se elige. La
+    usan las tres puertas: el alta de expediente, `crear_solicitud` y
+    `editar_solicitud`."""
     if representante_id is None:
         return None
     from app.models.entidad import Entidad
-    from app.models.autorizados_titular import AutorizadoTitular
     if db.session.get(Entidad, representante_id) is None:
         return f'Entidad representante {representante_id} no encontrada.'
     if representante_id == solicitante_id:
         return 'El representante no puede ser el propio solicitante.'
-    autorizado = AutorizadoTitular.query.filter_by(
-        titular_entidad_id=solicitante_id, autorizado_entidad_id=representante_id,
-        activo=True,
-    ).first()
-    if autorizado is None:
+    solicitante = db.session.get(Entidad, solicitante_id) if solicitante_id else None
+    posibles = notif_svc.representantes_posibles(solicitante) if solicitante else []
+    if representante_id not in {e.id for e in posibles}:
         return ('El representante no figura como autorizado del solicitante. Dé de alta la '
                 'autorización desde la ficha del titular y vuelva a elegirlo.')
     return None
