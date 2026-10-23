@@ -10,7 +10,7 @@ Contrato del payload (acordado en implementación de #500, cierra deuda §15
 
     {
       "nodo": {"tipo": str, "id": int},
-      "campos": [{"etiqueta": str, "valor": str}, ...],   # adaptativo por nivel
+      "campos": [{"etiqueta": str, "valor": str, "aviso"?: str}, ...],   # adaptativo por nivel
       "documentos": [{"id","rol","nombre","tipo_doc","fecha","enlace","externo",
                       "puede_abrir","abrir_en"}, ...],
       "plazo": {"estado","fecha_limite","dias_restantes"} | null,  # solo ESPERAR_PLAZO
@@ -37,6 +37,7 @@ from app.models.fases import Fase
 from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.organismos_expediente import OrganismoExpediente
+from app.services import notificaciones as notif_svc
 from app.services.arbol_expediente import ID_VERSION_INICIAL_BASE, plazo_tarea
 from app.services.sellos import (
     CERT_CIERRE_FASE, CERT_CIERRE_SOLICITUD, CERT_CUMPLIMIENTO_FASE, certificado_cierre,
@@ -91,14 +92,18 @@ def detalle_de_nodo(expediente, tipo_nodo: str, nodo_id: int) -> dict:
 # Helpers de presentación
 # ---------------------------------------------------------------------------
 
-def _campo(etiqueta: str, valor) -> Optional[dict]:
-    """Campo {etiqueta, valor}, o None si el valor es vacío (no se pinta)."""
+def _campo(etiqueta: str, valor, aviso: Optional[str] = None) -> Optional[dict]:
+    """Campo {etiqueta, valor[, aviso]}, o None si el valor es vacío (no se pinta).
+    `aviso` (#1038) es por qué el valor, aun siendo el guardado, ya no vale."""
     if valor is None:
         return None
     texto = str(valor).strip()
     if not texto:
         return None
-    return {'etiqueta': etiqueta, 'valor': texto}
+    campo = {'etiqueta': etiqueta, 'valor': texto}
+    if aviso:
+        campo['aviso'] = aviso
+    return campo
 
 
 def _campos(*pares) -> list:
@@ -278,6 +283,9 @@ def _detalle_solicitud(exp, sol_id: int) -> dict:
     ts = sol.tipo_solicitud
     ent = sol.entidad
     doc_sol = sol.documento_solicitud
+    # Representante y sede (#1038, ADR-051 §K): sin elegir, el texto dice qué implica; si el
+    # guardado ya no vale (autorización revocada, sede de baja), sigue saliendo con su aviso.
+    no_vigentes = notif_svc.datos_no_vigentes(sol)
     campos = _campos(
         _campo('Estado', sol.estado),
         _campo('Tipo', ts.descripcion if ts else None),
@@ -285,6 +293,13 @@ def _detalle_solicitud(exp, sol_id: int) -> dict:
                _fecha(doc_sol.fecha_administrativa) if doc_sol else None),
         _campo('Solicitante', ent.nombre_completo if ent else None),
         _campo('NIF', ent.nif if ent else None),
+        _campo('Representante',
+               notif_svc.texto_representante(sol.representante) if sol.representante
+               else notif_svc.SIN_REPRESENTANTE,
+               no_vigentes.get('representante_entidad_id')),
+        _campo('Sede de notificación',
+               notif_svc.texto_sede(sol.sede) if sol.sede else notif_svc.SIN_SEDE,
+               no_vigentes.get('direccion_notificacion_id')),
         _campo('Nº de fases', len(sol.fases)),
         _campo('Afecta a', f'Solicitud #{sol.solicitud_afectada_id}'
                if sol.solicitud_afectada_id else None),

@@ -519,6 +519,37 @@ def texto_representante(entidad) -> str:
     return f'{entidad.nombre_completo} ({entidad.nif})' if entidad.nif else entidad.nombre_completo
 
 
+# Qué implica no elegir (#1038, ADR-051 §K). Es el texto del desplegable vacío en
+# edición y el valor de la lectura: lo que se ve en una se ve en la otra.
+SIN_REPRESENTANTE = 'Sin representante: se notifica al solicitante'
+SIN_SEDE = 'Sin sede: se usa la dirección de la ficha'
+
+
+def datos_no_vigentes(solicitud) -> dict:
+    """Los datos de la solicitud que ya no valen, `{campo: frase}` (#1038).
+
+    Son el representante y la sede guardados que el guardado rechazaría hoy
+    (`validar_representante`, `validar_sede`: la autorización se revocó o la
+    sede se dio de baja después de elegirlos). No hay una segunda definición
+    de «ya no vale»: es la del validador, con su mensaje. La frase empieza por
+    el nombre del dato, porque en edición el desplegable no puede mostrarlo
+    (no está entre las opciones). Vacío si todo vale."""
+    from app.services.mutaciones_arbol import validar_representante, validar_sede
+    avisos = {}
+    if solicitud.representante_entidad_id is not None:
+        error = validar_representante(solicitud.entidad_id, solicitud.representante_entidad_id)
+        if error:
+            avisos['representante_entidad_id'] = (
+                f'«{texto_representante(solicitud.representante)}»: {error}')
+    if solicitud.direccion_notificacion_id is not None:
+        error = validar_sede(solicitud.entidad_id, solicitud.direccion_notificacion_id)
+        if error:
+            avisos['direccion_notificacion_id'] = (
+                f'«{texto_sede(solicitud.sede)}»: {error} Mientras no se cambie, '
+                'se usa la dirección de la ficha.')
+    return avisos
+
+
 def sede_de(solicitud):
     """La sede del solicitante en la solicitud (#989), si sigue valiendo; `None`
     si no tiene o dejó de valer (dada de baja después) → los datos de la ficha."""
