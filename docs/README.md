@@ -12,7 +12,7 @@ Documentos operativos estables. Leer cuando se trabaja en ese área.
 - [REGLAS_BASH.md](guias/REGLAS_BASH.md) — patrones prohibidos en Bash y workarounds
 - [REGLAS_DESARROLLO.md](guias/REGLAS_DESARROLLO.md) — Git, commits, ramas, migraciones
 - [GUIA_VISTAS_BOOTSTRAP.md](guias/GUIA_VISTAS_BOOTSTRAP.md) — UI, layouts, Bootstrap
-- [GUIA_COMPONENTES_INTERACTIVOS.md](guias/GUIA_COMPONENTES_INTERACTIVOS.md) — JS, SelectorBusqueda, ScrollInfinito
+- [GUIA_COMPONENTES_INTERACTIVOS.md](guias/GUIA_COMPONENTES_INTERACTIVOS.md) — JS, contrato de un selector, SelectorBusqueda, ScrollInfinito
 - [GUIA_GENERAL.md](guias/GUIA_GENERAL.md) — arquitectura general y lógica de negocio
 - [GUIA_ROLES.md](guias/GUIA_ROLES.md) — roles y permisos
 

@@ -118,6 +118,71 @@ mostrar_toast('info',    'Ruta copiada al portapapeles.');
 
 ---
 
+## Contrato de un selector
+
+Un selector es cualquier control del que se elige un valor de una lista: el `<select>` nativo, los
+componentes de este catálogo y sus equivalentes de React. Hay **dos tipos, que se distinguen por el
+tamaño de la lista y no por la tecnología**, y **un único contrato de comportamiento** para los dos
+(#1038). No se busca un componente único: se busca que ninguno decida por su cuenta qué hace en los
+bordes, que es donde se pierden datos sin que nadie lo vea.
+
+| Tipo | Cuándo | Jinja | React |
+|---|---|---|---|
+| **Corto** | Hasta unas 12 opciones | `<select class="form-select">`; `SelectorFiltro` en las barras de filtros | `ControlCampo` (el del esquema editable) o un `<select>` |
+| **Con búsqueda** | Más de 12, o una lista que crece con el uso | `SelectorBusqueda` | No hay equivalente; `SelectorEntidad` es un híbrido (desplegable y, desde 12 opciones, filtro de texto) |
+
+**Las cuatro reglas** (valen para los dos tipos):
+
+1. **La opción vacía dice qué implica no elegir**, cuando no elegir tiene consecuencias: «Sin
+   representante: se notifica al solicitante», no «—». Es `texto_vacio` en el esquema editable,
+   `textoVacio` en React, el `placeholder` de `SelectorBusqueda` y el texto de la `<option value="">` del
+   `<select>` nativo. Si nada depende de no elegir, vale «—». El mismo texto sale en lectura, para que lo
+   que se ve en lectura se vea en edición.
+2. **Un valor guardado que no está entre las opciones no se oculta ni se da por válido.** El selector se
+   ve vacío, junto a él sale un «!» con el motivo en el tooltip, y el «!» desaparece en cuanto el usuario
+   cambia el selector, a otra opción o a la vacía. Sin tocarlo, el valor guardado se conserva: lo
+   decide el usuario, no el control. El motivo lo da el servidor (`aviso`), porque solo él sabe por qué
+   ya no vale; sin motivo, el control pone uno genérico. Vale para cualquier causa: una revocación, una
+   baja, un valor puesto por un script.
+3. **Elegir «nada» de nuevo tiene que poder cambiar algo.** Un `<select>` nativo no dispara `change` al
+   elegir lo que ya se ve elegido, y con un valor fuera de las opciones la opción vacía ya parece elegida.
+   Mientras dure ese estado, el elegido por dentro es una opción oculta con el mismo texto que la vacía.
+   El selector no se remonta al aparecer o quitarse el «!» (mismo envoltorio siempre), o se pierde el foco.
+4. **Las formas de las opciones no se unifican; se adaptan en la frontera.** `{v, t}` en los componentes
+   de Jinja y en los endpoints hechos para ellos (`/sedes`); `{valor, texto}` en el esquema editable y en
+   React; `{id, text}` en el autocompletado de entidades y en `/autorizados`. Una lista de la que se elige se define **una vez en el
+   servicio** y cada puerta la formatea, y **el validador que la acepta usa esa misma lista**: lo que se
+   ofrece y lo que se acepta no pueden discrepar (`notificaciones.representantes_posibles` y
+   `sedes_posibles`, que usan los endpoints, el esquema y `validar_representante` / `validar_sede`).
+
+**Por qué importa la regla 2.** Con un `<select>` de Jinja cuya opción `selected` no coincide con ninguna
+de la lista, el navegador muestra la primera opción y, si esa es la vacía, al guardar el formulario
+entero se envía vacío: el campo se borra en silencio. `SelectorBusqueda.setValue(v, t)` falla al revés: no comprueba que `v` esté en
+la lista y pinta como válido lo que no lo es.
+
+**Cómo lo declara el esquema editable** (`esquema_editable._campo_select`): `texto_vacio` y `aviso` solo
+salen cuando hay algo que decir, así que los select que no lo necesitan conservan su forma. El detalle de
+lectura lleva el mismo `aviso` en el campo (`detalle_nodo._campo`).
+
+```python
+{'campo': 'representante_entidad_id', 'etiqueta': 'Representante', 'control': 'select',
+ 'valor': 12,                                    # lo guardado, tal cual, aunque ya no sea una opción
+ 'opciones': [{'valor': 7, 'texto': 'Gestoría Ejemplo S.L. (B11223344)'}],
+ 'texto_vacio': 'Sin representante: se notifica al solicitante',
+ 'aviso': '«Gestoría Vieja S.L. (B99887766)»: El representante no figura como autorizado…'}
+```
+
+**Dónde está implementado hoy:** solo en `ControlCampo` (React, `expediente-arbol/components/TarjetaDatos.jsx`),
+que lo aplica a todos los select del esquema editable. Pendiente de alinear: `SelectorBusqueda.setValue`
+(que valide contra la lista), `SelectorEntidad` y los `<select>` de los formularios Jinja. Un caso
+concreto del riesgo, leído en el código y sin reproducir en la aplicación: el desplegable de responsable
+del formulario de expediente solo lista tramitadores activos (`usuarios_tramitadores`) y el guardado hace
+`aplicar_fk(request.form, 'responsable_id', …)`, que convierte «vacío» en `NULL`. Un responsable dado de
+baja, o que ya no es tramitador, se vería como «Sin asignar» y quedaría sin responsable al guardar
+cualquier otro campo.
+
+---
+
 ## Catálogo
 
 ### SelectorBusqueda
