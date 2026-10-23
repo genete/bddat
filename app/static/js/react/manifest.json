@@ -3,11 +3,24 @@
     "file": "asset.index.BZV40eAE.css",
     "src": "_asset.index.BZV40eAE.css"
   },
-  "_chunk.api.CSMBFs-3.js": {
-    "file": "chunk.api.CSMBFs-3.js",
+  "_chunk.api.CNbFWNYw.js": {
+    "file": "chunk.api.CNbFWNYw.js",
     "name": "api",
     "imports": [
-      "_chunk.toast.DQdoD88n.js"
+      "_chunk.toast.Cu9mVFu7.js"
+    ]
+  },
+  "_chunk.index.CrvXnRUC.js": {
+    "file": "chunk.index.CrvXnRUC.js",
+    "name": "index",
+    "imports": [
+      "_chunk.toast.Cu9mVFu7.js",
+      "_chunk.index.gLCVCLcX.js",
+      "_chunk.value.BGBiTkF3.js",
+      "_chunk.index.DV1b5sxP.js"
+    ],
+    "css": [
+      "asset.index.BZV40eAE.css"
     ]
   },
   "_chunk.index.DV1b5sxP.js": {
@@ -21,21 +34,8 @@
     "file": "chunk.index.gLCVCLcX.js",
     "name": "index"
   },
-  "_chunk.index.kUOqR8Pq.js": {
-    "file": "chunk.index.kUOqR8Pq.js",
-    "name": "index",
-    "imports": [
-      "_chunk.toast.DQdoD88n.js",
-      "_chunk.index.gLCVCLcX.js",
-      "_chunk.value.BGBiTkF3.js",
-      "_chunk.index.DV1b5sxP.js"
-    ],
-    "css": [
-      "asset.index.BZV40eAE.css"
-    ]
-  },
-  "_chunk.toast.DQdoD88n.js": {
-    "file": "chunk.toast.DQdoD88n.js",
+  "_chunk.toast.Cu9mVFu7.js": {
+    "file": "chunk.toast.Cu9mVFu7.js",
     "name": "toast",
     "imports": [
       "_chunk.index.gLCVCLcX.js"
@@ -46,22 +46,22 @@
     "name": "value"
   },
   "src/command-palette/CommandPalette.jsx": {
-    "file": "chunk.CommandPalette.BtJRLG4p.js",
+    "file": "chunk.CommandPalette.BZCmVy6R.js",
     "name": "CommandPalette",
     "src": "src/command-palette/CommandPalette.jsx",
     "isDynamicEntry": true,
     "imports": [
-      "_chunk.toast.DQdoD88n.js",
+      "_chunk.toast.Cu9mVFu7.js",
       "_chunk.index.gLCVCLcX.js",
       "_chunk.index.DV1b5sxP.js",
-      "_chunk.api.CSMBFs-3.js"
+      "_chunk.api.CNbFWNYw.js"
     ],
     "css": [
       "asset.CommandPalette.Ce9U0oTV.css"
     ]
   },
   "src/command-palette/index.jsx": {
-    "file": "bundle.command-palette.BW4en-UH.js",
+    "file": "bundle.command-palette.BnWZ9Cyn.js",
     "name": "command-palette",
     "src": "src/command-palette/index.jsx",
     "isEntry": true,
@@ -71,14 +71,14 @@
     ]
   },
   "src/diagrama-esftt/index.jsx": {
-    "file": "bundle.diagrama-esftt.dRq-a2-W.js",
+    "file": "bundle.diagrama-esftt.ClKLTAAg.js",
     "name": "diagrama-esftt",
     "src": "src/diagrama-esftt/index.jsx",
     "isEntry": true,
     "imports": [
       "src/shared/mountIsland.js",
-      "_chunk.toast.DQdoD88n.js",
-      "_chunk.index.kUOqR8Pq.js",
+      "_chunk.toast.Cu9mVFu7.js",
+      "_chunk.index.CrvXnRUC.js",
       "_chunk.index.gLCVCLcX.js",
       "_chunk.value.BGBiTkF3.js",
       "_chunk.index.DV1b5sxP.js"
@@ -88,30 +88,30 @@
     ]
   },
   "src/estadisticas/index.jsx": {
-    "file": "bundle.estadisticas.Dk_T5Ms1.js",
+    "file": "bundle.estadisticas.taIgaug1.js",
     "name": "estadisticas",
     "src": "src/estadisticas/index.jsx",
     "isEntry": true,
     "imports": [
       "src/shared/mountIsland.js",
-      "_chunk.toast.DQdoD88n.js",
+      "_chunk.toast.Cu9mVFu7.js",
       "_chunk.index.gLCVCLcX.js",
-      "_chunk.api.CSMBFs-3.js",
+      "_chunk.api.CNbFWNYw.js",
       "_chunk.value.BGBiTkF3.js"
     ]
   },
   "src/expediente-arbol/index.jsx": {
-    "file": "bundle.expediente-arbol.Ke8G946u.js",
+    "file": "bundle.expediente-arbol.CrqC2ya6.js",
     "name": "expediente-arbol",
     "src": "src/expediente-arbol/index.jsx",
     "isEntry": true,
     "imports": [
       "src/shared/mountIsland.js",
-      "_chunk.toast.DQdoD88n.js",
+      "_chunk.toast.Cu9mVFu7.js",
       "_chunk.index.gLCVCLcX.js",
       "_chunk.index.DV1b5sxP.js",
-      "_chunk.api.CSMBFs-3.js",
-      "_chunk.index.kUOqR8Pq.js",
+      "_chunk.api.CNbFWNYw.js",
+      "_chunk.index.CrvXnRUC.js",
       "_chunk.value.BGBiTkF3.js"
     ],
     "css": [
@@ -119,16 +119,16 @@
     ]
   },
   "src/mi-trabajo/index.jsx": {
-    "file": "bundle.mi-trabajo.Cp0BFjID.js",
+    "file": "bundle.mi-trabajo.jZWf7HPs.js",
     "name": "mi-trabajo",
     "src": "src/mi-trabajo/index.jsx",
     "isEntry": true,
     "imports": [
       "src/shared/mountIsland.js",
-      "_chunk.toast.DQdoD88n.js",
+      "_chunk.toast.Cu9mVFu7.js",
       "_chunk.index.gLCVCLcX.js",
       "_chunk.index.DV1b5sxP.js",
-      "_chunk.api.CSMBFs-3.js"
+      "_chunk.api.CNbFWNYw.js"
     ]
   },
   "src/shared/mountIsland.js": {

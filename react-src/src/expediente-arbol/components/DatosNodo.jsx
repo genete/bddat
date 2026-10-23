@@ -36,6 +36,8 @@ export default function DatosNodo({ diseno, detalle, nodo, bloqueado = false }) 
   const ctx       = { detalle, nodo }
   const lista     = detalle.campos || []
   const valores   = new Map(lista.map((c) => [c.etiqueta, c.valor]))
+  // Un dato guardado que ya no vale llega con su `aviso` (#1038): en lectura, un «!» junto al valor.
+  const avisos    = new Map(lista.filter((c) => c.aviso).map((c) => [c.etiqueta, c.aviso]))
   const conocidas = new Set(diseno.tarjetas.flatMap((t) => t.campos.map((c) => c.etiqueta)))
   const ocultas   = new Set(diseno.ocultas || [])
   const otros     = lista.filter((c) => !conocidas.has(c.etiqueta) && !ocultas.has(c.etiqueta))
@@ -58,7 +60,7 @@ export default function DatosNodo({ diseno, detalle, nodo, bloqueado = false }) 
     }
     const multilinea = c.control === 'textarea'
     return <ValorSoloLectura rotulo={rotulo} multilinea={multilinea}
-                             valor={valor || (multilinea ? '' : '—')} />
+                             valor={valor || (multilinea ? '' : '—')} aviso={avisos.get(c.etiqueta)} />
   }
 
   return (
@@ -82,7 +84,7 @@ export default function DatosNodo({ diseno, detalle, nodo, bloqueado = false }) 
         <TarjetaDatos titulo="Otros datos" icono="fa-info-circle">
           {otros.map((c) => (
             <CampoDato key={c.etiqueta} rotulo={c.etiqueta}>
-              <ValorSoloLectura rotulo={c.etiqueta} valor={c.valor} />
+              <ValorSoloLectura rotulo={c.etiqueta} valor={c.valor} aviso={c.aviso} />
             </CampoDato>
           ))}
         </TarjetaDatos>
