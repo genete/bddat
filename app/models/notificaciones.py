@@ -41,6 +41,15 @@ FUENTES = (
     'ORGANO_SUPERIOR',
 )
 
+# Fuentes cuyas notificaciones pueden marcarse para ir por edicto (#1037, ADR-052 §A y
+# §G): personas físicas, a las que se notifica en papel y se les puede agotar. Las
+# administraciones (organismos, órgano ambiental, ministerio, ayuntamiento) y los
+# boletines no son destinatarios de edicto. El solicitante tampoco, por decisión de Carlos
+# (2026-10-23): si hiciera falta, se añade aquí. No hay restricción en la BD, para poder
+# cambiar la lista sin migrar; la valida el servicio. Estas dos fuentes solo aparecen en
+# el trámite `NOTIFICACION` de las fases finalizadoras de resolución.
+FUENTES_QUE_ADMITEN_EDICTO = ('INTERESADOS_RECONOCIDOS', 'PROPIETARIOS_DUP')
+
 
 class Notificacion(db.Model):
     """Ficha de la tarea NOTIFICAR: a quién se notifica y cómo acabó (ADR-034,
@@ -76,10 +85,18 @@ class Notificacion(db.Model):
     (PATCH .../notificar), el parser solo lo propone. «Hay una notificación
     registrada» (justificante con canal o resultado) es `registrada`, no la
     mera existencia de la fila, que desde #967 existe siempre.
+
+    **Edicto (#1037, ADR-052):** el usuario marca (`va_por_edicto`) las notificaciones que
+    cubrirá un anuncio edictal, antes de que exista, y el trámite `NOTIFICACION_EDICTAL` las
+    recoge al crearse (`tramite_edictal_id`). Recogida implica marcada
+    (`ck_notificaciones_edicto_recogida`). Qué fuentes admiten la marca:
+    `FUENTES_QUE_ADMITEN_EDICTO`.
     """
     __tablename__ = 'notificaciones'
     __table_args__ = (
         db.Index('idx_notificaciones_entidad', 'entidad_id'),
+        db.Index('idx_notificaciones_tramite_edictal', 'tramite_edictal_id',
+                 postgresql_where=db.text('tramite_edictal_id IS NOT NULL')),
         {'schema': 'public'},
     )
 
@@ -170,6 +187,23 @@ class Notificacion(db.Model):
         db.DateTime(timezone=True),
         nullable=True,
         comment='Cuándo se copió el destinatario. Fijo desde el primer justificante',
+    )
+
+    # --- Edicto (#1037, ADR-052 §A y §G) ---
+    va_por_edicto = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=False,
+        server_default='false',
+        comment='Marcada por el usuario para ir por edicto (#1037). Solo la admiten las '
+                'fuentes de FUENTES_QUE_ADMITEN_EDICTO; lo valida el servicio',
+    )
+    tramite_edictal_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.tramites.id', ondelete='SET NULL'),
+        nullable=True,
+        comment='Trámite NOTIFICACION_EDICTAL que la recogió al crearse. NULL = no recogida '
+                '(marcada que espera al siguiente edicto de la fase, o no marcada)',
     )
 
     # La ficha se borra con su tarea (#967): toda NOTIFICAR la tiene, así que
