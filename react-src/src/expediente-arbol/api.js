@@ -354,6 +354,24 @@ export function postAnadirFaltan(expedienteId, tramiteId) {
     `/api/expedientes/${expedienteId}/nodo/tramite/${tramiteId}/notificaciones/anadir_faltan`, {})
 }
 
+// El edicto de una fase (#1037, ADR-052 §G): lo que aplica el anuncio publicado a las
+// notificaciones que el NOTIFICACION_EDICTAL recogió al crearse. Respuesta: {anuncio:{id,
+// nombre,enlace,puede_abrir,abrir_en,fecha_administrativa}|null, recogidas:[fila],
+// motivo_no_aplicar: str|null}. Cada `fila` es la de la tarjeta de marcas ({valor, texto,
+// sin_destinatario, estado, motivo, intentos_fallidos, cerrada, marcada, recogida, bloqueo}).
+// 422 si el trámite no es un NOTIFICACION_EDICTAL.
+export function getEdicto(expedienteId, tramiteId) {
+  return api.get(`/api/expedientes/${expedienteId}/nodo/tramite/${tramiteId}/edicto`)
+}
+
+// Botón «Aplicar el anuncio» (#1037): cierra con una copia del anuncio publicado las recogidas
+// que sigan abiertas. Sin cuerpo: el conjunto lo fijó el usuario al marcarlas. Respuesta: {ok,
+// ids (las cerradas), advertencia?:{motivo, avisos[], sede_pendiente:[tarea_id]}}. 422 con
+// `error` y las ya cerradas en `ids` si falla a mitad.
+export function postEdicto(expedienteId, tramiteId) {
+  return api.post(`/api/expedientes/${expedienteId}/nodo/tramite/${tramiteId}/edicto`, {})
+}
+
 // Genera el escrito, lo guarda en el almacén y lo vincula (#608: el escrito es un
 // auxiliar de trabajo, no dispara cambio de estado de la tarea; el ciclo
 // BORRADOR_FIRMA/firmado se gestiona aparte vía Despensa).

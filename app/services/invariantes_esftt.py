@@ -62,6 +62,10 @@ _TIPOS_REQUIEREN_DOC_USADO     = {'ANALIZAR', 'NOTIFICAR'}
 # y deben leer el mismo criterio para no divergir.
 TRAMITES_CADENA_SUBSANACION = frozenset({'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_SUBSANACION'})
 
+# El trámite transversal de la notificación por edicto (#568, ADR-052 §A). Su creación exige
+# notificaciones marcadas (#1037, `_check_crear_edictal`).
+TRAMITE_EDICTAL = 'NOTIFICACION_EDICTAL'
+
 # Códigos de resultado de fase finalizadora que se consideran resolución favorable.
 # Usado por tiene_solicitud_aap_favorable (art. 131.1 párr. 2 RD 1955/2000).
 RESULTADO_FASE_FAVORABLE_CODIGOS = frozenset({'FAVORABLE', 'FAVORABLE_CONDICIONADO'})
@@ -253,6 +257,9 @@ def _check_crear(sujeto: str, padre_id: int,
     if sujeto == 'TRAMITE' and tipo_codigo in TRAMITES_CADENA_SUBSANACION:
         return _check_crear_vuelta_cadena(padre_id)
 
+    if sujeto == 'TRAMITE' and tipo_codigo == TRAMITE_EDICTAL:
+        return _check_crear_edictal(padre_id)
+
     if sujeto == 'FASE':
         return (_check_crear_fase_resolucion_firme(padre_id)
                 or _check_crear_fase_instruccion(padre_id, tipo_codigo))
@@ -321,6 +328,38 @@ def _check_crear_esperar_plazo(tramite_id: int) -> Optional[EvaluacionResult]:
         f'No se puede abrir la espera de plazo: la notificación de este trámite no '
         f'está completa — {ed.motivo(ed.estado_tarea(pendiente))}. El plazo no '
         f'empieza a contar hasta que la notificación consta practicada.'
+    )
+
+
+def _check_crear_edictal(fase_id: int) -> Optional[EvaluacionResult]:
+    """Un anuncio edictal no se crea sin causa (#1037, ADR-052 §A): `NOTIFICACION_EDICTAL`
+    exige que la fase tenga al menos una `NOTIFICAR` marcada para edicto y aún sin recoger
+    por otro edicto.
+
+    El conjunto de notificaciones que cubre el anuncio lo decide el usuario antes de que
+    exista (Carlos, 2026-10-23): el redactor del anuncio lee de ellas los datos y, al
+    publicarse, se cierran. Sin marcas el trámite no tendría de dónde sacar ni uno ni otro.
+
+    Invariante y no `reglas_motor`: es una precondición del propio dato, no una norma que
+    citar ni algo que el supervisor configure. Puerta cerrada, como las demás de
+    `_check_crear`: el escape es marcar primero, no una justificación."""
+    from app.models.notificaciones import Notificacion
+
+    hay_marcadas = db.session.query(
+        Notificacion.query
+        .join(Tarea, Tarea.id == Notificacion.tarea_id)
+        .join(Tramite, Tramite.id == Tarea.tramite_id)
+        .filter(Tramite.fase_id == fase_id,
+                Notificacion.va_por_edicto.is_(True),
+                Notificacion.tramite_edictal_id.is_(None))
+        .exists()
+    ).scalar()
+    if hay_marcadas:
+        return None
+    return _bloquear(
+        'No se puede crear la notificación edictal: ninguna notificación de esta fase está '
+        'marcada para ir por edicto. Marca primero, en el trámite de notificación de la '
+        'fase, las notificaciones que van por edicto y guarda.'
     )
 
 

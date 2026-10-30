@@ -42,7 +42,7 @@ from app.services.invariantes_esftt import (
     check_invariante, check_vinculo_sellado,
     diagnostico_tramite_anterior, documento_disparo_comunicacion_admision,
     documentos_consumidos_otras_tareas_cadena,
-    es_documento_critico, advertir_documentos_criticos_huerfanos,
+    es_documento_critico, advertir_documentos_criticos_huerfanos, TRAMITE_EDICTAL,
 )
 from app.services.vocabulario_esftt import check_orden_tarea, check_vocabulario_tramite
 from app.services.requisitos import evaluar_requisitos
@@ -625,6 +625,23 @@ def crear_fase(solicitud, tipo_fase, *, justificacion: Optional[str] = None) -> 
     return ResultadoMutacion(ok=True, ids=[fase.id], advertencia=_advertencia_dict(res_eval))
 
 
+def _recoger_marcadas_de_la_fase(fase, edictal) -> None:
+    """El `NOTIFICACION_EDICTAL` recién creado recoge las notificaciones de la fase marcadas
+    para edicto que ningún edicto ha recogido ya (#1037, ADR-052 §A). Una fase puede tener
+    varios edictos: cada uno se queda solo con lo que aún no era de otro. Sin commit: va en la
+    transacción de la creación. La guarda de `invariantes_esftt._check_crear_edictal` ya
+    comprobó que hay al menos una."""
+    marcadas = (Notificacion.query
+                .join(Tarea, Tarea.id == Notificacion.tarea_id)
+                .join(Tramite, Tramite.id == Tarea.tramite_id)
+                .filter(Tramite.fase_id == fase.id,
+                        Notificacion.va_por_edicto.is_(True),
+                        Notificacion.tramite_edictal_id.is_(None))
+                .all())
+    for notif in marcadas:
+        notif.tramite_edictal_id = edictal.id
+
+
 def crear_tramite(fase, tipo_tramite, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
     if not tipo_tramite.creacion_generica:
         return ResultadoMutacion(
@@ -660,6 +677,9 @@ def crear_tramite(fase, tipo_tramite, *, justificacion: Optional[str] = None) ->
     tramite = Tramite(fase_id=fase.id, tipo_tramite_id=tipo_tramite.id)
     db.session.add(tramite)
     db.session.flush()
+
+    if tipo_tramite.codigo == TRAMITE_EDICTAL:
+        _recoger_marcadas_de_la_fase(fase, tramite)
 
     if justificacion:
         sujeto = build_sujeto(expediente, {'fase': fase, 'tipo_tramite': tipo_tramite})
@@ -1590,15 +1610,90 @@ def editar_organismo(oe, *, via: str, resultado: Optional[str],
         return ResultadoMutacion(ok=False, error=str(e))
 
 
-def editar_tramite(tr, *, observaciones: Optional[str]) -> ResultadoMutacion:
+def _nombre_notificacion(ta) -> str:
+    """Cómo se nombra una notificación al usuario, sin artículo: «notificación a «X»»
+    por su destinatario, si ya lo tiene, y «notificación #N» si no."""
+    nombre = ta.notificacion.dest_nombre if ta.notificacion is not None else None
+    return f'notificación a «{nombre}»' if nombre else f'notificación #{ta.id}'
+
+
+def _diff_marcas_edicto(tr, ids):
+    """(error, a_marcar, a_quitar): qué cambia respecto a las marcas de edicto actuales del
+    trámite si el conjunto deseado es `ids`. Sin tocar nada: si hay `error`, no se aplica
+    ninguno de los cambios. Lo que ya está marcado y se mantiene no se valida (la ruta
+    reenvía siempre el valor actual)."""
+    if (not isinstance(ids, (list, tuple, set))
+            or not all(isinstance(i, int) and not isinstance(i, bool) for i in ids)):
+        return 'Las notificaciones por edicto deben indicarse como una lista de ids de tarea.', [], []
+    deseadas = set(ids)
+    candidatas = {ta.id: ta for ta in notif_svc.candidatas_a_edicto(tr)}
+    actuales = {ta.id: ta for ta in notif_svc.marcadas_para_edicto(tr)}
+
+    ajenas = sorted(i for i in deseadas - set(actuales) if i not in candidatas)
+    if ajenas:
+        return ('No se pueden marcar para edicto (no son notificaciones de este trámite a '
+                'interesados o propietarios): tarea ' + ', '.join(f'#{i}' for i in ajenas) + '.'), [], []
+    a_marcar = [candidatas[i] for i in sorted(deseadas - set(actuales))]
+    a_quitar = [actuales[i] for i in sorted(set(actuales) - deseadas)]
+    for ta in a_marcar:
+        motivo = notif_svc.motivo_no_marcable(ta)
+        if motivo:
+            return f'La {_nombre_notificacion(ta)}: {motivo}', [], []
+    for ta in a_quitar:
+        motivo = notif_svc.motivo_no_desmarcable(ta)
+        if motivo:
+            return f'La {_nombre_notificacion(ta)}: {motivo}', [], []
+    return None, a_marcar, a_quitar
+
+
+def _aplicar_marcas_edicto(a_marcar, a_quitar) -> list[str]:
+    """Pone y quita las marcas (sin commit) y devuelve los avisos. Quitar una recogida la
+    devuelve a «no marcada» (recogida implica marcada); si el anuncio que la había
+    recogido ya tenía documentos, avisa de que hay que rehacerlo."""
+    avisos = []
+    for ta in a_marcar:
+        ta.notificacion.va_por_edicto = True
+    for ta in a_quitar:
+        notif = ta.notificacion
+        if notif.tramite_edictal_id is not None:
+            edictal = Tramite.query.get(notif.tramite_edictal_id)
+            if edictal is not None and notif_svc.anuncio_edictal_iniciado(edictal):
+                avisos.append(f'La {_nombre_notificacion(ta)} ya no va en el edicto, pero el '
+                              'anuncio ya tenía documentos con ella: hay que rehacerlo.')
+        notif.va_por_edicto = False
+        notif.tramite_edictal_id = None
+    return avisos
+
+
+def editar_tramite(tr, *, observaciones: Optional[str],
+                   notificaciones_edicto_ids=_NO_TOCAR) -> ResultadoMutacion:
+    """Observaciones y marcas de edicto del trámite (#1037, ADR-052 §A y §G).
+
+    `notificaciones_edicto_ids` es el conjunto completo deseado de `NOTIFICAR` del trámite
+    marcadas para ir por edicto (ids de tarea). Sin pasarlo no se tocan las marcas; la ruta
+    reenvía siempre el valor actual, así que solo se valida lo que cambia.
+
+    Rechaza, sin tocar nada: ids que no son candidatas del trámite
+    (`notif_svc.candidatas_a_edicto`, la misma lista que ofrece el esquema), marcar una
+    notificación ya cerrada y quitar una marca cuando el anuncio que la recogió ya se
+    remitió al BOE. Quitar una recogida la devuelve a «no marcada»; si su anuncio ya tenía
+    documentos, lo avisa en `advertencia` (`motivo` es el texto para el usuario)."""
     res_inv = check_invariante('MUTAR', 'TRAMITE', tr.id)
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
 
+    a_marcar, a_quitar = [], []
+    if notificaciones_edicto_ids is not _NO_TOCAR:
+        error, a_marcar, a_quitar = _diff_marcas_edicto(tr, notificaciones_edicto_ids)
+        if error:
+            return ResultadoMutacion(ok=False, error=error)
+
     try:
         tr.observaciones = observaciones or None
+        avisos = _aplicar_marcas_edicto(a_marcar, a_quitar)
         db.session.commit()
-        return ResultadoMutacion(ok=True)
+        advertencia = {'motivo': ' '.join(avisos), 'avisos': avisos} if avisos else None
+        return ResultadoMutacion(ok=True, advertencia=advertencia)
     except Exception as e:
         db.session.rollback()
         return ResultadoMutacion(ok=False, error=str(e))
@@ -1925,18 +2020,18 @@ def borrar_tarea(ta, *, justificacion: Optional[str] = None) -> ResultadoMutacio
 # Notificación edictal: aplicar el anuncio publicado (#568, ADR-052 §G)
 # ---------------------------------------------------------------------------
 
-TRAMITE_EDICTAL = 'NOTIFICACION_EDICTAL'
-
-# Los tipos que dicen que una NOTIFICAR ya tiene algún justificante: con alguno,
-# no es un edicto directo.
-_JUSTIFICANTES_DE_NOTIFICACION = (set(notif_svc.TIPOS_JUSTIFICANTE_PREVIO)
-                                  | set(notif_svc.JUSTIFICANTES_FINALES))
-
+# `TRAMITE_EDICTAL` (el código del trámite) vive en `invariantes_esftt`, que lo necesita para
+# su guarda de creación (#1037); aquí se reexporta, con las rutas que ya lo leen como `svc.`.
 
 def anuncio_publicado_edicto(tramite) -> Optional[Documento]:
     """El `ANUNCIO_PUBLICADO` que produce la espera de un `NOTIFICACION_EDICTAL`
-    (la publicación en el BOE), o `None` si aún no está."""
-    for ta in tramite.tareas:
+    (la publicación en el BOE), o `None` si aún no está.
+
+    Si hay varias esperas con anuncio (el BOJA potestativo de ADR-052 §A, que será real
+    con #994), el de la primera por id: las tres tareas indicativas, la espera del BOE
+    entre ellas, nacen antes que las adicionales. `Tramite.tareas` no tiene `order_by`, así
+    que sin ordenar el resultado dependería del orden físico de la base (#1037)."""
+    for ta in sorted(tramite.tareas, key=lambda t: t.id):
         doc = ta.documento_producido
         if (ta.tipo_tarea.codigo == 'ESPERAR_PLAZO' and doc is not None
                 and _tipo_codigo(doc) == notif_svc.ANUNCIO_PUBLICADO):
@@ -1944,65 +2039,68 @@ def anuncio_publicado_edicto(tramite) -> Optional[Documento]:
     return None
 
 
-def notificaciones_edictables(tramite) -> list:
-    """Las `NOTIFICAR` de la misma fase a las que se puede aplicar el anuncio
-    (ADR-052 §G), sin las del propio trámite edictal y sin producido:
+def _preparar_aplicacion(tramite):
+    """(motivo, anuncio, abiertas): por qué hoy no se puede aplicar el anuncio de este edicto
+    (o `None`), el anuncio publicado y las notificaciones que recogió y siguen abiertas.
 
-    - postales agotadas: `JUSTIFICANTE_POSTAL_2DO` vinculado;
-    - sin ningún justificante: el edicto directo (desconocido o lugar ignorado).
+    Es lo único que decide si se puede aplicar: lo enseña la tarjeta antes de pulsar el botón
+    y lo comprueba `aplicar_anuncio_edicto` antes de escribir nada, así que lo previsible
+    (anuncio ausente o sin fecha, nada que cerrar, una recogida sin destinatario) no deja el
+    trabajo a medias: el destinatario se comprobaba tarea a tarea, dentro de `editar_tarea`, y
+    una sin él cortaba la aplicación con las anteriores ya cerradas (#1037)."""
+    if tramite.tipo_tramite.codigo != TRAMITE_EDICTAL:
+        return f'Solo desde un trámite {TRAMITE_EDICTAL}.', None, []
+    anuncio = anuncio_publicado_edicto(tramite)
+    if anuncio is None:
+        return ('El trámite todavía no tiene el anuncio publicado en el BOE: vincúlalo '
+                'como producido de su espera antes de aplicarlo.'), None, []
+    if anuncio.fecha_administrativa is None:
+        return ('El anuncio publicado no tiene fecha: es la fecha de efectos de cada '
+                'notificación, ponla antes de aplicarlo.'), anuncio, []
+    recogidas = notif_svc.recogidas_por_edicto(tramite)
+    if not recogidas:
+        return 'Este edicto no ha recogido ninguna notificación.', anuncio, []
+    abiertas = [ta for ta in recogidas if not ta.ejecutada]
+    if not abiertas:
+        return 'Todas las notificaciones que recogió este edicto ya están cerradas.', anuncio, []
+    sin_destinatario = [ta for ta in abiertas if notif_svc.falta_destinatario(ta)]
+    if sin_destinatario:
+        return ('No tienen destinatario las notificaciones de las tareas '
+                + ', '.join(f'#{ta.id}' for ta in sin_destinatario)
+                + ': fija antes a quién se notifica. Hasta entonces no se aplica el anuncio '
+                  'a ninguna.'), anuncio, abiertas
+    return None, anuncio, abiertas
 
-    Una con sede o con un solo intento fallido no se ofrece."""
-    elegibles = []
-    for tr in tramite.fase.tramites:
-        if tr.id == tramite.id:
-            continue
-        for ta in tr.tareas:
-            if ta.tipo_tarea.codigo != 'NOTIFICAR' or ta.ejecutada:
-                continue
-            tipos = {_tipo_codigo(v.documento) for v in ta.vinculos_documento}
-            if (notif_svc.intentos_fallidos(ta) == 2
-                    or not (tipos & _JUSTIFICANTES_DE_NOTIFICACION)):
-                elegibles.append(ta)
-    return sorted(elegibles, key=lambda t: t.id)
+
+def motivo_no_aplicar_anuncio(tramite) -> Optional[str]:
+    """Por qué hoy no se puede aplicar el anuncio de este edicto, o `None`."""
+    return _preparar_aplicacion(tramite)[0]
 
 
-def aplicar_anuncio_edicto(tramite, tareas_ids: list[int]) -> ResultadoMutacion:
-    """Cierra por edicto las `NOTIFICAR` elegidas (ADR-052 §G): por cada una,
-    otra fila `Documento` sobre el mismo fichero del anuncio publicado, con la
-    misma fecha (la de efectos frente al interesado), vinculada como producido
-    —por `editar_tarea`, con sus guardas y su hook, que fija el canal: POSTAL
-    tras intentos, EDICTO si no los hubo— y resultado `CORRECTA`.
+def aplicar_anuncio_edicto(tramite) -> ResultadoMutacion:
+    """Cierra por edicto las `NOTIFICAR` que recogió este `NOTIFICACION_EDICTAL` (ADR-052
+    §G, #1037): por cada una abierta, otra fila `Documento` sobre el mismo fichero del
+    anuncio publicado, con la misma fecha (la de efectos frente al interesado), vinculada
+    como producido —por `editar_tarea`, con sus guardas y su hook, que fija el canal: POSTAL
+    tras intentos, EDICTO si no los hubo— y resultado `CORRECTA`. Sin ids: el conjunto lo
+    decidió el usuario al marcar, antes de que existiera el anuncio.
 
     Un documento tiene un solo productor (`uq_documento_un_productor`, #928 H1),
     de ahí la copia, que hace `copiar_documento` (mismo contenido, o el mismo enlace;
-    sin enviar nada al almacén). Si el anuncio no tiene nada que copiar se devuelve
-    ese error sin cerrar ninguna. Todo se valida antes de escribir; si una tarea falla
-    al vincular (bloqueo o sin destinatario) se para ahí y se devuelve el error con
-    las ya cerradas en `ids`. Sin pantalla hasta #929."""
-    if tramite.tipo_tramite.codigo != TRAMITE_EDICTAL:
-        return ResultadoMutacion(ok=False, error=f'Solo desde un trámite {TRAMITE_EDICTAL}.')
-    anuncio = anuncio_publicado_edicto(tramite)
-    if anuncio is None:
-        return ResultadoMutacion(ok=False, error=(
-            'El trámite todavía no tiene el anuncio publicado en el BOE: vincúlalo '
-            'como producido de su espera antes de aplicarlo.'))
-    if anuncio.fecha_administrativa is None:
-        return ResultadoMutacion(ok=False, error=(
-            'El anuncio publicado no tiene fecha: es la fecha de efectos de cada '
-            'notificación, ponla antes de aplicarlo.'))
-    if not tareas_ids:
-        return ResultadoMutacion(ok=False, error='Indica a qué notificaciones se aplica.')
-    elegibles = {ta.id: ta for ta in notificaciones_edictables(tramite)}
-    ajenas = [i for i in tareas_ids if i not in elegibles]
-    if ajenas:
-        return ResultadoMutacion(ok=False, error=(
-            'Solo se aplica a notificaciones de la misma fase, sin producido, con los '
-            'dos intentos postales fallidos o sin ningún justificante. No lo son: '
-            + ', '.join(str(i) for i in ajenas) + '.'))
+    sin enviar nada al almacén). Todo lo previsible se comprueba antes de escribir
+    (`_preparar_aplicacion`). Si aun así una tarea falla al vincular (un bloqueo, un
+    contenido que no se puede copiar) se para ahí y se devuelve el error con las ya cerradas
+    en `ids`; repetir la acción continúa con las que quedan, porque solo cierra las abiertas.
+
+    Las recogidas de canal postal quedan con la sede pendiente (art. 42.1): el canal sigue
+    siendo POSTAL tras los intentos (ADR-052 §E). Se avisa en `advertencia`."""
+    motivo, anuncio, abiertas = _preparar_aplicacion(tramite)
+    if motivo:
+        return ResultadoMutacion(ok=False, error=motivo)
 
     cerradas = []
-    for tarea_id in dict.fromkeys(tareas_ids):
-        ta = elegibles[tarea_id]
+    cerradas_tareas = []
+    for ta in abiertas:
         try:
             copia = copiar_documento(
                 anuncio, expediente_id=anuncio.expediente_id, tipo_doc_id=anuncio.tipo_doc_id,
@@ -2025,4 +2123,13 @@ def aplicar_anuncio_edicto(tramite, tareas_ids: list[int]) -> ResultadoMutacion:
         ta.notificacion.resultado = 'CORRECTA'
         db.session.commit()
         cerradas.append(ta.id)
-    return ResultadoMutacion(ok=True, ids=cerradas)
+        cerradas_tareas.append(ta)
+
+    sede_pendiente = [ta.id for ta in cerradas_tareas if notif_svc.estado_sede(ta) == 'PENDIENTE']
+    advertencia = None
+    if sede_pendiente:
+        aviso = (f'{len(sede_pendiente)} de las notificaciones cerradas quedan pendientes de la puesta '
+                 'a disposición en sede (art. 42.1 LPACAP): el canal sigue siendo postal tras los '
+                 'intentos. Ponla o justifica por qué no.')
+        advertencia = {'motivo': aviso, 'avisos': [aviso], 'sede_pendiente': sede_pendiente}
+    return ResultadoMutacion(ok=True, ids=cerradas, advertencia=advertencia)

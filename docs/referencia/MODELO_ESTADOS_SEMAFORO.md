@@ -101,7 +101,10 @@ de `estado_dominio._estado_notificar`).
 | CORRECTA/RECHAZADA con producido y sede puesta, justificada o no aplicable | FIN | 🟢 |
 
 La notificación agotada se cierra con la copia del anuncio publicado en el BOE que produce el
-trámite `NOTIFICACION_EDICTAL` (ADR-052 §G).
+trámite `NOTIFICACION_EDICTAL` (ADR-052 §G), pero solo si el usuario la marcó para edicto y el
+edicto la recogió (ADR-052 §A, #1037): el rojo avisa de que procede, no decide que vaya. Lo
+mismo vale para una notificación sin ningún justificante (edicto directo): sigue en azul, y solo
+la cierra el anuncio aplicado si se marcó.
 
 La sede pendiente impide dar el trámite por finalizado (`Tramite.finalizado`), y por tanto
 cerrar la fase sin justificación (el bloqueo es forzable, #723); no impide abrir el
