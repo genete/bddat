@@ -368,11 +368,19 @@ def _tareas_con_notificacion(tramite, *criterios) -> list:
     """Las tareas del trámite que tienen ficha de notificación y cumplen `criterios`
     (condiciones sobre `Notificacion`), por id y con la ficha ya cargada: una sola
     consulta, porque un trámite de resolución de una DUP puede tener cientos."""
-    from sqlalchemy.orm import contains_eager
+    from sqlalchemy.orm import contains_eager, joinedload, selectinload
+    from app.models.documentos import Documento
+    from app.models.documentos_tarea import DocumentoTarea
     from app.models.tareas import Tarea
+    # Los vínculos y el tipo de cada documento también, en lote: el estado de cada fila
+    # (`estado_dominio`) los lee y, tarea a tarea, serían cientos de consultas.
     return (Tarea.query
             .join(Tarea.notificacion)
-            .options(contains_eager(Tarea.notificacion))
+            .options(contains_eager(Tarea.notificacion),
+                     joinedload(Tarea.tipo_tarea),
+                     selectinload(Tarea.vinculos_documento)
+                     .joinedload(DocumentoTarea.documento)
+                     .joinedload(Documento.tipo_doc))
             .filter(Tarea.tramite_id == tramite.id, *criterios)
             .order_by(Tarea.id)
             .all())

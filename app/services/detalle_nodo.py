@@ -14,6 +14,7 @@ Contrato del payload (acordado en implementación de #500, cierra deuda §15
       "documentos": [{"id","rol","nombre","tipo_doc","fecha","enlace","externo",
                       "puede_abrir","abrir_en"}, ...],
       "plazo": {"estado","fecha_limite","dias_restantes"} | null,  # solo ESPERAR_PLAZO
+      "marcas_edicto"?: {"filas","marcadas","aviso"},  # solo trámites con NOTIFICAR que admiten edicto (#1037)
       "referencia": str,                                  # cadena de ancestros (§8)
     }
 
@@ -37,6 +38,7 @@ from app.models.fases import Fase
 from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.organismos_expediente import OrganismoExpediente
+from app.services import marcas_edicto
 from app.services import notificaciones as notif_svc
 from app.services.arbol_expediente import ID_VERSION_INICIAL_BASE, plazo_tarea
 from app.services.sellos import (
@@ -472,13 +474,19 @@ def _detalle_tramite(exp, tramite_id: int) -> dict:
         _campo('Nº de tareas', len(tr.tareas)),
         _campo('Observaciones', tr.observaciones),
     )
-    return {
+    detalle = {
         'nodo': {'tipo': 'tramite', 'id': tr.id},
         'campos': campos,
         'documentos': [],
         'plazo': None,
         'referencia': _ref_tramite(exp, tr),
     }
+    # Notificaciones por edicto (#1037): solo si el trámite tiene alguna NOTIFICAR cuya
+    # fuente lo admita; las mismas filas que ofrece el esquema editable.
+    marcas = marcas_edicto.fichas(tr)
+    if marcas is not None:
+        detalle['marcas_edicto'] = marcas
+    return detalle
 
 
 def _detalle_tarea(exp, tarea_id: int) -> dict:

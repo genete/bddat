@@ -8,7 +8,8 @@ Devuelve el contrato genérico que el inspector usa para pintar el formulario ed
                   "texto_vacio"?, "aviso"?}, ...]
     }
 
-`control` ∈ {text, textarea, select}.
+`control` ∈ {text, textarea, select, casillas}. `casillas` (#1037): `valor` es la lista de
+los `valor` de las opciones marcadas.
 `campo` mapea 1:1 a la clave que espera el PATCH editar de ese nivel.
 Solo en los select: `texto_vacio` es lo que dice la opción de no elegir (por defecto
 «—») y `aviso`, por qué el valor guardado ya no es una opción posible (#1038).
@@ -31,6 +32,7 @@ from app.models.documentos import Documento
 from app.models.tipos_resultados_fases import TipoResultadoFase
 from app.models.organismos_expediente import OrganismoExpediente, VIAS_ORGANISMO, RESULTADOS_ORGANISMO
 from app.models.direccion_notificacion import DireccionNotificacion
+from app.services import marcas_edicto
 from app.services import notificaciones as notif_svc
 
 log =logging.getLogger(__name__)
@@ -92,6 +94,13 @@ def _campo_select(campo: str, etiqueta: str, valor,
     if aviso:
         d['aviso'] = aviso
     return d
+
+
+def _campo_casillas(campo: str, etiqueta: str, valor: list, opciones: list[dict]) -> dict:
+    """Varias opciones a la vez: `valor` es la lista de los `valor` marcados. Cada opción
+    es `{valor, texto, ...}` y puede traer más datos para pintarla (#1037)."""
+    return {'campo': campo, 'etiqueta': etiqueta, 'control': 'casillas',
+            'valor': valor, 'opciones': opciones}
 
 
 # ---------------------------------------------------------------------------
@@ -164,11 +173,19 @@ def _esquema_tramite(exp, tramite_id: int) -> dict:
     if tr is None or tr.fase.solicitud.expediente_id != exp.id:
         raise ValueError(f'Trámite {tramite_id} no encontrado en el expediente {exp.id}')
 
+    campos = [_campo_textarea('observaciones', 'Observaciones', tr.observaciones)]
+    # Notificaciones por edicto (#1037): solo si el trámite tiene alguna NOTIFICAR cuya fuente
+    # lo admita. El valor son los ids marcados y las opciones, las mismas filas que el detalle.
+    marcas = marcas_edicto.fichas(tr)
+    if marcas is not None:
+        campo = _campo_casillas('notificaciones_edicto', 'Notificaciones por edicto',
+                                marcas['marcadas'], marcas['filas'])
+        if marcas['aviso']:
+            campo['aviso'] = marcas['aviso']
+        campos.append(campo)
     return {
         'nodo': {'tipo': 'tramite', 'id': tr.id},
-        'campos': [
-            _campo_textarea('observaciones', 'Observaciones', tr.observaciones),
-        ],
+        'campos': campos,
     }
 
 
