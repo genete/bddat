@@ -111,8 +111,10 @@ export function TarjetaAnuncioEdicto({ expedienteId, tramiteId }) {
         {anuncio ? (
           <div className="d-flex flex-wrap align-items-baseline gap-2">
             <EnlaceDocumento doc={anuncio} />
-            {anuncio.fecha_administrativa && (
+            {anuncio.fecha_administrativa ? (
               <span className="small text-muted">publicado el {fechaLarga(anuncio.fecha_administrativa)}</span>
+            ) : (
+              <span className="badge text-bg-warning">Sin fecha de publicación</span>
             )}
           </div>
         ) : (
@@ -148,46 +150,25 @@ export function AccionAplicarAnuncio({ expedienteId, tramiteId }) {
   const datos = useEdicto((s) => (s.tramiteId === tramiteId ? s.datos : null))
   const error = useEdicto((s) => (s.tramiteId === tramiteId ? s.error : null))
   const hay = useHayEdicto(tramiteId)
-  const [confirmando, setConfirmando] = React.useState(false)
-
-  // Al cambiar de trámite no se arrastra una confirmación a medias.
-  React.useEffect(() => { setConfirmando(false) }, [tramiteId])
 
   if (!hay) return null
   const motivo = datos.motivo_no_aplicar
   const abiertas = datos.recogidas.filter((f) => !f.cerrada).length
 
-  const lanzar = async () => {
-    setConfirmando(false)
-    await aplicar(expedienteId, tramiteId, refrescarArbol)
-  }
-
+  // Sin confirmación (decisión del issue): el botón dice qué hará, y aplicar se deshace a mano
+  // desvinculando el producido (la tarea vuelve a «agotada»).
   return (
     <div className="mb-3">
-      {!confirmando ? (
-        <button type="button" className="btn btn-sm btn-primary" disabled={!!motivo || aplicando}
-                onClick={() => setConfirmando(true)}>
-          {aplicando ? 'Aplicando…' : 'Aplicar el anuncio'}
-        </button>
-      ) : (
-        <div className="alert alert-warning py-2 px-3 small mb-0">
-          <div className="mb-2">
-            Se {abiertas === 1 ? 'cerrará 1 notificación' : `cerrarán ${abiertas} notificaciones`} con
-            una copia del anuncio publicado, como notificadas por edicto.
-          </div>
-          <button type="button" className="btn btn-sm btn-primary me-2" onClick={lanzar}>Aplicar</button>
-          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setConfirmando(false)}>
-            Cancelar
-          </button>
-        </div>
-      )}
-      {motivo
-        ? <div className="small text-muted mt-1">{motivo}</div>
-        : !confirmando && (
-          <div className="small text-muted mt-1">
-            Cierra con una copia del anuncio las notificaciones recogidas que sigan abiertas.
-          </div>
+      <button type="button" className="btn btn-sm btn-primary" disabled={!!motivo || aplicando}
+              onClick={() => aplicar(expedienteId, tramiteId, refrescarArbol)}>
+        {aplicando ? 'Aplicando…' : 'Aplicar el anuncio'}
+      </button>
+      <div className="small text-muted mt-1">
+        {motivo || (
+          `Cierra ${abiertas === 1 ? '1 notificación recogida' : `${abiertas} notificaciones recogidas`} `
+          + 'con una copia del anuncio publicado, como notificadas por edicto.'
         )}
+      </div>
       {error && <div className="alert alert-danger py-2 px-3 small mt-2 mb-0">{error}</div>}
     </div>
   )

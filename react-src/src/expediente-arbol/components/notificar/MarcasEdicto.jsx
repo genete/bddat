@@ -70,6 +70,19 @@ function Fila({ fila, marcada, editable, onToggle }) {
 // ¿Va arriba? Lo marcado y lo que ya ha fallado sin cerrarse: lo que hay que decidir.
 const aDecidir = (fila, marcada) => marcada || (!fila.cerrada && fila.intentos_fallidos > 0)
 
+// El resumen de la cabecera: «2 con dos intentos fallidos · 1 con un intento · 37 notificadas o en
+// curso». Cuenta las abiertas con fallos; el resto (en curso o ya cerradas) va junto.
+function resumen(filas) {
+  const dos = filas.filter((f) => !f.cerrada && f.intentos_fallidos >= 2).length
+  const uno = filas.filter((f) => !f.cerrada && f.intentos_fallidos === 1).length
+  const resto = filas.length - dos - uno
+  return [
+    dos > 0 && `${dos} con dos intentos fallidos`,
+    uno > 0 && `${uno} con un intento`,
+    resto > 0 && (resto === 1 ? '1 notificada o en curso' : `${resto} notificadas o en curso`),
+  ].filter(Boolean).join(' · ')
+}
+
 export default function TarjetaMarcasEdicto({ detalle }) {
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
   const editables = useArbolStore((s) => s.editableCampos)
@@ -101,6 +114,7 @@ export default function TarjetaMarcasEdicto({ detalle }) {
   return (
     <TarjetaDatos titulo="Notificaciones por edicto" icono="fa-bullhorn">
       <div className="col-12">
+        <div className="small fw-semibold mb-1">{resumen(filas)}</div>
         <p className="small text-muted mb-2">
           Las marcadas se publicarán por anuncio. Se recogen al crear en esta fase el trámite
           «Notificación edictal»; hasta que se remita al BOE se pueden quitar.
