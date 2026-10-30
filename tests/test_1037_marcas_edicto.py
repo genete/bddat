@@ -145,3 +145,30 @@ def test_cada_edicto_recoge_solo_lo_que_no_era_de_otro_y_de_su_fase(arbol_aislad
     e3 = _crear_edictal(cl, expediente_id, otra_fase)
     assert _recogida_por(d) == (True, e3)
     assert _recogida_por(e) == (True, None), 'un edicto de otra fase recogió una marca ajena'
+
+
+def test_el_anuncio_identifica_a_cada_interesado_solo_por_documento_o_por_nombre(arbol_aislado):
+    """Fallo silencioso que evita: que el anuncio del BOE publique el nombre de un afectado
+    junto a su documento completo, que la DA 7.ª LOPDGDD prohíbe en las notificaciones por
+    anuncios del art. 44, sin que nada falle al generarlo.
+
+    Con documento sale el documento completo; sin él, el nombre; ninguno con las dos cosas, y
+    el mismo interesado en dos notificaciones sale una vez."""
+    from app.services.context_builders.contexto_anuncio_edictal import ContextoAnuncioEdictal
+
+    fase, tramite = _fase_y_tramite(arbol_aislado)
+    edictal = arbol_aislado.tramite(fase, 'NOTIFICACION_EDICTAL')
+    elaborar = arbol_aislado.tarea(edictal, 'ELABORAR')
+    for nombre, documento in (('Ana Pérez', 'A1111111A'), ('Beatriz Gómez', None),
+                              ('Ana P.', 'A1111111A')):
+        ta = _notificar_a_propietario(arbol_aislado, tramite, nombre)
+        ta.notificacion.dest_nif = documento
+        ta.notificacion.va_por_edicto = True
+        ta.notificacion.tramite_edictal_id = edictal.id
+    db.session.flush()
+
+    contexto = ContextoAnuncioEdictal(fase.solicitud.expediente, db.session, tarea=elaborar).get_contexto()
+
+    assert contexto == {'interesados_edicto': ['A1111111A', 'Beatriz Gómez']}
+    assert not any('Ana' in identificacion for identificacion in contexto['interesados_edicto']), \
+        'el anuncio publicaría el nombre junto al documento completo (DA 7.ª LOPDGDD)'
