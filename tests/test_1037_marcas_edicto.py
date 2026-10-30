@@ -96,3 +96,52 @@ def test_la_marca_se_quita_antes_de_la_remision_y_no_despues(arbol_aislado, usua
     assert r.status_code == 422, r.get_json()
     assert 'remitido' in r.get_json()['error']
     assert _marcada(ta), 'se quitó la marca con el anuncio ya remitido al BOE'
+
+
+def _recogida_por(tarea):
+    """(marcada, trámite edictal que la recogió) tal como está en la BD."""
+    db.session.expire_all()
+    notif = Notificacion.query.filter_by(tarea_id=tarea.id).one()
+    return notif.va_por_edicto, notif.tramite_edictal_id
+
+
+def _crear_edictal(cliente, expediente_id, fase):
+    from app.models.tipos_tramites import TipoTramite
+    tipo = TipoTramite.query.filter_by(codigo='NOTIFICACION_EDICTAL').one()
+    r = cliente.post(f'/api/expedientes/{expediente_id}/nodo/fase/{fase.id}/hijos',
+                     json={'tipo_id': tipo.id})
+    assert r.status_code == 201, r.get_json()
+    return r.get_json()['ids'][0]
+
+
+def test_cada_edicto_recoge_solo_lo_que_no_era_de_otro_y_de_su_fase(arbol_aislado, usuario_supervisor):
+    """Fallo silencioso que evita: que un segundo edicto reasigne las notificaciones que ya
+    eran de otro, o que tome marcas de otra fase, y cambie sin aviso el conjunto de un
+    anuncio ya redactado.
+
+    Primer edicto: recoge A y B, no C. Segundo, en la misma fase: solo C. Un edicto en otra
+    fase de la misma solicitud recoge su D y deja la E marcada de la primera sin recoger."""
+    cl = usuario_supervisor
+    fase, tramite = _fase_y_tramite(arbol_aislado)
+    expediente_id = fase.solicitud.expediente_id
+    a, b, c, e = (_notificar_a_propietario(arbol_aislado, tramite, n) for n in 'ABCE')
+
+    _patch_tramite(cl, expediente_id, tramite, {'notificaciones_edicto': [a.id, b.id]})
+    e1 = _crear_edictal(cl, expediente_id, fase)
+    assert _recogida_por(a) == (True, e1) and _recogida_por(b) == (True, e1)
+    assert _recogida_por(c) == (False, None)
+
+    _patch_tramite(cl, expediente_id, tramite, {'notificaciones_edicto': [a.id, b.id, c.id]})
+    e2 = _crear_edictal(cl, expediente_id, fase)
+    assert _recogida_por(c) == (True, e2)
+    assert _recogida_por(a) == (True, e1), 'el segundo edicto se llevó lo que era del primero'
+
+    # E, marcada en la primera fase y sin recoger; D, en otra fase de la misma solicitud.
+    _patch_tramite(cl, expediente_id, tramite, {'notificaciones_edicto': [a.id, b.id, c.id, e.id]})
+    otra_fase = arbol_aislado.fase('RESOLUCION_AAP', solicitud=fase.solicitud)
+    otro_tramite = arbol_aislado.tramite(otra_fase, 'NOTIFICACION')
+    d = _notificar_a_propietario(arbol_aislado, otro_tramite, 'D')
+    _patch_tramite(cl, expediente_id, otro_tramite, {'notificaciones_edicto': [d.id]})
+    e3 = _crear_edictal(cl, expediente_id, otra_fase)
+    assert _recogida_por(d) == (True, e3)
+    assert _recogida_por(e) == (True, None), 'un edicto de otra fase recogió una marca ajena'
