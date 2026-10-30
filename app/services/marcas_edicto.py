@@ -24,12 +24,16 @@ def _texto(notif) -> str:
     return f'{notif.dest_nombre} ({notif.dest_nif})' if notif.dest_nif else notif.dest_nombre
 
 
-def _fila(ta) -> dict:
+def fila(ta) -> dict:
+    """La fila de una notificación: la usan la tarjeta de marcas y la de las recogidas."""
     notif = ta.notificacion
     estado = estado_tarea(ta)
     return {
         'valor': ta.id,
         'texto': _texto(notif),
+        # No puede avanzar hasta fijar a quién se notifica (ADR-051 §B): aplicar el anuncio
+        # se negaría a cerrarla.
+        'sin_destinatario': notif_svc.falta_destinatario(ta),
         'estado': estado,
         'motivo': motivo(estado),
         'intentos_fallidos': notif_svc.intentos_fallidos(ta),
@@ -64,7 +68,7 @@ def fichas(tramite) -> Optional[dict]:
                  '(tarea ' + ', '.join(f'#{i}' for i in sobrantes) + '). Se conservan hasta '
                  'que alguien las quite.')
     return {
-        'filas': [_fila(ta) for ta in candidatas],
+        'filas': [fila(ta) for ta in candidatas],
         'marcadas': [ta.id for ta in marcadas],
         'aviso': aviso,
     }

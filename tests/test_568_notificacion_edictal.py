@@ -2,12 +2,13 @@
 Tests #568 (ADR-052 §G) — aplicar el anuncio publicado de un NOTIFICACION_EDICTAL
 a las notificaciones que cierra: una copia del anuncio por NOTIFICAR, como
 producido y con resultado CORRECTA. Fichero propio porque la acción es nueva y
-ningún test existente cubre `aplicar_anuncio_edicto`.
+ningún test existente cubre `aplicar_anuncio_edicto`. Desde #1037 las que cierra son
+las que el edicto recogió al crearse, marcadas antes por el usuario (ADR-052 §G).
 
 Fallo silencioso que evita: que la copia del anuncio de algún interesado lleve
 otra fecha que la del BOE (su fecha de efectos) o se aplique a una notificación
-que no estaba agotada, y ese interesado quede notificado en falso sin que nada
-lo avise.
+que el edicto no había recogido, y ese interesado quede notificado en falso sin
+que nada lo avise.
 
 Lo demás del edicto lo cubren tests existentes, ajustados en #568: la escalada
 por acuses (test_558), el canal EDICTO del edicto directo (test_928_hook) y las
@@ -55,8 +56,8 @@ def _guardar(tarea, consumidos=(), producido=None):
 
 def test_el_anuncio_se_aplica_con_su_fecha_a_cada_notificacion(con_usuario, arbol_aislado):
     """Dos notificaciones de la fase —una postal agotada, otra sin ningún
-    justificante (edicto directo)— se cierran con el mismo anuncio publicado.
-    Una tercera con un solo intento fallido no se ofrece ni se admite."""
+    justificante (edicto directo)— que el edicto recogió se cierran con el mismo
+    anuncio publicado. Una tercera, con un solo intento fallido y sin recoger, no se toca."""
     from datetime import timedelta
     from app.services.reloj_simulado import hoy
 
@@ -86,13 +87,20 @@ def test_el_anuncio_se_aplica_con_su_fecha_a_cada_notificacion(con_usuario, arbo
     publicacion = hace(5)
     _guardar(espera, producido=_doc(exp_id, 'ANUNCIO_PUBLICADO', 'boe.pdf', publicacion))
 
-    assert {t.id for t in svc.notificaciones_edictables(edicto)} == {agotada.id, directa.id}
-    assert not svc.aplicar_anuncio_edicto(edicto, [un_intento.id]).ok
+    # El edicto las recogió al crearse (#1037): el builder crea el trámite sin pasar por
+    # `crear_tramite`, así que la recogida se hace aquí.
+    for tarea in (agotada, directa):
+        tarea.notificacion.va_por_edicto = True
+        tarea.notificacion.tramite_edictal_id = edicto.id
+    db.session.flush()
 
-    res = svc.aplicar_anuncio_edicto(edicto, [agotada.id, directa.id])
+    res = svc.aplicar_anuncio_edicto(edicto)
 
     assert res.ok, res.error
     assert res.ids == [agotada.id, directa.id]
+    db.session.refresh(un_intento)
+    assert not un_intento.ejecutada and un_intento.notificacion.resultado is None, \
+        'se cerró una notificación que el edicto no había recogido'
     for tarea, canal in ((agotada, 'POSTAL'), (directa, 'EDICTO')):
         db.session.refresh(tarea)
         assert tarea.notificacion.resultado == 'CORRECTA'

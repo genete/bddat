@@ -364,10 +364,10 @@ def intentos_fallidos(tarea) -> int:
 # Edicto: qué notificaciones se pueden marcar (#1037, ADR-052 §A y §G)
 # ---------------------------------------------------------------------------
 
-def _tareas_con_notificacion(tramite, *criterios) -> list:
-    """Las tareas del trámite que tienen ficha de notificación y cumplen `criterios`
-    (condiciones sobre `Notificacion`), por id y con la ficha ya cargada: una sola
-    consulta, porque un trámite de resolución de una DUP puede tener cientos."""
+def _tareas_con_notificacion(*criterios) -> list:
+    """Las tareas que tienen ficha de notificación y cumplen `criterios` (condiciones sobre
+    `Tarea` o `Notificacion`), por id y con la ficha ya cargada: una sola consulta, porque un
+    trámite de resolución de una DUP puede tener cientos."""
     from sqlalchemy.orm import contains_eager, joinedload, selectinload
     from app.models.documentos import Documento
     from app.models.documentos_tarea import DocumentoTarea
@@ -381,7 +381,7 @@ def _tareas_con_notificacion(tramite, *criterios) -> list:
                      selectinload(Tarea.vinculos_documento)
                      .joinedload(DocumentoTarea.documento)
                      .joinedload(Documento.tipo_doc))
-            .filter(Tarea.tramite_id == tramite.id, *criterios)
+            .filter(*criterios)
             .order_by(Tarea.id)
             .all())
 
@@ -395,15 +395,25 @@ def candidatas_a_edicto(tramite) -> list:
     acepta no pueden discrepar (contrato de selector de #1038, regla 4). Que una se
     pueda marcar o quitar hoy lo dicen `motivo_no_marcable` y `motivo_no_desmarcable`."""
     from app.models.notificaciones import Notificacion
+    from app.models.tareas import Tarea
     return _tareas_con_notificacion(
-        tramite, Notificacion.fuente.in_(FUENTES_QUE_ADMITEN_EDICTO))
+        Tarea.tramite_id == tramite.id, Notificacion.fuente.in_(FUENTES_QUE_ADMITEN_EDICTO))
 
 
 def marcadas_para_edicto(tramite) -> list:
     """Las tareas del trámite marcadas para edicto, de cualquier fuente: una marca puesta
     con una fuente que ya no figura en la lista sigue ahí hasta que alguien la quite."""
     from app.models.notificaciones import Notificacion
-    return _tareas_con_notificacion(tramite, Notificacion.va_por_edicto.is_(True))
+    from app.models.tareas import Tarea
+    return _tareas_con_notificacion(
+        Tarea.tramite_id == tramite.id, Notificacion.va_por_edicto.is_(True))
+
+
+def recogidas_por_edicto(tramite_edictal) -> list:
+    """Las `NOTIFICAR` que recogió un `NOTIFICACION_EDICTAL` al crearse, por id. Son tareas de
+    otros trámites de su fase: las del anuncio que se aplica al publicarse."""
+    from app.models.notificaciones import Notificacion
+    return _tareas_con_notificacion(Notificacion.tramite_edictal_id == tramite_edictal.id)
 
 
 def motivo_no_marcable(tarea) -> Optional[str]:

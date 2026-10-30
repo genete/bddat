@@ -64,6 +64,7 @@ from app.services import bitacora as bitacora_svc
 from app.services import mensajes_internos as servicio_mensajes
 from app.models.notificaciones import Notificacion
 from app.services import notificaciones as notif_svc
+from app.services import marcas_edicto
 from app.services import destinatarios_notificacion as dest_svc
 from app.services.estado_dominio import estado_tarea
 from app.utils.permisos import verificar_acceso_expediente, tiene_permiso
@@ -2923,12 +2924,15 @@ def post_anadir_notificaciones_que_faltan(expediente_id, tramite_id):
 def edicto_aplicar_anuncio(expediente_id, tramite_id):
     """
     .../nodo/tramite/<id>/edicto — aplicar el anuncio publicado de un
-    `NOTIFICACION_EDICTAL` a las notificaciones que cierra (#568, ADR-052 §G).
-    Sin interfaz hasta #929.
+    `NOTIFICACION_EDICTAL` a las notificaciones que recogió (#568, ADR-052 §G; #1037).
 
-    GET: el anuncio (si ya está) y las `NOTIFICAR` de la fase que lo admiten
-    (postales agotadas o sin ningún justificante). POST `{"tareas_ids": [..]}`:
-    cierra esas notificaciones con una copia del anuncio; `ids` = las cerradas.
+    GET: `anuncio` (el publicado, con lo necesario para abrirlo y su fecha; `null` si aún
+    no está), `recogidas` (las `NOTIFICAR` que recogió este edicto al crearse, con la misma
+    fila que la tarjeta de marcas) y `motivo_no_aplicar` (por qué hoy no se puede aplicar, o
+    `null`). POST sin cuerpo: cierra con una copia del anuncio las recogidas que sigan
+    abiertas, y responde `ids` = las cerradas; si falla a mitad, 422 con `error` y las ya
+    cerradas en `ids`. El conjunto lo decidió el usuario al marcar, no se indica aquí.
+    Respuesta de éxito con `advertencia` si quedan recogidas con la sede pendiente (art. 42.1).
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     accion = 'gestionar_tarea' if request.method == 'POST' else 'acceder'
@@ -2942,31 +2946,26 @@ def edicto_aplicar_anuncio(expediente_id, tramite_id):
         return jsonify({'error': f'El trámite no es {svc.TRAMITE_EDICTAL}'}), 422
 
     if request.method == 'POST':
-        data = request.get_json(silent=True) or {}
-        ids = data.get('tareas_ids')
-        if not isinstance(ids, list) or not all(isinstance(i, int) for i in ids):
-            return jsonify({'error': 'tareas_ids debe ser una lista de ids de tarea'}), 422
-        res = svc.aplicar_anuncio_edicto(tramite, ids)
+        res = svc.aplicar_anuncio_edicto(tramite)
         if res.bloqueo:
             return jsonify({'error': res.bloqueo.motivo or res.bloqueo.norma_compilada,
                             'ids': res.ids}), 422
         if not res.ok:
             return jsonify({'error': res.error, 'ids': res.ids}), 422
-        return jsonify({'ok': True, 'ids': res.ids}), 200
+        payload = {'ok': True, 'ids': res.ids}
+        if res.advertencia:
+            payload['advertencia'] = res.advertencia
+        return jsonify(payload), 200
 
     anuncio = svc.anuncio_publicado_edicto(tramite)
     return jsonify({
         'anuncio': {
-            'id': anuncio.id, 'nombre': anuncio.nombre_visible(),
+            **_documento_notificar_json(expediente.id, anuncio),
             'fecha_administrativa': anuncio.fecha_administrativa.isoformat()
                 if anuncio.fecha_administrativa else None,
         } if anuncio else None,
-        'notificaciones': [
-            {'tarea_id': ta.id, 'tramite_id': ta.tramite_id,
-             'intentos_fallidos': notif_svc.intentos_fallidos(ta),
-             'destinatario': _destinatario_json(ta.notificacion) if ta.notificacion else None}
-            for ta in svc.notificaciones_edictables(tramite)
-        ],
+        'recogidas': [marcas_edicto.fila(ta) for ta in notif_svc.recogidas_por_edicto(tramite)],
+        'motivo_no_aplicar': svc.motivo_no_aplicar_anuncio(tramite),
     }), 200
 
 
