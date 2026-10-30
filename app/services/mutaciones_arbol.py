@@ -1590,15 +1590,90 @@ def editar_organismo(oe, *, via: str, resultado: Optional[str],
         return ResultadoMutacion(ok=False, error=str(e))
 
 
-def editar_tramite(tr, *, observaciones: Optional[str]) -> ResultadoMutacion:
+def _nombre_notificacion(ta) -> str:
+    """Cómo se nombra una notificación al usuario, sin artículo: «notificación a «X»»
+    por su destinatario, si ya lo tiene, y «notificación #N» si no."""
+    nombre = ta.notificacion.dest_nombre if ta.notificacion is not None else None
+    return f'notificación a «{nombre}»' if nombre else f'notificación #{ta.id}'
+
+
+def _diff_marcas_edicto(tr, ids):
+    """(error, a_marcar, a_quitar): qué cambia respecto a las marcas de edicto actuales del
+    trámite si el conjunto deseado es `ids`. Sin tocar nada: si hay `error`, no se aplica
+    ninguno de los cambios. Lo que ya está marcado y se mantiene no se valida (la ruta
+    reenvía siempre el valor actual)."""
+    if (not isinstance(ids, (list, tuple, set))
+            or not all(isinstance(i, int) and not isinstance(i, bool) for i in ids)):
+        return 'Las notificaciones por edicto deben indicarse como una lista de ids de tarea.', [], []
+    deseadas = set(ids)
+    candidatas = {ta.id: ta for ta in notif_svc.candidatas_a_edicto(tr)}
+    actuales = {ta.id: ta for ta in notif_svc.marcadas_para_edicto(tr)}
+
+    ajenas = sorted(i for i in deseadas - set(actuales) if i not in candidatas)
+    if ajenas:
+        return ('No se pueden marcar para edicto (no son notificaciones de este trámite a '
+                'interesados o propietarios): tarea ' + ', '.join(f'#{i}' for i in ajenas) + '.'), [], []
+    a_marcar = [candidatas[i] for i in sorted(deseadas - set(actuales))]
+    a_quitar = [actuales[i] for i in sorted(set(actuales) - deseadas)]
+    for ta in a_marcar:
+        motivo = notif_svc.motivo_no_marcable(ta)
+        if motivo:
+            return f'La {_nombre_notificacion(ta)}: {motivo}', [], []
+    for ta in a_quitar:
+        motivo = notif_svc.motivo_no_desmarcable(ta)
+        if motivo:
+            return f'La {_nombre_notificacion(ta)}: {motivo}', [], []
+    return None, a_marcar, a_quitar
+
+
+def _aplicar_marcas_edicto(a_marcar, a_quitar) -> list[str]:
+    """Pone y quita las marcas (sin commit) y devuelve los avisos. Quitar una recogida la
+    devuelve a «no marcada» (recogida implica marcada); si el anuncio que la había
+    recogido ya tenía documentos, avisa de que hay que rehacerlo."""
+    avisos = []
+    for ta in a_marcar:
+        ta.notificacion.va_por_edicto = True
+    for ta in a_quitar:
+        notif = ta.notificacion
+        if notif.tramite_edictal_id is not None:
+            edictal = Tramite.query.get(notif.tramite_edictal_id)
+            if edictal is not None and notif_svc.anuncio_edictal_iniciado(edictal):
+                avisos.append(f'La {_nombre_notificacion(ta)} ya no va en el edicto, pero el '
+                              'anuncio ya tenía documentos con ella: hay que rehacerlo.')
+        notif.va_por_edicto = False
+        notif.tramite_edictal_id = None
+    return avisos
+
+
+def editar_tramite(tr, *, observaciones: Optional[str],
+                   notificaciones_edicto_ids=_NO_TOCAR) -> ResultadoMutacion:
+    """Observaciones y marcas de edicto del trámite (#1037, ADR-052 §A y §G).
+
+    `notificaciones_edicto_ids` es el conjunto completo deseado de `NOTIFICAR` del trámite
+    marcadas para ir por edicto (ids de tarea). Sin pasarlo no se tocan las marcas; la ruta
+    reenvía siempre el valor actual, así que solo se valida lo que cambia.
+
+    Rechaza, sin tocar nada: ids que no son candidatas del trámite
+    (`notif_svc.candidatas_a_edicto`, la misma lista que ofrece el esquema), marcar una
+    notificación ya cerrada y quitar una marca cuando el anuncio que la recogió ya se
+    remitió al BOE. Quitar una recogida la devuelve a «no marcada»; si su anuncio ya tenía
+    documentos, lo avisa en `advertencia` (`motivo` es el texto para el usuario)."""
     res_inv = check_invariante('MUTAR', 'TRAMITE', tr.id)
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
 
+    a_marcar, a_quitar = [], []
+    if notificaciones_edicto_ids is not _NO_TOCAR:
+        error, a_marcar, a_quitar = _diff_marcas_edicto(tr, notificaciones_edicto_ids)
+        if error:
+            return ResultadoMutacion(ok=False, error=error)
+
     try:
         tr.observaciones = observaciones or None
+        avisos = _aplicar_marcas_edicto(a_marcar, a_quitar)
         db.session.commit()
-        return ResultadoMutacion(ok=True)
+        advertencia = {'motivo': ' '.join(avisos), 'avisos': avisos} if avisos else None
+        return ResultadoMutacion(ok=True, advertencia=advertencia)
     except Exception as e:
         db.session.rollback()
         return ResultadoMutacion(ok=False, error=str(e))

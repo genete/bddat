@@ -688,7 +688,9 @@ def editar_nodo(expediente_id, tipo, nodo_id):
                   — cambiar representante o sede actualiza las notificaciones al
                   solicitante que no han salido; la advertencia lo cuenta (#989)
       fase:       {resultado_fase_id, documento_resultado_id, observaciones}
-      tramite:    {observaciones}
+      tramite:    {observaciones, notificaciones_edicto} — las `NOTIFICAR` del trámite
+                  marcadas para ir por edicto, como lista COMPLETA de ids de tarea
+                  (#1037); `[]` las desmarca todas, la clave ausente no las toca
       tarea:      {documentos_consumidos_ids, documento_producido_id, notas,
                    bypass, justificacion} — el bypass fuerza vincular a una
                    NOTIFICAR sin destinatario (#967)
@@ -741,7 +743,10 @@ def editar_nodo(expediente_id, tipo, nodo_id):
         )
     elif tipo == 'tramite':
         res = svc.editar_tramite(
-            nodo, observaciones=leer_json(data, 'observaciones', nodo.observaciones))
+            nodo, observaciones=leer_json(data, 'observaciones', nodo.observaciones),
+            notificaciones_edicto_ids=leer_json(
+                data, 'notificaciones_edicto',
+                [ta.id for ta in notif_svc.marcadas_para_edicto(nodo)]))
     elif tipo == 'tarea':
         # Escape de la NOTIFICAR sin destinatario (#967, ADR-051 §B).
         justificacion, err = leer_bypass(data)
