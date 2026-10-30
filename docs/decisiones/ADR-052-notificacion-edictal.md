@@ -1,10 +1,10 @@
 # ADR-052 — Notificación edictal: trámite transversal, intentos como documentos y canal EDICTO
 
-**Estado:** Adoptada — implementada en #568 (2026-09-30): migración `568_notificacion_edictal`; `ESTRUCTURA_FTT` v6.9 (sección `TRAMITES_TRANSVERSALES`); `TIPOS_DOCUMENTOS_CATALOGO`; la acción de §G es `mutaciones_arbol.aplicar_anuncio_edicto` con la ruta `…/nodo/tramite/<id>/edicto` (GET y POST), sin interfaz hasta #929
-**Fecha:** 2026-09-30
+**Estado:** Adoptada — implementada en #568 (2026-09-30): migración `568_notificacion_edictal`; `ESTRUCTURA_FTT` v6.9 (sección `TRAMITES_TRANSVERSALES`); `TIPOS_DOCUMENTOS_CATALOGO`. **§A (cómo se recoge lo que va por edicto) y §G (aplicar el anuncio) rehechos en #1037** (migración `1037_marca_edicto_notificacion`): el usuario marca qué `NOTIFICAR` van por edicto, el trámite las recoge al crearse y «Aplicar el anuncio» las cierra; la ruta `…/nodo/tramite/<id>/edicto` (GET y POST) y `mutaciones_arbol.aplicar_anuncio_edicto` siguen, con otra semántica; tarjeta de marcas, tarjeta del edicto y botón en el árbol
+**Fecha:** 2026-09-30 (enmienda de #1037: 2026-10-30)
 **Enmienda:** ADR-049 (§B tipos nuevos, §C caso POSTAL y `numero_intento`, §D resultado INCORRECTA; D15 de #928, canal del edicto) · ADR-051 («Lo que este ADR no decide», primer punto: el anuncio común del edicto; §C, la clave de `notificacion_fuentes` admite cualquier fase) · ADR-037 (un trámite puede declararse transversal, §A)
-**Origen:** #568, sesión de diseño del 2026-09-30 con Carlos, partiendo del procedimiento legal y no del issue (redactado en junio y superado por ADR-049 y ADR-051)
-**Base legal:** Ley 39/2015 arts. 40, 41, 42, 43, 44, 45.2, 46 y DA 3.ª, leídos en `legalize-es` (`BOE-A-2015-10565`). El RD 1955/2000 (`BOE-A-2000-24019`) no regula la notificación infructuosa: se aplica la LPACAP, y la DA 3.ª.2 obliga al BOE aun con norma específica
+**Origen:** #568, sesión de diseño del 2026-09-30 con Carlos, partiendo del procedimiento legal y no del issue (redactado en junio y superado por ADR-049 y ADR-051). #1037, sesión de análisis de octubre de 2026 con Carlos: la selección de lo que va por edicto pasa de deducirse a marcarse
+**Base legal:** Ley 39/2015 arts. 40, 41, 42, 43, 44, 45.2, 46 y DA 3.ª, leídos en `legalize-es` (`BOE-A-2015-10565`). El RD 1955/2000 (`BOE-A-2000-24019`) no regula la notificación infructuosa: se aplica la LPACAP, y la DA 3.ª.2 obliga al BOE aun con norma específica. LOPDGDD DA 7.ª (`BOE-A-2018-16673`, bloque `da-7`), para cómo se identifica al afectado en el anuncio (§G)
 **Relacionados:** ADR-008 · ADR-034 · #928 (N1) · #929 (frontend de notificaciones) · #926 (fichero compartido por dos `Documento`) · #431, #432 (propietarios e interesados)
 
 ---
@@ -49,6 +49,10 @@ ESPERAR_PLAZO  consume: JUSTIFICANTE_EDICTO                    produce: ANUNCIO_
 - **BOJA potestativo:** `NOTIFICAR` + `ESPERAR_PLAZO` adicionales en el mismo trámite, fuera de las tareas indicativas.
 - **Destinatario:** el BOE, elegido en `tramites_destinatario` entre entidades con dirección de rol publicador, como BOJA y BOP. El BOE tiene que existir como entidad (dato, no código).
 - **Los justificantes fallidos no pasan a este trámite:** se quedan en la `NOTIFICAR` de cada interesado, donde su posición dice de quién son (ADR-049 §B).
+- **Qué va por edicto lo marca el usuario (#1037).** En el trámite de notificación de las fases finalizadoras, el usuario marca las `NOTIFICAR` que van por edicto. Solo admiten la marca las de fuente `INTERESADOS_RECONOCIDOS` y `PROPIETARIOS_DUP` (personas físicas: el resto notifica por vía electrónica obligada o a un organismo). No se deduce de que haya dos intentos fallidos: la marca es una decisión, y cubre también el edicto directo (interesado desconocido o lugar ignorado, art. 44).
+- **Crear un `NOTIFICACION_EDICTAL` exige marcas.** La puerta de creación del trámite lo rechaza si la fase no tiene ninguna `NOTIFICAR` marcada y sin recoger, y dice qué hacer (marcar, en el trámite de notificación de la fase, y guardar). Al crearse, el edicto **recoge** las marcadas que no eran de otro edicto, de su misma fase; un segundo edicto en la fase recoge solo las marcadas después.
+- **Dos estados de la marca:** *marcada* (`notificaciones.va_por_edicto`) y *recogida* (`tramite_edictal_id` del edicto que la recogió). Una recogida está marcada (`CHECK`). Si se borra el edicto, la recogida vuelve a marcada sin recoger.
+- **El redactor del anuncio lee las recogidas** (`ContextoAnuncioEdictal`, `interesados_edicto`): el anuncio sabe exactamente a quién notifica en cuanto se redacta.
 
 ### B — Documentos
 
@@ -95,12 +99,19 @@ Con §B y §C no queda ningún caso que lo use: en papel los fallos los dicen lo
 
 ### G — Aplicar el anuncio publicado a las notificaciones
 
-Resuelve lo que ADR-051 dejó a este issue. Una acción de servidor, desde el anuncio publicado de un `NOTIFICACION_EDICTAL`, ofrece las `NOTIFICAR` de **la misma fase**:
+Resuelve lo que ADR-051 dejó a este issue. **Rehecho en #1037:** el conjunto ya no lo ofrece el servidor entre postales agotadas y notificaciones sin justificante; lo fijó el usuario al marcar (§A) y lo recogió el edicto al crearse.
 
-- **postales agotadas** (`_1ER` + `_2DO`, sin producido), y
-- **sin ningún justificante** (edicto directo; solo si el usuario las marca, no están en rojo).
+- **Una acción, sin lista de ids:** «Aplicar el anuncio», en el `NOTIFICACION_EDICTAL`, cierra las notificaciones que ese edicto recogió y siguen abiertas, con el anuncio publicado de su `ESPERAR_PLAZO`. `POST …/nodo/tramite/<id>/edicto`, sin cuerpo; `GET`, lo que la pantalla muestra (el anuncio con su fecha, las recogidas y por qué hoy no se puede aplicar).
+- **Por cada una:** crea otra fila `Documento` sobre el mismo fichero y con la misma fecha (el pool lo admite; #926), la vincula como producido y fija `CORRECTA`. El canal sale solo (§E). No toca el índice `uq_documento_un_productor` (decisión de Carlos, #928 H1).
+- **La pantalla:** tarjeta «Notificaciones por edicto» en el trámite de notificación (la marca, con el Guardar de siempre), tarjeta del anuncio y de lo recogido en el edicto, y el botón en la zona de acciones, con una confirmación que dice cuántas se cerrarán.
+- **El anuncio identifica al afectado como manda la DA 7.ª LOPDGDD** (leída en `BOE-A-2018-16673`, bloque `da-7`): en las notificaciones por anuncios del art. 44 LPACAP, **por el número completo de su documento**; sin documento, **solo por nombre y apellidos**; **nunca el nombre junto al documento completo**. Por eso el contexto del redactor entrega ya la identificación publicable de cada interesado (un único elemento por afectado, sin dirección) y no nombre y documento por separado; el mismo interesado en dos notificaciones sale una vez. La parcela del propietario desconocido espera a #431.
 
-Por cada una marcada: crea otra fila `Documento` sobre el mismo fichero y con la misma fecha (el pool lo admite; #926), la vincula como producido y fija `CORRECTA`. El canal sale solo (§E). No toca el índice `uq_documento_un_productor` (decisión de Carlos, #928 H1). Sin pantalla hasta #929.
+**Interpretación** (se decidió al implementar y no figuraba en la conversación de diseño; se rectifica si Carlos lo ve distinto):
+
+- La marca se puede quitar mientras el justificante de la remisión al BOE (`JUSTIFICANTE_EDICTO`) no esté vinculado; después, el conjunto del anuncio queda fijo.
+- «Aplicar el anuncio» comprueba todo antes de cerrar nada (anuncio publicado, destinatario de cada una): si algo falla, no se cierra ninguna. Si el fallo llega a mitad, responde 422 con las ya cerradas.
+- Con varios anuncios publicados en el edicto, se toma el de la primera `ESPERAR_PLAZO` por id (la indicativa).
+- Las recogidas de canal postal que quedan con la sede pendiente (art. 42.1) se avisan tras aplicar; no impiden aplicar.
 
 ### H — Los certificados cuentan cómo y cuándo se notificó
 
@@ -119,7 +130,8 @@ Todo sale de datos existentes. Los certificados ya emitidos no cambian (foto fij
 - **Backend:** `notificaciones` (canal por tipo sin sede, `EDICTO`, previos con `_2DO`); `mutaciones_arbol._hook_notificar` (canal, aviso de sede, sin `numero_intento`); `PATCH …/notificar` sin `numero_intento`; `estado_dominio._estado_notificar` y `cola_administrativo` (§C, §D); `destinatarios_notificacion` (§F); la acción de §G y su ruta; `informe_instruccion` (§H); `cert_cumplimiento_fase._CANAL_LEGIBLE`.
 - **Datos de desarrollo:** los expedientes tipo con notificaciones postales de dos intentos, si los hay, se recrean.
 - **Documentación:** `ESTRUCTURA_FTT` y `TIPOS_DOCUMENTOS_CATALOGO` (hecho); `MODELO_ESTADOS_SEMAFORO` §3; cabeceras de ADR-049 y ADR-051; `ESTADO_ADR049`.
-- **Issues:** #929 recoge la pantalla (acción de §G, tipos nuevos en el registro, fuera la casilla de intento). Issue aparte: el justificante de remisión a boletín de BOJA, BOP y las publicaciones de la resolución (hoy sin salida declarada, no pueden registrarse) y «publicado el …» en los certificados.
+- **Issues:** #929 recoge la pantalla (tipos nuevos en el registro, fuera la casilla de intento); la de la acción de §G pasó a #1037. Issue aparte: el justificante de remisión a boletín de BOJA, BOP y las publicaciones de la resolución (hoy sin salida declarada, no pueden registrarse) y «publicado el …» en los certificados.
+- **#1037 (marcar y aplicar):** una migración (`va_por_edicto`, `tramite_edictal_id`, `CHECK` y un índice parcial); `notificaciones` (candidatas, marcadas, recogidas y los motivos de por qué una marca no se puede poner o quitar); `mutaciones_arbol` (`editar_tramite` con `notificaciones_edicto`, recogida al crear, `aplicar_anuncio_edicto` rehecha); `invariantes_esftt` (la puerta de creación); el contexto `ContextoAnuncioEdictal`; detalle y esquema editable del trámite; `PATCH …/nodo/tramite/<id>` con `notificaciones_edicto`; la pantalla (`MarcasEdicto.jsx`, `AnuncioEdicto.jsx`). Depende de #431 y #432 para que existan en uso real las `NOTIFICAR` de esas dos fuentes.
 
 ---
 
@@ -127,7 +139,7 @@ Todo sale de datos existentes. Los certificados ya emitidos no cambian (foto fij
 
 - El justificante de remisión a boletín fuera del edicto (issue aparte).
 - El formato de `JUSTIFICANTE_EDICTO` (captura o PDF): se concreta con el primer caso real.
-- Acumular en un anuncio interesados de fases distintas: §G se limita a la misma fase; se amplía si hace falta.
+- Acumular en un anuncio interesados de fases distintas: lo marcado se recoge solo dentro de su fase (§A); se amplía si hace falta.
 - Si el art. 41.7 (primer cauce) haría valer un anuncio potestativo previo en el BOJA como fecha de efectos: el cálculo de efectos solo lee el producido, que es la copia del BOE.
 
 ---
@@ -144,4 +156,6 @@ Todo sale de datos existentes. Los certificados ya emitidos no cambian (foto fij
 - **Que `JUSTIFICANTE_SEDE` fije `POSTAL`:** la sede no es una notificación y no debe decir de qué tipo es (§E).
 - **13 filas de fuente, una por fase** (§F).
 - **Copias del anuncio a mano:** la fecha de efectos de cada interesado dependería de teclearla bien (§G).
+- **Deducir qué va por edicto de que haya dos intentos fallidos** (y ofrecerlo desde el botón): los intentos son siempre postales y no cubren el edicto directo; el servidor ofrecía de más y el usuario elegía entre lo que no había decidido él (#1037, §A y §G).
+- **Nombre y documento juntos en el anuncio:** la DA 7.ª LOPDGDD lo prohíbe en las notificaciones por anuncios del art. 44 (§G).
 - **Redactar «por edicto» solo en el edicto:** sería la única notificación que dice cómo y cuándo (§H).

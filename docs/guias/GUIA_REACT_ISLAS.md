@@ -458,16 +458,25 @@ banderas (`esAnalizar`, `esSolicitud`…) y cada tipo nuevo añadía otra.
 | `borrable` | Booleano o `(c) => booleano` (p. ej. una fase cerrada no se borra); además de los permisos |
 
 `c` es el contexto de la llamada: `{ tipo, id, nodo, detalle, hayDetalle, expedienteId, arbol, modoEdicion }`
-más los hechos de `useHechosDelNodo`. `entradaDe(tipo, nodo, arbol)` siempre devuelve una entrada: las
+más los hechos de `useHechosDelNodo`. **Ojo:** esa forma completa es la de `InspectorEdicion` (acciones y
+modales). Las `tarjetas` las ejecuta `ZonaDatos`, que pasa `{ tipo, id, nodo, detalle, expedienteId, arbol,
+modoEdicion }`: sin `hayDetalle` ni hechos. Una tarjeta que condicione por `c.hayDetalle` no se pinta nunca
+(en #1037 la tarjeta de marcas no salía por eso); como `ZonaDatos` solo existe con el detalle cargado,
+basta con leer `c.detalle`. `entradaDe(tipo, nodo, arbol)` siempre devuelve una entrada: las
 tareas la eligen por su superficie (`POR_SUPERFICIE`) y una tarea sin superficie es genérica
 (`TAREA_GENERICA`; `TAREA_ESPERAR_PLAZO` añade la ayuda de recepción de la Despensa).
 
 **Reglas**
 
 - **Las funciones de una entrada son puras.** Un hook no puede ir dentro de una entrada (no se llamaría
-  siempre), así que lo que sale de un store de zustand —hoy, si el trámite tiene notificaciones y si hay un
-  diagnóstico por producir— se calcula en `useHechosDelNodo(id)` y la entrada solo lo lee. Un hecho nuevo es
-  una línea más ahí.
+  siempre), así que lo que sale de un store de zustand —hoy, si el trámite tiene notificaciones, si tiene un
+  edicto con recogidas y si hay un diagnóstico por producir— se calcula en `useHechosDelNodo(id)` y la
+  entrada solo lo lee. Un hecho nuevo es una línea más ahí.
+- **Una tarjeta o acción que solo existe con ciertos datos no pide una superficie propia por tipo de
+  trámite:** es el dato quien decide. El servidor trae la clave solo cuando procede (`marcas_edicto` en el
+  detalle del trámite, solo si hay `NOTIFICAR` que admitan edicto) y la tarjeta devuelve `null` sin ella; lo
+  que no se reconoce por un dato se condiciona por `nodo.tipo_codigo` (el edicto: `NOTIFICACION_EDICTAL`).
+  Es lo que hace la entrada `TRAMITE` con las tarjetas de edicto (#1037).
 - **Las claves son las de la entrada, sin el id del nodo.** Dos nodos del mismo tipo comparten componente
   al cambiar de uno a otro, como antes, y no se pierde lo escrito en una tarjeta.
 - **Los componentes que usa una entrada no viven en `Inspector.jsx`**: el registro los importaría de un
