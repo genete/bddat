@@ -42,7 +42,7 @@ from app.services.invariantes_esftt import (
     check_invariante, check_vinculo_sellado,
     diagnostico_tramite_anterior, documento_disparo_comunicacion_admision,
     documentos_consumidos_otras_tareas_cadena,
-    es_documento_critico, advertir_documentos_criticos_huerfanos,
+    es_documento_critico, advertir_documentos_criticos_huerfanos, TRAMITE_EDICTAL,
 )
 from app.services.vocabulario_esftt import check_orden_tarea, check_vocabulario_tramite
 from app.services.requisitos import evaluar_requisitos
@@ -625,6 +625,23 @@ def crear_fase(solicitud, tipo_fase, *, justificacion: Optional[str] = None) -> 
     return ResultadoMutacion(ok=True, ids=[fase.id], advertencia=_advertencia_dict(res_eval))
 
 
+def _recoger_marcadas_de_la_fase(fase, edictal) -> None:
+    """El `NOTIFICACION_EDICTAL` recién creado recoge las notificaciones de la fase marcadas
+    para edicto que ningún edicto ha recogido ya (#1037, ADR-052 §A). Una fase puede tener
+    varios edictos: cada uno se queda solo con lo que aún no era de otro. Sin commit: va en la
+    transacción de la creación. La guarda de `invariantes_esftt._check_crear_edictal` ya
+    comprobó que hay al menos una."""
+    marcadas = (Notificacion.query
+                .join(Tarea, Tarea.id == Notificacion.tarea_id)
+                .join(Tramite, Tramite.id == Tarea.tramite_id)
+                .filter(Tramite.fase_id == fase.id,
+                        Notificacion.va_por_edicto.is_(True),
+                        Notificacion.tramite_edictal_id.is_(None))
+                .all())
+    for notif in marcadas:
+        notif.tramite_edictal_id = edictal.id
+
+
 def crear_tramite(fase, tipo_tramite, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
     if not tipo_tramite.creacion_generica:
         return ResultadoMutacion(
@@ -660,6 +677,9 @@ def crear_tramite(fase, tipo_tramite, *, justificacion: Optional[str] = None) ->
     tramite = Tramite(fase_id=fase.id, tipo_tramite_id=tipo_tramite.id)
     db.session.add(tramite)
     db.session.flush()
+
+    if tipo_tramite.codigo == TRAMITE_EDICTAL:
+        _recoger_marcadas_de_la_fase(fase, tramite)
 
     if justificacion:
         sujeto = build_sujeto(expediente, {'fase': fase, 'tipo_tramite': tipo_tramite})
@@ -2000,7 +2020,8 @@ def borrar_tarea(ta, *, justificacion: Optional[str] = None) -> ResultadoMutacio
 # Notificación edictal: aplicar el anuncio publicado (#568, ADR-052 §G)
 # ---------------------------------------------------------------------------
 
-TRAMITE_EDICTAL = 'NOTIFICACION_EDICTAL'
+# `TRAMITE_EDICTAL` (el código del trámite) vive en `invariantes_esftt`, que lo necesita para
+# su guarda de creación (#1037); aquí se reexporta, con las rutas que ya lo leen como `svc.`.
 
 # Los tipos que dicen que una NOTIFICAR ya tiene algún justificante: con alguno,
 # no es un edicto directo.
