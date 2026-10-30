@@ -27,6 +27,8 @@ import { superficieDeNodoTarea, idTramiteDeTarea } from './superficiesTarea.js'
 import {
   TarjetaNotificacionesTramite, AccionNotificacionesTramite, useHayNotificacionesTramite,
 } from './components/notificar/NotificacionesTramite.jsx'
+import TarjetaMarcasEdicto from './components/notificar/MarcasEdicto.jsx'
+import { TarjetaAnuncioEdicto, AccionAplicarAnuncio, useHayEdicto } from './components/notificar/AnuncioEdicto.jsx'
 import { TarjetasNotificar } from './components/NotificarEditor.jsx'
 import { AccionGenerarEscrito } from './components/ElaborarEditor.jsx'
 import TarjetaDestinatarioTramite from './components/notificar/DestinatarioTramite.jsx'
@@ -46,6 +48,7 @@ const entrada = (def) => ({ tarjetas: [], acciones: [], modales: [], despensa: {
 export function useHechosDelNodo(id) {
   return {
     hayNotificacionesTramite: useHayNotificacionesTramite(id),
+    hayEdicto: useHayEdicto(id),
     hayDiagnosticoPendiente: useDiagnosticoPendiente(id),
   }
 }
@@ -94,19 +97,43 @@ const FASE = entrada({
   modales: [{ clave: 'confirmacion-cierre', render: () => <ModalConfirmacionCierre /> }],
 })
 
+// El trámite NOTIFICACION_EDICTAL (#1037, ADR-052): su anuncio y las notificaciones que recogió.
+const esEdictal = (c) => !!c.nodo && c.nodo.tipo_codigo === 'NOTIFICACION_EDICTAL'
+
 // Notificaciones del trámite (#929, ADR-051 §D): a quién falta notificar (tarjeta de dato, en los dos modos) y el
 // botón de añadirlas (acción, solo en edición). Si el trámite no notifica a nadie según el catálogo, ni la tarjeta
 // ni el botón se pintan.
+// Por edicto (#1037): las que van por anuncio las marca el usuario en el trámite de notificación (tarjeta de marcas,
+// que se pinta sola si el trámite tiene alguna NOTIFICAR que lo admite: el servidor trae `marcas_edicto` solo
+// entonces) y se aplican con «Aplicar el anuncio» en el NOTIFICACION_EDICTAL que las recogió. Ninguno de los dos
+// necesita una superficie propia por código de trámite: es el dato quien decide si salen.
 const TRAMITE = entrada({
-  tarjetas: [{
-    clave: 'notificaciones',
-    render: (c) => <TarjetaNotificacionesTramite expedienteId={c.expedienteId} tramiteId={Number(c.id)} />,
-  }],
-  acciones: [{
-    clave: 'notificaciones',
-    hay: (c) => c.hayNotificacionesTramite,
-    render: (c) => <AccionNotificacionesTramite expedienteId={c.expedienteId} tramiteId={Number(c.id)} />,
-  }],
+  tarjetas: [
+    {
+      clave: 'notificaciones',
+      render: (c) => <TarjetaNotificacionesTramite expedienteId={c.expedienteId} tramiteId={Number(c.id)} />,
+    },
+    {
+      clave: 'marcas-edicto',
+      render: (c) => (c.detalle ? <TarjetaMarcasEdicto detalle={c.detalle} /> : null),
+    },
+    {
+      clave: 'anuncio-edicto',
+      render: (c) => (esEdictal(c) ? <TarjetaAnuncioEdicto expedienteId={c.expedienteId} tramiteId={Number(c.id)} /> : null),
+    },
+  ],
+  acciones: [
+    {
+      clave: 'notificaciones',
+      hay: (c) => c.hayNotificacionesTramite,
+      render: (c) => <AccionNotificacionesTramite expedienteId={c.expedienteId} tramiteId={Number(c.id)} />,
+    },
+    {
+      clave: 'aplicar-anuncio',
+      hay: (c) => c.hayEdicto,
+      render: (c) => (esEdictal(c) ? <AccionAplicarAnuncio expedienteId={c.expedienteId} tramiteId={Number(c.id)} /> : null),
+    },
+  ],
 })
 
 // Tarea sin superficie propia: la que no figura en `superficiesTarea.js`. Datos comunes, Despensa y «Borrar».
