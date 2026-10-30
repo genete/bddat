@@ -45,8 +45,8 @@ from datetime import date
 from typing import Optional
 
 from app.models.notificaciones import (  # noqa: F401 — reexportadas
-    FUENTES, JUSTIFICANTE_POSTAL_1ER, JUSTIFICANTE_POSTAL_2DO, RESULTADOS,
-    RESULTADOS_EFECTUADA, TIPOS_JUSTIFICANTE_PREVIO,
+    FUENTES, FUENTES_QUE_ADMITEN_EDICTO, JUSTIFICANTE_POSTAL_1ER, JUSTIFICANTE_POSTAL_2DO,
+    RESULTADOS, RESULTADOS_EFECTUADA, TIPOS_JUSTIFICANTE_PREVIO,
 )
 from app.services import sellos
 
@@ -80,6 +80,7 @@ JUSTIFICANTES_FINALES = (
 # notificación cerrada por anuncio sin ningún intento previo (edicto directo).
 CANAL_EDICTO = 'EDICTO'
 ANUNCIO_PUBLICADO = 'ANUNCIO_PUBLICADO'
+JUSTIFICANTE_EDICTO = 'JUSTIFICANTE_EDICTO'
 
 # `bitacora.detalle.accion` con que `…/notificar` registra la justificación de no
 # poner en sede una notificación postal (ADR-049 §C). No lleva `escape: True`: no
@@ -357,6 +358,85 @@ def intentos_fallidos(tarea) -> int:
     if JUSTIFICANTE_POSTAL_2DO in tipos:
         return 2
     return 1 if JUSTIFICANTE_POSTAL_1ER in tipos else 0
+
+
+# ---------------------------------------------------------------------------
+# Edicto: qué notificaciones se pueden marcar (#1037, ADR-052 §A y §G)
+# ---------------------------------------------------------------------------
+
+def _tareas_con_notificacion(tramite, *criterios) -> list:
+    """Las tareas del trámite que tienen ficha de notificación y cumplen `criterios`
+    (condiciones sobre `Notificacion`), por id y con la ficha ya cargada: una sola
+    consulta, porque un trámite de resolución de una DUP puede tener cientos."""
+    from sqlalchemy.orm import contains_eager
+    from app.models.tareas import Tarea
+    return (Tarea.query
+            .join(Tarea.notificacion)
+            .options(contains_eager(Tarea.notificacion))
+            .filter(Tarea.tramite_id == tramite.id, *criterios)
+            .order_by(Tarea.id)
+            .all())
+
+
+def candidatas_a_edicto(tramite) -> list:
+    """Las `NOTIFICAR` del trámite cuya fuente admite edicto
+    (`FUENTES_QUE_ADMITEN_EDICTO`), por id, cerradas o no.
+
+    Es **la** lista de la que se marca: el esquema editable, el detalle y el validador de
+    `mutaciones_arbol.editar_tramite` salen de aquí, porque lo que se ofrece y lo que se
+    acepta no pueden discrepar (contrato de selector de #1038, regla 4). Que una se
+    pueda marcar o quitar hoy lo dicen `motivo_no_marcable` y `motivo_no_desmarcable`."""
+    from app.models.notificaciones import Notificacion
+    return _tareas_con_notificacion(
+        tramite, Notificacion.fuente.in_(FUENTES_QUE_ADMITEN_EDICTO))
+
+
+def marcadas_para_edicto(tramite) -> list:
+    """Las tareas del trámite marcadas para edicto, de cualquier fuente: una marca puesta
+    con una fuente que ya no figura en la lista sigue ahí hasta que alguien la quite."""
+    from app.models.notificaciones import Notificacion
+    return _tareas_con_notificacion(tramite, Notificacion.va_por_edicto.is_(True))
+
+
+def motivo_no_marcable(tarea) -> Optional[str]:
+    """Por qué hoy no se puede marcar esta `NOTIFICAR` para edicto, o `None`. El único
+    límite duro es que ya esté cerrada: con producido está notificada y no hay nada que
+    notificar por edicto (decisión de Carlos, 2026-10-23: lo demás lo decide el usuario)."""
+    if tarea.ejecutada:
+        return 'Ya está notificada (tiene documento producido): no se puede marcar para edicto.'
+    return None
+
+
+def remision_edictal_enviada(tramite_edictal) -> bool:
+    """La `NOTIFICAR` de remisión al BOE de un `NOTIFICACION_EDICTAL` ya tiene su
+    `JUSTIFICANTE_EDICTO` vinculado: el anuncio salió y el conjunto que cubre queda fijo."""
+    return any(
+        _codigo(ta.tipo_tarea) == 'NOTIFICAR'
+        and any(_tipo_codigo(v.documento) == JUSTIFICANTE_EDICTO for v in ta.vinculos_documento)
+        for ta in tramite_edictal.tareas)
+
+
+def anuncio_edictal_iniciado(tramite_edictal) -> bool:
+    """El `ELABORAR` de un `NOTIFICACION_EDICTAL` ya tiene algún documento (borrador o
+    anuncio firmado): si cambia el conjunto de notificaciones, hay que rehacerlo."""
+    return any(_codigo(ta.tipo_tarea) == 'ELABORAR' and ta.vinculos_documento
+               for ta in tramite_edictal.tareas)
+
+
+def motivo_no_desmarcable(tarea) -> Optional[str]:
+    """Por qué hoy no se puede quitar la marca de esta notificación, o `None`. Una marcada
+    sin recoger se quita siempre; una ya recogida, hasta que la remisión del anuncio al BOE
+    tiene su justificante (decisión de Carlos, 2026-10-23, como `cambiable` del destinatario,
+    ADR-051 §D)."""
+    notif = tarea.notificacion
+    if notif is None or notif.tramite_edictal_id is None:
+        return None
+    from app.models.tramites import Tramite
+    edictal = Tramite.query.get(notif.tramite_edictal_id)
+    if edictal is not None and remision_edictal_enviada(edictal):
+        return ('El anuncio edictal ya se ha remitido al BOE: la notificación queda '
+                'incluida y no se puede quitar.')
+    return None
 
 
 def fecha_sugerida(tipo_doc_codigo: Optional[str], parseo) -> Optional[date]:
