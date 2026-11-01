@@ -495,7 +495,7 @@ def _documento_es_referenciado(doc):
     Es `bool(usos_documento(doc))`: qué cuenta como uso, y la historia de por qué faltaban
     (#738, #838, #947), está en `app/services/usos_documento.py`, que registra una entrada por
     cada FK hacia `documentos.id` (#881). Si se añade una tabla con FK a documentos, se añade
-    allí; `fks_sin_uso_registrado()` avisa si se olvida.
+    allí; la comprobación de arranque (`app/checks/usos_documento.py`) avisa si se olvida.
     """
     return bool(usos_documento(doc))
 

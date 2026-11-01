@@ -64,6 +64,10 @@ def create_app(config_name='development'):
         # inversa de #347 (#587)
         from app.checks.registro_variables import validar_registro_variables
         validar_registro_variables()
+        # Cada FK hacia documentos tiene su uso registrado y bien cableado (#881): sin él, el
+        # documento que referencia saldría «libre» y se podría borrar, sin ningún error.
+        from app.checks.usos_documento import validar_usos_documento
+        validar_usos_documento()
 
     # Configuración de Flask-Login
     login_manager.login_view = 'auth.login'

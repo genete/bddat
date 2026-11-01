@@ -27,9 +27,10 @@ agujero se cerró tres veces tarde —
 Con #881 faltaban siete FK más (certificados de fase, diagnósticos, requisitos cubiertos,
 interesados, organismos —dos— y la autorización de una dirección de notificación; esta
 última es `SET NULL`: borrar el documento le habría quitado la autorización a la dirección
-sin aviso). `fks_sin_uso_registrado()` compara el registro con las FK que declara el
-modelo, para que la próxima tabla con FK a `documentos` no pueda pasar desapercibida: una
-entrada nueva es una FK nueva, y viceversa.
+sin aviso). `desajustes_del_registro()` compara el registro con las FK que declara el
+modelo, para que la próxima tabla con FK a `documentos` no pueda pasar desapercibida (una
+entrada nueva es una FK nueva, y viceversa) y para que ninguna entrada quede cableada a otro
+backref. Se ejecuta al arrancar, `app/checks/usos_documento.py`.
 
 El certificado que **cita** un documento (`certificados.datos['documento_id']`, JSONB, no FK)
 es un uso más pero no está en el registro: no tiene FK ni backref. Se resuelve por lotes con
@@ -238,22 +239,53 @@ def opciones_usos_documento() -> tuple:
     return tuple(profundas.get(r.atributo) or carga(r.atributo) for r in REFERENCIAS)
 
 
-def fks_sin_uso_registrado() -> list:
-    """Diferencias entre el registro y las FK que declara el modelo hacia `documentos`:
-    `[(tabla, columna), …]`, vacía si coinciden.
+def desajustes_del_registro() -> list:
+    """Lo que no cuadra entre `REFERENCIAS` y el modelo, como frases legibles: vacía si todo cuadra.
 
-    Sale una FK si hay una tabla con FK a `documentos.id` sin su entrada en `REFERENCIAS`
-    (el documento referenciado por ella saldría «libre» y se podría borrar) o una entrada
-    sin FK (un nombre mal escrito, o una FK retirada). Es lo que impide que el hueco de #738,
-    #838 y #947 se abra una cuarta vez.
+    Es la guarda de este módulo, y está dentro del código y no en un test (`tests/README.md` §3,
+    tercera pregunta): una FK hacia `documentos` que se olvide aquí no da ningún error, deja el
+    documento «libre» y se puede borrar —con `CASCADE` o `SET NULL`, perdiendo el dato—. Se
+    comprueba al arrancar (`app/checks/usos_documento.py`, como `registro_variables`, #587). Mira
+    tres cosas:
+
+    1. Una FK del modelo hacia `documentos.id` sin su entrada: el hueco de #738, #838 y #947.
+    2. Una entrada sin FK: un nombre mal escrito, o una FK que se retiró.
+    3. Una entrada **mal cableada**: `Documento.<atributo>` no recorre la FK que la entrada dice
+       (un backref equivocado contaría los usos contra otra tabla sin avisar de nada), o ni
+       siquiera existe.
     """
-    from app import db
+    from sqlalchemy import inspect as inspeccionar
 
-    registradas = {(r.tabla, r.columna) for r in REFERENCIAS}
+    from app import db
+    from app.models.documentos import Documento
+
     declaradas = {
         (fk.parent.table.name, fk.parent.name)
         for tabla in db.metadata.tables.values()
         for fk in tabla.foreign_keys
         if fk.column.table.name == 'documentos'
     }
-    return sorted(registradas ^ declaradas)
+    registradas = {(r.tabla, r.columna) for r in REFERENCIAS}
+
+    avisos = []
+    for tabla, columna in sorted(declaradas - registradas):
+        avisos.append(
+            f'{tabla}.{columna} referencia documentos.id y no tiene su uso en REFERENCIAS: el '
+            f'documento que referencia saldría «libre» y se podría borrar')
+    for tabla, columna in sorted(registradas - declaradas):
+        avisos.append(
+            f'REFERENCIAS registra {tabla}.{columna}, que no es una FK hacia documentos.id '
+            f'(¿mal escrita, o la FK se retiró?)')
+
+    relaciones = inspeccionar(Documento).relationships
+    for r in REFERENCIAS:
+        if r.atributo not in relaciones:
+            avisos.append(f'{r.codigo}: Documento no tiene la relación «{r.atributo}»')
+            continue
+        recorre = {(remota.table.name, remota.name)
+                   for _local, remota in relaciones[r.atributo].local_remote_pairs}
+        if (r.tabla, r.columna) not in recorre:
+            avisos.append(
+                f'{r.codigo}: Documento.{r.atributo} no recorre {r.tabla}.{r.columna} sino '
+                f'{sorted(recorre)}: los usos se contarían contra otra FK')
+    return avisos
