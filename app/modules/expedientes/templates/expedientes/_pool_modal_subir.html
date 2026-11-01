@@ -4,8 +4,11 @@
 {# Opciones de tipo — plantilla para el JS del paso de metadatos #}
 <template id="tmpl-tipos-doc">
   <option value="">— Tipo —</option>
+  {# Los tipos que exigen fecha administrativa llevan `data-fecha-obligatoria` y qué fecha es
+     (`data-ayuda-fecha`): lo lee `pool_alta.js` (#1036). #}
   {% for t in tipos_doc %}
-  <option value="{{ t.id }}" data-codigo="{{ t.codigo }}">{{ t.nombre }}</option>
+  <option value="{{ t.id }}" data-codigo="{{ t.codigo }}"
+          {%- if t.codigo in tipos_fecha %} data-fecha-obligatoria="1" data-ayuda-fecha="{{ tipos_fecha[t.codigo] }}"{% endif %}>{{ t.nombre }}</option>
   {% endfor %}
 </template>
 

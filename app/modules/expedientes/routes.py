@@ -52,6 +52,7 @@ from app.services.ingesta_pool import (
 )
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
 from app.services.detalle_nodo import documento_fila, opciones_fila_documento
+from app.services.fechas import TIPOS_FECHA_OBLIGATORIA, mensaje_fecha_obligatoria
 from app.services.listado_pool import extension_de, extensiones_del_pool
 from app.services.usos_documento import opciones_usos_documento, usos_documento
 from app.services.parser_justificante_notifica import parsear_justificante_notifica
@@ -602,6 +603,11 @@ def pool_documentos(id):
 
     tipos_doc = TipoDocumento.query.order_by(TipoDocumento.nombre).all()
 
+    # Qué tipos exigen fecha administrativa y qué fecha es cada una (#1036): la misma lista que
+    # valida el servidor al guardar el documento. Las altas la marcan como obligatoria y la explican,
+    # en vez de dejar que el usuario lo descubra con el 422.
+    tipos_fecha = {codigo: mensaje_fecha_obligatoria(codigo) for codigo in TIPOS_FECHA_OBLIGATORIA}
+
     # La página es un listado estándar (ADR-053 §F, #881): solo el armazón. Las filas llegan
     # por `GET /api/expedientes/<id>/documentos` (`services/listado_pool.py`) y el detalle,
     # por el inspector (`pool_documento_fragmento`).
@@ -609,6 +615,7 @@ def pool_documentos(id):
         'expedientes/pool_documentos.html',
         expediente=expediente,
         tipos_doc=tipos_doc,
+        tipos_fecha=tipos_fecha,
         extensiones=extensiones_del_pool(expediente.id),
         rama_ingesta=rama_ingesta,
         rama_principal=RAMA_PRINCIPAL,
@@ -798,10 +805,10 @@ def pool_documentos_ya_existentes(id):
 def pool_parsear_justificante(id):
     """
     POST .../documentos/parsear_justificante — enganche 1 de subida al pool
-    (ADR-034 §6, #657): parseo especulativo y transitorio del justificante
-    NOTIFICA elegido en el paso de metadatos (`.tipo-doc-select` código
-    JUSTIFICANTE_NOTIFICA), disparado desde `pool_documentos.html` antes de
-    confirmar la subida. Solo autorrelleno de UX (fecha_administrativa del
+    (ADR-034 §6, #657): parseo especulativo y transitorio del fichero elegido en
+    el paso de metadatos, disparado desde `pool_alta.js` (y desde la Despensa) al
+    elegir un tipo que exige fecha, antes de confirmar la subida; el tipo viaja
+    en `tipo_doc_codigo` (#1036). Solo autorrelleno de UX (fecha_administrativa del
     propio Documento) — no escribe nada en `notificaciones` (eso ocurre en el
     hook de `editar_tarea` al vincular el documento a la tarea NOTIFICAR).
 

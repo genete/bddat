@@ -32,9 +32,38 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('modal-url-externa').addEventListener('show.bs.modal', function () {
-      if (!_ef_url_ext) _ef_url_ext = new EntradaFecha('#ef-url-ext-fecha', { name: '_f_url_ext', maxHoy: EF_MAX_HOY });
+      if (!_ef_url_ext) {
+        _ef_url_ext = new EntradaFecha('#ef-url-ext-fecha', { name: '_f_url_ext', maxHoy: EF_MAX_HOY });
+      }
+    });
+    document.getElementById('url-ext-tipo').addEventListener('change', pintar_ayuda_url_externa);
+
+    // Vaciar a mano la fecha de una fila y salir del campo no llama al `onChange` de EntradaFecha:
+    // al salir de cualquier campo del paso 2 se revisa qué filas faltan por fecha (#1036).
+    document.getElementById('subir-meta-tbody').addEventListener('focusout', function () {
+      setTimeout(refrescar_fechas, 0);
     });
   });
+
+  // ----------------------------------------------------------------
+  // Fecha obligatoria por tipo (#1036)
+  // ----------------------------------------------------------------
+  // Qué tipos exigen fecha administrativa lo dice el servidor: cada <option> trae
+  // `data-fecha-obligatoria` y `data-ayuda-fecha` (qué fecha es), que salen de
+  // `fechas.TIPOS_FECHA_OBLIGATORIA`, la misma lista que valida al guardar el documento. Sin
+  // esto, el único aviso era el 422 del servidor con el lote ya enviado.
+  function opcion_elegida(select) {
+    var opt = select.selectedOptions[0];
+    return opt && opt.value ? opt : null;
+  }
+
+  function exige_fecha(opt) {
+    return !!(opt && opt.dataset.fechaObligatoria === '1');
+  }
+
+  function fecha_de(tr) {
+    return tr._ef ? tr._ef.getValue() : '';
+  }
 
   // ================================================================
   // METADATOS DE LA SUBIDA
@@ -148,12 +177,22 @@
   // ================================================================
   // URL EXTERNA
   // ================================================================
+  // Si el tipo elegido exige fecha, dice qué fecha es, con el asterisco (#1036).
+  function pintar_ayuda_url_externa() {
+    var opt = opcion_elegida(document.getElementById('url-ext-tipo'));
+    var ayuda = document.getElementById('url-ext-fecha-ayuda');
+    if (!exige_fecha(opt)) { ayuda.classList.add('d-none'); return; }
+    ayuda.innerHTML = '<span class="text-danger">*</span> ' + escapar_html(opt.dataset.ayudaFecha);
+    ayuda.classList.remove('d-none');
+  }
+
   window.abrir_modal_url_externa = function () {
     document.getElementById('url-ext-url').value    = '';
     document.getElementById('url-ext-tipo').value   = '';
     document.getElementById('url-ext-asunto').value = '';
     document.getElementById('url-ext-prioridad').checked = false;
     document.getElementById('url-ext-error').classList.add('d-none');
+    pintar_ayuda_url_externa();
     if (!_modal_url_ext_bs) {
       _modal_url_ext_bs = new bootstrap.Modal(document.getElementById('modal-url-externa'));
     }
@@ -168,10 +207,17 @@
       document.getElementById('url-ext-error').classList.remove('d-none');
       return;
     }
+    var fecha = _ef_url_ext ? _ef_url_ext.getValue() : null;
+    var opt = opcion_elegida(document.getElementById('url-ext-tipo'));
+    if (exige_fecha(opt) && !fecha) {
+      document.getElementById('url-ext-error').textContent = opt.dataset.ayudaFecha;
+      document.getElementById('url-ext-error').classList.remove('d-none');
+      return;
+    }
     var payload = {
       url:                  url,
       tipo_doc_id:          document.getElementById('url-ext-tipo').value || 1,
-      fecha_administrativa: _ef_url_ext ? _ef_url_ext.getValue() : null,
+      fecha_administrativa: fecha,
       asunto:               document.getElementById('url-ext-asunto').value.trim(),
       prioridad:            document.getElementById('url-ext-prioridad').checked,
     };
@@ -232,21 +278,33 @@
         '<td class="small">' + escapar_html(f.name) + '<div class="aviso-duplicado small mt-1"></div></td>' +
         '<td class="small text-secondary text-nowrap">' + formatear_bytes(f.size) + '</td>' +
         '<td><select class="form-select form-select-sm tipo-doc-select">' + tmpl_tipos + '</select></td>' +
-        '<td><div id="' + ef_id + '"></div></td>' +
+        '<td><div id="' + ef_id + '"></div><div class="small mt-1 fecha-ayuda d-none"></div></td>' +
         '<td class="text-center"><input type="checkbox" class="form-check-input prioridad-check"></td>' +
         celda_reformado('subir', i);
       tbody.appendChild(tr);
-      _ef_subida.push(new EntradaFecha('#' + ef_id, { name: '_ef_subir_' + i, maxHoy: EF_MAX_HOY }));
+      tr._fecha_auto = '';    // la fecha que puso el autorrelleno (y no el usuario)
+      tr._peticion   = 0;     // identifica la petición de fecha en curso: una respuesta tardía se ignora
+      tr._ef = new EntradaFecha('#' + ef_id, {
+        name: '_ef_subir_' + i, maxHoy: EF_MAX_HOY,
+        onChange: function () { refrescar_fecha(tr); actualizar_boton_subir(); },
+      });
+      _ef_subida.push(tr._ef);
       enganchar_reformado(tr);
 
-      // Enganche 1 (ADR-034 §6, #657): autorrelleno de fecha_administrativa al elegir
-      // JUSTIFICANTE_NOTIFICA — parseo transitorio, nunca escribe en notificaciones
-      // (eso ocurre al vincular el documento a la tarea NOTIFICAR, ver hook de editar_tarea).
+      // Al elegir el tipo (#1036): si exige fecha, se dice cuál y se le pide al servidor la que
+      // corresponde a ese tipo; si no, una propuesta anterior no se queda.
       var select = tr.querySelector('.tipo-doc-select');
       select.addEventListener('change', function () {
-        var opt = select.selectedOptions[0];
-        if (!opt || opt.dataset.codigo !== 'JUSTIFICANTE_NOTIFICA') return;
-        parsear_justificante_especulativo(f, _ef_subida[i]);
+        var opt = opcion_elegida(select);
+        tr._peticion++;                                  // lo que se pidiera para el tipo anterior ya no vale
+        // Una propuesta del tipo anterior no se queda: si la fecha sigue como la dejó el autorrelleno, se vacía.
+        // Lo que tecleó el usuario nunca se toca.
+        var era_propuesta = tr._fecha_auto && fecha_de(tr) === tr._fecha_auto;
+        tr._fecha_auto = '';
+        if (era_propuesta) tr._ef.clear();
+        refrescar_fecha(tr);
+        actualizar_boton_subir();
+        if (exige_fecha(opt)) proponer_fecha(tr, f, opt.dataset.codigo);
       });
     });
 
@@ -311,13 +369,18 @@
     var filas = Array.prototype.slice.call(document.querySelectorAll('#subir-meta-tbody tr'));
     var incluidas = filas.filter(fila_incluida).length;
     var excluidas = filas.length - incluidas;
-    document.getElementById('subir-meta-contador').textContent =
-      filas.length + ' fichero(s) elegidos' +
-      (excluidas ? ' — ' + excluidas + ' ya está(n) en el expediente y no se subirá(n) si no marcas «Subir igualmente».'
-                 : ' — listos para subir.');
+    // Los que van a subirse y su tipo exige una fecha que no tienen: el servidor los rechazaría (#1036).
+    var sin_fecha = filas.filter(function (tr) {
+      return fila_incluida(tr) && tr.dataset.exigeFecha === '1' && !fecha_de(tr);
+    }).length;
+    var texto = filas.length + ' fichero(s) elegidos';
+    if (excluidas) texto += ' — ' + excluidas + ' ya está(n) en el expediente y no se subirá(n) si no marcas «Subir igualmente».';
+    if (sin_fecha) texto += ' — falta la fecha obligatoria en ' + sin_fecha + ' fichero(s).';
+    if (!excluidas && !sin_fecha) texto += ' — listos para subir.';
+    document.getElementById('subir-meta-contador').textContent = texto;
     document.getElementById('btn-subir-texto').textContent =
       incluidas ? 'Subir ' + incluidas + ' fichero(s)' : 'Nada que subir';
-    document.getElementById('btn-subir-registrar').disabled = _comprobando || incluidas === 0;
+    document.getElementById('btn-subir-registrar').disabled = _comprobando || incluidas === 0 || sin_fecha > 0;
   }
 
   function marcar_ya_existente(tr, docs, i) {
@@ -382,21 +445,50 @@
       });
   }
 
-  // Parseo transitorio (sin persistir nada, #657): sube el fichero suelto al
-  // endpoint de preview y, si es un justificante NOTIFICA reconocido,
-  // autorrellena la fecha de puesta a disposición en la EntradaFecha de la fila.
-  function parsear_justificante_especulativo(fichero, entradaFecha) {
+  // Autorrelleno de la fecha (ADR-034 §6, #657; por tipo desde #928 y #1036). Parseo transitorio
+  // —nunca escribe en `notificaciones`: eso ocurre al vincular el documento a la tarea NOTIFICAR—
+  // que le dice al servidor el tipo elegido: la fecha que corresponde la decide él
+  // (`notificaciones.fecha_sugerida`: la lectura para el justificante final, la puesta a
+  // disposición para el de disposición, ninguna para los demás) y aquí solo se pone el valor que
+  // devuelva. Solo se pide en los tipos que exigen fecha: parsear un fichero solo merece la pena
+  // cuando la fecha es la que cuenta. Nunca pisa lo que el usuario haya tecleado y nunca bloquea.
+  function proponer_fecha(tr, fichero, codigo) {
+    var mia = ++tr._peticion;
     var formData = new FormData();
     formData.append('fichero', fichero);
+    formData.append('tipo_doc_codigo', codigo);
 
     fetch(URL_PARSEAR_JUSTIFICANTE, { method: 'POST', body: formData })
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        if (data.reconocido && data.fecha_puesta_disposicion) {
-          entradaFecha.setValue(data.fecha_puesta_disposicion.slice(0, 10));
+        var sugerida = data && data.fecha_sugerida;
+        if (mia !== tr._peticion || !sugerida) return;
+        var actual = fecha_de(tr);
+        if (actual === '' || actual === tr._fecha_auto) {
+          tr._fecha_auto = sugerida;      // antes de ponerla: el aviso «propuesta» compara con ella
+          tr._ef.setValue(sugerida);      // dispara onChange: ayuda y botón se actualizan
         }
       })
-      .catch(function () { /* autorrelleno best-effort — sin bloquear la subida */ });
+      .catch(function () { /* autorrelleno de UX: sin bloquear la subida */ });
+  }
+
+  // Bajo la fecha de una fila: si el tipo la exige, qué fecha es (con el asterisco) y, si es la que
+  // propuso el servidor, que se revise. En rojo mientras falta.
+  function refrescar_fecha(tr) {
+    var opt = opcion_elegida(tr.querySelector('.tipo-doc-select'));
+    var ayuda = tr.querySelector('.fecha-ayuda');
+    var exige = exige_fecha(opt);
+    tr.dataset.exigeFecha = exige ? '1' : '';
+    if (!exige) { ayuda.classList.add('d-none'); return; }
+    var valor = fecha_de(tr);
+    ayuda.className = 'small mt-1 fecha-ayuda ' + (valor ? 'text-secondary' : 'text-danger');
+    ayuda.innerHTML = '<span class="text-danger">*</span> ' + escapar_html(opt.dataset.ayudaFecha) +
+      (valor && valor === tr._fecha_auto ? ' Propuesta a partir del justificante: revísala.' : '');
+  }
+
+  function refrescar_fechas() {
+    document.querySelectorAll('#subir-meta-tbody tr').forEach(refrescar_fecha);
+    actualizar_boton_subir();
   }
 
   window.volver_a_elegir_subida = function () {

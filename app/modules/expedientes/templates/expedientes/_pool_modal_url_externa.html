@@ -26,13 +26,15 @@
           <select class="form-select" id="url-ext-tipo">
             <option value="">— Tipo —</option>
             {% for t in tipos_doc %}
-            <option value="{{ t.id }}">{{ t.nombre }}</option>
+            <option value="{{ t.id }}"
+                    {%- if t.codigo in tipos_fecha %} data-fecha-obligatoria="1" data-ayuda-fecha="{{ tipos_fecha[t.codigo] }}"{% endif %}>{{ t.nombre }}</option>
             {% endfor %}
           </select>
         </div>
         <div class="mb-3">
           <label class="form-label fw-semibold">Fecha administrativa</label>
           <div id="ef-url-ext-fecha"></div>
+          <div id="url-ext-fecha-ayuda" class="small mt-1 text-secondary d-none"></div>
         </div>
         <div class="mb-3">
           <label class="form-label fw-semibold">Asunto</label>
