@@ -162,6 +162,12 @@ que las plantillas pasen al almacén (fase 4 de ADR-050, #1009).
 - El nombre que se enseña es `documento.nombre_visible()`; no se saca a mano de la `url`.
   El nombre de un fichero que viene de fuera entra saneado (`nombres.sanear_nombre`) y
   después no lo cambia nadie.
+- Un documento que se enseña en un listado o en un inspector sale de una sola función,
+  `detalle_nodo.documento_fila` (nombre, tipo, fecha en ISO, asunto, marcas, `texto_opcion` y la
+  apertura de `info_apertura_documento`), y lo pinta el renderizador de su contenedor: el macro
+  `macros/documento_fila.html` en Jinja y `FilaDocumento.jsx` en el árbol. **No se añade un serializador
+  ni un pintado de documento nuevos** (ADR-053 §E; `GUIA_COMPONENTES_INTERACTIVOS.md` §«Fila de documento»
+  y `GUIA_REACT_ISLAS.md` §«Los documentos en el inspector»).
 - Un test que suba un documento usa la fixture `almacen_tmp` (ver `tests/README.md`
   §4): el disco y la fila de `ficheros` no se revierten con el SAVEPOINT.
 

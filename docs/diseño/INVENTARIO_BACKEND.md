@@ -319,7 +319,7 @@ Selección (#785): de las entradas activas del nivel, se descartan las cuyo `cam
 ### 6.2 APIs en `app/modules/*/routes.py`
 
 - `admin_plantillas`: 5 endpoints JSON (`/api/admin_plantillas/tipos-solicitud`, `/tipos-fase`, `/tipos-tramite`, `/fs`, `/tokens`).
-- `expedientes` (pool documentos): `/expedientes/<id>/documentos/json`, `/subir` (errores del contenido con 409 y 503), `/url-externa` (solo `http(s)://`; otra cosa, 422), `/editar` (la `url` solo se rectifica en un documento de URL externa, con la anterior en la bitácora), `/borrar`. El registro in situ (`/explorador-fs`, `/registrar-rutas`) y «abrir carpeta» (`/abrir-en-carpeta`, `/expedientes/<id>/abrir-carpeta`) se retiraron en #1007 (ADR-050).
+- `expedientes` (pool documentos): `/subir` (errores del contenido con 409 y 503; la respuesta trae cada documento creado como la fila común, `detalle_nodo.documento_fila`, igual que el pool, el detalle de un nodo, el radar de huérfanos y la NOTIFICAR: #1044, ADR-053 §E), `/documentos/json` se retiró en #1044 (sin consumidor), `/url-externa` (solo `http(s)://`; otra cosa, 422), `/editar` (la `url` solo se rectifica en un documento de URL externa, con la anterior en la bitácora), `/borrar`. El registro in situ (`/explorador-fs`, `/registrar-rutas`) y «abrir carpeta» (`/abrir-en-carpeta`, `/expedientes/<id>/abrir-carpeta`) se retiraron en #1007 (ADR-050).
 
 ---
 

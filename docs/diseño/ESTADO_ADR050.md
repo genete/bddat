@@ -41,7 +41,7 @@ Lo que ADR-050 necesita de fuera y está en otros issues: **#151** (infraestruct
 
 - **Regenerar un borrador sustituido a mano pierde los retoques sin avisar.** ADR-050 §F dice que hasta la fase 5 «no hay retoques que perder», pero la sustitución con motivo de #1007 permite el ciclo descargar, retocar y volver a subir, y `regeneracion_escritos` sustituye sin preguntar. La confirmación está ahora en #1010. Pendiente de decidir si se adelanta (la bitácora ya guarda las sustituciones con vía `SUSTITUCION`) o se acepta hasta la fase 5; la fase 5 puede llegar después de producción.
 - **Cierre documental de #1007** sin hacer: `MATRIZ_COBERTURA_BDDAT.md` (N009, N021, N077; con `/cobertura`) y las notas de los documentos «Actualizar al implementar» de ADR-050 §M que no se tocaron en los PR de #1007.
-- **Orden de las fases 4-7.** El ADR dice qué va antes de producción pero no el orden entre #1008, #1009, #1010, #1011 y #1012. Sin decidir. El ADR de interfaz añade una restricción *(propuesta, sin confirmar)*: #1012 después de #881 (ver más abajo).
+- **Orden de las fases 4-7.** El ADR dice qué va antes de producción pero no el orden entre #1008, #1009, #1010, #1011 y #1012. Carlos confirma el 01/11/2026, para el bloque 3 de `CONTEXTO_ACTUAL.md`: #881, #1008, #1012 y #1009, en ese orden (#1012 depende de #1008 y de #881; #1009 es independiente y va al final). El orden de #1010 y #1011 respecto a ellos sigue sin decidir.
 
 ## Relación con la cadena de ADR-049
 

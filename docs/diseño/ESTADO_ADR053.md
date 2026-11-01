@@ -33,7 +33,7 @@ al hub, el código muerto y la documentación obsoleta.
 | 3 | **#1041** | **Listados fuera del estándar** (D16): un issue y decisión una a una de cinco páginas —tablas maestras, normas y variables, seguimiento y huérfanos, configuración del motor, Delegación Territorial—: adoptan el estándar (incluida una base con varias listas por página) o se justifica el motivo | Frontend | Abierto (11/10/2026); las decisiones por página, sin tomar. Independiente del marco. Absorbió #755 y #644 (cerrados); la causa raíz de #644 es su primera tarea |
 | 4 | **#1039** | Cola de Mi trabajo al listado estándar Jinja (D8). Su inspector se adapta al marco | Frontend | Abierto, sin profundizar. El listado puede ir antes que el marco; el inspector, después (*propuesta*) |
 | 5 | **#881** | Listado del pool al listado estándar con inspector (D5); edición del documento con un único sitio (D17) | Frontend | Abierto, **sin reescribir** (D5): cuando haya ADR se le añade una mención. Después del marco (*propuesta*) |
-| 6 | **#1044** | **Mini-listados de documentos** (D6, D13, D14): fila común con tres modos (vinculados, selector, edición); macro Jinja y componente React; estudio caso a caso de los sitios de §6.12, incluido pintar `subrol` | Frontend + backend (contrato del dato) | Abierto (11/10/2026), en cinco fases; la fase 1 es de definición, sin código, y no ha empezado |
+| 6 | **#1044** | **Mini-listados de documentos** (D6, D13, D14): fila común con tres modos (vinculados, selector, edición); macro Jinja y componente React; estudio caso a caso de los sitios de §6.12, incluido pintar `subrol` | Frontend + backend (contrato del dato) | Abierto (11/10/2026), en cinco fases. **Las cinco, hechas el 01/11/2026** en la rama `feature/issue-1044-mini-listados-documentos`, sin PR: la definición está en el [anexo a ADR-053 §E](../decisiones/ADR-053-interfaz-inspector-listados-y-documentos.md#anexo-a-e--la-fila-común-de-documentos-1044), con sus *Interpretación* sin confirmar por Carlos. Falta el PR de cierre |
 | 7 | **#1045** | **Estudio de la forma del contrato** editor ↔ poseedor del dato (D13, §8.16) | Estudio | Abierto (11/10/2026), sin profundizar. Sin urgencia; puede acabar en «no se estandariza» |
 | 8 | **#1046** | **Huérfano: «Vincular aquí»** va en un `<script>` en línea dentro de un fragmento, que el overlay no ejecuta (§7.3, §8.8) | Frontend | Abierto (11/10/2026), sin profundizar. Fallo de código por lectura, sin reproducir: reproducir antes de arreglar |
 | 9 | **#1047** | **Refactor del despacho de editores por tipo** en el árbol, 7 banderas (§8.11) | Frontend | **Implementado** el 18/10/2026 (rama de trabajo, sin PR): registro de editores en `registroEditores.jsx`, ocho pasos, sin diferencias contra la base de comparación. Ver la entrada del 18/10 del historial |
@@ -63,8 +63,10 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 - ~~**«Cerrar» descarta sin avisar lo escrito en los bloques interiores del árbol**~~ — implementado el 18/10
   en #1055 (rama de trabajo, sin PR): opción A, un canal «interior sucio» hacia el marco
   (`useInteriorSucio`); ver la entrada del 18/10 más abajo.
-- **Dónde se aloja la edición del documento:** el inspector del pool o, desde otros sitios, el modal grande.
-  Depende del marco y de que el formulario de edición del pool quepa en el inspector (§8.10, PRE-ADR §10).
+- ~~**Dónde se aloja la edición del documento:** el inspector del pool o, desde otros sitios, el modal grande.
+  Depende del marco y de que el formulario de edición del pool quepa en el inspector (§8.10, PRE-ADR §10).~~
+  El principio, decidido el 01/11 (anexo a ADR-053 §E): un fragmento Jinja, dos contenedores; nace en #881 y el
+  botón «Editar» de las demás filas llega después. Queda por ver que el formulario quepa en el inspector.
 - ~~**#755 frente al issue de D16**~~ — resuelto el 11/10: #1041 absorbió #755 y #644 (los dos cerrados), y
   #281 (Plantillas y Usuarios a listado V2, con la premisa desfasada) se cerró como hecho.
 
@@ -75,7 +77,7 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 | Pieza | Cruce |
 |---|---|
 | **#929, zona A** | Independiente del marco. La decisión 1 (atajo de subida por tipo en el editor) se resolvió en «no» (PRE-ADR D1); `ESTADO_ADR049` lo tenía como «sin tomar» y se corrige el 11/10 |
-| **#1036** (fecha en la subida) | Vive en `pool_documentos.html`, que #881 reescribe. Decidir si se arregla antes o dentro de #881. Con la decisión 1 en «no», no aplica la regla de fecha por tipo en el editor |
+| **#1036** (fecha en la subida) | Vive en `pool_documentos.html`, que #881 reescribe. *Decidido por Carlos el 01/11/2026:* se parte; la mitad del pool se arregla dentro de #881 y la de la Despensa (`SubidaInline`), en la fase 4 de #1044, junto al recorte de `subirDocumentoDespensa` (**hecha el 01/11/2026**; queda la del pool). Con la decisión 1 en «no», no aplica la regla de fecha por tipo en el editor |
 | **#1037** (marcar y aplicar el anuncio del edicto) | **Hecho** (PR #1082, 30/10/2026). Sin choque con el marco. La marca va en el borrador del inspector y se guarda con el «Guardar» del marco; las casillas son un control propio de la tarjeta (`casillas` en el esquema editable), no un selector de documentos (D14). Sin superficie de trámite por código en el registro de editores: dos tarjetas y una acción en la entrada `TRAMITE`, que el dato decide si salen |
 | **#1038** (representante y sede de la solicitud) | **Hecho** (PR #1081, 23/10/2026). Tocaba el editor de la solicitud del árbol: la tarjeta «Solicitante» lee y edita representante y sede con el mismo texto (D15). El contrato del select quedó en la guía y solo lo cumple `ControlCampo` (#1080 alinea el resto) |
 | **Zona E de #929** (sin issue) | Tres de sus ocho puntos tocan lo decidido o lo pendiente: inspector en lectura (D15), Mi trabajo (D8) y radar de huérfanos (fila provisional de Seguimiento y huérfanos). *Propuesta:* no abrirla antes del marco ni de la Cola |
@@ -201,3 +203,61 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   `c.hayDetalle` no se pinta nunca; anotado en `GUIA_REACT_ISLAS.md`. Sin cambios en el contrato de un selector:
   el control de varias opciones aplica la regla 2 (las marcas que ya no son opción se conservan y la tarjeta lo
   avisa) y la 4 (una sola lista en el servicio, la misma que el validador).
+- **01/11/2026** — **Bloque 3 (documentos y pool) en curso.** Carlos confirma el orden: #1044, #881 (con la mitad
+  del pool de #1036), #1008, #1012 y #1009 (el detalle, en `CONTEXTO_ACTUAL.md` y `ESTADO_ADR050.md`). Empieza
+  la **fase 1 de #1044** (definición, sin código), en la rama `feature/issue-1044-mini-listados-documentos`.
+- **01/11/2026** — **#1044, fase 1 redactada** como anexo a ADR-053 §E, con Carlos y un mockup con las hojas de
+  estilo reales. Decidido por él: fila apilada en dos líneas (no columnas) que trunca sin scroll propio; marcas
+  como iconos con tooltip; asunto fuera de la fila; los cinco desplegables siguen siendo `<select>` con texto
+  común; edición del documento con el principio fijado y el botón «Editar» diferido a después de #881; una sola
+  lista de vinculados en edición. Lo demás (contrato de datos, rótulos, orden de supervivencia, caso a caso) va
+  como *Interpretación*. Salió que los serializadores son ocho y no seis, y que el recorte de
+  `subirDocumentoDespensa` viene de que la respuesta de la subida no sigue el contrato del pool. Falta la
+  confirmación de Carlos y abrir la fase 2.
+- **01/11/2026** — **#1044, fase 2 implementada** (rama de trabajo, sin PR): una función única del servidor,
+  `detalle_nodo.documento_fila`, sirve el detalle de un nodo, el pool, la respuesta de la subida, la NOTIFICAR, el
+  radar de huérfanos y el documento del checklist; `pool_documentos_json` se retira. Decisiones de Carlos al
+  presentar la tabla de consumidores: la fecha pasa a ISO y sus lectores (inspector, Despensa, justificantes
+  previos, anuncio del edicto y Cola) se adaptan en el mismo PR; el documento del checklist también lleva la fila;
+  el único test que se rompía (`test_367`, claves exactas de la respuesta de la subida) se adapta y los demás se
+  quedan. *Interpretación* (cambio respecto al anexo): el texto de opción de los desplegables viaja en la fila
+  (`texto_opcion`) en vez de definirse también en React. Comprobado en el navegador con la BD sintética.
+- **01/11/2026** — **#1044, fase 3 implementada** (rama de trabajo, sin PR): el macro Jinja
+  `macros/documento_fila.html` (`enlace_documento` y `fila_documento`) y las clases `.fila-doc*` de
+  `v2-components.css`; la Cola es su primer consumidor, y el único, porque ningún otro inspector Jinja lista
+  documentos (el del huérfano enseña uno, y queda para #1041 y #1046). La Cola pinta ya el subrol, abre un
+  diagnóstico en el modal grande y no puede pintar `href="None"`. *Interpretación:* el botón del modal se pinta como
+  enlace y no como `.btn`, para que el nombre no salga en mayúsculas. Comprobado en el inspector real a 320 y 560 px.
+- **01/11/2026** — **#1044, fase 4 implementada, con la mitad de #1036 de la Despensa** (rama de trabajo, sin PR):
+  `components/FilaDocumento.jsx` (fila en modo vinculados y selector, y la pieza `EnlaceDocumento`) y
+  `documentosBorrador.js`. El inspector del árbol tiene ya **una sola lista de vinculados**, la de la zona de
+  datos, que en edición sale del borrador y lleva «Quitar vínculo»; la Despensa deja de repetirla y su pool es la
+  fila en modo selector. Las subidas meten en el pool la fila completa que devuelve el servidor y los desplegables
+  leen `texto_opcion`. Salió una observación sin decidir: en una NOTIFICAR los justificantes previos salen en su
+  tarjeta y en la lista «Documentos». Comprobado en el navegador con la BD sintética (lectura, edición, quitar,
+  vincular, cancelar y subir); sin comprobar el requisito del checklist, los justificantes previos y el anuncio del
+  edicto, porque la semilla no tiene casos. **La mitad de #1036 de la Despensa**, decidida por Carlos: el catálogo de
+  tipos trae `fecha_obligatoria` y `ayuda_fecha`; el formulario de subida marca la fecha como obligatoria, enseña
+  qué fecha es y no deja subir sin ella, y autorrellena la de los justificantes de Notifica sin pisar lo tecleado.
+  Comprobado en el navegador con un PDF sintético de Notifica. Queda la mitad del pool, dentro de #881.
+- **01/11/2026** — **#1044, enmienda de Carlos a la fila, tras verla en la app** (rama de trabajo, sin PR): los badges
+  de «Consumido» y «Producido» pasan a **iconos** —los mismos del árbol y del seguimiento, `bi-box-arrow-in-down` y
+  `bi-box-arrow-up`, en gris neutro— porque no eran coherentes con ellos y se leían peor; la **fecha va detrás del
+  nombre del fichero**, en la línea 1; los detalles (rol, subrol, marcas) van como iconos en la línea 2, con la
+  descripción detrás. **Todos los iconos de la fila llevan tooltip.** *Interpretación:* el subrol de una NOTIFICAR es un
+  segundo icono (avión de papel «A notificar», clip «Justificante previo») y la línea de detalle pasa de `text-muted`
+  a `text-secondary` por legibilidad. Cambian el macro Jinja, `FilaDocumento.jsx` y `.fila-doc*`.
+- **01/11/2026** — **#1044, fase 5 implementada: la documentación.** `GUIA_REACT_ISLAS.md` (§«Los documentos en el
+  inspector»), `GUIA_COMPONENTES_INTERACTIVOS.md` (§«Fila de documento») y `REGLAS_DESARROLLO.md` (§«Documentos»: no
+  se añaden serializadores ni pintados de documento nuevos). Con ella quedan hechas las cinco fases de #1044; falta
+  el PR de cierre (`Closes #1044`), que no se ha creado.
+- **01/11/2026** — **#1044, decisión de Carlos sobre los justificantes previos de una NOTIFICAR:** se quedan en su
+  tarjeta y también en la lista «Documentos»; si en el futuro molesta, se quitan de la lista «Documentos». Sin cambios
+  de código. La rama se rebasa sobre `develop` (087cb0b, el estudio de edición de escritos con Microsoft 365, ajeno).
+- **01/11/2026** — **#1044, Carlos confirma ocho de las *Interpretación* del anexo a ADR-053 §E:** la función única
+  `documento_fila` y sus campos; `texto_opcion` dentro de la fila; el subrol como segundo icono (avión de papel y
+  clip); `text-secondary` en la línea de detalle; los modos vinculados y selector (con el icono del rol en lugar del
+  borde verde); el botón del modal como enlace; el recién subido arriba del pool; y el autorrelleno solo en los tipos
+  que exigen fecha. Siguen como *Interpretación*, sin confirmar: las dos piezas (enlace y fila), el pool cargado una
+  vez por vida de la isla, el orden de truncado, los iconos concretos de las marcas, la medida y parte de la tabla
+  «caso a caso». Abierto el PR de cierre, #1083.

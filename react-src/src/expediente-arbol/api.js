@@ -37,9 +37,11 @@ export function postHijo(expedienteId, padreTipo, padreId, body) {
   return api.post(`/api/expedientes/${expedienteId}/nodo/${padreTipo}/${padreId}/hijos`, body)
 }
 
-// Pool de documentos del expediente (GET, S3b-3). Respuesta: {documentos:[{id,nombre,
-// tipo_doc,tipo_doc_codigo,fecha}]}. tipo_doc_codigo (#712) permite filtrar client-side
-// (p.ej. JUSTIFICANTE_* en el desplegable de NotificarEditor).
+// Pool de documentos del expediente (GET, S3b-3). Respuesta: {documentos:[fila]}, donde cada
+// fila es la fila común de documento (ADR-053 §E, `detalle_nodo.documento_fila`): id, nombre,
+// tipo_doc, tipo_doc_codigo, fecha (ISO AAAA-MM-DD o null), asunto, marcas [{codigo, texto}],
+// texto_opcion, enlace, externo, puede_abrir, abrir_en. tipo_doc_codigo (#712) permite filtrar
+// client-side (p.ej. JUSTIFICANTE_* en el desplegable de NotificarEditor).
 export function getPool(expedienteId) {
   return api.get(`/api/expedientes/${expedienteId}/pool`)
 }
@@ -286,7 +288,7 @@ export function getEscritosPreview(plantillaId, tareaId) {
 //     observaciones, documento_id, sede_justificacion, fuente, destinatario}]  (0 ó 1)
 //   destinatario: {fijado, escape_sin_destinatario, editable, bloquea, fuentes_del_tramite}
 //   eleccion_destinatario: {fuente, fuente_etiqueta, motivo, se_elige_en, entidades[]}
-//   documento_producido, justificantes_previos[]  (cada uno con id, nombre, enlace, abrir_en)
+//   documento_producido, justificantes_previos[]  (cada uno, la fila común de documento; ver getPool)
 //   fechas: {cumplimiento, efectos}  ({fecha, documento_id, documento}|null)
 //   es_notificacion_del_solicitante, sede: {aplica, estado}, estado, resultados_validos[]
 export function getNotificar(expedienteId, tareaId) {
@@ -355,8 +357,8 @@ export function postAnadirFaltan(expedienteId, tramiteId) {
 }
 
 // El edicto de una fase (#1037, ADR-052 §G): lo que aplica el anuncio publicado a las
-// notificaciones que el NOTIFICACION_EDICTAL recogió al crearse. Respuesta: {anuncio:{id,
-// nombre,enlace,puede_abrir,abrir_en,fecha_administrativa}|null, recogidas:[fila],
+// notificaciones que el NOTIFICACION_EDICTAL recogió al crearse. Respuesta: {anuncio: la fila
+// común de documento (ver getPool; la fecha de publicación es `fecha`)|null, recogidas:[fila],
 // motivo_no_aplicar: str|null}. Cada `fila` es la de la tarjeta de marcas ({valor, texto,
 // sin_destinatario, estado, motivo, intentos_fallidos, cerrada, marcada, recogida, bloqueo}).
 // 422 si el trámite no es un NOTIFICACION_EDICTAL.
@@ -400,6 +402,18 @@ export function subirDocumentoPool(expedienteId, fichero, metadatos) {
   return api.post(`/expedientes/${expedienteId}/documentos/subir`, formData)
 }
 
+// Autorrelleno de la fecha al subir un justificante (#1036, #928 §10). Parsea el fichero en el servidor
+// sin guardar nada y devuelve, entre otras cosas, `fecha_sugerida` (AAAA-MM-DD o null): la fecha que
+// corresponde al tipo elegido, que decide el servidor (`notificaciones.fecha_sugerida`). Hoy solo la
+// propone para los dos justificantes de Notifica; para el resto, y si no reconoce el fichero, null.
+// Misma ruta que ya usa pool_documentos.html.
+export function postParsearJustificante(expedienteId, fichero, tipoDocCodigo) {
+  const formData = new FormData()
+  formData.append('fichero', fichero)
+  if (tipoDocCodigo) formData.append('tipo_doc_codigo', tipoDocCodigo)
+  return api.post(`/expedientes/${expedienteId}/documentos/parsear_justificante`, formData)
+}
+
 // Sugerencia de tipo_doc_id/asunto para el formulario de subida inline (#367).
 // Respuesta: {tipo_doc_id, asunto} | {tipo_doc_id:null, asunto:null} si no hay
 // coincidencia exacta y no ambigua en el catálogo.
@@ -407,7 +421,8 @@ export function getSugerenciaDocumento(expedienteId, tareaId) {
   return api.get(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/sugerencia_documento`)
 }
 
-// Catálogo de tipos de documento para el <select> del formulario de subida (#367).
+// Catálogo de tipos de documento para el <select> del formulario de subida (#367). Cada tipo trae
+// `fecha_obligatoria` y `ayuda_fecha` (#1036): si exige fecha administrativa y qué fecha es.
 export function getTiposDocumento() {
   return api.get('/api/tipos-documento?limit=100')
 }

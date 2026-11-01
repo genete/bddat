@@ -214,6 +214,102 @@
  * (.lt-hide-*) y de truncado (.lt-truncate) directamente en su template
  * (admin_plantillas/listado.html). Ya no necesita reglas nth-child propias. */
 
+/* ===== FILA COMÚN DE DOCUMENTO (ADR-053 §E, #1044) =====
+   La pintan el macro Jinja (macros/documento_fila.html) y el componente React. Dos líneas
+   apiladas, nunca columnas y sin scroll propio: arriba el nombre (el enlace que abre el
+   documento), detrás su fecha y, a la derecha, las acciones; debajo los detalles como iconos
+   (rol, subrol, marcas) y la descripción (el tipo). Lo que no cabe se trunca con puntos
+   suspensivos y el valor completo va en el title: se encoge primero el nombre y, abajo, la
+   descripción; la fecha y los iconos conservan su ancho. */
+.fila-doc__l1 {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+}
+.fila-doc__nombre {
+  flex: 0 1 auto;               /* no crece: la fecha va justo detrás del nombre */
+  min-width: 0;                 /* sin esto el flex no deja truncar */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fila-doc__fecha {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+/* El botón que abre el modal grande se ve como un enlace, sin el estilo de .btn (que pone el
+   texto en mayúsculas: un nombre de fichero no debe cambiar de forma según cómo se abra). */
+.fila-doc__enlace {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: var(--bs-link-color);
+  cursor: pointer;
+}
+.fila-doc__enlace:hover {
+  color: var(--bs-link-hover-color);
+  text-decoration: underline;
+}
+.fila-doc__l2 {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  margin-left: 1.5rem;          /* bajo el nombre, no bajo el icono */
+  min-width: 0;
+}
+.fila-doc__l2 > * {
+  flex-shrink: 0;
+}
+.fila-doc__l2 > .fila-doc__tipo {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Los iconos de detalle (rol, subrol, marcas): el gris neutro del árbol (`.arbol-doc.has`) y del
+   seguimiento. Las marcas llevan su propio color (text-primary, text-warning), que manda. */
+.fila-doc__ico {
+  color: #4a4a4a;
+  font-size: .95rem;
+  line-height: 1;
+}
+/* Las acciones de la línea 1 (quitar, abrir) van a la derecha y conservan su ancho: el nombre es
+   lo que se trunca. */
+.fila-doc__acciones {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+/* Modo selector (el pool de la Despensa): la fila entera elige el documento. Es un contenedor y no un
+   .btn porque lleva dentro enlaces y botones, y porque .btn pone el texto en mayúsculas. */
+.fila-doc--selector {
+  border: 1px solid var(--bs-border-color);
+  border-radius: .375rem;
+  padding: .25rem .5rem;
+  font-size: .8125rem;
+  cursor: pointer;
+  background: var(--bs-body-bg);
+}
+.fila-doc--selector:hover {
+  border-color: var(--bs-secondary-color);
+}
+.fila-doc--selector:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 1px;
+}
+.fila-doc--seleccionada,
+.fila-doc--seleccionada:hover {
+  border-color: var(--bs-primary);
+  background: var(--bs-primary-bg-subtle);
+}
+
 /* ===== BADGES ESTADOS ===== */
 .badge {
   display: inline-flex;

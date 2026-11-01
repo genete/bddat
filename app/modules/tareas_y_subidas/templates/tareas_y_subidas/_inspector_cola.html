@@ -11,6 +11,7 @@
      tarea_id        — id de la tarea (para el deep link)
      ayuda_producido — regla de recepción de #764 (solo ESPERAR_PLAZO), o None
 #}
+{% from 'macros/documento_fila.html' import fila_documento %}
 <div class="p-3 cola-inspector">
 
   {# ── Cabecera: referencia (ancestros) + cerrar ─────────────────────────── #}
@@ -44,18 +45,13 @@
   </dl>
   {% endif %}
 
-  {# ── Documentos vinculados ─────────────────────────────────────────────── #}
+  {# ── Documentos vinculados: la fila común (macros/documento_fila.html, ADR-053 §E) ── #}
   {% if detalle.documentos %}
   <div class="mb-3">
     <div class="fw-semibold small mb-1">Documentos</div>
-    <ul class="list-unstyled small mb-0">
+    <ul class="list-group list-group-flush">
       {% for d in detalle.documentos %}
-      <li class="mb-1">
-        <span class="badge bg-light text-dark border me-1">{{ d.rol|capitalize }}</span>
-        <a href="{{ d.enlace }}" target="_blank" rel="noopener">{{ d.nombre }}</a>
-        {% if d.tipo_doc %}<span class="text-secondary">· {{ d.tipo_doc }}</span>{% endif %}
-        {% if d.fecha %}<span class="text-secondary">· {{ d.fecha }}</span>{% endif %}
-      </li>
+      <li class="list-group-item px-0 py-2">{{ fila_documento(d) }}</li>
       {% endfor %}
     </ul>
   </div>

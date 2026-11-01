@@ -6,7 +6,8 @@
 //   · docs del pool (S3b-3):  tarea  → fichas de doc del pool + staging consumido/producido
 import React from 'react'
 import { useArbolStore } from '../store.js'
-import { getTiposDocumento } from '../api.js'
+import { getTiposDocumento, postParsearJustificante } from '../api.js'
+import FilaDocumento from './FilaDocumento.jsx'
 import { quitarComprimidos } from '../../shared/subida.js'
 import { AvisoYaExiste, useAvisoYaExiste } from '../../shared/avisoYaExiste.jsx'
 import { estaSellado } from '../sellado.js'
@@ -233,73 +234,8 @@ export const AYUDA_PRODUCIDO_ESPERAR_PLAZO =
   + 'solicitud, justificante de BandeJA o acuse de publicación. Los anexos que lo '
   + 'acompañen se consumen después, en la tarea de análisis.'
 
-// Apertura de un documento del pool — mismo mecanismo que Inspector.jsx en modo
-// lectura, disponible aquí también antes de decidir enlazar el documento a la
-// tarea (#609).
-function AccionesApertura({ doc }) {
-  return (
-    <div className="d-flex align-items-center gap-1" onClick={(e) => e.stopPropagation()}>
-      {doc.enlace && doc.abrir_en === 'modal' && (
-        <button
-          type="button"
-          // El div padre corta la propagación (stopPropagation, más abajo) para
-          // que estos botones no disparen el onClick de selección de FichaDoc —
-          // eso impide que el atributo declarativo data-modal-large-url llegue
-          // al listener global de document (inspector-overlay.js). Se llama
-          // AppModalLarge directamente en vez de depender de esa delegación.
-          onClick={() => window.AppModalLarge && window.AppModalLarge.open(doc.enlace, { title: doc.nombre })}
-          className="btn btn-sm btn-link p-0 text-secondary lh-1"
-          style={{ fontSize: '0.85rem' }}
-          title="Ver documento"
-        >
-          <i className="bi bi-box-arrow-up-right" />
-        </button>
-      )}
-      {doc.enlace && doc.abrir_en !== 'modal' && (
-        <a
-          href={doc.enlace}
-          target="_blank"
-          rel="noreferrer"
-          className="btn btn-sm btn-link p-0 text-secondary lh-1"
-          style={{ fontSize: '0.85rem' }}
-          title="Abrir documento"
-        >
-          <i className="bi bi-box-arrow-up-right" />
-        </a>
-      )}
-    </div>
-  )
-}
-
-// Contenedor no-button (para poder anidar enlace/botón de apertura sin HTML
-// inválido) con el mismo aspecto visual que el botón que sustituye.
-function FichaDoc({ doc, vinculado, seleccionada, onClick }) {
-  return (
-    <div
-      className={`btn btn-sm w-100 text-start border rounded px-2 py-1 d-flex align-items-center gap-2 ${
-        seleccionada
-          ? 'btn-primary'
-          : vinculado
-            ? 'btn-outline-success'
-            : 'btn-outline-secondary'
-      }`}
-      style={{ fontSize: '0.78rem', cursor: 'pointer' }}
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
-      title={doc.nombre}
-    >
-      <div className="flex-grow-1 text-truncate">
-        <div className="text-truncate fw-semibold">{doc.nombre}</div>
-        <div className="text-truncate opacity-75">
-          {[doc.tipo_doc, doc.fecha].filter(Boolean).join(' · ')}
-        </div>
-      </div>
-      <AccionesApertura doc={doc} />
-    </div>
-  )
-}
+// El pool de la Despensa pinta cada documento con la fila común, en modo selector (`FilaDocumento.jsx`,
+// ADR-053 §E): antes eran `FichaDoc` y `AccionesApertura`, con su propio pintado.
 
 // Ancla documental de la solicitud que se está creando (#428).
 //
@@ -348,9 +284,7 @@ function AnclaSolicitud() {
         >
           <option value="">— Elija el documento —</option>
           {candidatos.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.fecha} · {d.nombre}
-            </option>
+            <option key={d.id} value={d.id}>{d.texto_opcion}</option>
           ))}
         </select>
       )}
@@ -489,6 +423,15 @@ function SubidaInline({ tareaId }) {
   const [prioridad, setPrioridad] = React.useState(false)
   const [tiposDoc, setTiposDoc]   = React.useState([])
 
+  // Fecha obligatoria y autorrelleno (#1036). Qué tipos exigen fecha lo dice el servidor
+  // (`fecha_obligatoria`, la misma lista que valida al guardar) y también qué fecha es (`ayuda_fecha`).
+  const tipoElegido = tiposDoc.find((t) => String(t.id) === String(tipoDocId))
+  const exigeFecha  = !!(tipoElegido && tipoElegido.fecha_obligatoria)
+  const fechaRef    = React.useRef('')   // lo último que hay en el campo, para el autorrelleno asíncrono
+  fechaRef.current  = fecha
+  const fechaAuto   = React.useRef('')   // la fecha que puso el autorrelleno (y no el usuario)
+  const peticion    = React.useRef(0)    // descarta la respuesta de una petición ya superada
+
   // Pre-rellena con la sugerencia ya cargada por cargarSugerenciaSubida() al
   // abrir el formulario — nunca bloqueante, siempre editable.
   React.useEffect(() => {
@@ -502,6 +445,24 @@ function SubidaInline({ tareaId }) {
     getTiposDocumento().then((d) => setTiposDoc(d.data || [])).catch(() => {})
   }, [abierto])  // eslint-disable-line
 
+  // Al elegir fichero y un tipo que exige fecha, se le pregunta al servidor qué fecha corresponde
+  // (solo en esos tipos: parsear un fichero solo merece la pena cuando la fecha es la que cuenta).
+  // Nunca pisa lo que el usuario haya tecleado y nunca bloquea: si falla o no propone nada, no pasa nada.
+  React.useEffect(() => {
+    if (!abierto || !fichero || !exigeFecha) return
+    const mia = ++peticion.current
+    postParsearJustificante(expedienteId, fichero, tipoElegido.codigo)
+      .then((r) => {
+        const sugerida = r && r.fecha_sugerida
+        if (mia !== peticion.current || !sugerida) return
+        if (fechaRef.current === '' || fechaRef.current === fechaAuto.current) {
+          fechaAuto.current = sugerida
+          setFecha(sugerida)
+        }
+      })
+      .catch(() => { /* autorrelleno de UX: sin bloquear la subida */ })
+  }, [abierto, fichero, tipoElegido?.codigo])  // eslint-disable-line
+
   if (!abierto) {
     return (
       <button
@@ -514,8 +475,9 @@ function SubidaInline({ tareaId }) {
     )
   }
 
+  const faltaFecha = exigeFecha && !fecha
   const enviar = async () => {
-    if (!fichero) return
+    if (!fichero || faltaFecha) return
     const ok = await subirDocumentoDespensa(fichero, {
       tipo_doc_id: tipoDocId || 1,
       asunto: asunto.trim() || null,
@@ -524,6 +486,7 @@ function SubidaInline({ tareaId }) {
     })
     if (ok) {
       setAbierto(false); setFichero(null); setTipoDocId(''); setAsunto(''); setFecha(''); setPrioridad(false)
+      fechaAuto.current = ''
       aviso.reiniciar()
     }
   }
@@ -573,12 +536,23 @@ function SubidaInline({ tareaId }) {
         onChange={(e) => setAsunto(e.target.value)}
         maxLength={500}
       />
+      <label className="small fw-semibold mb-0" htmlFor={`despensa-subida-fecha-${tareaId}`}>
+        Fecha administrativa{exigeFecha && <span className="text-danger"> *</span>}
+      </label>
       <input
         type="date"
-        className="form-control form-control-sm"
+        id={`despensa-subida-fecha-${tareaId}`}
+        className={`form-control form-control-sm${faltaFecha ? ' is-invalid' : ''}`}
         value={fecha}
+        required={exigeFecha}
         onChange={(e) => setFecha(e.target.value)}
       />
+      {exigeFecha && (
+        <div className={`small ${faltaFecha ? 'text-danger' : 'text-muted'}`}>
+          {tipoElegido.ayuda_fecha}
+          {fecha && fecha === fechaAuto.current && ' Propuesta a partir del justificante: revísala.'}
+        </div>
+      )}
       <div className="form-check">
         <input
           type="checkbox"
@@ -595,7 +569,8 @@ function SubidaInline({ tareaId }) {
         <button
           type="button"
           className="btn btn-sm btn-primary flex-grow-1"
-          disabled={!fichero || subiendoDocumento || aviso.bloqueaSubida}
+          disabled={!fichero || subiendoDocumento || aviso.bloqueaSubida || faltaFecha}
+          title={faltaFecha ? 'Falta la fecha administrativa' : undefined}
           onClick={enviar}
         >
           {subiendoDocumento ? 'Subiendo…' : 'Subir y vincular'}
@@ -619,39 +594,21 @@ function DespensaDocs({ deshabilitarProducido, esEsperarPlazo }) {
   const seleccionarDocVincular  = useArbolStore((s) => s.seleccionarDocVincular)
   const cancelarVincular        = useArbolStore((s) => s.cancelarVincular)
   const vincularDoc             = useArbolStore((s) => s.vincularDoc)
-  const quitarDoc               = useArbolStore((s) => s.quitarDoc)
 
   React.useEffect(() => {
     cargarPool()
     cargarSugerenciaSubida(seleccion?.id)
   }, [seleccion?.id])  // eslint-disable-line
 
-  // Separar roles para poder distinguirlos (#517: validaciones y lista activos)
+  // Separar roles para poder distinguirlos (#517: validaciones del staging). Los vinculados se
+  // enseñan y se quitan en la lista «Documentos» de la zona de datos (ADR-053 §E): la Despensa ya no
+  // los repite, solo marca en el pool cuáles están vinculados y como qué.
   const consumidosIds = React.useMemo(
     () => new Set(borrador.documentos_consumidos_ids || []),
     [borrador.documentos_consumidos_ids],
   )
   const producidoId = borrador.documento_producido_id ?? null
-
-  // Lookup rápido id→doc del pool para mostrar nombres en la lista de vínculos activos
-  const poolById = React.useMemo(
-    () => Object.fromEntries(pool.map((d) => [d.id, d])),
-    [pool],
-  )
-
-  // Lista ordenada: consumidos primero, producido al final
-  const vinculadosActivos = React.useMemo(() => {
-    const items = []
-    for (const id of consumidosIds) {
-      const doc = poolById[id]
-      if (doc) items.push({ doc, rol: 'CONSUMIDO' })
-    }
-    if (producidoId) {
-      const doc = poolById[producidoId]
-      if (doc) items.push({ doc, rol: 'PRODUCIDO' })
-    }
-    return items
-  }, [consumidosIds, producidoId, poolById])
+  const rolEnBorrador = (id) => (consumidosIds.has(id) ? 'CONSUMIDO' : producidoId === id ? 'PRODUCIDO' : undefined)
 
   if (poolCargando) {
     return <div className="p-2 text-muted small fst-italic">Cargando documentos…</div>
@@ -665,35 +622,6 @@ function DespensaDocs({ deshabilitarProducido, esEsperarPlazo }) {
   return (
     <div className="p-2 d-flex flex-column gap-2">
 
-      {/* ── Vínculos activos (solo si hay alguno) ── */}
-      {vinculadosActivos.length > 0 && (
-        <div className="d-flex flex-column gap-1">
-          <span className="text-muted small fw-semibold">Documentos de esta tarea</span>
-          {vinculadosActivos.map(({ doc, rol }) => (
-            <div
-              key={`${rol}-${doc.id}`}
-              className="d-flex align-items-center gap-1 px-2 py-1 rounded border border-success-subtle bg-success-subtle"
-              style={{ fontSize: '0.78rem' }}
-            >
-              <span className={`badge me-1 ${rol === 'CONSUMIDO' ? 'text-bg-success' : 'text-bg-primary'}`}>
-                {rol === 'CONSUMIDO' ? 'Consumido' : 'Producido'}
-              </span>
-              <span className="text-truncate flex-grow-1 fw-semibold" title={doc.nombre}>{doc.nombre}</span>
-              <AccionesApertura doc={doc} />
-              <button
-                type="button"
-                className="btn btn-sm btn-link text-danger p-0 lh-1"
-                style={{ fontSize: '0.9rem' }}
-                title="Quitar vínculo"
-                onClick={() => quitarDoc(rol, doc.id)}
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* ── Pool ── */}
       <span className="text-muted small fw-semibold">Pool de documentos</span>
 
@@ -702,12 +630,13 @@ function DespensaDocs({ deshabilitarProducido, esEsperarPlazo }) {
       ) : (
         <div className="d-flex flex-column gap-1" style={{ maxHeight: 120, overflowY: 'auto' }}>
           {pool.map((doc) => (
-            <FichaDoc
+            <FilaDocumento
               key={doc.id}
               doc={doc}
-              vinculado={consumidosIds.has(doc.id) || producidoId === doc.id}
+              modo="selector"
+              rol={rolEnBorrador(doc.id)}
               seleccionada={docVinculandoPendiente?.id === doc.id}
-              onClick={() =>
+              onSeleccionar={() =>
                 docVinculandoPendiente?.id === doc.id
                   ? cancelarVincular()
                   : seleccionarDocVincular(doc)

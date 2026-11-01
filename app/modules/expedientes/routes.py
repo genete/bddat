@@ -51,7 +51,7 @@ from app.services.ingesta_pool import (
     rectificar_url_externa,
 )
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
-from app.services.detalle_nodo import info_apertura_documento
+from app.services.detalle_nodo import documento_fila, info_apertura_documento
 from app.services.parser_justificante_notifica import parsear_justificante_notifica
 from app.services.notificaciones import fecha_sugerida
 from app.services.assembler import build_sujeto
@@ -674,36 +674,6 @@ def pool_documentos(id):
     )
 
 
-@bp.route('/<int:id>/documentos/json')
-@login_required
-def pool_documentos_json(id):
-    """API JSON — lista de documentos del expediente para SelectorBusqueda (issue #166).
-
-    Devuelve: { "ok": true, "docs": [{"v": "42", "t": "informe.pdf — Informe técnico — 15/01/2026"}, ...] }
-    """
-    expediente = Expediente.query.get_or_404(id)
-    resultado = verificar_acceso_expediente(expediente, 'ver')
-    if resultado:
-        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-
-    documentos = Documento.query.filter_by(
-        expediente_id=id
-    ).order_by(Documento.id.desc()).all()
-
-    docs = []
-    for doc in documentos:
-        nombre = doc.nombre_visible()
-        tipo_nombre = doc.tipo_doc.nombre if doc.tipo_doc else 'Sin tipo'
-        if doc.fecha_administrativa:
-            fecha_str = doc.fecha_administrativa.strftime('%d/%m/%Y')
-        else:
-            fecha_str = 'Sin fecha'
-        texto = f'{nombre} — {tipo_nombre} — {fecha_str}'
-        docs.append({'v': str(doc.id), 't': texto})
-
-    return jsonify({'ok': True, 'docs': docs})
-
-
 @bp.route('/<int:id>/documentos/subir', methods=['POST'])
 @login_required
 def pool_subir_documento(id):
@@ -794,16 +764,9 @@ def pool_subir_documento(id):
     return jsonify({
         'ok': True,
         'creados': len(creados_docs),
-        'documentos': [
-            {
-                'id':              d.id,
-                'nombre':          d.nombre_visible(),
-                'tipo_doc':        d.tipo_doc.nombre if d.tipo_doc else None,
-                'tipo_doc_codigo': d.tipo_doc.codigo if d.tipo_doc else None,
-                'fecha':           d.fecha_administrativa.isoformat() if d.fecha_administrativa else None,
-            }
-            for d in creados_docs
-        ],
+        # La misma fila que sirve el pool (`documento_fila`, ADR-053 §E): el recién subido
+        # llega con su apertura y no hace falta recargar el pool para poder abrirlo.
+        'documentos': [documento_fila(id, d, estricto=False) for d in creados_docs],
     })
 
 

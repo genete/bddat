@@ -69,7 +69,7 @@ export const useArbolStore = create((set, get) => ({
   avisoGuardarInterior: false,  // el «Guardar» de la barra se pulsó con interior sucio: espera decisión
 
   // --- pool de documentos (S3b-3) ---
-  pool: [],                       // [{id, nombre, tipo_doc, fecha}] del expediente
+  pool: [],                       // [fila común de documento] del expediente (ver api.js::getPool)
   poolCargado: false,             // carga perezosa una vez por isla (el pool no cambia en esta vista)
   poolCargando: false,
   docVinculandoPendiente: null,   // {id, nombre, tipo_doc, fecha} staged para vincular
@@ -856,12 +856,13 @@ export const useArbolStore = create((set, get) => ({
     set({ subiendoDocumento: true })
     try {
       const data = await subirDocumentoPool(get().expedienteId, fichero, metadatos)
+      // La respuesta es la misma fila que sirve el pool (ADR-053 §E): entra tal cual, con su apertura,
+      // y arriba, que es donde el pool pone el más reciente. Antes se montaba un recorte sin enlace y el
+      // recién subido no se podía abrir ni salía en los desplegables hasta recargar.
       const nuevo = (data.documentos || [])[0]
       if (nuevo) {
-        set((s) => ({
-          pool: [...s.pool, { id: nuevo.id, nombre: nuevo.nombre, tipo_doc: nuevo.tipo_doc, fecha: nuevo.fecha }],
-        }))
-        get().seleccionarDocVincular({ id: nuevo.id, nombre: nuevo.nombre, tipo_doc: nuevo.tipo_doc, fecha: nuevo.fecha })
+        set((s) => ({ pool: [nuevo, ...s.pool] }))
+        get().seleccionarDocVincular(nuevo)
       }
       return true
     } catch (e) {
@@ -883,13 +884,7 @@ export const useArbolStore = create((set, get) => ({
       const data = await subirDocumentoPool(get().expedienteId, fichero, metadatos)
       const nuevo = (data.documentos || [])[0]
       if (nuevo) {
-        set((s) => ({
-          pool: [...s.pool, {
-            id: nuevo.id, nombre: nuevo.nombre, tipo_doc: nuevo.tipo_doc,
-            tipo_doc_codigo: nuevo.tipo_doc_codigo, fecha: nuevo.fecha,
-          }],
-          anclaSolicitudId: String(nuevo.id),
-        }))
+        set((s) => ({ pool: [nuevo, ...s.pool], anclaSolicitudId: String(nuevo.id) }))
       }
       return true
     } catch (e) {

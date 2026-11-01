@@ -34,6 +34,7 @@ from app.models.organismos_expediente import OrganismoExpediente, VIAS_ORGANISMO
 from app.models.direccion_notificacion import DireccionNotificacion
 from app.services import marcas_edicto
 from app.services import notificaciones as notif_svc
+from app.services.detalle_nodo import opciones_fila_documento, texto_opcion_documento
 
 log =logging.getLogger(__name__)
 
@@ -74,9 +75,14 @@ def esquema_de_nodo(expediente, tipo_nodo: str, nodo_id: int) -> dict:
 # ---------------------------------------------------------------------------
 
 def _pool_docs(expediente) -> list[dict]:
-    """Pool completo de documentos del expediente como opciones de select."""
-    docs = Documento.query.filter_by(expediente_id=expediente.id).all()
-    return [{'valor': d.id, 'texto': d.nombre_visible()} for d in docs]
+    """Pool completo de documentos del expediente como opciones de select.
+
+    El texto es el común de los desplegables del pool (`texto_opcion_documento`,
+    ADR-053 §E): con el nombre solo no se distinguen dos documentos que se llaman igual.
+    """
+    docs = (Documento.query.filter_by(expediente_id=expediente.id)
+            .options(*opciones_fila_documento()).all())
+    return [{'valor': d.id, 'texto': texto_opcion_documento(d)} for d in docs]
 
 
 def _campo_textarea(campo: str, etiqueta: str, valor) -> dict:

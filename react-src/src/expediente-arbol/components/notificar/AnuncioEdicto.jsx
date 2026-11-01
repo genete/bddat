@@ -18,7 +18,7 @@ import { useArbolStore } from '../../store.js'
 import { getEdicto, postEdicto } from '../../api.js'
 import { showToast, showAvisos } from '../../../shared/ui/toast.js'
 import { TarjetaDatos } from '../TarjetaDatos.jsx'
-import EnlaceDocumento from './EnlaceDocumento.jsx'
+import { EnlaceDocumento } from '../FilaDocumento.jsx'
 
 const mensajeDe = (e, porDefecto) => (
   (e && e.payload && (e.payload.error || e.payload.motivo)) || (e && e.message) || porDefecto
@@ -111,8 +111,8 @@ export function TarjetaAnuncioEdicto({ expedienteId, tramiteId }) {
         {anuncio ? (
           <div className="d-flex flex-wrap align-items-baseline gap-2">
             <EnlaceDocumento doc={anuncio} />
-            {anuncio.fecha_administrativa ? (
-              <span className="small text-muted">publicado el {fechaLarga(anuncio.fecha_administrativa)}</span>
+            {anuncio.fecha ? (
+              <span className="small text-muted">publicado el {fechaLarga(anuncio.fecha)}</span>
             ) : (
               <span className="badge text-bg-warning">Sin fecha de publicación</span>
             )}
