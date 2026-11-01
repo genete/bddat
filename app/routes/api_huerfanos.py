@@ -24,10 +24,20 @@ ENDPOINT:
                 "id": 1, "expediente_id": 5, "num_at": 1234,
                 "responsable": {"id": 3, "siglas": "CLG"} | null,
                 "tipo_doc": "Alegación", "asunto": "...", "nombre": "fichero.pdf",
-                "enlace": "...", "externo": false, "puede_abrir": true, "abrir_en": "enlace"
+                "enlace": "...", "externo": false, "puede_abrir": true, "abrir_en": "enlace",
+                "n_usos": 1, "usos": [{"codigo": "SOLICITUD", "texto": "Escrito de la solicitud AAP #3"}]
             }, ...],
             "next_cursor": 5, "has_more": true
         }
+
+    DESTINO DECLARADO SIN TAREA (#881). Huérfano sigue significando «sin vínculo a tarea», pero un
+    documento puede no tener tarea y sí estar referenciado por otra cosa: el escrito que ancla una
+    solicitud, el proyecto principal, el corte de un reformado, un interesado al que acredita… Ese
+    documento tiene destino, solo que ninguna tarea lo ha consumido todavía (el principal y los
+    reformados esperan al ANALIZAR que los consuma). No sale del radar —si ninguna tarea llega a
+    consumirlo, el recordatorio sigue haciendo falta— pero va marcado: `usos` dice qué lo referencia
+    (`services/usos_documento.py`, el mismo registro que la columna de usos del pool) y el radar lo
+    enseña. Sin usos, `n_usos` es 0 y es un documento del que nadie sabe nada.
 """
 from flask import Blueprint, request, jsonify, session
 from flask_login import login_required, current_user
@@ -40,6 +50,7 @@ from app.models.expedientes import Expediente
 from app.models.entidad import Entidad
 from app.services.detalle_nodo import documento_fila, opciones_fila_documento
 from app.services.huerfanos import tareas_candidatas
+from app.services.usos_documento import opciones_usos_documento, usos_de_documentos
 
 api_huerfanos_bp = Blueprint('api_huerfanos', __name__, url_prefix='/api')
 
@@ -92,7 +103,7 @@ def listar_huerfanos():
         # NOT LIKE da NULL y el documento sale del radar sin ningún aviso.
         .filter(or_(Documento.url.is_(None), ~Documento.url.like('bddat://%')))
         .filter(*filtros)
-        .options(*opciones_fila_documento())
+        .options(*opciones_fila_documento(), *opciones_usos_documento())
     )
 
     if cursor > 0:
@@ -104,6 +115,8 @@ def listar_huerfanos():
     has_more = len(docs_raw) > limit
     docs = docs_raw[:limit]
     next_cursor = docs[-1].id if docs else cursor
+    # Lo que referencia a cada documento, de una vez para toda la página (#881).
+    usos = usos_de_documentos(docs)
 
     data = []
     for doc in docs:
@@ -111,11 +124,14 @@ def listar_huerfanos():
         responsable = expediente.responsable if expediente else None
         data.append({
             # Lo propio del radar (el expediente y su responsable) y, para el documento, la fila
-            # común (`documento_fila`, ADR-053 §E).
+            # común (`documento_fila`, ADR-053 §E) más sus usos: un documento sin tarea pero con
+            # destino declarado va marcado, no excluido.
             'expediente_id':        expediente.id if expediente else None,
             'num_at':               expediente.numero_at if expediente else None,
             'responsable':          {'id': responsable.id, 'siglas': responsable.siglas} if responsable else None,
             **documento_fila(expediente.id, doc, estricto=False),
+            'n_usos':               len(usos[doc.id]),
+            'usos':                 usos[doc.id],
         })
 
     return jsonify({
