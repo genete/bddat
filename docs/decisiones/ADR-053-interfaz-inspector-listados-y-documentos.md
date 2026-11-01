@@ -101,6 +101,51 @@ Se definió implementando nodo a nodo, de arriba abajo y de genérico a especial
 - **Una definición de fila común con tres modos:** lista de vinculados, selector del pool y edición del documento. Si el origen del dato difiere, quien lo entrega se adapta al contrato único. Habrá como mínimo dos tipos de mini-listado, uno por renderizador (macro Jinja y componente React), y se asume: otro listado de scroll infinito puede necesitar listar documentos dentro de su inspector. Se estudia caso a caso qué sitios admiten la unificación (#1044).
 - **Un documento tiene un único sitio donde se edita** (editar, no crear). Qué contenedor lo aloja, el inspector del pool o, desde otros sitios, el modal grande, depende del marco (§A) y de que el formulario del pool quepa en el inspector; se decide en #1042, #881 y #1044.
 - **El modal grande también sirve para ver documentos generados** (certificados, informes, diagnósticos). No es otra capa. Enmienda ADR-023 §6, que lo reserva a colecciones con CRUD propio.
+- La definición de la fila, de sus tres modos y la tabla caso a caso (fase 1 de #1044) están en el [anexo a §E](#anexo-a-e--la-fila-común-de-documentos-1044).
+
+#### Anexo a §E — la fila común de documentos (#1044)
+
+Fase 1 de #1044 (definición, sin código), con Carlos, el 01/11/2026. Va como **decisión** lo que fijó él y como *Interpretación* lo que salió al redactarlo, hasta que lo confirme o lo fije la fase de un issue. Se contrastó con un mockup hecho con las hojas de estilo reales de la app (320 y 480 px; no versionado) y con el código del 01/11.
+
+**Decidido por Carlos**
+
+1. **La fila es de dos líneas apiladas, no de columnas.** Línea 1: nombre y acciones. Línea 2: rol (y subrol), fecha, marcas y tipo. Es lo que cabe a 320 px con el criterio de #1043 (ningún texto por debajo de 110 px).
+2. **Sin espacio, la fila no hace scroll propio y trunca.** Lo que no cabe se trunca con puntos suspensivos y el valor completo va en el `title`. El scroll horizontal es del cuerpo del caso (§B), nunca de la fila. A 320 px el tipo casi se pierde («Justificante de puest…»); a 480 px cabe entero. Carlos lo acepta.
+3. **Las marcas son iconos con tooltip junto a la fecha**, no etiquetas de texto: con el tema, `PROYECTO`, `REFORMADO` y `PRIORITARIO` en mayúsculas llenaban dos líneas más de una sola fila.
+4. **El asunto no va en la fila:** va en el `title` y en el texto de opción de los desplegables, que es donde distingue los duplicados (`oficio_separata.pdf` ×3).
+5. **Los cinco desplegables del pool se quedan como `<select>`** (justificante final, requisito del checklist, escrito de solicitud, documento resultado de la fase, documento del organismo), con un **texto de opción común**. No pasan a filas ricas.
+6. **Edición del documento: el principio queda fijado** —un único fragmento Jinja del formulario, con el inspector del pool y el modal grande como contenedores— y **el botón «Editar» en las filas de los demás sitios se difiere a después de #881**, que es quien mueve el formulario. #1044 implementa dos modos (vinculados y selector); el de edición llega con #881.
+7. **Una sola lista de vinculados en edición.** La zona de datos y la Despensa dejan de enseñar los mismos documentos: queda la de la zona de datos, que en edición gana «quitar» y se alimenta del borrador (D15).
+
+**Interpretación** (la fijó la redacción, sin confirmar por Carlos)
+
+- **Dos piezas:** el *enlace* (el nombre como lo que abre: `puede_abrir`, `abrir_en`, `enlace`; lo usan también los sitios de un solo documento, como «Descargar» de `ElaborarEditor` o el documento de cada requisito del checklist) y la *fila*, que lo contiene.
+- **Datos del contrato:** `id`, `nombre`, `tipo_doc`, `tipo_doc_codigo`, `fecha` en ISO (cada renderizador la pinta dd/mm/aaaa, y «sin fecha» si falta), `asunto`, `enlace`, `externo`, `puede_abrir`, `abrir_en`, `rol`, `subrol` y `marcas`. Una función única del servidor junto a `info_apertura_documento` (propuesta de nombre: `documento_fila`), a la que se adaptan los demás: `_serializar_documento`, `/api/expedientes/<id>/pool`, `_documento_notificar_json` y los `justificantes_previos` de NOTIFICAR, `api_huerfanos` (añade sus extras) y la respuesta de `pool_subir_documento` (hoy sin apertura y con la fecha en ISO, de ahí el recorte de `subirDocumentoDespensa`). `pool_documentos_json` se retira: no tiene consumidor. Son ocho los serializadores, no seis (el inventario del pre-ADR no contaba el de NOTIFICAR ni la respuesta de la subida).
+- **El pool cargado una vez por vida de la isla se mantiene**: alimenta el selector y las listas de vinculados de la Despensa; lo que cambia es que sus entradas, y la del documento recién subido, son del mismo contrato.
+- **Orden de supervivencia** cuando falta sitio (lo último de la lista es lo primero que se pierde): nombre y acciones, fecha (no se trunca: de ella cuelgan los plazos), rol y subrol, tipo, marcas.
+- **Rol y subrol.** Rol: `CONSUMIDO` o `PRODUCIDO`, del vínculo documento-tarea. Subrol: solo en NOTIFICAR, afina el consumido en `A_NOTIFICAR` y `JUSTIFICANTE_PREVIO`. Rótulos propuestos: «A notificar», «Previo», «Consumido» y «Producido»; el color dice el rol (verde consumido, azul producido) y el texto, el subrol si lo hay. Pendiente: con el tema `primary` se pinta en verde, igual que los enlaces, y el color no distingue bien.
+- **Modo vinculados:** el nombre es el enlace y «quitar» solo existe en el borrador de una tarea. **Modo selector:** el nombre selecciona y la acción de la fila es abrir, en la caja de 120 px de la Despensa, sin una línea más.
+- **Iconos de las marcas:** bandera (proyecto), capas (reformado) y estrella (prioritario), con tooltip. Pendiente que se descubra en pantalla táctil, donde no hay `hover`.
+- **Texto de opción común** de los desplegables: «nombre — tipo — fecha — asunto» (la fecha, y el asunto si lo hay), definido una vez en el servidor (`esquema_editable._pool_docs`) y una vez en React. Los filtros (solo `JUSTIFICANTE_*`, solo con fecha) siguen siendo de cada editor.
+- **Medida, no estimación:** las fases 3 y 4 miden la fila con el barrido de #1043 (de 320 a 960 px, de 20 en 20, en lectura y en edición) antes de darla por buena.
+
+**Caso a caso** (de los sitios del §6.12 del pre-ADR; las filas 3, 7 y 8 son decisión de Carlos, el resto es *Interpretación*)
+
+| # | Sitio | Después |
+|---|---|---|
+| 1 | Lectura del árbol, `Inspector.jsx::Documentos` (M1) | Fila común, modo vinculados; pinta el subrol |
+| 2 | Cola de Mi trabajo, `_inspector_cola.html` (M2) | Macro Jinja, modo vinculados; arregla `abrir_en` y `href="None"`. #1039 la reestructura después |
+| 3 | Despensa, «Documentos de esta tarea» (M3) | Se unifica con la 1: una sola lista (decisión 7) |
+| 4 | Despensa, «Pool de documentos», `FichaDoc` (M4) | Fila común, modo selector |
+| 5 | `BloqueJustificantesPrevios` y `EnlaceDocumento` (#929) | Fila común, modo vinculados; `EnlaceDocumento` pasa a ser la pieza «enlace» |
+| 6 | Documentos únicos (`ElaborarEditor`, requisito del checklist, botones de certificado) | Usan la pieza «enlace», no la fila |
+| 7 | Desplegables S1 a S5 | Se quedan `<select>` con texto común (decisión 5) |
+| 8 | Edición del documento | Principio fijado, botón diferido (decisión 6) |
+| 9 | `MenuContextual::ItemDoc` | Se queda; lee el mismo contrato: es un ítem de menú, no una fila |
+| 10 | `seguimiento_y_huerfanos` (JS propio e `_inspector_huerfano.html`) | Se quedan; el contrato no los rompe. Los decide #1041 |
+| 11 | `pool_documentos.html` | Fuera: el listado general es #881 (D6) |
+
+**Hallazgo del «hoy», por confirmar en la app:** `FichaDoc` es un `.btn` y con el tema los nombres de fichero de la Despensa salen en mayúsculas (visto solo en el mockup).
 
 ### F — Listados: scroll infinito salvo excepciones (D5, D8, D16)
 
@@ -137,8 +182,8 @@ Se definió implementando nodo a nodo, de arriba abajo y de genérico a especial
 
 - La forma exacta del puente del marco y de lo que declara cada fragmento (fase 1 de #1042).
 - La forma de un contrato general de campos (#1045).
-- El contenedor de la edición del documento y qué más comparten los dos renderizadores (clases CSS, otros).
-- El pool cargado una vez por vida de la isla, cómo se pinta `subrol` y si la cola conserva su cruz.
+- ~~El contenedor de la edición del documento~~ (el principio, decidido en el [anexo a §E](#anexo-a-e--la-fila-común-de-documentos-1044); el fragmento nace en #881) y qué más comparten los dos renderizadores (clases CSS, otros).
+- ~~El pool cargado una vez por vida de la isla, cómo se pinta `subrol`~~ (propuestos en el anexo a §E, como *Interpretación*) y si la cola conserva su cruz.
 - Las decisiones por página de los cinco listados (#1041), y el destino de `SubirDocumento` y la viewbar de la isla `mi-trabajo` (#1039).
 - ~~Qué bloques de lectura se quedan en edición en el árbol (fase 1 de #1043)~~: decidido, en el anexo a §C.
 - Si el scroll horizontal del cuerpo se ve como señal en el navegador de la Consejería: los Chromium recientes en Windows pueden pintar barras superpuestas que se ocultan solas. Sin comprobar.

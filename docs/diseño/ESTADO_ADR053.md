@@ -33,7 +33,7 @@ al hub, el código muerto y la documentación obsoleta.
 | 3 | **#1041** | **Listados fuera del estándar** (D16): un issue y decisión una a una de cinco páginas —tablas maestras, normas y variables, seguimiento y huérfanos, configuración del motor, Delegación Territorial—: adoptan el estándar (incluida una base con varias listas por página) o se justifica el motivo | Frontend | Abierto (11/10/2026); las decisiones por página, sin tomar. Independiente del marco. Absorbió #755 y #644 (cerrados); la causa raíz de #644 es su primera tarea |
 | 4 | **#1039** | Cola de Mi trabajo al listado estándar Jinja (D8). Su inspector se adapta al marco | Frontend | Abierto, sin profundizar. El listado puede ir antes que el marco; el inspector, después (*propuesta*) |
 | 5 | **#881** | Listado del pool al listado estándar con inspector (D5); edición del documento con un único sitio (D17) | Frontend | Abierto, **sin reescribir** (D5): cuando haya ADR se le añade una mención. Después del marco (*propuesta*) |
-| 6 | **#1044** | **Mini-listados de documentos** (D6, D13, D14): fila común con tres modos (vinculados, selector, edición); macro Jinja y componente React; estudio caso a caso de los sitios de §6.12, incluido pintar `subrol` | Frontend + backend (contrato del dato) | Abierto (11/10/2026), en cinco fases; la fase 1 es de definición, sin código, y no ha empezado |
+| 6 | **#1044** | **Mini-listados de documentos** (D6, D13, D14): fila común con tres modos (vinculados, selector, edición); macro Jinja y componente React; estudio caso a caso de los sitios de §6.12, incluido pintar `subrol` | Frontend + backend (contrato del dato) | Abierto (11/10/2026), en cinco fases. **Fase 1 (definición, sin código) redactada el 01/11/2026** como [anexo a ADR-053 §E](../decisiones/ADR-053-interfaz-inspector-listados-y-documentos.md#anexo-a-e--la-fila-común-de-documentos-1044), pendiente de que Carlos la confirme; las fases 2 a 5, sin empezar |
 | 7 | **#1045** | **Estudio de la forma del contrato** editor ↔ poseedor del dato (D13, §8.16) | Estudio | Abierto (11/10/2026), sin profundizar. Sin urgencia; puede acabar en «no se estandariza» |
 | 8 | **#1046** | **Huérfano: «Vincular aquí»** va en un `<script>` en línea dentro de un fragmento, que el overlay no ejecuta (§7.3, §8.8) | Frontend | Abierto (11/10/2026), sin profundizar. Fallo de código por lectura, sin reproducir: reproducir antes de arreglar |
 | 9 | **#1047** | **Refactor del despacho de editores por tipo** en el árbol, 7 banderas (§8.11) | Frontend | **Implementado** el 18/10/2026 (rama de trabajo, sin PR): registro de editores en `registroEditores.jsx`, ocho pasos, sin diferencias contra la base de comparación. Ver la entrada del 18/10 del historial |
@@ -63,8 +63,10 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 - ~~**«Cerrar» descarta sin avisar lo escrito en los bloques interiores del árbol**~~ — implementado el 18/10
   en #1055 (rama de trabajo, sin PR): opción A, un canal «interior sucio» hacia el marco
   (`useInteriorSucio`); ver la entrada del 18/10 más abajo.
-- **Dónde se aloja la edición del documento:** el inspector del pool o, desde otros sitios, el modal grande.
-  Depende del marco y de que el formulario de edición del pool quepa en el inspector (§8.10, PRE-ADR §10).
+- ~~**Dónde se aloja la edición del documento:** el inspector del pool o, desde otros sitios, el modal grande.
+  Depende del marco y de que el formulario de edición del pool quepa en el inspector (§8.10, PRE-ADR §10).~~
+  El principio, decidido el 01/11 (anexo a ADR-053 §E): un fragmento Jinja, dos contenedores; nace en #881 y el
+  botón «Editar» de las demás filas llega después. Queda por ver que el formulario quepa en el inspector.
 - ~~**#755 frente al issue de D16**~~ — resuelto el 11/10: #1041 absorbió #755 y #644 (los dos cerrados), y
   #281 (Plantillas y Usuarios a listado V2, con la premisa desfasada) se cerró como hecho.
 
@@ -204,3 +206,11 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 - **01/11/2026** — **Bloque 3 (documentos y pool) en curso.** Carlos confirma el orden: #1044, #881 (con la mitad
   del pool de #1036), #1008, #1012 y #1009 (el detalle, en `CONTEXTO_ACTUAL.md` y `ESTADO_ADR050.md`). Empieza
   la **fase 1 de #1044** (definición, sin código), en la rama `feature/issue-1044-mini-listados-documentos`.
+- **01/11/2026** — **#1044, fase 1 redactada** como anexo a ADR-053 §E, con Carlos y un mockup con las hojas de
+  estilo reales. Decidido por él: fila apilada en dos líneas (no columnas) que trunca sin scroll propio; marcas
+  como iconos con tooltip; asunto fuera de la fila; los cinco desplegables siguen siendo `<select>` con texto
+  común; edición del documento con el principio fijado y el botón «Editar» diferido a después de #881; una sola
+  lista de vinculados en edición. Lo demás (contrato de datos, rótulos, orden de supervivencia, caso a caso) va
+  como *Interpretación*. Salió que los serializadores son ocho y no seis, y que el recorte de
+  `subirDocumentoDespensa` viene de que la respuesta de la subida no sigue el contrato del pool. Falta la
+  confirmación de Carlos y abrir la fase 2.
