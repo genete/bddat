@@ -1,0 +1,127 @@
+{# _inspector_documento.html — Fragmento de lectura del inspector del pool (ADR-023, ADR-053 §F, #881).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   Marco único (ADR-053 §A, #1042): sin botones de editar, cancelar ni guardar los pinta el shell.
+   Hoy sin `data-edit-url`: la edición de los metadatos llega en la fase 4 de #881.
+   Sustituir y Borrar son acciones propias de la lectura y se quedan en el cuerpo; su
+   comportamiento vive en `static/js/pool_acciones.js` (un fragmento del inspector no ejecuta
+   `<script>`: se engancha por delegación). El modal de sustituir está en la página.
+#}
+{% from 'macros/documento_fila.html' import enlace_documento %}
+{%- set iconos_marca = {'PROYECTO': 'bi-flag-fill text-primary',
+                        'REFORMADO': 'bi-layers-fill text-warning',
+                        'PRIORITARIO': 'bi-star-fill text-warning'} -%}
+
+<div class="p-3" data-inspector-frame="ver" data-title="{{ fila.nombre }}">
+
+<!-- CABECERA — el documento como lo que abre -->
+<div class="card mb-3">
+    <div class="card-body card-body-tinted py-2">
+        <div class="d-flex align-items-start gap-2 mb-1">
+            <i class="bi bi-file-earmark flex-shrink-0 mt-1" role="img" title="Documento" aria-label="Documento"></i>
+            <span class="fw-bold fs-6 text-break">{{ enlace_documento(fila) }}</span>
+            {% if extension %}
+            <span class="badge border border-secondary text-secondary ms-auto flex-shrink-0">.{{ extension }}</span>
+            {% endif %}
+        </div>
+        {% if fila.marcas %}
+        <div class="small text-secondary">
+            {% for m in fila.marcas %}
+            <span class="me-2"><i class="bi {{ iconos_marca.get(m.codigo, 'bi-tag-fill') }} me-1" role="img"
+               title="{{ m.texto }}" aria-label="{{ m.texto }}"></i>{{ m.texto }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- DATOS — solo lectura -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-file-alt me-1"></i> Datos del documento
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Tipo de documento</label>
+                <input type="text" class="form-control form-control-sm" value="{{ fila.tipo_doc or '—' }}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Fecha administrativa</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ (fila.fecha|fecha_es) if fila.fecha else '—' }}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Prioritario</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ 'Sí' if (doc.prioridad or 0) > 0 else 'No' }}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Asunto</label>
+                <textarea class="form-control form-control-sm" rows="2" readonly
+                          style="resize:none;">{{ doc.asunto or '' }}</textarea>
+            </div>
+            {% if doc.observaciones %}
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Observaciones</label>
+                <textarea class="form-control form-control-sm" rows="3" readonly
+                          style="resize:none;">{{ doc.observaciones }}</textarea>
+            </div>
+            {% endif %}
+            {% if es_url_externa %}
+            <div class="col-12">
+                <label class="form-label fw-semibold small">URL externa</label>
+                <input type="text" class="form-control form-control-sm font-monospace" value="{{ doc.url }}" readonly>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- USOS — qué cosas del sistema referencian el documento (services/usos_documento.py) -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-link me-1"></i> Usos
+        <span class="badge bg-secondary ms-1">{{ usos|length }}</span>
+    </div>
+    <div class="card-body card-body-tinted py-2">
+        {% if usos %}
+        <ul class="list-unstyled small mb-0">
+            {% for u in usos %}
+            <li class="mb-1"><i class="fas fa-angle-right me-1 text-secondary"></i>{{ u.texto }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-secondary small mb-0">
+            <i class="fas fa-info-circle me-1"></i> Nada usa este documento: puede borrarse.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ACCIONES propias de la lectura (el marco solo se lleva «Editar») -->
+{% if puede_editar %}
+<div class="d-flex gap-2 flex-wrap">
+    {% if puede_sustituir %}
+    <button type="button" class="btn btn-outline-secondary btn-sm"
+            data-bs-toggle="modal" data-bs-target="#modal-sustituir"
+            data-doc-id="{{ doc.id }}" data-doc-nombre="{{ fila.nombre }}">
+        <i class="fas fa-file-import me-1"></i> Sustituir fichero
+    </button>
+    {% endif %}
+    {% if usos %}
+    <button type="button" class="btn btn-outline-secondary btn-sm" disabled title="{{ motivo_bloqueo }}">
+        <i class="fas fa-lock me-1"></i> No se puede borrar
+    </button>
+    {% else %}
+    <button type="button" class="btn btn-outline-danger btn-sm" data-pool-borrar
+            data-url="{{ url_for('expedientes.pool_borrar_documento', id=expediente.id, doc_id=doc.id) }}">
+        <i class="fas fa-times me-1"></i> Borrar del pool
+    </button>
+    {% endif %}
+</div>
+{% if usos and motivo_bloqueo %}
+<p class="small text-secondary mt-2 mb-0">{{ motivo_bloqueo }}</p>
+{% endif %}
+{% endif %}
+
+</div>{# /p-3 #}

@@ -1,0 +1,55 @@
+{# Modal «Añadir URL externa» (BOE, Notifica, sede electrónica…) — un alta, así que sigue siendo
+   modal (ADR-053 §E: «editar, no crear»). Lógica en `static/js/pool_alta.js`. #}
+<div class="modal fade" id="modal-url-externa" tabindex="-1"
+     aria-labelledby="modal-url-externa-label">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-url-externa-label">
+          <i class="fas fa-link me-1"></i> Añadir URL externa
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-secondary small">
+          Para documentos publicados en fuentes externas: BOE, BOP, Notifica, sede electrónica…
+          El documento no se sube — solo se registra el enlace, que debe empezar por
+          <code>http://</code> o <code>https://</code>.
+        </p>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">URL <span class="text-danger">*</span></label>
+          <input type="url" class="form-control" id="url-ext-url"
+                 placeholder="https://www.boe.es/...">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Tipo de documento</label>
+          <select class="form-select" id="url-ext-tipo">
+            <option value="">— Tipo —</option>
+            {% for t in tipos_doc %}
+            <option value="{{ t.id }}">{{ t.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Fecha administrativa</label>
+          <div id="ef-url-ext-fecha"></div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Asunto</label>
+          <input type="text" class="form-control" id="url-ext-asunto" maxlength="500">
+        </div>
+        <div class="form-check mb-3">
+          <input type="checkbox" class="form-check-input" id="url-ext-prioridad">
+          <label class="form-check-label fw-semibold" for="url-ext-prioridad">Prioritario</label>
+        </div>
+        <div id="url-ext-error" class="alert alert-danger d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="guardar_url_externa()">
+          <i class="fas fa-save me-1"></i> Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

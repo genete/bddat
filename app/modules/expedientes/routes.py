@@ -51,12 +51,9 @@ from app.services.ingesta_pool import (
     rectificar_url_externa,
 )
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
-from app.services.detalle_nodo import (
-    documento_fila, info_apertura_documento, opciones_fila_documento,
-)
-from app.services.usos_documento import (
-    opciones_usos_documento, usos_de_documentos, usos_documento,
-)
+from app.services.detalle_nodo import documento_fila, opciones_fila_documento
+from app.services.listado_pool import extension_de, extensiones_del_pool
+from app.services.usos_documento import opciones_usos_documento, usos_documento
 from app.services.parser_justificante_notifica import parsear_justificante_notifica
 from app.services.notificaciones import fecha_sugerida
 from app.services.assembler import build_sujeto
@@ -70,7 +67,6 @@ from app.services.reformados import (
     revertir_reformado,
     sincronizar_principal,
     sincronizar_reformado,
-    ultimo_reformado,
 )
 from app.services import bitacora as bitacora_svc
 from app.services import sellos
@@ -600,55 +596,59 @@ def pool_documentos(id):
     if resultado:
         return resultado
 
-    documentos_raw = (
-        Documento.query.filter_by(expediente_id=id)
-        .options(*opciones_fila_documento(), *opciones_usos_documento())
-        .order_by(Documento.id.desc()).all()
-    )
-    # Los usos de todos los documentos de una vez (#881): una consulta por relación, y no
-    # seis por documento como hacía el candado por fila.
-    usos = usos_de_documentos(documentos_raw)
-
-    # El único corte reversible es el último (ADR-044 §C), y se calcula aquí una
-    # vez: la interfaz necesita saberlo para dejar desmarcar o explicar por qué no.
-    corte_reversible = ultimo_reformado(id)
-    # Y qué se le pregunta a un DOC_PROYECTO que entre ahora (§C): mientras el
+    # Qué se le pregunta a un DOC_PROYECTO que entre ahora (ADR-044 §C): mientras el
     # proyecto no tenga principal anclado, la pregunta es si lo es.
     rama_ingesta = rama_de_la_ingesta(expediente)
 
-    docs_lista = []
-    for doc in documentos_raw:
-        nombre = doc.nombre_visible()
-        # La extensión sale del nombre, salvo en los bddat://: su nombre es el del
-        # tipo («Informe n.º 2») y lo que haya tras el último punto no es una extensión.
-        partes = nombre.rsplit('.', 1)
-        extension = ('' if (doc.url or '').startswith('bddat://')
-                     else partes[1].lower() if len(partes) == 2 and partes[1] else '')
-        es_url_externa = (doc.url or '').startswith(('http://', 'https://'))
-        corte = doc.reformado_proyecto
-        docs_lista.append({
-            'doc':             doc,
-            'nombre_display':  nombre,
-            'extension':       extension,
-            'es_url_externa':  es_url_externa,
-            'puede_sustituir': tiene_contenido_propio(doc),
-            'es_referenciado': bool(usos[doc.id]),
-            'apertura':        info_apertura_documento(id, doc, estricto=False),
-            'reformado':       corte,
-            'reformado_ultimo': (corte is not None and corte_reversible is not None
-                                 and corte.id == corte_reversible.id),
-            'es_principal':    bool(doc.anclado_como_proyecto_principal),
-        })
-
     tipos_doc = TipoDocumento.query.order_by(TipoDocumento.nombre).all()
 
+    # La página es un listado estándar (ADR-053 §F, #881): solo el armazón. Las filas llegan
+    # por `GET /api/expedientes/<id>/documentos` (`services/listado_pool.py`) y el detalle,
+    # por el inspector (`pool_documento_fragmento`).
     return render_template(
         'expedientes/pool_documentos.html',
         expediente=expediente,
-        docs_lista=docs_lista,
         tipos_doc=tipos_doc,
+        extensiones=extensiones_del_pool(expediente.id),
         rama_ingesta=rama_ingesta,
         rama_principal=RAMA_PRINCIPAL,
+    )
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/fragmento')
+@login_required
+def pool_documento_fragmento(id, doc_id):
+    """Fragmento de lectura del inspector del pool (ADR-023, ADR-053 §F, #881).
+
+    El documento se busca por su id **y** por el expediente de la ruta: uno de otro
+    expediente da 404 y no se sirve bajo una URL que no es la suya. Las acciones de
+    escritura (sustituir, borrar) solo se pintan a quien puede editar; las rutas las
+    exigen igualmente.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    if verificar_acceso_expediente(expediente, 'ver'):
+        return '', 403
+
+    doc = (
+        Documento.query.filter_by(id=doc_id, expediente_id=id)
+        .options(*opciones_fila_documento(), *opciones_usos_documento())
+        .first_or_404()
+    )
+    usos = usos_documento(doc)
+    # Por qué no se borra: el gesto que lo suelta si lo hay (`_motivo_ancla`) y, si no, lo que lo usa.
+    motivo_bloqueo = (_motivo_ancla(doc) or _motivo_por_usos(usos)) if usos else None
+
+    return render_template(
+        'expedientes/_inspector_documento.html',
+        expediente=expediente,
+        doc=doc,
+        fila=documento_fila(id, doc, estricto=False),
+        extension=extension_de(doc),
+        es_url_externa=(doc.url or '').startswith(('http://', 'https://')),
+        usos=usos,
+        motivo_bloqueo=motivo_bloqueo,
+        puede_editar=tiene_permiso('editar_expediente'),
+        puede_sustituir=tiene_contenido_propio(doc),
     )
 
 
