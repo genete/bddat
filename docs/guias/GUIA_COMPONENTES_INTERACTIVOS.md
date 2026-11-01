@@ -572,6 +572,87 @@ inf.enable() / inf.disable()
 </div>
 ```
 
+### Fila de documento (`documento_fila`)
+
+La fila común con que los inspectores enseñan un documento (ADR-053 §E, #1044). No es una clase JS: son un
+**macro Jinja y un componente React gemelos** que pintan el mismo dato con el mismo CSS. Esta sección es la
+del lado Jinja y la del contrato; el componente React, en `GUIA_REACT_ISLAS.md` §«Los documentos en el
+inspector».
+
+**Ficheros:**
+- `app/templates/macros/documento_fila.html` — macros `fila_documento` y `enlace_documento`
+- `app/static/css/v2-components.css` — clases `.fila-doc*`
+- `app/services/detalle_nodo.py` — `documento_fila`, `texto_opcion_documento`, `opciones_fila_documento`
+- `react-src/src/expediente-arbol/components/FilaDocumento.jsx` — el gemelo React
+
+#### Uso en Jinja2
+
+```jinja
+{% from 'macros/documento_fila.html' import fila_documento %}
+<ul class="list-group list-group-flush">
+  {% for d in detalle.documentos %}
+  <li class="list-group-item px-0 py-2">{{ fila_documento(d) }}</li>
+  {% endfor %}
+</ul>
+```
+
+`detalle.documentos` ya son filas: `detalle_de_nodo` las construye con `documento_fila`. Si el dato viene de
+otro sitio, el servidor construye la fila con
+`documento_fila(exp_id, doc, rol, subrol=..., estricto=False)` y la cede al contenedor; **no se añade un
+serializador de documento nuevo**. Un listado usa `estricto=False` (un recurso `bddat://` desconocido
+degrada esa fila en vez de tumbar la lista) y, si trae muchos documentos, carga lo que lee la fila con
+`.options(*opciones_fila_documento())` (el tipo y los backrefs de las marcas: sin ello son tres consultas
+por documento). Para un solo documento fuera de una lista, `enlace_documento(d)`: solo el nombre como lo que
+abre el documento.
+
+#### La fila (el contrato)
+
+| Dato | Para qué |
+|---|---|
+| `id`, `nombre` | `nombre_visible()`: el nombre único de un documento |
+| `tipo_doc`, `tipo_doc_codigo` | La descripción (línea 2); `tipo_doc_codigo` sirve para filtrar |
+| `fecha` | **ISO** (`AAAA-MM-DD`) o `None`; el macro la pinta dd/mm/aaaa con el filtro `fecha_es` y, si falta, «sin fecha» |
+| `asunto` | No se pinta: va en el `title` de la fila |
+| `marcas` | `[{codigo, texto}]`: `PROYECTO`, `REFORMADO`, `PRIORITARIO`. Las decide el servidor |
+| `texto_opcion` | «nombre — tipo — fecha — asunto», para los desplegables del pool: lo compone `texto_opcion_documento` |
+| `enlace`, `externo`, `puede_abrir`, `abrir_en` | La apertura, de `info_apertura_documento`: `abrir_en` es `'modal'` (certificados de fase y diagnósticos, se consultan en el modal grande) o `'enlace'` (pestaña nueva) |
+| `rol`, `subrol` | Solo si se piden: son del vínculo con una tarea, no del documento. `rol` es `CONSUMIDO` o `PRODUCIDO`; `subrol`, solo en NOTIFICAR, `A_NOTIFICAR` o `JUSTIFICANTE_PREVIO` |
+
+#### Estructura HTML generada
+
+```html
+<div class="fila-doc" title="{asunto}">
+  <div class="fila-doc__l1">
+    <i class="bi bi-file-earmark" title="Documento" aria-label="Documento"></i>
+    <a class="fila-doc__nombre" href="…" target="_blank">resolucion.pdf</a>
+    <span class="fila-doc__fecha small text-secondary">04/09/2026</span>
+  </div>
+  <div class="fila-doc__l2 small text-secondary">
+    <i class="bi bi-box-arrow-in-down fila-doc__ico" title="Consumido" aria-label="Consumido"></i>
+    <i class="bi bi-send fila-doc__ico" title="A notificar" aria-label="A notificar"></i>
+    <span class="fila-doc__tipo" title="…">Resolución de autorización administrativa</span>
+  </div>
+</div>
+```
+
+#### Notas
+
+- **Dos líneas apiladas, nunca columnas y sin scroll propio.** Línea 1: el nombre y, detrás, la fecha. Línea 2:
+  los detalles como iconos (rol, subrol, marcas) y la descripción. Lo que no cabe se trunca con puntos
+  suspensivos y el valor completo va en el `title`: se recorta primero el nombre y, abajo, la descripción; la fecha y
+  los iconos conservan su ancho.
+- **Todo icono lleva tooltip** (`title`) y `aria-label`. Los de rol son los del árbol (`nodos/Docs.jsx`) y
+  del seguimiento (`_inspector_seguimiento.html`): consumido `bi-box-arrow-in-down`, producido `bi-box-arrow-up`;
+  su gris, `#4a4a4a`, es el de `.arbol-doc.has` (`arbol.css`), a propósito. El tooltip nativo no sale en pantalla
+  táctil.
+- **El modal grande.** El botón de un certificado o un diagnóstico lleva `data-modal-large-url` y lo recoge el
+  listener delegado de `inspector-overlay.js`, que existe dentro de un inspector. Es `.fila-doc__enlace` y no
+  `.btn`: el tema pone el texto de un `.btn` en mayúsculas.
+- **Solo el modo «vinculados», de lectura.** El modo selector y la acción de «quitar» están en el componente React,
+  que es el único sitio que hoy los necesita. El tercer modo de ADR-053 §E (editar el documento) llega con #881.
+- Una propiedad nueva de la fila se calcula en `documento_fila` y se pinta en el macro **y** en `FilaDocumento.jsx`,
+  con su tooltip: si solo cambia uno, los dos inspectores dejan de ser iguales.
+
 ---
 
 ---

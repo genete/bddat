@@ -389,7 +389,7 @@ en cada nodo está en la tabla del anexo a ADR-053 §C. El código, en `expedien
 | `disenosDatos.js` | Un diseño por nodo (`DISENO_*`) y `disenoDeNodo(tipo, {tareaConDiseno})`: tarjetas, campos (`etiqueta` del payload, `campo` del esquema editable, `col`, `control`, `visibleSi`, `valorDe`, `opcional`) y `ocultas` (lo que ya está en la barra del marco). Lo que el payload trae y el diseño no conoce cae en «Otros datos»: no se pierde nada en silencio |
 | `components/DatosNodo.jsx` | Pinta un diseño igual en los dos modos: control de solo lectura en lectura, vivo en edición, en el mismo sitio y con el mismo rótulo |
 | `components/TarjetaDatos.jsx` | `TarjetaDatos`, `CampoDato`, `ValorSoloLectura`, `CasillaSoloLectura`, `ControlCampo` (el select conserva el tipo del valor de la opción, dice qué implica no elegir con `texto_vacio` y marca con un «!» el valor guardado que no está entre las opciones: ver `GUIA_COMPONENTES_INTERACTIVOS.md` §«Contrato de un selector»). `ValorSoloLectura` pinta el mismo «!» con `aviso` |
-| `components/Inspector.jsx` | `ZonaDatos` (el diseño y las tarjetas propias del nodo) e `InspectorEdicion` (datos → Despensa → acciones propias → «Borrar» → pie «Copiar referencia»). Ninguno de los dos pregunta por el tipo de nodo: leen su entrada del registro |
+| `components/Inspector.jsx` | `ZonaDatos` (el diseño, las tarjetas propias del nodo y la lista «Documentos») e `InspectorEdicion` (datos → Despensa → acciones propias → «Borrar» → pie «Copiar referencia»). Ninguno de los dos pregunta por el tipo de nodo: leen su entrada del registro. La lista de documentos es la fila común (ver «Los documentos en el inspector», abajo) |
 | `registroEditores.jsx` | **Qué lleva cada nodo**: una entrada por tipo de nodo y por superficie de tarea (ver «El registro de editores del árbol», abajo) |
 | `components/AccionesNodo.jsx` | Las acciones propias de la solicitud (fin de instrucción, cierre, informe) y de la fase (consultas, cumplimiento, cierre, reapertura y su confirmación) |
 | `superficiesTarea.js` | Qué superficie lleva una tarea: tabla `SUPERFICIES_TAREA` con `defecto`, `variante(nodo)` y `porTramite` |
@@ -489,6 +489,72 @@ añadir una tarjeta o una acción a un tipo que ya existe: una línea más en su
 
 Es el patrón al que apuntaba el criterio de factorización de antes: a la segunda excepción con la misma
 causa raíz, una interfaz que cada tipo rellena y no más condicionales en el contenedor.
+
+### Los documentos en el inspector: la fila común (ADR-053 §E, #1044)
+
+Un documento se ve igual en todos los inspectores. Hay **un dato y dos renderizadores**: el servidor entrega
+la fila con `detalle_nodo.documento_fila` y la pintan el componente React `FilaDocumento.jsx` (el árbol) y el
+macro Jinja `macros/documento_fila.html` (los demás inspectores; ver `GUIA_COMPONENTES_INTERACTIVOS.md`
+§«Fila de documento»), con **las mismas clases `.fila-doc*`** de `v2-components.css`. Si cambia uno, cambia
+el otro. Qué se decidió y por qué está en el anexo a ADR-053 §E.
+
+| Pieza | Qué hace |
+|---|---|
+| `components/FilaDocumento.jsx` | `FilaDocumento` (la fila) y `EnlaceDocumento` (la pieza «enlace»: el nombre como lo que abre el documento, para los sitios de un solo documento: el anuncio del edicto, el que acredita cada fecha de NOTIFICAR, el casado a un requisito del checklist) |
+| `documentosBorrador.js` | `documentosDelBorrador(detalle.documentos, borrador, pool)`: los vinculados de una tarea como van a quedar al guardar |
+| `Inspector.jsx::Documentos` | La lista «Documentos» de la zona de datos: **la única lista de vinculados** del árbol |
+| `Despensa.jsx` | El pool: una `FilaDocumento` en modo `selector` por documento, más el staging («+ Consumido», «+ Producido») y la subida |
+| `store.js` | `pool` (las filas del servidor, con `getPool`), `cargarPool`, `subirDocumentoDespensa`, `subirAnclaSolicitud` |
+
+**La fila.** Dos líneas apiladas, nunca columnas y sin scroll propio. Línea 1: el nombre con su extensión (el
+enlace que abre el documento), detrás su fecha dd/mm/aaaa y, a la derecha, las acciones. Línea 2: los detalles
+como **iconos** y, detrás, la descripción (el tipo). Los iconos de rol son los del árbol y el seguimiento
+(`bi-box-arrow-in-down` consumido, `bi-box-arrow-up` producido); el subrol de una NOTIFICAR es otro
+(`bi-send` «A notificar», `bi-paperclip` «Justificante previo») y las marcas, los suyos (bandera, capas,
+estrella). **Todo icono lleva tooltip** (`title`) y `aria-label`. Lo que no cabe se trunca con puntos
+suspensivos y el valor completo va en el `title`: se recorta primero el nombre y, abajo, la descripción; la
+fecha, los iconos y las acciones conservan su ancho. El asunto no se pinta: va en el `title` de la fila.
+
+**Props de `FilaDocumento`:** `doc` (la fila del servidor), `modo` (`'vinculados'` por defecto o
+`'selector'`), `rol` (en el selector, el rol que dice el borrador, para marcar los ya vinculados),
+`seleccionada` y `onSeleccionar` (selector), `onQuitar` (vinculados: pinta la «✕» de «Quitar vínculo»). El
+tercer modo de ADR-053 §E, editar el documento, no existe aún: llega con #881.
+
+**Reglas**
+
+- **Una sola lista de vinculados en edición.** La lista «Documentos» de la zona de datos, que en una tarea en
+  edición sale del borrador (`documentosDelBorrador`) y lleva «✕». Lo decide `ZonaDatos`:
+  `modoEdicion && tarea && !entrada.despensa.oculta && !estaSellado(...)`, lo mismo que decide si la Despensa
+  se pinta. La Despensa **no** vuelve a listar los vinculados: solo marca en el pool cuáles lo están. Las filas
+  ya guardadas conservan su `subrol` (viene del detalle); la que se acaba de vincular desde el pool, no lo tiene
+  hasta que se guarda.
+- **Las filas del pool son las del servidor, enteras.** Lo que se sube entra en `pool` con la fila que devuelve
+  `pool_subir_documento` (la misma `documento_fila`), arriba, que es donde la pone el servidor. Nunca se
+  fabrica un recorte (`{id, nombre, tipo_doc, fecha}`): sin la apertura, el recién subido no se abría ni salía
+  en los desplegables hasta recargar.
+- **La fecha viaja en ISO y se pinta con `fechaLarga`** (`plazoActo.js`: a mano, porque `Date` corre un día por
+  el huso horario). No se formatea en otro sitio ni se reordena el string a ojo.
+- **Los desplegables del pool son `<select>` y leen `texto_opcion`** («nombre — tipo — fecha — asunto»), que
+  compone el servidor. No se recompone en React: sería un gemelo que mantener. Los filtros (solo `JUSTIFICANTE_*`,
+  solo con fecha) son del editor.
+- **El modal grande se abre con `window.AppModalLarge.open(enlace, {title})`**, no con el atributo
+  `data-modal-large-url`: en el selector la fila corta la propagación del clic y el atributo no llegaría al
+  listener global del shell. Un botón que abre el modal es `.fila-doc__enlace`, no un `.btn` (el tema pone el
+  texto de un `.btn` en mayúsculas y un nombre de fichero no debe cambiar según cómo se abra).
+- **Un sitio nuevo que enseñe documentos no trae serializador ni pintado propios:** el servidor da
+  `documento_fila` y el contenedor usa `FilaDocumento` (o `EnlaceDocumento`, si es uno solo).
+
+**El formulario de subida de la Despensa (`SubidaInline`, #1036).** `GET /api/tipos-documento` trae por tipo
+`fecha_obligatoria` y `ayuda_fecha`, que salen de `fechas.TIPOS_FECHA_OBLIGATORIA` y
+`mensaje_fecha_obligatoria`: la misma lista que valida el servidor al guardar, sin copia en React. Cuando el
+tipo exige fecha, el formulario marca el campo, enseña la ayuda y no deja subir sin ella (el 422 sigue siendo la
+guarda). Al elegir fichero y ese tipo, pide `parsear_justificante` y pone la `fecha_sugerida` que devuelva el
+servidor; nunca pisa lo tecleado, nunca bloquea y siempre es editable. Es el patrón para cualquier formulario
+de subida que necesite saber qué tipos exigen fecha.
+
+**Para añadir** una propiedad a la fila (un icono, un dato): la calcula `documento_fila` y se pinta en el macro
+y en `FilaDocumento.jsx` a la vez, con su tooltip. Un modo nuevo: un `modo` más en `FilaDocumento`, con su
+clase `.fila-doc--*` en el CSS.
 
 ---
 
