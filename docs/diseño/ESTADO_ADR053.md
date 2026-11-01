@@ -77,7 +77,7 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 | Pieza | Cruce |
 |---|---|
 | **#929, zona A** | Independiente del marco. La decisión 1 (atajo de subida por tipo en el editor) se resolvió en «no» (PRE-ADR D1); `ESTADO_ADR049` lo tenía como «sin tomar» y se corrige el 11/10 |
-| **#1036** (fecha en la subida) | Vive en `pool_documentos.html`, que #881 reescribe. *Decidido por Carlos el 01/11/2026:* se parte; la mitad del pool se arregla dentro de #881 y la de la Despensa (`SubidaInline`), en la fase 4 de #1044, junto al recorte de `subirDocumentoDespensa`. Con la decisión 1 en «no», no aplica la regla de fecha por tipo en el editor |
+| **#1036** (fecha en la subida) | Vive en `pool_documentos.html`, que #881 reescribe. *Decidido por Carlos el 01/11/2026:* se parte; la mitad del pool se arregla dentro de #881 y la de la Despensa (`SubidaInline`), en la fase 4 de #1044, junto al recorte de `subirDocumentoDespensa` (**hecha el 01/11/2026**; queda la del pool). Con la decisión 1 en «no», no aplica la regla de fecha por tipo en el editor |
 | **#1037** (marcar y aplicar el anuncio del edicto) | **Hecho** (PR #1082, 30/10/2026). Sin choque con el marco. La marca va en el borrador del inspector y se guarda con el «Guardar» del marco; las casillas son un control propio de la tarjeta (`casillas` en el esquema editable), no un selector de documentos (D14). Sin superficie de trámite por código en el registro de editores: dos tarjetas y una acción en la entrada `TRAMITE`, que el dato decide si salen |
 | **#1038** (representante y sede de la solicitud) | **Hecho** (PR #1081, 23/10/2026). Tocaba el editor de la solicitud del árbol: la tarjeta «Solicitante» lee y edita representante y sede con el mismo texto (D15). El contrato del select quedó en la guía y solo lo cumple `ControlCampo` (#1080 alinea el resto) |
 | **Zona E de #929** (sin issue) | Tres de sus ocho puntos tocan lo decidido o lo pendiente: inspector en lectura (D15), Mi trabajo (D8) y radar de huérfanos (fila provisional de Seguimiento y huérfanos). *Propuesta:* no abrirla antes del marco ni de la Cola |
@@ -228,7 +228,7 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   documentos (el del huérfano enseña uno, y queda para #1041 y #1046). La Cola pinta ya el subrol, abre un
   diagnóstico en el modal grande y no puede pintar `href="None"`. *Interpretación:* el botón del modal se pinta como
   enlace y no como `.btn`, para que el nombre no salga en mayúsculas. Comprobado en el inspector real a 320 y 560 px.
-- **01/11/2026** — **#1044, fase 4 implementada, salvo la mitad de #1036 de la Despensa** (rama de trabajo, sin PR):
+- **01/11/2026** — **#1044, fase 4 implementada, con la mitad de #1036 de la Despensa** (rama de trabajo, sin PR):
   `components/FilaDocumento.jsx` (fila en modo vinculados y selector, y la pieza `EnlaceDocumento`) y
   `documentosBorrador.js`. El inspector del árbol tiene ya **una sola lista de vinculados**, la de la zona de
   datos, que en edición sale del borrador y lleva «Quitar vínculo»; la Despensa deja de repetirla y su pool es la
@@ -236,4 +236,7 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   leen `texto_opcion`. Salió una observación sin decidir: en una NOTIFICAR los justificantes previos salen en su
   tarjeta y en la lista «Documentos». Comprobado en el navegador con la BD sintética (lectura, edición, quitar,
   vincular, cancelar y subir); sin comprobar el requisito del checklist, los justificantes previos y el anuncio del
-  edicto, porque la semilla no tiene casos.
+  edicto, porque la semilla no tiene casos. **La mitad de #1036 de la Despensa**, decidida por Carlos: el catálogo de
+  tipos trae `fecha_obligatoria` y `ayuda_fecha`; el formulario de subida marca la fecha como obligatoria, enseña
+  qué fecha es y no deja subir sin ella, y autorrellena la de los justificantes de Notifica sin pisar lo tecleado.
+  Comprobado en el navegador con un PDF sintético de Notifica. Queda la mitad del pool, dentro de #881.
