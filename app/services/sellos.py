@@ -160,6 +160,34 @@ def certificado_que_cita(documento) -> Optional[Certificado]:
     )
 
 
+def certificados_que_citan(documento_ids) -> dict:
+    """`{documento_id: certificado}` de los `CERT_CUMPLIMIENTO_FASE` que citan alguno de
+    `documento_ids`: la misma pregunta que `certificado_que_cita`, para un listado entero
+    en **una** consulta (#881; sin esto, el listado del pool pagaría una por documento).
+
+    El `documento_id` de `certificados.datos` no es FK ni tiene backref, y por eso no lo
+    carga ningún `selectinload`. Los documentos sin certificado no salen en el dict. Si
+    dos certificados citaran el mismo documento (no debería: el sello lo impide), queda uno.
+    """
+    from sqlalchemy.orm import selectinload
+
+    from app.models.fases import Fase
+
+    ids = {i for i in documento_ids if i is not None}
+    if not ids:
+        return {}
+    certificados = (
+        Certificado.query
+        .filter(
+            Certificado.tipo == CERT_CUMPLIMIENTO_FASE,
+            Certificado.datos['documento_id'].as_integer().in_(ids),
+        )
+        .options(selectinload(Certificado.fase).selectinload(Fase.tipo_fase))
+        .all()
+    )
+    return {c.datos['documento_id']: c for c in certificados}
+
+
 def motivo_sellado(documento) -> Optional[str]:
     """Por qué no se puede tocar `documento` y cuál es la salida, o `None` si
     ningún sello lo alcanza. Mensaje único para el pool y para `editar_tarea`.

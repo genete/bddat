@@ -51,7 +51,12 @@ from app.services.ingesta_pool import (
     rectificar_url_externa,
 )
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
-from app.services.detalle_nodo import documento_fila, info_apertura_documento
+from app.services.detalle_nodo import (
+    documento_fila, info_apertura_documento, opciones_fila_documento,
+)
+from app.services.usos_documento import (
+    opciones_usos_documento, usos_de_documentos, usos_documento,
+)
 from app.services.parser_justificante_notifica import parsear_justificante_notifica
 from app.services.notificaciones import fecha_sugerida
 from app.services.assembler import build_sujeto
@@ -487,61 +492,14 @@ _TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR', 'ESPERAR_
 
 def _documento_es_referenciado(doc):
     """
-    True si el documento tiene referencias activas que impiden su borrado.
+    True si algo usa el documento y, por tanto, no se borra: «si algo lo usa, no se borra».
 
-    Usa únicamente backrefs SQLAlchemy — NO hardcodear SQL directo.
-    Si en el futuro se añade una nueva tabla con FK a documentos.id:
-      1. Añadir el backref en el modelo correspondiente.
-      2. Añadir un check aquí.
-
-    Backrefs consultados:
-      doc.reformado_proyecto           → ReformadoProyecto.documento_id  (uselist=False)
-      doc.anclado_como_proyecto_principal → Proyecto.documento_principal_id
-      doc.vinculos_tarea               → DocumentoTarea.documento_id     (lista, con rol)
-      doc.notificacion                 → Notificacion.documento_id       (uselist=False, ADR-034)
-      doc.anclado_en_solicitud         → Solicitud.documento_solicitud_id
-      doc.anclado_en_fin_instruccion   → Solicitud.documento_fin_instruccion_id
-      doc.anclado_en_cierre            → Solicitud.documento_cierre_id
-      doc.fases_resultado              → Fase.documento_resultado_id     (lista, #947)
-      doc.certificado                  → Certificado.documento_id        (uselist=False, #947)
-
-    `doc.notificacion` (#738 punto 2): sin este check, un justificante que ya
-    perdió su vínculo `DocumentoTarea` (desvinculado, ver punto 1) parece libre
-    aunque la fila `Notificacion` siga viva apuntando a él — y esa fila tiene
-    `ondelete='CASCADE'`, así que borrar el documento se lleva por delante toda
-    la evidencia de la notificación (canal, resultado, fecha).
-
-    Las tres anclas de solicitud (#838): la guarda del pool es «si algo lo usa, no
-    se borra», y a estos tres los usa la solicitud —no una tarea— a través de una FK
-    propia (ADR-041 §D bis, ADR-043 §D). Faltaban desde que se creó cada una, así
-    que el pool los daba por libres: la FK es `NO ACTION` y el borrado moría en un
-    IntegrityError con traza, en vez de decir quién lo estaba usando. El caso que lo
-    destapa es el CERT_FIN_INSTRUCCION, que además no lo consume ninguna tarea
-    mientras la fase que resuelve no exista — con lo que ninguna de las tres
-    referencias anteriores lo veía.
-
-    Las dos últimas (#947), el mismo agujero por otras dos FK sin `ON DELETE`: el
-    documento de un certificado emitido (`certificados.documento_id`) no cuelga de
-    ninguna tarea —el de cumplimiento de la fase, por diseño—, y el que cierra una
-    fase (`fases.documento_resultado_id`) puede no colgar de ninguna si se eligió
-    así al cerrarla. En los dos casos el pool los daba por libres y el borrado
-    moría en un IntegrityError con un 500.
+    Es `bool(usos_documento(doc))`: qué cuenta como uso, y la historia de por qué faltaban
+    (#738, #838, #947), está en `app/services/usos_documento.py`, que registra una entrada por
+    cada FK hacia `documentos.id` (#881). Si se añade una tabla con FK a documentos, se añade
+    allí; `fks_sin_uso_registrado()` avisa si se olvida.
     """
-    if doc.reformado_proyecto:
-        return True
-    if doc.anclado_como_proyecto_principal:
-        return True
-    if doc.vinculos_tarea:
-        return True
-    if doc.notificacion:
-        return True
-    if doc.anclado_en_solicitud or doc.anclado_en_fin_instruccion or doc.anclado_en_cierre:
-        return True
-    if doc.fases_resultado:
-        return True
-    if sellos.es_certificado_emitido(doc):
-        return True
-    return False
+    return bool(usos_documento(doc))
 
 
 # Qué decirle a quien intenta borrar del pool un documento que ancla una solicitud.
@@ -618,6 +576,21 @@ def _motivo_ancla(doc):
     return None
 
 
+def _motivo_por_usos(usos, maximo=3):
+    """Por qué no se borra un documento que `_motivo_ancla` no sabe explicar: lo que lo usa.
+
+    `_motivo_ancla` cubre los usos con un gesto propio que los suelta (deshacer el
+    certificado, reabrir la fase…); el resto —una tarea que lo consume, una notificación, un
+    interesado— no tiene gesto único, y antes se resumían en «referenciado en tramitación»,
+    que no decía qué lo usaba. Con más de `maximo`, se dice cuántos quedan.
+    """
+    textos = [uso['texto'] for uso in usos[:maximo]]
+    resto = len(usos) - len(textos)
+    if resto > 0:
+        textos.append(f'y {resto} más')
+    return 'Este documento no puede eliminarse mientras esté en uso: ' + '; '.join(textos) + '.'
+
+
 @bp.route('/<int:id>/documentos')
 @login_required
 def pool_documentos(id):
@@ -627,9 +600,14 @@ def pool_documentos(id):
     if resultado:
         return resultado
 
-    documentos_raw = Documento.query.filter_by(
-        expediente_id=id
-    ).order_by(Documento.id.desc()).all()
+    documentos_raw = (
+        Documento.query.filter_by(expediente_id=id)
+        .options(*opciones_fila_documento(), *opciones_usos_documento())
+        .order_by(Documento.id.desc()).all()
+    )
+    # Los usos de todos los documentos de una vez (#881): una consulta por relación, y no
+    # seis por documento como hacía el candado por fila.
+    usos = usos_de_documentos(documentos_raw)
 
     # El único corte reversible es el último (ADR-044 §C), y se calcula aquí una
     # vez: la interfaz necesita saberlo para dejar desmarcar o explicar por qué no.
@@ -654,7 +632,7 @@ def pool_documentos(id):
             'extension':       extension,
             'es_url_externa':  es_url_externa,
             'puede_sustituir': tiene_contenido_propio(doc),
-            'es_referenciado': _documento_es_referenciado(doc),
+            'es_referenciado': bool(usos[doc.id]),
             'apertura':        info_apertura_documento(id, doc, estricto=False),
             'reformado':       corte,
             'reformado_ultimo': (corte is not None and corte_reversible is not None
@@ -1316,11 +1294,11 @@ def pool_borrar_documento(id, doc_id):
     if doc.expediente_id != id:
         abort(404)
 
-    if _documento_es_referenciado(doc):
+    usos = usos_documento(doc)
+    if usos:
         return jsonify({
             'ok': False,
-            'error': _motivo_ancla(doc) or
-                     'El documento está referenciado en tramitación y no puede eliminarse'
+            'error': _motivo_ancla(doc) or _motivo_por_usos(usos),
         }), 422
 
     es_critico = es_documento_critico(doc)
