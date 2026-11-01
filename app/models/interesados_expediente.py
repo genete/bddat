@@ -73,7 +73,8 @@ class InteresadoExpediente(db.Model):
     expediente = db.relationship('Expediente', backref='interesados')
     entidad = db.relationship('Entidad', foreign_keys=[entidad_id], backref='interesados_expediente')
     documento_acreditativo = db.relationship(
-        'Documento', foreign_keys=[documento_acreditativo_id])
+        'Documento', foreign_keys=[documento_acreditativo_id],
+        backref='acredita_interesados')
 
     def __repr__(self):
         return f'<InteresadoExpediente exp={self.expediente_id} tipo={self.tipo_origen} entidad={self.entidad_id}>'

@@ -289,7 +289,7 @@ class DocumentoRequisito(db.Model):
 
     # Relaciones
     solicitud = db.relationship('Solicitud')
-    documento = db.relationship('Documento')
+    documento = db.relationship('Documento', backref='cubre_requisitos')
     reformado = db.relationship(
         'ReformadoProyecto',
         backref=db.backref('documentos_requisito_cubiertos', passive_deletes=True),

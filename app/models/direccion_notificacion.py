@@ -170,7 +170,9 @@ class DireccionNotificacion(db.Model):
     # === RELACIONES ===
     entidad = db.relationship('Entidad', back_populates='direcciones_notificacion')
     municipio = db.relationship('Municipio')
-    documento_autorizacion = db.relationship('Documento')
+    # `backref` para los usos de un documento (`services/usos_documento.py`, #881): la FK es
+    # SET NULL, así que sin él borrar el documento le quita la autorización a la dirección sin aviso.
+    documento_autorizacion = db.relationship('Documento', backref='autoriza_direcciones')
     
     def __repr__(self):
         roles = []
