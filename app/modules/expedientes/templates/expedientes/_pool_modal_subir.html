@@ -1,0 +1,78 @@
+{# Modal «Subir fichero» (multipart, ADR-032 §1/§4, #666) — un alta, así que sigue siendo modal
+   (ADR-053 §E: «editar, no crear»). Lógica en `static/js/pool_alta.js`. #}
+
+{# Opciones de tipo — plantilla para el JS del paso de metadatos #}
+<template id="tmpl-tipos-doc">
+  <option value="">— Tipo —</option>
+  {# Los tipos que exigen fecha administrativa llevan `data-fecha-obligatoria` y qué fecha es
+     (`data-ayuda-fecha`): lo lee `pool_alta.js` (#1036). #}
+  {% for t in tipos_doc %}
+  <option value="{{ t.id }}" data-codigo="{{ t.codigo }}"
+          {%- if t.codigo in tipos_fecha %} data-fecha-obligatoria="1" data-ayuda-fecha="{{ tipos_fecha[t.codigo] }}"{% endif %}>{{ t.nombre }}</option>
+  {% endfor %}
+</template>
+
+<div class="modal fade" id="modal-subir" tabindex="-1" aria-labelledby="modal-subir-label">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-subir-label">
+          <i class="fas fa-upload me-1"></i> Subir fichero al pool
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Paso 1: elegir ficheros -->
+        <div id="subir-paso-elegir">
+          <p class="text-secondary small">
+            Selecciona uno o varios ficheros de tu equipo. Se copian al pool del
+            expediente.
+          </p>
+          <input type="file" class="form-control" id="subir-input-ficheros" multiple>
+          <div id="subir-error-elegir" class="alert alert-danger d-none mt-2"></div>
+        </div>
+
+        <!-- Paso 2: Metadatos -->
+        <div id="subir-paso-metadatos" class="d-none">
+          <p class="text-secondary small mb-2" id="subir-meta-contador"></p>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Nombre</th>
+                  <th>Tamaño</th>
+                  <th style="min-width:180px">Tipo de documento</th>
+                  <th style="min-width:155px">Fecha adm.</th>
+                  <th class="text-center">Prioritario</th>
+                  <th style="min-width:190px">Reformado de proyecto</th>
+                </tr>
+              </thead>
+              <tbody id="subir-meta-tbody"></tbody>
+            </table>
+          </div>
+          <div id="subir-meta-error" class="alert alert-danger d-none"></div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        {# Paso 1 #}
+        <button type="button" class="btn btn-secondary" id="btn-subir-cancelar"
+                data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-subir-siguiente"
+                onclick="ir_a_metadatos_subida()" disabled>
+          Siguiente <i class="fas fa-arrow-right ms-1"></i>
+        </button>
+        {# Paso 2 — ocultos al inicio #}
+        <button type="button" class="btn btn-outline-secondary d-none" id="btn-subir-volver"
+                onclick="volver_a_elegir_subida()">
+          <i class="fas fa-arrow-left me-1"></i> Volver
+        </button>
+        <button type="button" class="btn btn-primary d-none" id="btn-subir-registrar"
+                onclick="subir_ficheros()">
+          <i class="fas fa-save me-1"></i> <span id="btn-subir-texto">Subir</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

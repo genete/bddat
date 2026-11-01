@@ -114,7 +114,7 @@ Fase 1 de #1044 (definición, sin código), con Carlos, el 01/11/2026. Va como *
 3. **Los detalles son iconos con tooltip, no etiquetas de texto.** Primero las marcas (`PROYECTO`, `REFORMADO` y `PRIORITARIO` en mayúsculas llenaban dos líneas más de una sola fila) y, el 01/11/2026, también el rol: los badges de «Consumido» y «Producido» no eran coherentes con el árbol ni con el detalle del seguimiento, y se leían peor que el icono. El rol usa **los mismos iconos que el árbol y el seguimiento** (`bi-box-arrow-in-down` consumido, `bi-box-arrow-up` producido), en gris neutro. **Todos los iconos de la fila llevan tooltip** (`title`) y `aria-label`, también el del fichero.
 4. **El asunto no va en la fila:** va en el `title` y en el texto de opción de los desplegables, que es donde distingue los duplicados (`oficio_separata.pdf` ×3).
 5. **Los cinco desplegables del pool se quedan como `<select>`** (justificante final, requisito del checklist, escrito de solicitud, documento resultado de la fase, documento del organismo), con un **texto de opción común**. No pasan a filas ricas.
-6. **Edición del documento: el principio queda fijado** —un único fragmento Jinja del formulario, con el inspector del pool y el modal grande como contenedores— y **el botón «Editar» en las filas de los demás sitios se difiere a después de #881**, que es quien mueve el formulario. #1044 implementa dos modos (vinculados y selector); el de edición llega con #881.
+6. **Edición del documento: el principio queda fijado** —un único fragmento Jinja del formulario, con el inspector del pool y el modal grande como contenedores— y **el botón «Editar» en las filas de los demás sitios se difiere a después de #881**, que es quien mueve el formulario. #1044 implementa dos modos (vinculados y selector); el de edición llega con #881. *Estado tras #881 (01/11/2026):* el fragmento Jinja existe y su contenedor es el inspector del pool ([anexo a §F](#anexo-a-f--el-pool-881)); el botón «Editar» de las filas del árbol de React **sigue sin hacer y fuera de #881**: lo decide Carlos al final del hilo, por la fluidez de trabajo.
 7. **Una sola lista de vinculados en edición.** La zona de datos y la Despensa dejan de enseñar los mismos documentos: queda la de la zona de datos, que en edición gana «quitar» y se alimenta del borrador (D15).
 
 **Confirmado por Carlos el 01/11/2026** (salió al redactar o al implementar, y él lo confirmó, punto por punto): la función única `documento_fila` y sus campos, el texto de opción dentro de la fila (`texto_opcion`), el subrol como segundo icono (avión de papel y clip), `text-secondary` en la línea de detalle, los modos vinculados y selector, el botón del modal como enlace, el documento recién subido arriba del pool y el autorrelleno solo en los tipos que exigen fecha. Cada uno está donde corresponde más abajo, sin la marca de *Interpretación*.
@@ -169,8 +169,32 @@ Fase 1 de #1044 (definición, sin código), con Carlos, el 01/11/2026. Va como *
 ### F — Listados: scroll infinito salvo excepciones (D5, D8, D16)
 
 - **La norma:** el listado normal es el de scroll infinito con inspector (reglas E1 a E4 del pre-ADR, §3: `lista_v2_base` con `ScrollInfinito` en modo selección y marco visual común; la fila abre el inspector con `?sel=`; el cuerpo son fragmentos Jinja de lectura y de edición; las rutas GET de detalle y edición redirigen a `?sel=`). Los que hoy se desvían se tratan en **un issue** (#1041) y se decide **uno a uno** si adoptan el estándar —incluida una base de listado con varias listas por página— y, si no, el motivo. Delegación Territorial es la única de las cinco que no usa scroll infinito.
-- **El pool** pasa a listado estándar con inspector, con las acciones desde el inspector (#881). El issue se queda como está, sin reformarlo ahora, con una mención a este ADR.
+- **El pool** pasa a listado estándar con inspector, con las acciones desde el inspector (#881). El issue se queda como está, sin reformarlo ahora, con una mención a este ADR. Implementado el 01/11/2026: ver el [anexo a §F](#anexo-a-f--el-pool-881).
 - **La cola de Mi trabajo** pasa a listado de scroll infinito, en Jinja por simplicidad, y su inspector, que ya es Jinja (`_inspector_cola.html`), se adapta al marco (#1039). Enmienda ADR-017, «Cómo implementar», punto 4: ya no es la isla `<Cola>`. *Interpretación:* lo que quede de la isla `mi-trabajo` (`SubirDocumento` y las dos pestañas de la viewbar) se resuelve al profundizar #1039.
+
+#### Anexo a §F — el pool (#881)
+
+Implementación de #881 (01/11/2026), con Carlos. Va como **decisión** lo que fijó él y como *Interpretación* lo que salió al implementarlo, hasta que lo confirme o lo fije otro issue.
+
+**Decidido por Carlos**
+
+1. **Todo uso bloquea el borrado.** Un documento al que apunta cualquier otra fila del sistema no se borra.
+2. **`_documento_es_referenciado` pasa a ser `bool(usos_documento(doc))`**, y la lista de usos se completa con las siete FK hacia `documentos` que no estaban: eran dieciséis y la guarda miraba nueve.
+3. **La edición masiva se mantiene**, sobre el modo de casillas del estándar (#612), que se generaliza con la opción `bulkParams` en lugar de dejarlo atado al filtro «sin asignar» de los expedientes.
+4. **El radar de huérfanos marca los documentos con destino declarado, no los excluye.** Huérfano sigue siendo «sin vínculo a tarea» (ADR-027 §2).
+5. **Se parte #1036:** la mitad del pool se arregla dentro de #881 y #1036 se cierra con ella (la de la Despensa se hizo en #1044).
+6. **El botón «Editar» en las filas del árbol de React no forma parte de #881.** Se decide al final del hilo: es lo que más preocupa a Carlos por la fluidez de trabajo.
+
+**Interpretación** (la fijó la implementación, sin confirmar por Carlos)
+
+- **El listado.** `GET /api/expedientes/<id>/documentos` (cursor por `id` descendente, `search`, `ext`, `tipo`, `prioridad`; `total` siempre) y la página `pool_documentos.html` sobre `lista_v2_base`: columnas Documento, Asunto, Tipo, Fecha adm., Ext. y **Usos** (el número y, en el tooltip, cuáles). El nombre y la extensión se calculan en SQL con la regla de `nombre_visible()`, que queda duplicada a propósito (filtrar en Python obligaba a traer todo el pool). Es otro contrato que `GET /api/expedientes/<id>/pool`, que se queda para la Despensa y los editores del árbol.
+- **Los usos** son un registro único (`services/usos_documento.py`) con una entrada por FK y un chequeo que al arrancar avisa si el modelo y el registro se desajustan (`app/checks/usos_documento.py`, mismo patrón que #587); el certificado que cita un documento por su id, que no es FK, se suma aparte. Se cargan por lotes: con 42 documentos, de 143 consultas a 31.
+- **El nombre del documento es el enlace** (abre el fichero) y el clic en él no abre el inspector. Es el tercer pintado de la pieza «enlace» de §E —junto al macro Jinja y `FilaDocumento.jsx`—, hecho en el JS de la fila del `ScrollInfinito`, que pinta cada fila desde el cliente. Lo mismo las marcas. `REGLAS_DESARROLLO.md` §«Documentos» dice que no se añaden pintados de documento nuevos: *aceptado por Carlos (01/11/2026) como excepción*, porque un `ScrollInfinito` pinta sus filas en el cliente.
+- **El inspector** (`_inspector_documento.html`): lectura con tarjeta de usos y las acciones «Sustituir» y «Borrar»; con usos, «Borrar» es un candado con el motivo. Edición con **un único fragmento** (`_editar_fragmento_documento.html`, `POST …/guardar`), que es el tercer modo de la fila de §E: el fragmento nace aquí y su contenedor es el inspector del pool. Cabe a 320 px sin desbordar (medido de 320 a 960 px de 20 en 20). Las dos altas (subir fichero, URL externa) y «Sustituir» siguen siendo modales: crear no es editar (§E).
+- **Una sola puerta de edición.** Las reglas de editar un documento (rectificar la URL, el sello de un certificado, la fecha obligatoria, el ancla del proyecto y el corte de un reformado) viven en `_aplicar_edicion_documento`, que comparten la ruta JSON (`…/editar`, la de la edición masiva) y la del formulario. El contrato del formulario es el de #832: lo que no viaja no se toca, la casilla solo cuenta con el centinela `_form_completo` y las marcas del proyecto solo con su marcador, que va dentro de un `<fieldset>` que se deshabilita entero.
+- **La mitad del pool de #1036**, en `pool_alta.js`: los tipos que exigen fecha (`TIPOS_FECHA_OBLIGATORIA`) la marcan, dicen qué fecha es y no dejan subir sin ella, y la fecha propuesta es la que devuelve `parsear_justificante` para ese tipo —la lectura para el justificante final, la puesta a disposición para el de disposición—, no siempre la puesta a disposición.
+- **El radar** pinta junto al tipo una marca «con destino» con el detalle en el tooltip, cambia el borrar de ese documento por un candado con el motivo y su inspector lista los usos («Con destino declarado, aún sin tarea»). Los casos reales en la BD sintética: el documento que abre un reformado y el escrito de una solicitud.
+- **Pendiente de decidir, sin código:** el botón «Editar» de las filas del árbol (ver la decisión 6 y el anexo a §E).
 
 ### G — Fuera de este ADR, y cómo se registra (D19)
 
@@ -201,7 +225,8 @@ Fase 1 de #1044 (definición, sin código), con Carlos, el 01/11/2026. Va como *
 
 - La forma exacta del puente del marco y de lo que declara cada fragmento (fase 1 de #1042).
 - La forma de un contrato general de campos (#1045).
-- ~~El contenedor de la edición del documento~~ (el principio, decidido en el [anexo a §E](#anexo-a-e--la-fila-común-de-documentos-1044); el fragmento nace en #881) y qué más comparten los dos renderizadores (clases CSS, otros).
+- ~~El contenedor de la edición del documento~~ (el principio, decidido en el [anexo a §E](#anexo-a-e--la-fila-común-de-documentos-1044); el fragmento nació en #881, [anexo a §F](#anexo-a-f--el-pool-881)) y qué más comparten los dos renderizadores (clases CSS, otros).
+- El botón «Editar» de las filas de documento del árbol de React: fuera de #881, a decidir (anexo a §E, decisión 6).
 - ~~El pool cargado una vez por vida de la isla, cómo se pinta `subrol`~~ (propuestos en el anexo a §E, como *Interpretación*) y si la cola conserva su cruz.
 - Las decisiones por página de los cinco listados (#1041), y el destino de `SubirDocumento` y la viewbar de la isla `mi-trabajo` (#1039).
 - ~~Qué bloques de lectura se quedan en edición en el árbol (fase 1 de #1043)~~: decidido, en el anexo a §C.

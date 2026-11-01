@@ -114,8 +114,12 @@ class OrganismoExpediente(db.Model):
     expediente = db.relationship('Expediente', backref='organismos')
     fase = db.relationship('Fase', foreign_keys=[fase_id], backref='organismos')
     organismo = db.relationship('Entidad', foreign_keys=[organismo_id])
-    documento = db.relationship('Documento', foreign_keys=[documento_id])
-    condicionados_doc = db.relationship('Documento', foreign_keys=[condicionados_doc_id])
+    # Con `backref` porque la guarda de borrado del pool y los usos de un documento se
+    # construyen solo con backrefs (`services/usos_documento.py`, #881).
+    documento = db.relationship('Documento', foreign_keys=[documento_id],
+                                backref='usado_por_organismos')
+    condicionados_doc = db.relationship('Documento', foreign_keys=[condicionados_doc_id],
+                                        backref='condicionado_de_organismos')
     direccion_notificacion = db.relationship('DireccionNotificacion', foreign_keys=[direccion_notificacion_id])
 
     def __repr__(self):

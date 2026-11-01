@@ -30,6 +30,15 @@ def test_pool_documentos_campos(usuario_supervisor, expediente_seed, app):
     assert 'puede_abrir' in doc
 
 
+def test_listado_pool_200(usuario_supervisor, expediente_seed):
+    """GET /api/expedientes/<id>/documentos → el contrato de ScrollInfinito (#881)."""
+    r = usuario_supervisor.get(f'/api/expedientes/{expediente_seed}/documentos?limit=5')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert set(data) == {'data', 'next_cursor', 'has_more', 'total'}
+    assert isinstance(data['data'], list)
+
+
 def test_pool_documentos_sin_acceso_403(usuario_admin, app):
     """GET /api/expedientes/99999999/pool → 404 (no existe)."""
     r = usuario_admin.get('/api/expedientes/99999999/pool')

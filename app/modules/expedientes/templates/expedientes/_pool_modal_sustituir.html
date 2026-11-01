@@ -1,0 +1,45 @@
+{# Modal «Sustituir fichero» (ADR-050 §F, #1007). Lo abre el botón «Sustituir fichero» del inspector
+   del documento (`_inspector_documento.html`) con `data-bs-toggle="modal"`, que le pasa el id y el
+   nombre del documento en su `data-*`. Lógica en `static/js/pool_acciones.js`. #}
+<div class="modal fade" id="modal-sustituir" tabindex="-1" aria-labelledby="modal-sustituir-label">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-sustituir-label">
+          <i class="fas fa-file-import me-1"></i> Sustituir fichero
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="sustituir-doc-id">
+        <p class="mb-2">Documento: <strong id="sustituir-nombre"></strong></p>
+        <p class="text-secondary small">
+          Para cuando se subió el fichero equivocado. El documento conserva sus datos y sus
+          vínculos; solo cambia el fichero, y su nombre pasa a ser el del fichero nuevo.
+          Queda anotado en la bitácora, con el motivo.
+        </p>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="sustituir-fichero">
+            Fichero nuevo <span class="text-danger">*</span>
+          </label>
+          <input type="file" class="form-control" id="sustituir-fichero">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="sustituir-motivo">
+            Motivo <span class="text-danger">*</span>
+          </label>
+          <textarea class="form-control" id="sustituir-motivo" rows="3" maxlength="500"
+                    placeholder="Por qué se sustituye el fichero"></textarea>
+        </div>
+        <div id="sustituir-error" class="alert alert-danger d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-sustituir"
+                onclick="enviar_sustitucion()" disabled>
+          <i class="fas fa-file-import me-1"></i> Sustituir
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

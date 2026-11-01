@@ -22,7 +22,6 @@
 | **Listado embebido** | Tabla dentro de una card V4 (ej: documentos en detalle de expediente, direcciones en detalle de entidad) |
 | **Tabla V2** | Tabla `lista-table` dentro de `card.tabla-bloque`, thead verde claro sticky, scroll infinito JS |
 | **Tabla BC** | Tabla `_tabla_hijos.html` dentro de `card.tabla-bloque`, thead verde claro (unificado con V2), sin sticky |
-| **Tabla Pool** | Tabla `#pool-tabla`, `table-layout: fixed`, thead sticky gris con `box-shadow inset` |
 | **`.tabla-bloque`** | Card contenedor de tabla (V2 y BC): bordes redondeados, sombra. Con `card-header` → `overflow:hidden` (esquinas limpias); con `lista-table` directa → bg verde claro (esquinas seamless + sticky intacto) |
 
 ---
@@ -71,7 +70,6 @@ A: app-container (grid header/main/footer)
 | **V2** (Listado) | A/B.1/B.2/C.1/C.2/D/B.3 | C.2 independiente | SÍ |
 | **V3-BC** (Tramitación) | A/B.1/B.2/C.1/C.2/B.3 | C.2 independiente | SÍ |
 | **V4** (Detalle/Edición) | A/B.1/B.2/C.1/B.3 | Simple (B.2 entera) | C.1 solo header |
-| **Pool** (variante V3-BC) | A/B.1/B.2/C.1/C.2/B.3 | C.2 independiente | SÍ |
 
 ---
 
@@ -450,7 +448,7 @@ Los mismos elementos HTML en las mismas posiciones. Solo cambia el atributo `rea
 {% endblock %}
 ```
 
-**`lista-cabecera` en V4:** se usa solo para el header de página (macro `page_header`), no hay C.2 — el scroll es del `<body>` entero. La mecánica C.1/C.2 con scroll independiente es exclusiva de V2, V3-BC y Pool.
+**`lista-cabecera` en V4:** se usa solo para el header de página (macro `page_header`), no hay C.2 — el scroll es del `<body>` entero. La mecánica C.1/C.2 con scroll independiente es exclusiva de V2 y V3-BC.
 
 **Macro `page_header`** — genera el bloque título + botones de forma homogénea entre todas las vistas:
 ```jinja2
@@ -629,28 +627,30 @@ Ejemplos: documentos en detalle de expediente, direcciones y autorizaciones en d
 
 ---
 
-## 📦 Vista Pool (variante V3-BC)
+## 📦 Vista Pool (V2, desde #881)
 
-El pool de documentos del expediente sigue la estructura V3-BC (C.1 + C.2) pero con
-particularidades propias.
+El pool de documentos del expediente es **un listado V2 estándar** (ADR-053 §F): extiende
+`lista_v2_base.html`, con `ScrollInfinito` en modo selección, `FiltrosListado` y el inspector. Hasta
+#881 era una variante propia (V3-BC con `#pool-tabla`, `table-layout: fixed` y la tabla entera servida
+desde el servidor); esa variante ya no existe y no hay nada que la sustituya aparte de V2.
 
-### Estructura
+### Qué lo distingue de otro listado V2
 
-- **C.1** — Card del expediente (metadatos) + fichas de entrada (subida/enlace)
-- **C.2** — Tabla pool (`#pool-tabla`)
+| Aspecto | El pool |
+|---------|---------|
+| Datos | `GET /api/expedientes/<id>/documentos` (cursor por `id`, `total` siempre); la fila es la fila común de documentos (ADR-053 §E) más `extension`, `n_usos` y `usos` |
+| Columnas | Documento, Asunto, Tipo, Fecha adm., Ext. y **Usos** (el número y, en el tooltip, qué usa el documento) |
+| Filtros | Texto (nombre o asunto), Ext., Tipo y Prioridad; los nombres de los `SelectorFiltro` son los parámetros de la API |
+| Inspector | `?sel=<id>`: lectura (`_inspector_documento.html`) y edición (`_editar_fragmento_documento.html`, un único formulario) |
+| Edición masiva | Interruptor en la cabecera (bloque `btn_nuevo`): activa el modo de casillas del estándar (`bulkCheckbox`, y `bulkParams` para no forzar el filtro «sin asignar» de los expedientes) y un panel (`panel_masivo`) |
+| Altas | Dos modales (subir fichero, URL externa) y «Sustituir», porque crear no es editar; su JS está en `pool_alta.js` y `pool_acciones.js` |
+| Nombre de la fila | Es el enlace que abre el fichero y lo pinta el JS de la fila; el clic en él no abre el inspector |
 
-### Particularidades de la tabla Pool
-
-| Aspecto | Pool | V2 / BC |
-|---------|------|---------|
-| Layout | `table-layout: fixed` | Auto |
-| Thead | Sticky, gris claro, `box-shadow inset` inferior | Corporativo (V2) o `table-light` (BC) |
-| Responsive | 5 breakpoints con columnas ocultas | Media queries simples (V2) o ninguno (BC) |
-| Selección | Checkbox por fila | No |
-| Scroll | C.2 independiente | Igual |
-
-### Archivo clave
-- `app/modules/expedientes/templates/expedientes/pool_documentos.html`
+### Archivos clave
+- `app/modules/expedientes/templates/expedientes/pool_documentos.html` (la página)
+- `app/modules/expedientes/templates/expedientes/_inspector_documento.html` y `_editar_fragmento_documento.html`
+- `app/services/listado_pool.py` (la consulta paginada) y `app/services/usos_documento.py` (los usos)
+- `app/static/js/pool_alta.js`, `pool_acciones.js` y `pool_edicion.js`
 
 ---
 
@@ -833,7 +833,7 @@ Formato de opciones: `{v: String(id), t: texto}`.
 ## 📝 Checklist Implementación Vista
 
 ### Antes de Empezar
-- [ ] ¿Qué tipo de vista? (V0 Login, V1 Dashboard, V2 Listado, V3-BC Tramitación, V4 Detalle/Edición, Pool)
+- [ ] ¿Qué tipo de vista? (V0 Login, V1 Dashboard, V2 Listado, V3-BC Tramitación, V4 Detalle/Edición)
 - [ ] ¿Necesita C.1/C.2? (solo si lista larga >100 items)
 - [ ] ¿Colores corporativos? (verde #087021 para identidad)
 - [ ] ¿Responsive? (definir breakpoints y columnas a ocultar)
@@ -868,7 +868,7 @@ Formato de opciones: `{v: String(id), t: texto}`.
 - **V2:** Sin CSS específico (usa solo base), `lista_v2_base.html`, `listado_v2.html`, `v2-scroll-infinito.js`
 - **V3-BC:** `v3-breadcrumbs.css`, `tramitacion_bc*.html`, `_tabla_hijos.html`
 - **V4:** Sin CSS específico (clases en `v2-components.css`), `detalle.html` unificado, macro `macros/page_header.html`
-- **Pool:** Inline en `pool_documentos.html` (variante V3-BC)
+- **Pool (V2 desde #881):** `pool_documentos.html` (extiende `lista_v2_base.html`), `listado_pool.py` y los JS `pool_alta.js`, `pool_acciones.js` y `pool_edicion.js`
 
 ### Bootstrap 5
 - [Accordion](https://getbootstrap.com/docs/5.3/components/accordion/)
@@ -937,4 +937,5 @@ Colores y layouts del manual de identidad corporativa. Difieren de las variables
 **Cambios v2.0:** Eliminada V3 acordeón/tabs (legacy), documentada V3-BC, listados embebidos y Pool.
 **Cambios v2.1 (#202):** Unificado thead V2/BC (verde claro `#c4ddca`). Añadido `.tabla-bloque` como contenedor card de tabla. Thead BC sin sticky (listas cortas). Responsive mobile en `_tabla_hijos.html` (clase `.tabla-hijos`). Estructura C.2 actualizada en V2 y V3-BC.
 **Cambios v2.2 (#251):** Estructura real de V4 documentada: `lista-cabecera` para header vía macro `page_header`, wrapper `v4-content`, form envuelve todo el contenido. Lista completa de archivos legacy V3. Comparativa corregida (V4 usa C.1 solo para header).
+**Cambios (#881, 01/11/2026):** el Pool deja de ser una variante propia de V3-BC y pasa a ser un listado V2 estándar con inspector; se retiran «Tabla Pool» del glosario, la fila del Pool de la tabla de zonas y la sección de particularidades, y se sustituye por «Vista Pool (V2, desde #881)».
 **Referencia estudio:** `docs/ANALISIS_HOMOGENEIZACION_UI.md`

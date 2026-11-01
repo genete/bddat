@@ -64,6 +64,10 @@ def create_app(config_name='development'):
         # inversa de #347 (#587)
         from app.checks.registro_variables import validar_registro_variables
         validar_registro_variables()
+        # Cada FK hacia documentos tiene su uso registrado y bien cableado (#881): sin él, el
+        # documento que referencia saldría «libre» y se podría borrar, sin ningún error.
+        from app.checks.usos_documento import validar_usos_documento
+        validar_usos_documento()
 
     # Configuración de Flask-Login
     login_manager.login_view = 'auth.login'
@@ -92,7 +96,7 @@ def create_app(config_name='development'):
     app.register_blueprint(alta_expediente.bp)  # Issue #67, formulario único desde #428
 
     # Registrar blueprints - APIs
-    from app.routes import api_expedientes, api_municipios, api_entidades, api_proyectos, api_escritos, api_seguimiento, api_bitacora, api_search, api_usuarios, api_plantillas, api_administrativo, api_requisitos_documentales, api_catalogo_requerimientos, api_items_tecnicos, api_tablas_maestras, api_tipos_documentos, api_catalogo_plazos, api_efectos_plazo, api_reglas_motor, api_normas_variables, api_huerfanos, api_firmantes_portafirmas, api_mensajes_internos
+    from app.routes import api_expedientes, api_municipios, api_entidades, api_proyectos, api_escritos, api_seguimiento, api_bitacora, api_search, api_usuarios, api_plantillas, api_administrativo, api_requisitos_documentales, api_catalogo_requerimientos, api_items_tecnicos, api_tablas_maestras, api_tipos_documentos, api_catalogo_plazos, api_efectos_plazo, api_reglas_motor, api_normas_variables, api_huerfanos, api_firmantes_portafirmas, api_mensajes_internos, api_pool_documentos
 
     app.register_blueprint(api_expedientes.api_bp)                  # usa 'api_bp'
     app.register_blueprint(api_municipios.bp)                       # usa 'bp'
@@ -117,6 +121,7 @@ def create_app(config_name='development'):
     app.register_blueprint(api_huerfanos.api_huerfanos_bp)                              # Issue #630
     app.register_blueprint(api_firmantes_portafirmas.api_firmantes_portafirmas_bp)      # Issue #728
     app.register_blueprint(api_mensajes_internos.api_mensajes_internos_bp)              # Issue #28
+    app.register_blueprint(api_pool_documentos.api_pool_documentos_bp)                  # Issue #881
 
     # Registrar módulos (app/modules/) — Fase 4: auto-discovery
     from app.modules import ModuleRegistry

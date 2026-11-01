@@ -64,8 +64,11 @@
  *     - bool     : icono check si true, vacío si false
  *     - acciones : botón "Ver" que navega a detailUrl(id); omitido en modo selección
  *
- * VERSIÓN: 1.7
- * FECHA: 2026-07-15
+ * VERSIÓN: 1.8
+ * FECHA: 2026-11-01
+ * CAMBIOS v1.8: opción `bulkParams` — los filtros que fuerza setBulkMode() mientras está activo. Hasta
+ *               ahora estaba escrito a fuego `responsable: 'sin_asignar'`, que es de la asignación de
+ *               expedientes; el valor por defecto lo conserva y el pool de documentos (#881) pasa `{}`.
  * CAMBIOS v1.7: setFiltroExterno(name, value, label) — fija/quita un filtro que no es
  *               un <select> dentro de .filters (p. ej. SelectorBusqueda de municipio,
  *               que llamaba a un método que no existía y el filtro no aplicaba nunca, #642).
@@ -105,6 +108,9 @@ class ScrollInfinito {
      *                                         { fragmentUrl: id => '...', title: item => '...' }
      * @param {boolean}  options.bulkCheckbox - Habilita el modo checkbox masivo (#612). Opt-in: sin esta
      *                                         opción, cero cambio de comportamiento. Ver setBulkMode().
+     * @param {Object}   options.bulkParams  - Filtros que fuerza el modo masivo mientras está activo.
+     *                                         Default: { responsable: 'sin_asignar' } (asignación de
+     *                                         expedientes, #612). `{}` si el modo masivo no filtra.
      */
     constructor(options = {}) {
         // Configuración base
@@ -125,6 +131,9 @@ class ScrollInfinito {
         // Modo checkbox masivo — asignación en lote (v1.5 / #612). Capacidad opt-in;
         // el modo en sí se enciende/apaga en runtime con setBulkMode().
         this.bulkCheckbox     = options.bulkCheckbox || false;
+        // Filtros que el modo masivo fuerza mientras está activo (v1.8). Por defecto, el de la
+        // asignación de expedientes (#612); un listado cuyo modo masivo no filtra pasa `{}`.
+        this.bulkParams       = options.bulkParams || { responsable: 'sin_asignar' };
         this._bulkModeActive  = false;
         this._bulkSelected    = new Set();
 
@@ -450,9 +459,9 @@ class ScrollInfinito {
 
     /**
      * Enciende/apaga el modo checkbox masivo en runtime. Requiere bulkCheckbox:true
-     * en el constructor. Al activar, fuerza el filtro a expedientes sin asignar y
-     * recarga desde cero (misma entrada siempre limpia — no hay selección previa que
-     * conservar). Al desactivar, retira ese filtro y recarga.
+     * en el constructor. Al activar, fuerza los filtros de `bulkParams` (por defecto,
+     * expedientes sin asignar) y recarga desde cero (misma entrada siempre limpia — no hay
+     * selección previa que conservar). Al desactivar, retira esos filtros y recarga.
      */
     setBulkMode(active) {
         if (!this.bulkCheckbox) return;
@@ -480,9 +489,10 @@ class ScrollInfinito {
         }
 
         if (active) {
-            this.fixedParams = { ...this.fixedParams, responsable: 'sin_asignar' };
+            this.fixedParams = { ...this.fixedParams, ...this.bulkParams };
         } else {
-            const { responsable, ...rest } = this.fixedParams;
+            const rest = { ...this.fixedParams };
+            Object.keys(this.bulkParams).forEach(k => delete rest[k]);
             this.fixedParams = rest;
         }
         this.reload();

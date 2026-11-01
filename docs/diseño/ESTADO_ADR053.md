@@ -32,7 +32,7 @@ al hub, el código muerto y la documentación obsoleta.
 | 2 | **#1043** | **Inspector del árbol: lectura ≈ edición** (D15) | Frontend | **Hecho** el 18/10/2026 (PR #1061, mergeado por Carlos; issue cerrado), en cinco fases. Era la siguiente pieza, confirmada por Carlos el 13/10/2026. **Los nodos y las superficies de trabajo están migrados** (expediente, solicitud, versión, fase, organismo, trámite, tarea genérica, ANALIZAR simple y extendido, ELABORAR y NOTIFICAR) y la tabla definitiva está en el anexo a ADR-053 §C: las cinco fases hechas: layout medido en cada nodo a 320 px sin desborde y patrón documentado en `GUIA_REACT_ISLAS.md`. Los hallazgos, en issues aparte (#1058 a #1060 y #1062 a #1071; dos, comentados en #1044). Falta, sin comprobar, el scroll horizontal con barras superpuestas (#1070) |
 | 3 | **#1041** | **Listados fuera del estándar** (D16): un issue y decisión una a una de cinco páginas —tablas maestras, normas y variables, seguimiento y huérfanos, configuración del motor, Delegación Territorial—: adoptan el estándar (incluida una base con varias listas por página) o se justifica el motivo | Frontend | Abierto (11/10/2026); las decisiones por página, sin tomar. Independiente del marco. Absorbió #755 y #644 (cerrados); la causa raíz de #644 es su primera tarea |
 | 4 | **#1039** | Cola de Mi trabajo al listado estándar Jinja (D8). Su inspector se adapta al marco | Frontend | Abierto, sin profundizar. El listado puede ir antes que el marco; el inspector, después (*propuesta*) |
-| 5 | **#881** | Listado del pool al listado estándar con inspector (D5); edición del documento con un único sitio (D17) | Frontend | Abierto, **sin reescribir** (D5): cuando haya ADR se le añade una mención. Después del marco (*propuesta*) |
+| 5 | **#881** | Listado del pool al listado estándar con inspector (D5); edición del documento con un único sitio (D17) | Frontend + backend | **Implementado el 01/11/2026** en la rama `feature/issue-881-listado-pool-documentos`, sin PR: el pool es un listado estándar con columna de usos y su inspector (lectura, edición y borrado), la edición masiva sigue, el radar de huérfanos marca los documentos con destino y la mitad del pool de #1036 (cerrado) va dentro. Las decisiones de Carlos y las *Interpretación*, en el [anexo a ADR-053 §F](../decisiones/ADR-053-interfaz-inspector-listados-y-documentos.md#anexo-a-f--el-pool-881). Falta el PR de cierre y decidir el botón «Editar» del árbol de React (hueco, abajo) |
 | 6 | **#1044** | **Mini-listados de documentos** (D6, D13, D14): fila común con tres modos (vinculados, selector, edición); macro Jinja y componente React; estudio caso a caso de los sitios de §6.12, incluido pintar `subrol` | Frontend + backend (contrato del dato) | Abierto (11/10/2026), en cinco fases. **Las cinco, hechas el 01/11/2026** en la rama `feature/issue-1044-mini-listados-documentos`, sin PR: la definición está en el [anexo a ADR-053 §E](../decisiones/ADR-053-interfaz-inspector-listados-y-documentos.md#anexo-a-e--la-fila-común-de-documentos-1044), con sus *Interpretación* sin confirmar por Carlos. Falta el PR de cierre |
 | 7 | **#1045** | **Estudio de la forma del contrato** editor ↔ poseedor del dato (D13, §8.16) | Estudio | Abierto (11/10/2026), sin profundizar. Sin urgencia; puede acabar en «no se estandariza» |
 | 8 | **#1046** | **Huérfano: «Vincular aquí»** va en un `<script>` en línea dentro de un fragmento, que el overlay no ejecuta (§7.3, §8.8) | Frontend | Abierto (11/10/2026), sin profundizar. Fallo de código por lectura, sin reproducir: reproducir antes de arreglar |
@@ -66,7 +66,16 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 - ~~**Dónde se aloja la edición del documento:** el inspector del pool o, desde otros sitios, el modal grande.
   Depende del marco y de que el formulario de edición del pool quepa en el inspector (§8.10, PRE-ADR §10).~~
   El principio, decidido el 01/11 (anexo a ADR-053 §E): un fragmento Jinja, dos contenedores; nace en #881 y el
-  botón «Editar» de las demás filas llega después. Queda por ver que el formulario quepa en el inspector.
+  botón «Editar» de las demás filas llega después. El formulario **cabe** en el inspector (medido en #881 de 320 a
+  960 px, sin `data-min-width`); queda el botón de las demás filas, en el hueco siguiente.
+- **El botón «Editar» en las filas de documento del árbol de React.** Fuera de #881, que dejó el fragmento y el
+  inspector del pool. Carlos (01/11/2026): es el punto que más le preocupa por fluidez de trabajo, y se decide al
+  final del hilo de #881. Los tres sitios que lo mencionan —la decisión 6 del anexo a ADR-053 §E, este documento y el
+  comentario de `FilaDocumento.jsx`— dicen lo mismo: «fuera de #881, a decidir».
+- **El nombre y las marcas de la fila del pool se pintan en el JS del listado** (`pool_documentos.html`: `_celdaNombre`
+  y `ICONOS_MARCA`), un tercer pintado junto al macro Jinja y `FilaDocumento.jsx`. `REGLAS_DESARROLLO.md` §«Documentos»
+  dice que no se añaden pintados de documento nuevos: **Carlos lo acepta como excepción** (01/11/2026), porque un
+  `ScrollInfinito` pinta sus filas en el cliente. Anotado en el anexo a ADR-053 §F.
 - ~~**#755 frente al issue de D16**~~ — resuelto el 11/10: #1041 absorbió #755 y #644 (los dos cerrados), y
   #281 (Plantillas y Usuarios a listado V2, con la premisa desfasada) se cerró como hecho.
 
@@ -77,7 +86,7 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 | Pieza | Cruce |
 |---|---|
 | **#929, zona A** | Independiente del marco. La decisión 1 (atajo de subida por tipo en el editor) se resolvió en «no» (PRE-ADR D1); `ESTADO_ADR049` lo tenía como «sin tomar» y se corrige el 11/10 |
-| **#1036** (fecha en la subida) | Vive en `pool_documentos.html`, que #881 reescribe. *Decidido por Carlos el 01/11/2026:* se parte; la mitad del pool se arregla dentro de #881 y la de la Despensa (`SubidaInline`), en la fase 4 de #1044, junto al recorte de `subirDocumentoDespensa` (**hecha el 01/11/2026**; queda la del pool). Con la decisión 1 en «no», no aplica la regla de fecha por tipo en el editor |
+| **#1036** (fecha en la subida) | Vive en `pool_documentos.html`, que #881 reescribe. *Decidido por Carlos el 01/11/2026:* se parte; la mitad del pool se arregla dentro de #881 y la de la Despensa (`SubidaInline`), en la fase 4 de #1044, junto al recorte de `subirDocumentoDespensa` (**hecha el 01/11/2026**). **Las dos mitades, hechas el 01/11/2026 y #1036 cerrado:** la del pool está en `pool_alta.js` y, en la edición, en el formulario del inspector (el mismo asterisco y la misma ayuda). Con la decisión 1 en «no», no aplica la regla de fecha por tipo en el editor |
 | **#1037** (marcar y aplicar el anuncio del edicto) | **Hecho** (PR #1082, 30/10/2026). Sin choque con el marco. La marca va en el borrador del inspector y se guarda con el «Guardar» del marco; las casillas son un control propio de la tarjeta (`casillas` en el esquema editable), no un selector de documentos (D14). Sin superficie de trámite por código en el registro de editores: dos tarjetas y una acción en la entrada `TRAMITE`, que el dato decide si salen |
 | **#1038** (representante y sede de la solicitud) | **Hecho** (PR #1081, 23/10/2026). Tocaba el editor de la solicitud del árbol: la tarjeta «Solicitante» lee y edita representante y sede con el mismo texto (D15). El contrato del select quedó en la guía y solo lo cumple `ControlCampo` (#1080 alinea el resto) |
 | **Zona E de #929** (sin issue) | Tres de sus ocho puntos tocan lo decidido o lo pendiente: inspector en lectura (D15), Mi trabajo (D8) y radar de huérfanos (fila provisional de Seguimiento y huérfanos). *Propuesta:* no abrirla antes del marco ni de la Cola |
@@ -86,7 +95,7 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 
 | Pieza | Cruce |
 |---|---|
-| **#1012** (papelera, fase 7) | «Sigue en los listados, marcado; acción “sacar de la papelera”»: consume el listado del pool (D5) y la guarda `_documento_es_referenciado`, que #881 quiere convertir en lista de usos. *Propuesta:* #881 antes o junto a #1012 |
+| **#1012** (papelera, fase 7) | «Sigue en los listados, marcado; acción “sacar de la papelera”»: consume el listado del pool (D5) y la guarda `_documento_es_referenciado`, que #881 **ha convertido** en lista de usos (`services/usos_documento.py`, dieciséis FK; el borrado se bloquea con cualquier uso). #881 está hecho el 01/11/2026 |
 | **#1008** (fase 2b) | El sitio del botón «Exportar expediente» no está fijado: cae en el pool o en el inspector del expediente, ambos afectados por D5 y el marco. La señal junto a la bombilla de `base_app.html` es del shell, fuera del inspector: sin choque |
 | **#1033** (aportar desde otro expediente, aparcado) | Su «listado plano de documentos de todos los expedientes» es el modo «selector» de D14 en un listado estándar. Cuando se retome, sobre el estándar y la fila común |
 | **#1009** (fase 4) | Retira el explorador de plantillas y sube plantillas desde el navegador: toca el inspector de Plantillas, hoy parcial frente al estándar. Alinear con el marco |
@@ -261,3 +270,20 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   que exigen fecha. Siguen como *Interpretación*, sin confirmar: las dos piezas (enlace y fila), el pool cargado una
   vez por vida de la isla, el orden de truncado, los iconos concretos de las marcas, la medida y parte de la tabla
   «caso a caso». Abierto el PR de cierre, #1083.
+- **01/11/2026** — **#881 implementado** (rama `feature/issue-881-listado-pool-documentos`, sin PR; con la mitad del
+  pool de #1036, que se cierra). Decisiones de Carlos al presentar el análisis: todo uso bloquea el borrado;
+  `_documento_es_referenciado` pasa a `bool(usos_documento(doc))`, con las siete FK que faltaban (dieciséis); la
+  edición masiva se mantiene y generaliza el modo de casillas de `ScrollInfinito` con `bulkParams` (v1.8); y el radar
+  de huérfanos marca los documentos con destino declarado, dentro de #881, en vez de excluirlos. En seis fases:
+  1) registro único de usos, con un chequeo de arranque (`app/checks/usos_documento.py`); 2) `GET
+  /api/expedientes/<id>/documentos`; 3) la página como listado estándar, con la mitad del pool de #1036 (la fecha
+  propuesta es la del tipo y la obligatoria no se puede dejar en blanco); 4) el inspector del documento —lectura,
+  edición con un único fragmento y borrado— y la edición masiva; 5) el radar; 6) la documentación. Midiendo: el N+1 de
+  `_documento_es_referenciado` baja de 143 consultas a 31 con 42 documentos; el formulario de edición cabe a 320 px sin
+  desbordar; `pool_documentos.html` pasa de 1.633 a 339 líneas, pero el total de las piezas (la plantilla, los tres
+  modales, el inspector, el formulario y los tres JS) es parecido, 1.603: el cambio es que deja de ser un monolito, no
+  que haya menos código. Ningún assert de un test existente cambia; los tests nuevos (`test_881_pool_guardar_documento`) cubren lo
+  que sí puede romperse sin ruido: guardar sin tocar nada, el contrato 832 del formulario y el alcance por expediente
+  de las rutas. *Interpretación:* todo lo demás del [anexo a ADR-053 §F](../decisiones/ADR-053-interfaz-inspector-listados-y-documentos.md#anexo-a-f--el-pool-881).
+  Queda abierto el botón «Editar» de las filas del árbol de React, que Carlos decide al final del hilo (hueco, arriba), y
+  el PR de cierre.

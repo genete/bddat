@@ -649,7 +649,9 @@ abre el documento.
   listener delegado de `inspector-overlay.js`, que existe dentro de un inspector. Es `.fila-doc__enlace` y no
   `.btn`: el tema pone el texto de un `.btn` en mayúsculas.
 - **Solo el modo «vinculados», de lectura.** El modo selector y la acción de «quitar» están en el componente React,
-  que es el único sitio que hoy los necesita. El tercer modo de ADR-053 §E (editar el documento) llega con #881.
+  que es el único sitio que hoy los necesita. El tercer modo de ADR-053 §E (editar el documento) no es un modo de la
+  fila: es el fragmento `_editar_fragmento_documento.html` del inspector del pool (#881). Un «Editar» en las filas de
+  los demás sitios, fuera de #881, está por decidir (ADR-053, anexo a §E, decisión 6).
 - Una propiedad nueva de la fila se calcula en `documento_fila` y se pinta en el macro **y** en `FilaDocumento.jsx`,
   con su tooltip: si solo cambia uno, los dos inspectores dejan de ser iguales.
 

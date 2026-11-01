@@ -25,6 +25,7 @@ from app.models.documentos_tarea import DocumentoTarea
 from app.models.tipos_expedientes import TipoExpediente
 from app.models.solicitudes import Solicitud
 from app.services.huerfanos import tareas_candidatas
+from app.services.usos_documento import usos_documento
 from app.services.usuarios import usuarios_tramitadores
 from app.utils.permisos import verificar_acceso_expediente
 from app.utils.metadata import cargar_metadata
@@ -107,4 +108,6 @@ def huerfano_fragmento(documento_id):
         documento=doc,
         expediente=expediente,
         candidatas=tareas_candidatas(doc),
+        # Lo que ya lo referencia aunque ninguna tarea lo consuma (#881): destino declarado.
+        usos=usos_documento(doc),
     )

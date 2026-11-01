@@ -51,7 +51,10 @@ from app.services.ingesta_pool import (
     rectificar_url_externa,
 )
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
-from app.services.detalle_nodo import documento_fila, info_apertura_documento
+from app.services.detalle_nodo import documento_fila, opciones_fila_documento
+from app.services.fechas import TIPOS_FECHA_OBLIGATORIA, mensaje_fecha_obligatoria
+from app.services.listado_pool import extension_de, extensiones_del_pool
+from app.services.usos_documento import opciones_usos_documento, usos_documento
 from app.services.parser_justificante_notifica import parsear_justificante_notifica
 from app.services.notificaciones import fecha_sugerida
 from app.services.assembler import build_sujeto
@@ -487,61 +490,14 @@ _TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR', 'ESPERAR_
 
 def _documento_es_referenciado(doc):
     """
-    True si el documento tiene referencias activas que impiden su borrado.
+    True si algo usa el documento y, por tanto, no se borra: «si algo lo usa, no se borra».
 
-    Usa únicamente backrefs SQLAlchemy — NO hardcodear SQL directo.
-    Si en el futuro se añade una nueva tabla con FK a documentos.id:
-      1. Añadir el backref en el modelo correspondiente.
-      2. Añadir un check aquí.
-
-    Backrefs consultados:
-      doc.reformado_proyecto           → ReformadoProyecto.documento_id  (uselist=False)
-      doc.anclado_como_proyecto_principal → Proyecto.documento_principal_id
-      doc.vinculos_tarea               → DocumentoTarea.documento_id     (lista, con rol)
-      doc.notificacion                 → Notificacion.documento_id       (uselist=False, ADR-034)
-      doc.anclado_en_solicitud         → Solicitud.documento_solicitud_id
-      doc.anclado_en_fin_instruccion   → Solicitud.documento_fin_instruccion_id
-      doc.anclado_en_cierre            → Solicitud.documento_cierre_id
-      doc.fases_resultado              → Fase.documento_resultado_id     (lista, #947)
-      doc.certificado                  → Certificado.documento_id        (uselist=False, #947)
-
-    `doc.notificacion` (#738 punto 2): sin este check, un justificante que ya
-    perdió su vínculo `DocumentoTarea` (desvinculado, ver punto 1) parece libre
-    aunque la fila `Notificacion` siga viva apuntando a él — y esa fila tiene
-    `ondelete='CASCADE'`, así que borrar el documento se lleva por delante toda
-    la evidencia de la notificación (canal, resultado, fecha).
-
-    Las tres anclas de solicitud (#838): la guarda del pool es «si algo lo usa, no
-    se borra», y a estos tres los usa la solicitud —no una tarea— a través de una FK
-    propia (ADR-041 §D bis, ADR-043 §D). Faltaban desde que se creó cada una, así
-    que el pool los daba por libres: la FK es `NO ACTION` y el borrado moría en un
-    IntegrityError con traza, en vez de decir quién lo estaba usando. El caso que lo
-    destapa es el CERT_FIN_INSTRUCCION, que además no lo consume ninguna tarea
-    mientras la fase que resuelve no exista — con lo que ninguna de las tres
-    referencias anteriores lo veía.
-
-    Las dos últimas (#947), el mismo agujero por otras dos FK sin `ON DELETE`: el
-    documento de un certificado emitido (`certificados.documento_id`) no cuelga de
-    ninguna tarea —el de cumplimiento de la fase, por diseño—, y el que cierra una
-    fase (`fases.documento_resultado_id`) puede no colgar de ninguna si se eligió
-    así al cerrarla. En los dos casos el pool los daba por libres y el borrado
-    moría en un IntegrityError con un 500.
+    Es `bool(usos_documento(doc))`: qué cuenta como uso, y la historia de por qué faltaban
+    (#738, #838, #947), está en `app/services/usos_documento.py`, que registra una entrada por
+    cada FK hacia `documentos.id` (#881). Si se añade una tabla con FK a documentos, se añade
+    allí; la comprobación de arranque (`app/checks/usos_documento.py`) avisa si se olvida.
     """
-    if doc.reformado_proyecto:
-        return True
-    if doc.anclado_como_proyecto_principal:
-        return True
-    if doc.vinculos_tarea:
-        return True
-    if doc.notificacion:
-        return True
-    if doc.anclado_en_solicitud or doc.anclado_en_fin_instruccion or doc.anclado_en_cierre:
-        return True
-    if doc.fases_resultado:
-        return True
-    if sellos.es_certificado_emitido(doc):
-        return True
-    return False
+    return bool(usos_documento(doc))
 
 
 # Qué decirle a quien intenta borrar del pool un documento que ancla una solicitud.
@@ -618,6 +574,21 @@ def _motivo_ancla(doc):
     return None
 
 
+def _motivo_por_usos(usos, maximo=3):
+    """Por qué no se borra un documento que `_motivo_ancla` no sabe explicar: lo que lo usa.
+
+    `_motivo_ancla` cubre los usos con un gesto propio que los suelta (deshacer el
+    certificado, reabrir la fase…); el resto —una tarea que lo consume, una notificación, un
+    interesado— no tiene gesto único, y antes se resumían en «referenciado en tramitación»,
+    que no decía qué lo usaba. Con más de `maximo`, se dice cuántos quedan.
+    """
+    textos = [uso['texto'] for uso in usos[:maximo]]
+    resto = len(usos) - len(textos)
+    if resto > 0:
+        textos.append(f'y {resto} más')
+    return 'Este documento no puede eliminarse mientras esté en uso: ' + '; '.join(textos) + '.'
+
+
 @bp.route('/<int:id>/documentos')
 @login_required
 def pool_documentos(id):
@@ -627,50 +598,66 @@ def pool_documentos(id):
     if resultado:
         return resultado
 
-    documentos_raw = Documento.query.filter_by(
-        expediente_id=id
-    ).order_by(Documento.id.desc()).all()
-
-    # El único corte reversible es el último (ADR-044 §C), y se calcula aquí una
-    # vez: la interfaz necesita saberlo para dejar desmarcar o explicar por qué no.
-    corte_reversible = ultimo_reformado(id)
-    # Y qué se le pregunta a un DOC_PROYECTO que entre ahora (§C): mientras el
+    # Qué se le pregunta a un DOC_PROYECTO que entre ahora (ADR-044 §C): mientras el
     # proyecto no tenga principal anclado, la pregunta es si lo es.
     rama_ingesta = rama_de_la_ingesta(expediente)
 
-    docs_lista = []
-    for doc in documentos_raw:
-        nombre = doc.nombre_visible()
-        # La extensión sale del nombre, salvo en los bddat://: su nombre es el del
-        # tipo («Informe n.º 2») y lo que haya tras el último punto no es una extensión.
-        partes = nombre.rsplit('.', 1)
-        extension = ('' if (doc.url or '').startswith('bddat://')
-                     else partes[1].lower() if len(partes) == 2 and partes[1] else '')
-        es_url_externa = (doc.url or '').startswith(('http://', 'https://'))
-        corte = doc.reformado_proyecto
-        docs_lista.append({
-            'doc':             doc,
-            'nombre_display':  nombre,
-            'extension':       extension,
-            'es_url_externa':  es_url_externa,
-            'puede_sustituir': tiene_contenido_propio(doc),
-            'es_referenciado': _documento_es_referenciado(doc),
-            'apertura':        info_apertura_documento(id, doc, estricto=False),
-            'reformado':       corte,
-            'reformado_ultimo': (corte is not None and corte_reversible is not None
-                                 and corte.id == corte_reversible.id),
-            'es_principal':    bool(doc.anclado_como_proyecto_principal),
-        })
-
     tipos_doc = TipoDocumento.query.order_by(TipoDocumento.nombre).all()
 
+    # Qué tipos exigen fecha administrativa y qué fecha es cada una (#1036): la misma lista que
+    # valida el servidor al guardar el documento. Las altas la marcan como obligatoria y la explican,
+    # en vez de dejar que el usuario lo descubra con el 422.
+    tipos_fecha = {codigo: mensaje_fecha_obligatoria(codigo) for codigo in TIPOS_FECHA_OBLIGATORIA}
+
+    # La página es un listado estándar (ADR-053 §F, #881): solo el armazón. Las filas llegan
+    # por `GET /api/expedientes/<id>/documentos` (`services/listado_pool.py`) y el detalle,
+    # por el inspector (`pool_documento_fragmento`).
     return render_template(
         'expedientes/pool_documentos.html',
         expediente=expediente,
-        docs_lista=docs_lista,
         tipos_doc=tipos_doc,
+        tipos_fecha=tipos_fecha,
+        puede_editar=tiene_permiso('editar_expediente'),
+        extensiones=extensiones_del_pool(expediente.id),
         rama_ingesta=rama_ingesta,
         rama_principal=RAMA_PRINCIPAL,
+    )
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/fragmento')
+@login_required
+def pool_documento_fragmento(id, doc_id):
+    """Fragmento de lectura del inspector del pool (ADR-023, ADR-053 §F, #881).
+
+    El documento se busca por su id **y** por el expediente de la ruta: uno de otro
+    expediente da 404 y no se sirve bajo una URL que no es la suya. Las acciones de
+    escritura (sustituir, borrar) solo se pintan a quien puede editar; las rutas las
+    exigen igualmente.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    if verificar_acceso_expediente(expediente, 'ver'):
+        return '', 403
+
+    doc = (
+        Documento.query.filter_by(id=doc_id, expediente_id=id)
+        .options(*opciones_fila_documento(), *opciones_usos_documento())
+        .first_or_404()
+    )
+    usos = usos_documento(doc)
+    # Por qué no se borra: el gesto que lo suelta si lo hay (`_motivo_ancla`) y, si no, lo que lo usa.
+    motivo_bloqueo = (_motivo_ancla(doc) or _motivo_por_usos(usos)) if usos else None
+
+    return render_template(
+        'expedientes/_inspector_documento.html',
+        expediente=expediente,
+        doc=doc,
+        fila=documento_fila(id, doc, estricto=False),
+        extension=extension_de(doc),
+        es_url_externa=(doc.url or '').startswith(('http://', 'https://')),
+        usos=usos,
+        motivo_bloqueo=motivo_bloqueo,
+        puede_editar=tiene_permiso('editar_expediente'),
+        puede_sustituir=tiene_contenido_propio(doc),
     )
 
 
@@ -820,10 +807,10 @@ def pool_documentos_ya_existentes(id):
 def pool_parsear_justificante(id):
     """
     POST .../documentos/parsear_justificante — enganche 1 de subida al pool
-    (ADR-034 §6, #657): parseo especulativo y transitorio del justificante
-    NOTIFICA elegido en el paso de metadatos (`.tipo-doc-select` código
-    JUSTIFICANTE_NOTIFICA), disparado desde `pool_documentos.html` antes de
-    confirmar la subida. Solo autorrelleno de UX (fecha_administrativa del
+    (ADR-034 §6, #657): parseo especulativo y transitorio del fichero elegido en
+    el paso de metadatos, disparado desde `pool_alta.js` (y desde la Despensa) al
+    elegir un tipo que exige fecha, antes de confirmar la subida; el tipo viaja
+    en `tipo_doc_codigo` (#1036). Solo autorrelleno de UX (fecha_administrativa del
     propio Documento) — no escribe nada en `notificaciones` (eso ocurre en el
     hook de `editar_tarea` al vincular el documento a la tarea NOTIFICAR).
 
@@ -1104,30 +1091,22 @@ def _cambia_lo_sellable(doc, datos) -> bool:
     return False
 
 
-@bp.route('/<int:id>/documentos/<int:doc_id>/editar', methods=['POST'])
-@login_required
-def pool_editar_documento(id, doc_id):
-    """Editar metadatos de un documento del pool — devuelve JSON.
+def _aplicar_edicion_documento(doc, datos):
+    """Aplica `datos` a los metadatos de un documento del pool y confirma. Devuelve
+    `(cuerpo, estado)`: `({'ok': True}, 200)`, o `({'ok': False, 'error': …}, 422 | 500)`.
 
-    La `url` solo se rectifica en un documento de URL externa y por otra `http(s)://`, y la
-    anterior queda en la bitácora (ADR-050 §M, #1007); en un fichero propio o un `bddat://`
-    un cuerpo con una `url` distinta da 422. Una `url` vacía, igual a la actual o ausente no
-    cambia nada: el formulario reenvía los campos aunque no cambien.
+    Es el núcleo que comparten la ruta JSON (`pool_editar_documento`: la edición masiva y quien
+    reenvíe campos sueltos) y la del formulario del inspector (`pool_guardar_documento`, #881):
+    las dos hablan con las mismas reglas —la rectificación de la URL, el sello de un certificado,
+    la fecha obligatoria, el ancla del proyecto y el corte de un reformado—, y una tercera
+    puerta no puede saltárselas por tener su propia copia.
+
+    `datos` es un diccionario con el contrato de edición parcial (#832): una clave ausente
+    conserva el campo; presente y vacía, lo vacía. La `url` solo se rectifica en un documento de
+    URL externa y por otra `http(s)://`, y la anterior queda en la bitácora (ADR-050 §M, #1007);
+    en un fichero propio o un `bddat://` una `url` distinta da 422. Una `url` vacía, igual a la
+    actual o ausente no cambia nada: el formulario reenvía los campos aunque no cambien.
     """
-    expediente = Expediente.query.get_or_404(id)
-    resultado = verificar_acceso_expediente(expediente, 'editar')
-    if resultado:
-        return resultado
-
-    doc = Documento.query.get_or_404(doc_id)
-    if doc.expediente_id != id:
-        abort(404)
-
-    datos = request.get_json(silent=True) or {}
-    # Solo se actualizan los campos presentes en el payload.
-    # Esto permite edición masiva parcial (p.ej. solo cambiar prioridad)
-    # sin sobreescribir los demás metadatos.
-
     # La validez de la URL va ANTES que el sello: si fuera al revés, a quien intenta cambiar
     # la url de un fichero citado por un certificado se le diría «deshaga el certificado»
     # cuando, aun deshaciéndolo, no podría.
@@ -1137,7 +1116,7 @@ def pool_editar_documento(id, doc_id):
         try:
             comprobar_rectificacion_url(doc, url_nueva)
         except ValueError as e:
-            return jsonify({'ok': False, 'error': str(e)}), 422
+            return {'ok': False, 'error': str(e)}, 422
 
     # Sello (#947, ADR-049 §F): del documento que cita un certificado, o del propio
     # certificado, no se cambian la fecha, el tipo ni la URL. Se comparan
@@ -1148,7 +1127,7 @@ def pool_editar_documento(id, doc_id):
     if _cambia_lo_sellable(doc, datos):
         motivo = sellos.motivo_sellado(doc)
         if motivo is not None:
-            return jsonify({'ok': False, 'error': motivo}), 422
+            return {'ok': False, 'error': motivo}, 422
 
     try:
         if cambia_url:
@@ -1209,12 +1188,138 @@ def pool_editar_documento(id, doc_id):
         # notificación — #928 N1 §4) y el resto de validadores del modelo
         # lanzan ValueError: error del cliente, no del servidor (#928).
         db.session.rollback()
-        return jsonify({'ok': False, 'error': str(e)}), 422
+        return {'ok': False, 'error': str(e)}, 422
     except Exception as e:
         db.session.rollback()
-        return jsonify({'ok': False, 'error': str(e)}), 500
+        return {'ok': False, 'error': str(e)}, 500
 
-    return jsonify({'ok': True})
+    return {'ok': True}, 200
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/editar', methods=['POST'])
+@login_required
+def pool_editar_documento(id, doc_id):
+    """Editar metadatos de un documento del pool — cuerpo y respuesta JSON.
+
+    La usan la edición masiva de la página del pool y quien reenvíe campos sueltos; el
+    formulario del inspector tiene la suya (`pool_guardar_documento`) y las dos aplican las
+    mismas reglas (`_aplicar_edicion_documento`).
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return resultado
+
+    doc = Documento.query.get_or_404(doc_id)
+    if doc.expediente_id != id:
+        abort(404)
+
+    # Solo se actualizan los campos presentes en el payload.
+    # Esto permite edición masiva parcial (p.ej. solo cambiar prioridad)
+    # sin sobreescribir los demás metadatos.
+    cuerpo, estado = _aplicar_edicion_documento(doc, request.get_json(silent=True) or {})
+    return jsonify(cuerpo), estado
+
+
+def _datos_del_formulario_documento(form):
+    """El cuerpo de edición (`datos`) que sale del formulario del inspector, con el contrato
+    de #832 (ver `app/utils/formularios.py`): lo que no viaja no se toca.
+
+    - Los campos de texto, el tipo, la fecha, la URL y el origen del reformado viajan solo si
+      están en el formulario. Uno que viaja vacío se vacía.
+    - La casilla «Prioritario» solo se interpreta si el formulario declara el centinela
+      `_form_completo`: una casilla desmarcada no se envía, y sin centinela su ausencia
+      significaría «no la menciona».
+    - Las dos marcas del proyecto (`es_principal`, `abre_reformado`) se interpretan solo si
+      viaja su marcador (`principal_activo`, `reformado_activo`), un campo oculto que el
+      formulario deshabilita cuando el control no existe para el tipo elegido o está bloqueado
+      (un reformado con versiones posteriores): un control que el usuario no pudo tocar no
+      declara nada.
+    """
+    datos = {}
+    for campo in ('tipo_doc_id', 'fecha_administrativa', 'asunto', 'observaciones', 'url',
+                  'origen_reformado'):
+        if campo in form:
+            datos[campo] = form[campo]
+    if form_completo(form):
+        datos['prioridad'] = form.get('prioridad') == 'on'
+    if 'principal_activo' in form:
+        datos['es_principal'] = form.get('es_principal') == 'on'
+    if 'reformado_activo' in form:
+        datos['abre_reformado'] = form.get('abre_reformado') == 'on'
+    return datos
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/guardar', methods=['POST'])
+@login_required
+def pool_guardar_documento(id, doc_id):
+    """Guarda el formulario de edición del inspector del pool (ADR-023, ADR-053 §E, #881).
+
+    Respuesta `{ok, message}` o `{ok: False, errors: [...]}`, el contrato de los formularios
+    del inspector. El cuerpo es un formulario HTML y lo traduce `_datos_del_formulario_documento`
+    al mismo diccionario que recibe la ruta JSON; de ahí en adelante, las mismas reglas
+    (`_aplicar_edicion_documento`).
+    """
+    expediente = Expediente.query.get_or_404(id)
+    if verificar_acceso_expediente(expediente, 'editar'):
+        return jsonify({'ok': False, 'errors': ['Sin permiso para editar este documento']}), 403
+
+    doc = Documento.query.filter_by(id=doc_id, expediente_id=id).first_or_404()
+    cuerpo, estado = _aplicar_edicion_documento(doc, _datos_del_formulario_documento(request.form))
+    if cuerpo['ok']:
+        return jsonify({'ok': True, 'message': 'Documento guardado correctamente.'})
+    return jsonify({'ok': False, 'errors': [cuerpo['error']]}), estado
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/editar-fragmento')
+@login_required
+def pool_documento_editar_fragmento(id, doc_id):
+    """Fragmento de edición del inspector del pool (ADR-023, ADR-053 §E, #881).
+
+    Un único formulario con los metadatos del documento. El estado inicial de los dos controles
+    del proyecto (el ancla y el corte de un reformado, ADR-044 §C y §D) llega ya pintado: el
+    inspector no ejecuta los `<script>` de sus fragmentos, y `static/js/pool_edicion.js` solo
+    reacciona a los cambios.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    if verificar_acceso_expediente(expediente, 'editar'):
+        return '', 403
+
+    doc = (
+        Documento.query.filter_by(id=doc_id, expediente_id=id)
+        .options(*opciones_fila_documento())
+        .first_or_404()
+    )
+    corte = doc.reformado_proyecto
+    ultimo = ultimo_reformado(id)
+    es_principal = bool(doc.anclado_como_proyecto_principal)
+    abre_reformado = corte is not None
+    # El único corte reversible es el último (ADR-044 §C): si no lo es, se enseña pero no se toca.
+    reformado_bloqueado = abre_reformado and not (ultimo is not None and corte.id == ultimo.id)
+    # De los dos controles se enseña el que describe lo que el documento ya es o, si no es nada
+    # todavía, el que corresponde a la pregunta viva del expediente: mientras el proyecto no
+    # tenga principal anclado, si este documento lo es.
+    if es_principal:
+        rama = 'PRINCIPAL'
+    elif abre_reformado:
+        rama = 'REFORMADO'
+    else:
+        rama = 'PRINCIPAL' if rama_de_la_ingesta(expediente) == RAMA_PRINCIPAL else 'REFORMADO'
+
+    return render_template(
+        'expedientes/_editar_fragmento_documento.html',
+        expediente=expediente,
+        doc=doc,
+        nombre=doc.nombre_visible(),
+        tipos_doc=TipoDocumento.query.order_by(TipoDocumento.nombre).all(),
+        tipos_fecha={c: mensaje_fecha_obligatoria(c) for c in TIPOS_FECHA_OBLIGATORIA},
+        es_url_externa=(doc.url or '').startswith(('http://', 'https://')),
+        es_principal=es_principal,
+        abre_reformado=abre_reformado,
+        origen_reformado=(corte.origen if corte is not None else None) or 'VOLUNTARIO',
+        reformado_bloqueado=reformado_bloqueado,
+        rama=rama,
+    )
 
 
 @bp.route('/<int:id>/documentos/<int:doc_id>/sustituir', methods=['POST'])
@@ -1316,11 +1421,11 @@ def pool_borrar_documento(id, doc_id):
     if doc.expediente_id != id:
         abort(404)
 
-    if _documento_es_referenciado(doc):
+    usos = usos_documento(doc)
+    if usos:
         return jsonify({
             'ok': False,
-            'error': _motivo_ancla(doc) or
-                     'El documento está referenciado en tramitación y no puede eliminarse'
+            'error': _motivo_ancla(doc) or _motivo_por_usos(usos),
         }), 422
 
     es_critico = es_documento_critico(doc)

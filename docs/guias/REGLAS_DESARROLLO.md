@@ -129,11 +129,25 @@ Tres cosas que no son obvias:
    `leer_json(data, clave, valor_actual)` — importa especialmente cuando el cuerpo
    se reenvía a un servicio cuyo contrato es "esto es el estado completo deseado"
    (`mutaciones_arbol.editar_*`, que diffea y libera lo que sobre).
+4. **Un control que puede no existir lleva un marcador, y los dos van en un
+   `<fieldset>`.** Si una casilla solo existe según el tipo o el estado de lo que se
+   edita (el ancla y el corte de un reformado del proyecto en el formulario del pool,
+   #881), su ausencia no dice «desmarcada» sino «no estaba». El formulario lleva un
+   campo oculto (`principal_activo`, `reformado_activo`) y el servidor interpreta la
+   casilla solo si el marcador viaja. Marcador y controles van dentro de un
+   `<fieldset>` y se habilitan o deshabilitan **juntos** (`fieldset.disabled`, no un
+   `disabled` por control): así no se puede escribir «marcador enviado con la casilla sin
+   enviar», que el servidor leería como «el usuario la desmarcó» y retiraría un ancla o
+   un corte sin que nadie lo pidiera. Ver `_datos_del_formulario_documento` y
+   `_editar_fragmento_documento.html`.
 
 Lo comprueba `tests/test_832_contrato_edicion_parcial.py` sobre las rutas de
 formulario, con un manifiesto explícito de la deuda pendiente (#834). El detector
-que usa (`scripts/auditar_escrituras_parciales.py`) **no ve el caso de API JSON**:
-ahí el criterio se sostiene con la revisión y esta regla.
+que usa (`scripts/auditar_escrituras_parciales.py`) **no ve el caso de API JSON** ni
+el de un formulario que se traduce a un diccionario antes de aplicarse (el del pool,
+`_datos_del_formulario_documento`): ahí el criterio se sostiene con la revisión, esta
+regla y, en el del pool, `tests/test_881_pool_guardar_documento.py`, que envía a la
+ruta lo que enviaría el navegador con el fragmento real.
 
 ---
 
@@ -166,7 +180,8 @@ que las plantillas pasen al almacén (fase 4 de ADR-050, #1009).
   `detalle_nodo.documento_fila` (nombre, tipo, fecha en ISO, asunto, marcas, `texto_opcion` y la
   apertura de `info_apertura_documento`), y lo pinta el renderizador de su contenedor: el macro
   `macros/documento_fila.html` en Jinja y `FilaDocumento.jsx` en el árbol. **No se añade un serializador
-  ni un pintado de documento nuevos** (ADR-053 §E; `GUIA_COMPONENTES_INTERACTIVOS.md` §«Fila de documento»
+  ni un pintado de documento nuevos** (salvo la fila del pool, que pinta su `ScrollInfinito` en el cliente:
+  excepción aceptada en #881) (ADR-053 §E; `GUIA_COMPONENTES_INTERACTIVOS.md` §«Fila de documento»
   y `GUIA_REACT_ISLAS.md` §«Los documentos en el inspector»).
 - Un test que suba un documento usa la fixture `almacen_tmp` (ver `tests/README.md`
   §4): el disco y la fila de `ficheros` no se revierten con el SAVEPOINT.

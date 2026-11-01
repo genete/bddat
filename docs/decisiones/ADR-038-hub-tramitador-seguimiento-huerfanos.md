@@ -92,6 +92,17 @@ Con `ver=mis` todas las filas son del propio técnico (la bombilla sale siempre 
 `todos` con filtro por usuario es lo que permite al supervisor ver cuántos huérfanos quedan en
 todo el sistema y de quién.
 
+**Actualización (#881, 01/11/2026, decisión de Carlos: marcar, no excluir).** Huérfano sigue siendo
+«sin vínculo a tarea» y el radar lista los mismos documentos; pero algunos ya tienen un **destino
+declarado** y solo esperan a que una tarea los consuma (el escrito que ancla una solicitud, el
+proyecto principal, el corte de un reformado, el interesado al que acreditan). Cada fila de
+`GET /api/documentos/huerfanos` lleva ahora `n_usos` y `usos` (`[{codigo, texto}]`, de
+`services/usos_documento.py`) y el radar los marca; no salen del radar porque, si ninguna tarea llega
+a consumirlos, el recordatorio sigue haciendo falta. Cambio aditivo: ninguna columna ni clave anterior
+cambia. *Interpretación:* el aspecto de la marca («con destino», con el detalle en el tooltip), el
+candado en lugar de «Borrar» en esos documentos y el bloque del inspector «Con destino declarado, aún
+sin tarea».
+
 ### 4. Inferencia de tareas candidatas — usa el catálogo hoy muerto
 
 `tramites_tareas_documentos` (`TramiteTareaDocumento`) ya mapea, por
@@ -171,6 +182,11 @@ previsto. Ya registra en bitácora si el documento es crítico, y usa
 (TRAMITADOR/SUPERVISOR/ADMIN, no ADMINISTRATIVO) — mismo reparto de roles que se buscaba, con el
 permiso que ya existía en vez de inventar uno nuevo. La acción "Borrar" del radar solo
 **enlaza** a esta ruta ya construida.
+
+*Actualización (#881):* `_documento_es_referenciado()` ya no enumera tres comprobaciones: es
+`bool(usos_documento(doc))` y mira las dieciséis FK que apuntan a `documentos`. Un documento con
+cualquier uso no se borra, y el radar, en vez de dejar pulsar un «Borrar» que fallaría, enseña un
+candado con el motivo.
 
 ### 7. Bitácora
 

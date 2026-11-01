@@ -100,7 +100,8 @@ class CertificadoFase(db.Model):
 
     expediente = db.relationship('Expediente', foreign_keys=[expediente_id])
     fase = db.relationship('Fase', foreign_keys=[fase_id], backref='certificados')
-    documento = db.relationship('Documento', foreign_keys=[documento_id])
+    documento = db.relationship('Documento', foreign_keys=[documento_id],
+                                backref='certificados_fase')
 
     def __repr__(self):
         return f'<CertificadoFase id={self.id} tipo={self.tipo_cert} fase={self.fase_id}>'

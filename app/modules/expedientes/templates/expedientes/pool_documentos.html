@@ -1,1633 +1,339 @@
-{% extends 'layout/base_app.html' %}
+{# pool_documentos.html — el pool de documentos de un expediente, como listado estándar (ADR-053 §F, #881).
 
-{% block title %}Pool de Documentos — AT-{{ expediente.numero_at }} - BDDAT{% endblock %}
+   Scroll infinito (`GET /api/expedientes/<id>/documentos`, `services/listado_pool.py`), filtros
+   de `FiltrosListado` y, al hacer clic en una fila, el inspector del documento
+   (`_inspector_documento.html`, `?sel=<id>`). Las dos altas —«Subir fichero» y «Añadir URL
+   externa»— siguen siendo modales (ADR-053 §E: crear no es editar) y viven en parciales con su JS
+   (`pool_alta.js`); las acciones del inspector, en `pool_acciones.js`. #}
+{% extends 'layout/lista_v2_base.html' %}
 
-{% block breadcrumb %}
-<a href="{{ url_for('dashboard.index') }}">Inicio</a>
-<span>›</span>
-<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
-<span>›</span>
-<a href="{{ url_for('expedientes.detalle', id=expediente.id) }}">AT-{{ expediente.numero_at }}</a>
-<span>›</span>
-<span>Pool de Documentos</span>
+{% block page_title %}Documentos · AT-{{ expediente.numero_at }}{% endblock %}
+{% block page_icon %}<i class="fas fa-folder-open"></i>{% endblock %}
+{% block search_placeholder %}Buscar por nombre o asunto...{% endblock %}
+{% block tabla_clase %}pool-table{% endblock %}
+
+{% block btn_nuevo %}
+{% if puede_editar %}
+<div class="form-check form-switch me-3 d-flex align-items-center">
+    <input class="form-check-input" type="checkbox" role="switch" id="toggle-edicion-masiva">
+    <label class="form-check-label small ms-1" for="toggle-edicion-masiva">Edición masiva</label>
+</div>
+{% endif %}
+<a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
+   class="btn btn-sm btn-outline-primary me-1" title="Ficha del expediente">
+    <i class="fas fa-info-circle me-1"></i> Expediente
+</a>
+<a href="{{ url_for('expedientes.arbol', id=expediente.id) }}"
+   class="btn btn-sm btn-outline-primary me-3" title="Tramitación del expediente">
+    <i class="fas fa-sitemap me-1"></i> Tramitación
+</a>
+<button type="button" class="btn btn-primary btn-sm" onclick="abrir_modal_subir()"
+        title="Desde tu PC — descargas sin organizar">
+    <i class="fas fa-upload me-1"></i> Subir fichero
+</button>
+<button type="button" class="btn btn-outline-primary btn-sm ms-1" onclick="abrir_modal_url_externa()"
+        title="BOE, Notifica, sede electrónica…">
+    <i class="fas fa-link me-1"></i> URL externa
+</button>
+{% endblock %}
+
+{# Edición masiva: tipo, fecha y prioridad de varios documentos a la vez, con el modo de casillas
+   del estándar (#612). Solo lo que se rellena viaja; cada documento pasa por las mismas reglas
+   que una edición suelta (`pool_editar_documento`). #}
+{% block panel_masivo %}
+{% if puede_editar %}
+<div id="panel-masivo" class="card card-body bg-light border mb-2 d-none">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="fw-semibold small">
+            Edición masiva (<span id="masivo-count">0</span> seleccionado(s)):
+        </span>
+        <select class="form-select form-select-sm" id="masivo-tipo" style="width:auto;min-width:180px">
+            <option value="">— Tipo (sin cambio) —</option>
+            {% for t in tipos_doc %}
+            <option value="{{ t.id }}">{{ t.nombre }}</option>
+            {% endfor %}
+        </select>
+        <div id="ef-masivo-fecha" style="width:155px"></div>
+        <select class="form-select form-select-sm" id="masivo-prioridad-sel" style="width:auto">
+            <option value="">— Prioridad (sin cambio) —</option>
+            <option value="1">Prioritario</option>
+            <option value="0">No prioritario</option>
+        </select>
+        <button type="button" class="btn btn-sm btn-primary" id="btn-aplicar-masivo" disabled>
+            <i class="fas fa-check me-1"></i> Aplicar
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" id="btn-cancelar-masivo">
+            <i class="fas fa-times me-1"></i> Deseleccionar
+        </button>
+        <div id="masivo-error" class="text-danger small w-100 d-none"></div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block filtros_extra %}
+<div id="sf-ext"></div>
+<div id="sf-tipo"></div>
+<div id="sf-prio"></div>
+{% endblock %}
+
+{% block thead_cols %}
+<th>Documento</th>
+<th class="lt-hide-lg lt-truncate">Asunto</th>
+<th class="lt-hide-md">Tipo</th>
+<th>Fecha adm.</th>
+<th class="lt-hide-xl">Ext.</th>
+<th title="Cosas del sistema que usan el documento">Usos</th>
 {% endblock %}
 
 {% block extra_css %}{{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
 <style>
-  /* Fichas de entrada */
-  .ficha-entrada {
-    cursor: pointer;
-    border: 1px solid var(--bs-border-color);
-    transition: border-color 0.15s, box-shadow 0.15s;
-    user-select: none;
-  }
-  .ficha-entrada:hover {
-    border-color: var(--bs-primary);
-    box-shadow: 0 0 0 3px var(--bs-primary-bg-subtle);
-  }
-  /* .asunto-celda: estructura definida en la regla td:nth-child(3) de #pool-tabla */
-  /* Línea separadora pertenece a C.1 (borde inferior), no al inicio de C.2 */
-  .lista-cabecera { border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
-  /* border-collapse:separate permite sticky thead sin artefactos de subpixel.
-     border-spacing:0 reproduce el aspecto de collapse sin el bug. */
-  #pool-tabla { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 0; }
-  #pool-tabla td, #pool-tabla th { border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
-  /* Eliminar border-top que BS5 añade al tbody (2px por defecto → línea negra en C.2) */
-  #pool-tabla > tbody { border-top: none; }
-  /* Thead sticky: top:-1px solapa 1px para eliminar el gap de subpixel.
-     box-shadow inset dibuja la línea inferior sin gap y cubre filas al hacer scroll. */
-  #pool-tabla thead th {
-    position: sticky;
-    top: -1px;
-    z-index: 10;
-    background-color: var(--bs-table-bg, #f8f9fa);
-    box-shadow: inset 0 -2px 0 #6c757d;
-  }
-  /* Anchos fijos de columnas — col 2 (Documento) y col 3 (Asunto) toman el espacio restante */
-  #pool-tabla th:nth-child(1) { width: 36px; }
-  /* col 2 Documento: flex — prioridad máxima, se acorta en último lugar */
-  #pool-tabla th:nth-child(3) { width: calc(40% - 271px); }  /* Asunto: 40% del espacio flex */
-  #pool-tabla th:nth-child(4) { width: 68px; }    /* Ext */
-  #pool-tabla th:nth-child(5) { width: 130px; }   /* Tipo */
-  #pool-tabla th:nth-child(6) { width: 108px; }   /* Fecha adm */
-  #pool-tabla th:nth-child(7) { width: 44px; }    /* ★ */
-  #pool-tabla th:nth-child(8) { width: 122px; }   /* Acciones */
-  /* Documento: word-wrap sin truncar (se da todo el espacio disponible) */
-  #pool-tabla td:nth-child(2) { overflow: hidden; max-width: 0; }
-  #pool-tabla td:nth-child(2) a {
-    display: block; white-space: normal;
-    overflow-wrap: break-word; word-break: break-word; max-width: 100%;
-  }
-  /* Asunto: ellipsis una línea (tooltip muestra el texto completo) */
-  #pool-tabla td:nth-child(3) { overflow: hidden; max-width: 0; }
-  #pool-tabla td:nth-child(3) .asunto-celda {
-    display: block; overflow: hidden; text-overflow: ellipsis;
-    white-space: nowrap; max-width: 100%;
-  }
-  /* === Responsive: Documento es prioritario, otros columnas se sacrifican primero === */
-  /* Paso 0 (< 1400px): ocultar Ext → Documento gana 68px */
-  @media (max-width: 1399.98px) {
-    #pool-tabla th:nth-child(4), #pool-tabla td:nth-child(4) { display: none; }
-  }
-  /* Paso 2 (< 900px): ocultar Asunto → Documento gana espacio */
-  @media (max-width: 899.98px) {
-    #pool-tabla th:nth-child(3), #pool-tabla td:nth-child(3) { display: none; }
-  }
-  /* Paso 3 (< 700px): ocultar Tipo → Documento gana 100px */
-  @media (max-width: 699.98px) {
-    #pool-tabla th:nth-child(5), #pool-tabla td:nth-child(5) { display: none; }
-  }
-  /* Paso 4 (< 560px): ocultar Fecha → Documento gana 108px */
-  @media (max-width: 559.98px) {
-    #pool-tabla th:nth-child(6), #pool-tabla td:nth-child(6) { display: none; }
-  }
-  /* Solo clampear Documento cuando todo lo demás ya está oculto (< 420px) */
-  @media (max-width: 419.98px) {
-    #pool-tabla td:nth-child(2) a {
-      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    }
-  }
-  /* Fila seleccionada para edición masiva */
-  #tbody-docs tr.doc-seleccionada > td { background-color: var(--bs-primary-bg-subtle, #d1e7dd) !important; }
-  /* entrada_fecha dentro del panel masivo: misma altura que form-select-sm */
+  /* La fecha del panel masivo, a la altura de un form-select-sm */
   #ef-masivo-fecha .ef-input {
     font-size: 0.875rem; padding: 0.25rem 2rem 0.25rem 0.5rem; line-height: 1.5; height: auto;
   }
-  /* C.1/C.2 scroll independiente + full-width */
-  .app-main { overflow-y: hidden; }
-  .bc-view   { display: flex; flex-direction: column; flex: 1; min-height: 0;
-               max-width: none; margin: 0; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="bc-view">
+{{ super() }}
 
-{# Opciones de tipo — plantilla para JS #}
-<template id="tmpl-tipos-doc">
-  <option value="">— Tipo —</option>
-  {% for t in tipos_doc %}
-  <option value="{{ t.id }}" data-codigo="{{ t.codigo }}">{{ t.nombre }}</option>
-  {% endfor %}
-</template>
+{# Configuración de los JS del pool: las URL de las rutas del expediente y lo que Jinja sabe. #}
+<div id="pool-config" hidden
+     data-url-base="{{ url_for('expedientes.pool_documentos', id=expediente.id) }}"
+     data-url-subir="{{ url_for('expedientes.pool_subir_documento', id=expediente.id) }}"
+     data-url-url-externa="{{ url_for('expedientes.pool_registrar_url_externa', id=expediente.id) }}"
+     data-url-parsear="{{ url_for('expedientes.pool_parsear_justificante', id=expediente.id) }}"
+     data-url-ya-existe="{{ url_for('expedientes.pool_documentos_ya_existentes', id=expediente.id) }}"
+     data-rama-ingesta="{{ rama_ingesta }}"
+     data-rama-principal="{{ rama_principal }}"
+     data-max-hoy="{{ hoy_sistema.isoformat() }}"></div>
 
-{% from 'macros/page_header.html' import page_header %}
-
-<!-- C.1: Encabezado homogéneo -->
-<div class="lista-cabecera">
-  {% call page_header('Expediente', 'fas fa-folder-open', title_accent='AT-' ~ expediente.numero_at) %}
-    <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
-       class="btn btn-sm btn-outline-primary">
-      <i class="fas fa-info-circle me-1"></i> Detalle
-    </a>
-    <a href="{{ url_for('expedientes.arbol', id=expediente.id) }}"
-       class="btn btn-sm btn-outline-primary">
-      <i class="fas fa-sitemap me-1"></i> Tramitación
-    </a>
-  {% endcall %}
-  <div class="page-subheader content-constrained">
-    <div class="page-subheader-data">
-      <div class="subheader-item">
-        <strong>Titular:</strong>
-        {{ expediente.titular.nombre_completo if expediente.titular else '—' }}
-      </div>
-      <div class="subheader-item">
-        <strong>Responsable:</strong>
-        {{ expediente.responsable.siglas if expediente.responsable else '—' }}
-      </div>
-      <div class="subheader-item">
-        <strong>Tipo:</strong>
-        {{ expediente.tipo_expediente.tipo if expediente.tipo_expediente else '—' }}
-      </div>
-    </div>
-    <div class="page-subheader-actions">
-      <span class="badge bg-primary">{{ docs_lista | length }} documento(s)</span>
-    </div>
-  </div>
-
-  <div class="content-constrained">
-  <!-- Dos fichas de entrada -->
-  <div class="row g-2 mb-2 mt-2">
-    <div class="col-6">
-      <div class="card ficha-entrada h-100" onclick="abrir_modal_subir()">
-        <div class="card-body text-center py-3">
-          <i class="fas fa-upload fa-2x mb-2 text-primary"></i>
-          <div class="fw-semibold">Subir fichero</div>
-          <div class="small text-secondary">Desde tu PC — descargas sin organizar</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-6">
-      <div class="card ficha-entrada h-100" onclick="abrir_modal_url_externa()">
-        <div class="card-body text-center py-3">
-          <i class="fas fa-link fa-2x mb-2 text-primary"></i>
-          <div class="fw-semibold">Añadir URL externa</div>
-          <div class="small text-secondary">BOE, Notifica, sede electrónica…</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Panel de edición masiva (oculto hasta que haya selección) -->
-  <div id="panel-masivo" class="card card-body bg-light border mb-2 d-none">
-    <div class="d-flex flex-wrap align-items-center gap-2">
-      <span class="fw-semibold small">
-        Edición masiva (<span id="masivo-count">0</span> seleccionado(s)):
-      </span>
-      <select class="form-select form-select-sm" id="masivo-tipo" style="width:auto;min-width:180px">
-        <option value="">— Tipo (sin cambio) —</option>
-        {% for t in tipos_doc %}
-        <option value="{{ t.id }}">{{ t.nombre }}</option>
-        {% endfor %}
-      </select>
-      <div id="ef-masivo-fecha" style="width:155px"></div>
-      <select class="form-select form-select-sm" id="masivo-prioridad-sel" style="width:auto">
-        <option value="">— Prioridad (sin cambio) —</option>
-        <option value="1">Prioritario</option>
-        <option value="0">No prioritario</option>
-      </select>
-      <button type="button" class="btn btn-sm btn-primary" onclick="aplicar_masivo()">
-        <i class="fas fa-check me-1"></i> Aplicar
-      </button>
-      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto"
-              onclick="deseleccionar_todos()">
-        <i class="fas fa-times me-1"></i> Deseleccionar
-      </button>
-      <div id="masivo-error" class="text-danger small w-100 d-none"></div>
-    </div>
-  </div>
-
-  <!-- Filtros client-side (ocultos cuando hay selección masiva activa) -->
-  <div id="barra-filtros" class="card card-body bg-light border mb-2 d-flex flex-row align-items-center flex-wrap gap-2">
-    <i class="fas fa-search text-secondary small"></i>
-    <input type="search" id="filtro-docs" class="form-control form-control-sm"
-           placeholder="Nombre o asunto…" style="max-width:220px">
-    <select id="filtro-ext" class="form-select form-select-sm" style="width:auto">
-      <option value="">Ext: Todas</option>
-      {% set extensiones = [] %}
-      {% for item in docs_lista %}
-        {% if item.extension and item.extension not in extensiones %}
-          {% set _ = extensiones.append(item.extension) %}
-        {% endif %}
-      {% endfor %}
-      {% for ext in extensiones | sort %}
-      <option value="{{ ext }}">.{{ ext }}</option>
-      {% endfor %}
-    </select>
-    <select id="filtro-tipo" class="form-select form-select-sm" style="width:auto;min-width:110px">
-      <option value="">Tipo: Todos</option>
-      {% for t in tipos_doc %}
-      <option value="{{ t.id }}">{{ t.codigo }}</option>
-      {% endfor %}
-    </select>
-    <select id="filtro-prio" class="form-select form-select-sm" style="width:auto">
-      <option value="">★ Todas</option>
-      <option value="1">★ Prioritarios</option>
-      <option value="0">— No prioritarios</option>
-    </select>
-    <span id="filtro-count" class="text-secondary small ms-1"></span>
-  </div>
-  </div>{# /content-constrained #}
-</div>{# /lista-cabecera #}
-
-<!-- C.2 -->
-<div class="lista-scroll-container px-3 pt-0 pb-3">
-
-  <!-- Tabla -->
-  {% if docs_lista %}
-  <table class="table table-hover table-sm align-middle" id="pool-tabla">
-    <thead class="table-light">
-      <tr>
-        <th style="width:2rem">
-          <input type="checkbox" class="form-check-input" id="check-todos"
-                 onchange="toggle_todos(this.checked)"
-                 title="Seleccionar / deseleccionar todos">
-        </th>
-        <th>Documento</th>
-        <th>Asunto</th>
-        <th>Ext.</th>
-        <th>Tipo</th>
-        <th>Fecha adm.</th>
-        <th class="text-center">
-          <i class="fas fa-star" title="Prioritario" data-bs-toggle="tooltip"></i>
-        </th>
-        <th class="text-end">Acciones</th>
-      </tr>
-    </thead>
-    <tbody id="tbody-docs">
-      {% for item in docs_lista %}
-      {% set doc = item.doc %}
-      <tr id="fila-doc-{{ doc.id }}" data-doc-id="{{ doc.id }}"
-          data-nombre="{{ item.nombre_display | e }}"
-          data-asunto="{{ doc.asunto | e if doc.asunto else '' }}"
-          data-ext="{{ item.extension }}"
-          data-tipo-id="{{ doc.tipo_doc_id or '' }}"
-          data-prioridad="{{ '1' if doc.prioridad and doc.prioridad > 0 else '0' }}">
-        <td>
-          <input type="checkbox" class="form-check-input doc-check"
-                 onchange="on_check_doc(this, {{ doc.id }})">
-        </td>
-        <td>
-          {% if not item.apertura.puede_abrir %}
-          <span class="fw-semibold text-secondary"
-                title="Recurso no reconocido: {{ doc.url }}"
-                data-bs-toggle="tooltip" data-bs-placement="top">
-            <i class="fas fa-triangle-exclamation fa-xs me-1"></i>{{ item.nombre_display }}
-          </span>
-          {% elif item.apertura.abrir_en == 'modal' %}
-          <button type="button" class="btn btn-link p-0 fw-semibold text-start"
-                  data-modal-large-url="{{ item.apertura.enlace }}"
-                  data-modal-large-title="{{ item.nombre_display }}">
-            <i class="fas fa-file fa-xs me-1 text-secondary"></i>{{ item.nombre_display }}
-          </button>
-          {% elif item.es_url_externa %}
-          <a href="{{ item.apertura.enlace }}" target="_blank" rel="noopener" class="fw-semibold">
-            <i class="fas fa-external-link-alt fa-xs me-1 text-secondary"></i>{{ item.nombre_display }}
-          </a>
-          {% else %}
-          <a href="{{ item.apertura.enlace }}" target="_blank" class="fw-semibold">
-            <i class="fas fa-file fa-xs me-1 text-secondary"></i>{{ item.nombre_display }}
-          </a>
-          {% endif %}
-        </td>
-        <td>
-          {% if doc.asunto %}
-          <span class="asunto-celda text-secondary"
-                title="{{ doc.asunto | e }}"
-                data-bs-toggle="tooltip" data-bs-placement="top">{{ doc.asunto }}</span>
-          {% else %}
-          <span class="text-secondary">—</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if item.extension %}
-          <span class="badge border border-secondary text-secondary">.{{ item.extension }}</span>
-          {% else %}
-          <span class="text-secondary">—</span>
-          {% endif %}
-        </td>
-        <td>
-          <span class="badge border border-secondary text-secondary"
-                title="{{ doc.tipo_doc.nombre if doc.tipo_doc else '' }}"
-                data-bs-toggle="tooltip">
-            {{ doc.tipo_doc.codigo if doc.tipo_doc else '—' }}
-          </span>
-          {% if item.es_principal %}
-          {# El ancla del proyecto (ADR-044 §D) #}
-          <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle"
-                data-bs-toggle="tooltip"
-                title="Es el proyecto de la instalación: de él cuelga saber sobre qué versión se instruye">
-            PROYECTO
-          </span>
-          {% endif %}
-          {% if item.reformado %}
-          {# El corte que abre una versión del proyecto (ADR-044 §C) #}
-          <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle"
-                data-bs-toggle="tooltip"
-                title="Abre un reformado de proyecto ({{ item.reformado.origen|lower }}): el proyecto tiene una versión más desde este documento">
-            REFORMADO
-          </span>
-          {% endif %}
-        </td>
-        <td class="text-nowrap">
-          {{ doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else '—' }}
-        </td>
-        <td class="text-center">
-          {% if doc.prioridad and doc.prioridad > 0 %}
-          <i class="fas fa-star text-warning"></i>
-          {% else %}
-          <span class="text-secondary">—</span>
-          {% endif %}
-        </td>
-        <td class="text-end text-nowrap">
-          <button type="button" class="btn btn-sm btn-outline-primary"
-                  title="Editar metadatos"
-                  onclick="abrir_modal_editar(this)"
-                  data-doc-id="{{ doc.id }}"
-                  data-doc-tipo-doc-id="{{ doc.tipo_doc_id }}"
-                  data-doc-fecha-admin="{{ doc.fecha_administrativa.isoformat() if doc.fecha_administrativa else '' }}"
-                  data-doc-asunto="{{ doc.asunto | e if doc.asunto else '' }}"
-                  data-doc-prioridad="{{ doc.prioridad or 0 }}"
-                  data-doc-observaciones="{{ doc.observaciones | e if doc.observaciones else '' }}"
-                  data-doc-es-url-externa="{{ 'true' if item.es_url_externa else 'false' }}"
-                  data-doc-es-principal="{{ 'true' if item.es_principal else 'false' }}"
-                  data-doc-abre-reformado="{{ 'true' if item.reformado else 'false' }}"
-                  data-doc-origen-reformado="{{ item.reformado.origen if item.reformado else '' }}"
-                  data-doc-reformado-ultimo="{{ 'true' if item.reformado_ultimo else 'false' }}"
-                  data-doc-url="{{ (doc.url or '') | e }}">
-            <i class="fas fa-pencil-alt"></i>
-          </button>
-          {% if item.puede_sustituir %}
-          <button type="button" class="btn btn-sm btn-outline-secondary"
-                  title="Sustituir fichero"
-                  onclick="abrir_modal_sustituir(this)"
-                  data-doc-id="{{ doc.id }}"
-                  data-doc-nombre="{{ item.nombre_display | e }}">
-            <i class="fas fa-file-import"></i>
-          </button>
-          {% endif %}
-          {% if item.es_referenciado %}
-          <button type="button" class="btn btn-sm btn-outline-secondary" disabled
-                  data-bs-toggle="tooltip"
-                  title="Referenciado en tramitación — no se puede eliminar">
-            <i class="fas fa-lock"></i>
-          </button>
-          {% else %}
-          <button type="button" class="btn btn-sm btn-outline-danger"
-                  title="Borrar registro del pool"
-                  onclick="borrar_documento(this, '{{ url_for('expedientes.pool_borrar_documento', id=expediente.id, doc_id=doc.id) }}')"
-                  data-doc-id="{{ doc.id }}">
-            <i class="fas fa-times"></i>
-          </button>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <div class="text-center text-secondary py-4">
-    <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-    Sin documentos en el pool. Usa las fichas de arriba para añadir.
-  </div>
-  {% endif %}
-
-</div>
-
-
-<!-- ============================================================ -->
-<!-- Modal: URL externa (BOE, Notifica, sede electrónica…)        -->
-<!-- ============================================================ -->
-<div class="modal fade" id="modal-url-externa" tabindex="-1"
-     aria-labelledby="modal-url-externa-label">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modal-url-externa-label">
-          <i class="fas fa-link me-1"></i> Añadir URL externa
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p class="text-secondary small">
-          Para documentos publicados en fuentes externas: BOE, BOP, Notifica, sede electrónica…
-          El documento no se sube — solo se registra el enlace, que debe empezar por
-          <code>http://</code> o <code>https://</code>.
-        </p>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">URL <span class="text-danger">*</span></label>
-          <input type="url" class="form-control" id="url-ext-url"
-                 placeholder="https://www.boe.es/...">
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Tipo de documento</label>
-          <select class="form-select" id="url-ext-tipo">
-            <option value="">— Tipo —</option>
-            {% for t in tipos_doc %}
-            <option value="{{ t.id }}">{{ t.nombre }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Fecha administrativa</label>
-          <div id="ef-url-ext-fecha"></div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Asunto</label>
-          <input type="text" class="form-control" id="url-ext-asunto" maxlength="500">
-        </div>
-        <div class="form-check mb-3">
-          <input type="checkbox" class="form-check-input" id="url-ext-prioridad">
-          <label class="form-check-label fw-semibold" for="url-ext-prioridad">Prioritario</label>
-        </div>
-        <div id="url-ext-error" class="alert alert-danger d-none"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary"
-                onclick="guardar_url_externa('{{ url_for('expedientes.pool_registrar_url_externa', id=expediente.id) }}')">
-          <i class="fas fa-save me-1"></i> Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<!-- ============================================================ -->
-<!-- Modal: Subir fichero (multipart, ADR-032 §1/§4, #666)        -->
-<!-- ============================================================ -->
-<div class="modal fade" id="modal-subir" tabindex="-1" aria-labelledby="modal-subir-label">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modal-subir-label">
-          <i class="fas fa-upload me-1"></i> Subir fichero al pool
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-
-        <!-- Paso 1: elegir ficheros -->
-        <div id="subir-paso-elegir">
-          <p class="text-secondary small">
-            Selecciona uno o varios ficheros de tu equipo. Se copian al pool del
-            expediente.
-          </p>
-          <input type="file" class="form-control" id="subir-input-ficheros" multiple>
-          <div id="subir-error-elegir" class="alert alert-danger d-none mt-2"></div>
-        </div>
-
-        <!-- Paso 2: Metadatos -->
-        <div id="subir-paso-metadatos" class="d-none">
-          <p class="text-secondary small mb-2" id="subir-meta-contador"></p>
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle">
-              <thead class="table-light">
-                <tr>
-                  <th>Nombre</th>
-                  <th>Tamaño</th>
-                  <th style="min-width:180px">Tipo de documento</th>
-                  <th style="min-width:155px">Fecha adm.</th>
-                  <th class="text-center">Prioritario</th>
-                  <th style="min-width:190px">Reformado de proyecto</th>
-                </tr>
-              </thead>
-              <tbody id="subir-meta-tbody"></tbody>
-            </table>
-          </div>
-          <div id="subir-meta-error" class="alert alert-danger d-none"></div>
-        </div>
-
-      </div>
-      <div class="modal-footer">
-        {# Paso 1 #}
-        <button type="button" class="btn btn-secondary" id="btn-subir-cancelar"
-                data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="btn-subir-siguiente"
-                onclick="ir_a_metadatos_subida()" disabled>
-          Siguiente <i class="fas fa-arrow-right ms-1"></i>
-        </button>
-        {# Paso 2 — ocultos al inicio #}
-        <button type="button" class="btn btn-outline-secondary d-none" id="btn-subir-volver"
-                onclick="volver_a_elegir_subida()">
-          <i class="fas fa-arrow-left me-1"></i> Volver
-        </button>
-        <button type="button" class="btn btn-primary d-none" id="btn-subir-registrar"
-                onclick="subir_ficheros('{{ url_for('expedientes.pool_subir_documento', id=expediente.id) }}')">
-          <i class="fas fa-save me-1"></i> <span id="btn-subir-texto">Subir</span>
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<!-- ============================================================ -->
-<!-- Modal: Editar metadatos                                       -->
-<!-- ============================================================ -->
-<div class="modal fade" id="modal-editar-doc" tabindex="-1"
-     aria-labelledby="modal-editar-doc-label">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modal-editar-doc-label">
-          <i class="fas fa-pencil-alt me-1"></i> Editar metadatos
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="editar-doc-id">
-        {# URL editable solo para documentos de URL externa #}
-        <div class="mb-3" id="editar-url-campo">
-          <label class="form-label fw-semibold">URL <span class="text-danger">*</span></label>
-          <input type="text" class="form-control font-monospace" id="editar-url">
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Tipo de documento</label>
-          <select class="form-select" id="editar-tipo-doc-id"
-                  onchange="sincronizar_reformado_editar()">
-            <option value="">— Tipo —</option>
-            {% for t in tipos_doc %}
-            <option value="{{ t.id }}" data-codigo="{{ t.codigo }}">{{ t.nombre }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Fecha administrativa</label>
-          <div id="ef-editar-fecha"></div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Asunto</label>
-          <input type="text" class="form-control" id="editar-asunto" maxlength="500">
-        </div>
-        <div class="form-check mb-3">
-          <input type="checkbox" class="form-check-input" id="editar-prioridad">
-          <label class="form-check-label fw-semibold" for="editar-prioridad">Prioritario</label>
-        </div>
-        {# El ancla del proyecto (ADR-044 §D). Como la del reformado: solo existe
-           mientras el tipo elegido es DOC_PROYECTO, y desmarcarla retira el ancla. #}
-        <div class="mb-3 d-none" id="editar-principal-bloque">
-          <div class="form-check">
-            <input type="checkbox" class="form-check-input" id="editar-principal-check"
-                   onchange="alternar_principal_editar()">
-            <label class="form-check-label fw-semibold" for="editar-principal-check">
-              Es el proyecto principal
-            </label>
-          </div>
-          <div class="ms-4 mt-2 small text-secondary d-none" id="editar-principal-aviso">
-            <i class="fas fa-anchor me-1"></i>
-            De este documento cuelga saber sobre qué proyecto se instruye. Si ya había
-            otro anclado, el ancla se mueve a este.
-          </div>
-        </div>
-        {# El corte que abre una versión del proyecto (ADR-044 §C). Solo existe
-           mientras el tipo elegido es DOC_PROYECTO, y concentra aquí el marcar,
-           el desmarcar y el porqué de no poder hacerlo. #}
-        <div class="mb-3 d-none" id="editar-reformado-bloque">
-          <div class="form-check">
-            <input type="checkbox" class="form-check-input" id="editar-reformado-check"
-                   onchange="alternar_reformado_editar()">
-            <label class="form-check-label fw-semibold" for="editar-reformado-check">
-              Produce un reformado de proyecto
-            </label>
-          </div>
-          <div class="ms-4 mt-2 d-none" id="editar-reformado-detalle">
-            <label class="form-label small text-secondary mb-1" for="editar-reformado-origen">
-              Origen del reformado
-            </label>
-            <select class="form-select form-select-sm" id="editar-reformado-origen">
-              <option value="VOLUNTARIO">Voluntario del promotor (art. 76.1 LPACAP)</option>
-              <option value="REQUERIDO">Requerido por la Administración (art. 68.3 LPACAP)</option>
-            </select>
-          </div>
-          <div class="ms-4 mt-2 small text-warning-emphasis d-none" id="editar-reformado-aviso">
-            <i class="fas fa-triangle-exclamation me-1"></i>
-            El proyecto pasa a tener una versión más desde este documento: obliga a
-            rehacer las fases preceptivas que correspondan.
-          </div>
-          <div class="ms-4 mt-2 small text-secondary d-none" id="editar-reformado-bloqueo">
-            <i class="fas fa-lock me-1"></i>
-            Este reformado tiene versiones posteriores. Solo se puede deshacer el
-            último del expediente, y en orden inverso.
-          </div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Observaciones</label>
-          <textarea class="form-control" id="editar-observaciones" rows="2" maxlength="2000"></textarea>
-        </div>
-        <div id="editar-error" class="alert alert-danger d-none"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="guardar_edicion()">
-          <i class="fas fa-save me-1"></i> Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- Modal: Sustituir fichero (ADR-050 §F, #1007)                  -->
-<!-- ============================================================ -->
-<div class="modal fade" id="modal-sustituir" tabindex="-1" aria-labelledby="modal-sustituir-label">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modal-sustituir-label">
-          <i class="fas fa-file-import me-1"></i> Sustituir fichero
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="sustituir-doc-id">
-        <p class="mb-2">Documento: <strong id="sustituir-nombre"></strong></p>
-        <p class="text-secondary small">
-          Para cuando se subió el fichero equivocado. El documento conserva sus datos y sus
-          vínculos; solo cambia el fichero, y su nombre pasa a ser el del fichero nuevo.
-          Queda anotado en la bitácora, con el motivo.
-        </p>
-        <div class="mb-3">
-          <label class="form-label fw-semibold" for="sustituir-fichero">
-            Fichero nuevo <span class="text-danger">*</span>
-          </label>
-          <input type="file" class="form-control" id="sustituir-fichero">
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold" for="sustituir-motivo">
-            Motivo <span class="text-danger">*</span>
-          </label>
-          <textarea class="form-control" id="sustituir-motivo" rows="3" maxlength="500"
-                    placeholder="Por qué se sustituye el fichero"></textarea>
-        </div>
-        <div id="sustituir-error" class="alert alert-danger d-none"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="btn-sustituir"
-                onclick="enviar_sustitucion()" disabled>
-          <i class="fas fa-file-import me-1"></i> Sustituir
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-</div>{# fin bc-view #}
+{% include 'expedientes/_pool_modal_url_externa.html' %}
+{% include 'expedientes/_pool_modal_subir.html' %}
+{% include 'expedientes/_pool_modal_sustituir.html' %}
 {% endblock %}
 
-{% block extra_js %}{{ super() }}
+{% block extra_js %}
+{{ super() }}
 <script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
 {# La huella SHA-256 del aviso «este fichero ya está en el expediente» (ADR-050 §H, #1007). #}
 <script src="{{ url_for('static', filename='vendor/sha256/sha256.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pool_alta.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pool_acciones.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pool_edicion.js') }}"></script>
 <script>
-(function () {
-  'use strict';
-
-  var URL_BASE_DOCS  = '{{ url_for('expedientes.pool_documentos', id=expediente.id) }}';
-  var URL_PARSEAR_JUSTIFICANTE = '{{ url_for('expedientes.pool_parsear_justificante', id=expediente.id) }}';
-  var URL_YA_EXISTE  = '{{ url_for('expedientes.pool_documentos_ya_existentes', id=expediente.id) }}';
-
-  // Qué se le pregunta a un DOC_PROYECTO que entre ahora (ADR-044 §C): el
-  // discriminante es el estado del ancla del proyecto, calculado en el servidor.
-  var RAMA_INGESTA   = '{{ rama_ingesta }}';
-  var RAMA_PRINCIPAL = '{{ rama_principal }}';
-
-  // ----------------------------------------------------------------
-  // Modales Bootstrap
-  // ----------------------------------------------------------------
-  var _modal_url_ext_bs = null;
-  var _modal_editar_bs  = null;
-  var _modal_editar_el  = document.getElementById('modal-editar-doc');
-
-  // ----------------------------------------------------------------
-  // EntradaFecha — instancias
-  // ----------------------------------------------------------------
-  // Todas recogen fecha administrativa, así que todas llevan el tope de hoy
-  // (#824): la fecha de trabajo del sistema, que en desarrollo es la del reloj
-  // simulado y en producción la real.
-  var EF_MAX_HOY  = '{{ hoy_sistema.isoformat() }}';
-  var _ef_editar  = null;
-  var _ef_url_ext = null;
-  var _ef_masivo  = null;
-
-  // ----------------------------------------------------------------
-  // Estado edición masiva (tabla)
-  // ----------------------------------------------------------------
-  var _masivo_ids = new Set();
-
-  // ================================================================
-  // INIT
-  // ================================================================
-  document.addEventListener('DOMContentLoaded', function () {
-    // Tooltips: inicialización centralizada en base_app.html (#240).
-
-    // Filtro client-side (texto + extensión + tipo + prioridad)
-    function aplicar_filtro() {
-      var q    = (document.getElementById('filtro-docs').value || '').trim().toLowerCase();
-      var ext  = (document.getElementById('filtro-ext')  ? document.getElementById('filtro-ext').value  : '');
-      var tipo = (document.getElementById('filtro-tipo') ? document.getElementById('filtro-tipo').value : '');
-      var prio = (document.getElementById('filtro-prio') ? document.getElementById('filtro-prio').value : '');
-      var visible = 0;
-      document.querySelectorAll('#tbody-docs tr[data-doc-id]').forEach(function (tr) {
-        var texto   = (tr.dataset.nombre || '') + ' ' + (tr.dataset.asunto || '');
-        var ok_q    = !q    || texto.toLowerCase().includes(q);
-        var ok_ext  = !ext  || (tr.dataset.ext || '') === ext;
-        var ok_tipo = !tipo || (tr.dataset.tipoId || '') === tipo;
-        var ok_prio = !prio || (tr.dataset.prioridad || '0') === prio;
-        var mostrar = ok_q && ok_ext && ok_tipo && ok_prio;
-        tr.style.display = mostrar ? '' : 'none';
-        if (mostrar) visible++;
-      });
-      var total = document.querySelectorAll('#tbody-docs tr[data-doc-id]').length;
-      var activo = q || ext || tipo || prio;
-      document.getElementById('filtro-count').textContent =
-        activo ? '(' + visible + '/' + total + ')' : '';
+    function _esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
     }
+    const _VACIO = '<span class="text-secondary">—</span>';
 
-    ['filtro-docs', 'filtro-ext', 'filtro-tipo', 'filtro-prio'].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el) el.addEventListener('input', aplicar_filtro);
-    });
+    // Los tres filtros de selección. Los nombres son los parámetros de la API.
+    new SelectorFiltro('#sf-ext', [
+        {% for e in extensiones %}{ v: '{{ e }}', t: '.{{ e }}' }{{ ',' if not loop.last }}{% endfor %}
+    ], { label: 'Ext.', name: 'ext' });
 
-    // EntradaFecha — al abrir modales que los contienen
-    document.getElementById('modal-url-externa').addEventListener('show.bs.modal', function () {
-      if (!_ef_url_ext) _ef_url_ext = new EntradaFecha('#ef-url-ext-fecha', { name: '_f_url_ext', maxHoy: EF_MAX_HOY });
-    });
-    _modal_editar_el.addEventListener('show.bs.modal', function () {
-      if (!_ef_editar) _ef_editar = new EntradaFecha('#ef-editar-fecha', { name: '_f_editar', maxHoy: EF_MAX_HOY });
-    });
+    new SelectorFiltro('#sf-tipo', [
+        {% for t in tipos_doc %}{ v: '{{ t.id }}', t: '{{ t.nombre|e }}' }{{ ',' if not loop.last }}{% endfor %}
+    ], { label: 'Tipo', name: 'tipo' });
 
-    // EntradaFecha del panel masivo (en el DOM principal, inicializar ya)
-    _ef_masivo = new EntradaFecha('#ef-masivo-fecha', { name: '_f_masivo', maxHoy: EF_MAX_HOY });
+    new SelectorFiltro('#sf-prio', [
+        { v: '1', t: 'Prioritarios' },
+        { v: '0', t: 'No prioritarios' }
+    ], { label: 'Prioridad', name: 'prioridad' });
 
-    // Igualar alturas de panel-masivo y barra-filtros (sin salto al intercambiar)
-    sincronizar_altura_c1();
-  });
-
-  // ================================================================
-  // METADATOS DE LA SUBIDA
-  // ================================================================
-  // ----------------------------------------------------------------
-  // Los dos controles del proyecto en el paso de metadatos (ADR-044 §C)
-  // ----------------------------------------------------------------
-  // Solo existen mientras el tipo elegido en esa fila es DOC_PROYECTO, y de los dos
-  // se muestra el que toca según el estado del ancla: mientras el proyecto no tenga
-  // principal la pregunta es si este documento lo es; en cuanto lo tiene, si produce
-  // un reformado. Al cambiar de tipo se resetean, porque el acto debe ser
-  // consciente y no heredado de lo que hubiera marcado antes para otro tipo.
-  //
-  // Dentro de un mismo lote la rama puede cambiar sin recargar: en cuanto una fila
-  // se marca como principal, las demás pasan a la pregunta del reformado — que es
-  // exactamente lo que hará el backend, porque procesa el lote en orden y la rama la
-  // decide el estado del ancla en ese momento, no el cliente.
-  function celda_reformado(prefijo, i) {
-    var id_p = 'principal-' + prefijo + '-' + i;
-    var id_r = 'reformado-' + prefijo + '-' + i;
-    return '<td class="reformado-celda">' +
-             '<div class="form-check d-none principal-control">' +
-               '<input type="checkbox" class="form-check-input principal-check" id="' + id_p + '">' +
-               '<label class="form-check-label small" for="' + id_p + '">Es el proyecto principal</label>' +
-               '<div class="small text-secondary mt-1 d-none principal-aviso">' +
-                 'Queda anclado como el proyecto de la instalación.' +
-               '</div>' +
-             '</div>' +
-             '<div class="form-check d-none reformado-control">' +
-               '<input type="checkbox" class="form-check-input reformado-check" id="' + id_r + '">' +
-               '<label class="form-check-label small" for="' + id_r + '">Produce reformado</label>' +
-               '<select class="form-select form-select-sm mt-1 d-none reformado-origen">' +
-                 '<option value="VOLUNTARIO">Voluntario (art. 76.1)</option>' +
-                 '<option value="REQUERIDO">Requerido (art. 68.3)</option>' +
-               '</select>' +
-               '<div class="small text-warning-emphasis mt-1 d-none reformado-aviso">' +
-                 'Obliga a rehacer las fases preceptivas que correspondan.' +
-               '</div>' +
-             '</div>' +
-             '<span class="text-secondary reformado-vacio">—</span>' +
-           '</td>';
-  }
-
-  function fila_es_proyecto(tr) {
-    var opt = tr.querySelector('.tipo-doc-select').selectedOptions[0];
-    return !!(opt && opt.dataset.codigo === 'DOC_PROYECTO');
-  }
-
-  // Reparte las dos preguntas entre las filas de un lote (ver comentario de arriba).
-  function repintar_proyecto(tbody) {
-    var filas = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
-    var alguien_es_principal = filas.some(function (tr) {
-      return fila_es_proyecto(tr) && tr.querySelector('.principal-check').checked;
-    });
-
-    filas.forEach(function (tr) {
-      var proyecto = fila_es_proyecto(tr);
-      var check_p  = tr.querySelector('.principal-check');
-      // La rama del principal solo se ofrece si el expediente no tiene ancla y
-      // nadie más del lote la ha reclamado ya.
-      var rama_principal = (RAMA_INGESTA === RAMA_PRINCIPAL) &&
-                           (!alguien_es_principal || check_p.checked);
-
-      tr.querySelector('.principal-control').classList.toggle('d-none', !(proyecto && rama_principal));
-      tr.querySelector('.reformado-control').classList.toggle('d-none', !(proyecto && !rama_principal));
-      tr.querySelector('.reformado-vacio').classList.toggle('d-none', proyecto);
-      tr.querySelector('.principal-aviso').classList.toggle('d-none', !check_p.checked);
-    });
-  }
-
-  function enganchar_reformado(tr) {
-    var select  = tr.querySelector('.tipo-doc-select');
-    var tbody   = tr.parentNode;
-    var check_p = tr.querySelector('.principal-check');
-    var check   = tr.querySelector('.reformado-check');
-    var origen  = tr.querySelector('.reformado-origen');
-    var aviso   = tr.querySelector('.reformado-aviso');
-
-    function al_cambiar_tipo() {
-      check_p.checked = false;
-      check.checked   = false;
-      origen.value    = 'VOLUNTARIO';
-      origen.classList.add('d-none');
-      aviso.classList.add('d-none');
-      repintar_proyecto(tbody);
-    }
-
-    select.addEventListener('change', al_cambiar_tipo);
-    check_p.addEventListener('change', function () { repintar_proyecto(tbody); });
-    check.addEventListener('change', function () {
-      origen.classList.toggle('d-none', !check.checked);
-      aviso.classList.toggle('d-none', !check.checked);
-    });
-    al_cambiar_tipo();
-  }
-
-  function datos_reformado(tr) {
-    var control_p = tr.querySelector('.principal-control');
-    var control   = tr.querySelector('.reformado-control');
-    var check     = tr.querySelector('.reformado-check');
-    // Cada marca viaja solo si su control estaba visible: lo que el usuario no pudo
-    // ver, no lo declaró.
-    return {
-      es_principal:     !control_p.classList.contains('d-none') &&
-                        tr.querySelector('.principal-check').checked,
-      abre_reformado:   !control.classList.contains('d-none') && check.checked,
-      origen_reformado: tr.querySelector('.reformado-origen').value,
-    };
-  }
-
-  // ================================================================
-  // EDICIÓN MASIVA (tabla de docs)
-  // ================================================================
-  window.on_check_doc = function (chk, doc_id) {
-    var tr = chk.closest('tr');
-    if (chk.checked) {
-      _masivo_ids.add(doc_id);
-      if (tr) tr.classList.add('doc-seleccionada');
-    } else {
-      _masivo_ids.delete(doc_id);
-      if (tr) tr.classList.remove('doc-seleccionada');
-      document.getElementById('check-todos').checked = false;
-    }
-    actualizar_panel_masivo();
-  };
-
-  window.toggle_todos = function (checked) {
-    // Solo actúa sobre filas visibles (respeta el filtro)
-    document.querySelectorAll('#tbody-docs tr[data-doc-id]').forEach(function (tr) {
-      if (tr.style.display === 'none') return;
-      var chk = tr.querySelector('.doc-check');
-      if (chk) chk.checked = checked;
-      var id = parseInt(tr.dataset.docId, 10);
-      if (checked) {
-        _masivo_ids.add(id);
-        tr.classList.add('doc-seleccionada');
-      } else {
-        _masivo_ids.delete(id);
-        tr.classList.remove('doc-seleccionada');
-      }
-    });
-    actualizar_panel_masivo();
-  };
-
-  window.deseleccionar_todos = function () {
-    toggle_todos(false);
-    document.getElementById('check-todos').checked = false;
-  };
-
-  function actualizar_panel_masivo() {
-    var n      = _masivo_ids.size;
-    var panel  = document.getElementById('panel-masivo');
-    var filtros = document.getElementById('barra-filtros');
-    if (n > 0) {
-      // El panel masivo sustituye a la barra de filtros: mismo espacio, sin salto
-      panel.classList.remove('d-none');
-      filtros.classList.add('d-none');
-      document.getElementById('masivo-count').textContent = n;
-    } else {
-      panel.classList.add('d-none');
-      filtros.classList.remove('d-none');
-    }
-  }
-
-  // Iguala la altura de panel-masivo y barra-filtros para evitar salto al intercambiarlos.
-  // Muestra ambos (invisibles) para medir, toma el máximo y lo fija como min-height.
-  // Se llama al cargar y en cada resize para adaptarse a cualquier ancho de ventana.
-  function sincronizar_altura_c1() {
-    var panel   = document.getElementById('panel-masivo');
-    var filtros = document.getElementById('barra-filtros');
-    if (!panel || !filtros) return;
-    // Guardar estado visible/oculto actual
-    var panel_oculto   = panel.classList.contains('d-none');
-    var filtros_oculto = filtros.classList.contains('d-none');
-    // Resetear min-height para medir la altura natural
-    panel.style.minHeight   = '';
-    filtros.style.minHeight = '';
-    // Mostrar ambos de forma invisible para medir
-    panel.style.visibility   = 'hidden';
-    filtros.style.visibility = 'hidden';
-    panel.classList.remove('d-none');
-    filtros.classList.remove('d-none');
-    var h = Math.max(panel.offsetHeight, filtros.offsetHeight);
-    // Restaurar estado
-    if (panel_oculto)   panel.classList.add('d-none');
-    if (filtros_oculto) filtros.classList.add('d-none');
-    panel.style.visibility   = '';
-    filtros.style.visibility = '';
-    // Fijar min-height igual en ambos
-    panel.style.minHeight   = h + 'px';
-    filtros.style.minHeight = h + 'px';
-  }
-
-  window.addEventListener('resize', sincronizar_altura_c1);
-
-  window.aplicar_masivo = function () {
-    if (_masivo_ids.size === 0) return;
-
-    // Solo incluir en el payload los campos que el usuario ha rellenado
-    var payload = {};
-    var tipo_doc_id = document.getElementById('masivo-tipo').value;
-    var fecha_admin = _ef_masivo ? _ef_masivo.getValue() : '';
-    var prio_val    = document.getElementById('masivo-prioridad-sel').value;
-
-    if (tipo_doc_id) payload.tipo_doc_id = parseInt(tipo_doc_id, 10);
-    if (fecha_admin) payload.fecha_administrativa = fecha_admin;
-    if (prio_val !== '') payload.prioridad = (prio_val === '1');
-
-    if (Object.keys(payload).length === 0) {
-      document.getElementById('masivo-error').textContent =
-        'Elige al menos un campo a modificar.';
-      document.getElementById('masivo-error').classList.remove('d-none');
-      return;
-    }
-    document.getElementById('masivo-error').classList.add('d-none');
-
-    // Cruzar _masivo_ids con filas visibles (respeta el filtro)
-    var ids_visibles = new Set();
-    document.querySelectorAll('#tbody-docs tr[data-doc-id]').forEach(function (tr) {
-      if (tr.style.display !== 'none') {
-        ids_visibles.add(parseInt(tr.dataset.docId, 10));
-      }
-    });
-    var ids = Array.from(_masivo_ids).filter(function (id) { return ids_visibles.has(id); });
-    if (ids.length === 0) return;
-    var promesas = ids.map(function (doc_id) {
-      var url_editar =
-        URL_BASE_DOCS.replace(/\/documentos$/, '/documentos/') + doc_id + '/editar';
-      return fetch(url_editar, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).then(function (r) { return r.json(); });
-    });
-
-    Promise.all(promesas)
-    .then(function (resultados) {
-      var errores = resultados.filter(function (r) { return !r.ok; });
-      if (errores.length > 0) {
-        document.getElementById('masivo-error').textContent =
-          errores.length + ' error(es) al aplicar. Recarga la página.';
-        document.getElementById('masivo-error').classList.remove('d-none');
-      } else {
-        mostrar_toast('success',
-          'Cambios aplicados a ' + ids.length + ' documento(s).');
-        setTimeout(function () { window.location.reload(); }, 1200);
-      }
-    })
-    .catch(function () {
-      document.getElementById('masivo-error').textContent = 'Error de red.';
-      document.getElementById('masivo-error').classList.remove('d-none');
-    });
-  };
-
-  // ================================================================
-  // URL EXTERNA
-  // ================================================================
-  window.abrir_modal_url_externa = function () {
-    document.getElementById('url-ext-url').value    = '';
-    document.getElementById('url-ext-tipo').value   = '';
-    document.getElementById('url-ext-asunto').value = '';
-    document.getElementById('url-ext-prioridad').checked = false;
-    document.getElementById('url-ext-error').classList.add('d-none');
-    if (!_modal_url_ext_bs) {
-      _modal_url_ext_bs = new bootstrap.Modal(document.getElementById('modal-url-externa'));
-    }
-    _modal_url_ext_bs.show();
-    setTimeout(function () { if (_ef_url_ext) _ef_url_ext.clear(); }, 150);
-  };
-
-  window.guardar_url_externa = function (url_ruta) {
-    var url = document.getElementById('url-ext-url').value.trim();
-    if (!url) {
-      document.getElementById('url-ext-error').textContent = 'La URL es obligatoria.';
-      document.getElementById('url-ext-error').classList.remove('d-none');
-      return;
-    }
-    var payload = {
-      url:                  url,
-      tipo_doc_id:          document.getElementById('url-ext-tipo').value || 1,
-      fecha_administrativa: _ef_url_ext ? _ef_url_ext.getValue() : null,
-      asunto:               document.getElementById('url-ext-asunto').value.trim(),
-      prioridad:            document.getElementById('url-ext-prioridad').checked,
-    };
-    fetch(url_ruta, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      if (data.ok) {
-        mostrar_toast('success', 'URL externa registrada correctamente.');
-        setTimeout(function () { window.location.reload(); }, 1200);
-      } else {
-        document.getElementById('url-ext-error').textContent = data.error || 'Error al guardar.';
-        document.getElementById('url-ext-error').classList.remove('d-none');
-      }
-    })
-    .catch(function () {
-      document.getElementById('url-ext-error').textContent = 'Error de red.';
-      document.getElementById('url-ext-error').classList.remove('d-none');
-    });
-  };
-
-  // ================================================================
-  // SUBIR FICHERO (multipart, #666)
-  // ================================================================
-  var _modal_subir_bs = null;
-  var _archivos_subir  = [];   // File[] elegidos en el input nativo
-  var _ef_subida        = [];  // EntradaFecha por fila del paso 2
-
-  window.abrir_modal_subir = function () {
-    if (!_modal_subir_bs) {
-      _modal_subir_bs = new bootstrap.Modal(document.getElementById('modal-subir'));
-      document.getElementById('modal-subir').addEventListener('hidden.bs.modal', resetear_modal_subir);
-      document.getElementById('subir-input-ficheros').addEventListener('change', function (e) {
-        _archivos_subir = quitar_comprimidos(e.target);
-        document.getElementById('btn-subir-siguiente').disabled = (_archivos_subir.length === 0);
-      });
-    }
-    resetear_modal_subir();
-    _modal_subir_bs.show();
-  };
-
-  window.ir_a_metadatos_subida = function () {
-    if (_archivos_subir.length === 0) return;
-    mostrar_paso_metadatos_subida();
-
-    var tmpl_tipos = document.getElementById('tmpl-tipos-doc').innerHTML;
-    var tbody = document.getElementById('subir-meta-tbody');
-    tbody.innerHTML = '';
-    _ef_subida = [];
-
-    _archivos_subir.forEach(function (f, i) {
-      var tr    = document.createElement('tr');
-      var ef_id = 'ef-subir-fecha-' + i;
-      tr.innerHTML =
-        '<td class="small">' + escapar_html(f.name) + '<div class="aviso-duplicado small mt-1"></div></td>' +
-        '<td class="small text-secondary text-nowrap">' + formatear_bytes(f.size) + '</td>' +
-        '<td><select class="form-select form-select-sm tipo-doc-select">' + tmpl_tipos + '</select></td>' +
-        '<td><div id="' + ef_id + '"></div></td>' +
-        '<td class="text-center"><input type="checkbox" class="form-check-input prioridad-check"></td>' +
-        celda_reformado('subir', i);
-      tbody.appendChild(tr);
-      _ef_subida.push(new EntradaFecha('#' + ef_id, { name: '_ef_subir_' + i, maxHoy: EF_MAX_HOY }));
-      enganchar_reformado(tr);
-
-      // Enganche 1 (ADR-034 §6, #657): autorrelleno de fecha_administrativa al elegir
-      // JUSTIFICANTE_NOTIFICA — parseo transitorio, nunca escribe en notificaciones
-      // (eso ocurre al vincular el documento a la tarea NOTIFICAR, ver hook de editar_tarea).
-      var select = tr.querySelector('.tipo-doc-select');
-      select.addEventListener('change', function () {
-        var opt = select.selectedOptions[0];
-        if (!opt || opt.dataset.codigo !== 'JUSTIFICANTE_NOTIFICA') return;
-        parsear_justificante_especulativo(f, _ef_subida[i]);
-      });
-    });
-
-    document.getElementById('subir-meta-error').classList.add('d-none');
-    comprobar_ya_existentes();
-  };
-
-  // ----------------------------------------------------------------
-  // Aviso «este fichero ya está en el expediente» (ADR-050 §H, N077; #1007)
-  // ----------------------------------------------------------------
-  // El navegador calcula el SHA-256 de cada fichero elegido, a trozos (con una librería que
-  // sirve BDDAT) y pregunta al servidor si el expediente ya lo tiene, antes de enviar los
-  // bytes. Los que ya están no se suben salvo que se marque «Subir igualmente». Es solo un
-  // aviso: el servidor sigue calculando su propia huella al subir, y si la comprobación
-  // falla por lo que sea, la subida sigue como siempre.
-  var _comprobacion = 0;          // identifica la comprobación en curso: una respuesta tardía se ignora
-  var _comprobando  = false;
-
-  function huella_de_fichero(fichero, al_progreso) {
-    return new Promise(function (resolve, reject) {
-      var TROZO = 4 * 1024 * 1024;
-      var hasher = window.sha256.create();
-      var pos = 0;
-      (function siguiente() {
-        if (pos >= fichero.size) { resolve(hasher.hex()); return; }
-        fichero.slice(pos, pos + TROZO).arrayBuffer().then(function (buf) {
-          hasher.update(new Uint8Array(buf));
-          pos += TROZO;
-          if (al_progreso) al_progreso(Math.min(100, Math.round(100 * pos / fichero.size)));
-          setTimeout(siguiente, 0);          // deja respirar a la interfaz entre trozo y trozo
-        }).catch(reject);
-      }());
-    });
-  }
-
-  function fecha_legible(iso) {
-    if (!iso) return 'sin fecha';
-    var p = iso.slice(0, 10).split('-');
-    return p[2] + '/' + p[1] + '/' + p[0];
-  }
-
-  // «X» del aviso: nombre, tipo y fecha administrativa; con varios, hasta tres y «y N más».
-  function describir_coincidencias(docs) {
-    var vistos = docs.slice(0, 3).map(function (d) {
-      return '«' + escapar_html(d.nombre) + '» (' + escapar_html(d.tipo || 'sin tipo') + ', ' +
-             fecha_legible(d.fecha) + ')';
-    });
-    var resto = docs.length - vistos.length;
-    var texto = vistos.length > 1
-      ? vistos.slice(0, -1).join(', ') + (resto > 0 ? ', ' : ' y ') + vistos[vistos.length - 1]
-      : vistos[0];
-    return resto > 0 ? texto + ' y ' + resto + ' más' : texto;
-  }
-
-  function fila_incluida(tr) {
-    if (tr.dataset.duplicado !== '1') return true;
-    var marca = tr.querySelector('.subir-igualmente');
-    return !!(marca && marca.checked);
-  }
-
-  function actualizar_boton_subir() {
-    var filas = Array.prototype.slice.call(document.querySelectorAll('#subir-meta-tbody tr'));
-    var incluidas = filas.filter(fila_incluida).length;
-    var excluidas = filas.length - incluidas;
-    document.getElementById('subir-meta-contador').textContent =
-      filas.length + ' fichero(s) elegidos' +
-      (excluidas ? ' — ' + excluidas + ' ya está(n) en el expediente y no se subirá(n) si no marcas «Subir igualmente».'
-                 : ' — listos para subir.');
-    document.getElementById('btn-subir-texto').textContent =
-      incluidas ? 'Subir ' + incluidas + ' fichero(s)' : 'Nada que subir';
-    document.getElementById('btn-subir-registrar').disabled = _comprobando || incluidas === 0;
-  }
-
-  function marcar_ya_existente(tr, docs, i) {
-    tr.dataset.duplicado = '1';
-    tr.classList.add('table-warning');
-    tr.querySelector('.aviso-duplicado').innerHTML =
-      '<div class="text-warning-emphasis"><i class="fas fa-triangle-exclamation me-1"></i>' +
-      'Este fichero ya está en el expediente como ' + describir_coincidencias(docs) + '. ' +
-      'Si lo subes igualmente se creará otro documento con el mismo contenido, sin guardar ' +
-      'otra copia, y con sus propios datos, que deberás indicar.</div>' +
-      '<div class="form-check mt-1"><input type="checkbox" class="form-check-input subir-igualmente" ' +
-      'id="subir-igualmente-' + i + '">' +
-      '<label class="form-check-label fw-semibold" for="subir-igualmente-' + i + '">Subir igualmente</label></div>';
-    tr.querySelector('.subir-igualmente').addEventListener('change', actualizar_boton_subir);
-  }
-
-  function comprobar_ya_existentes() {
-    var token = ++_comprobacion;
-    var filas = Array.prototype.slice.call(document.querySelectorAll('#subir-meta-tbody tr'));
-    _comprobando = true;
-    actualizar_boton_subir();
-    if (!window.sha256) { _comprobando = false; actualizar_boton_subir(); return; }
-
-    var huellas = new Array(filas.length);
-    var nota = function (i, texto) {
-      if (token === _comprobacion) filas[i].querySelector('.aviso-duplicado').textContent = texto;
-    };
-
-    // Una a una: dos ficheros de 300 MB a la vez no caben en la memoria de un puesto.
-    var cadena = Promise.resolve();
-    _archivos_subir.forEach(function (f, i) {
-      cadena = cadena.then(function () {
-        if (token !== _comprobacion) return;
-        nota(i, 'Comprobando si ya está en el expediente… 0 %');
-        return huella_de_fichero(f, function (pct) {
-          nota(i, 'Comprobando si ya está en el expediente… ' + pct + ' %');
-        }).then(function (h) { huellas[i] = h; nota(i, ''); })
-          .catch(function () { nota(i, ''); });          // sin huella, esa fila se sube como siempre
-      });
-    });
-
-    cadena.then(function () {
-      if (token !== _comprobacion) return;
-      var lista = huellas.filter(Boolean);
-      if (!lista.length) return;
-      return fetch(URL_YA_EXISTE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hashes: lista }),
-      }).then(function (r) { return r.json(); })
-        .then(function (data) {
-          if (token !== _comprobacion || !data.ok) return;
-          huellas.forEach(function (h, i) {
-            if (h && data.coincidencias[h]) marcar_ya_existente(filas[i], data.coincidencias[h], i);
-          });
-        });
-    }).catch(function () { /* aviso best-effort: si falla, se sube como siempre */ })
-      .then(function () {
-        if (token !== _comprobacion) return;
-        _comprobando = false;
-        actualizar_boton_subir();
-      });
-  }
-
-  // Parseo transitorio (sin persistir nada, #657): sube el fichero suelto al
-  // endpoint de preview y, si es un justificante NOTIFICA reconocido,
-  // autorrellena la fecha de puesta a disposición en la EntradaFecha de la fila.
-  function parsear_justificante_especulativo(fichero, entradaFecha) {
-    var formData = new FormData();
-    formData.append('fichero', fichero);
-
-    fetch(URL_PARSEAR_JUSTIFICANTE, { method: 'POST', body: formData })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (data.reconocido && data.fecha_puesta_disposicion) {
-          entradaFecha.setValue(data.fecha_puesta_disposicion.slice(0, 10));
+    // ── Celdas ────────────────────────────────────────────────────────────────
+    // El nombre es el enlace que abre el documento, como `enlace_documento` (macro Jinja) y
+    // `EnlaceDocumento` (React): en un listado de ScrollInfinito la fila se pinta aquí, en JS. El
+    // clic en el enlace no abre el inspector (lo evita el listener de captura de más abajo).
+    function _celdaNombre(v, item) {
+        const nombre = _esc(item.nombre);
+        if (!item.puede_abrir) {
+            return `<span class="text-secondary" title="Recurso no reconocido">` +
+                   `<i class="fas fa-triangle-exclamation fa-xs me-1"></i>${nombre}</span>`;
         }
-      })
-      .catch(function () { /* autorrelleno best-effort — sin bloquear la subida */ });
-  }
-
-  window.volver_a_elegir_subida = function () {
-    _comprobacion++;            // deja de comprobar lo elegido: se va a elegir otra vez
-    _comprobando = false;
-    mostrar_paso_elegir_subida();
-  };
-
-  function mostrar_paso_elegir_subida() {
-    document.getElementById('subir-paso-elegir').classList.remove('d-none');
-    document.getElementById('subir-paso-metadatos').classList.add('d-none');
-    document.getElementById('btn-subir-cancelar').classList.remove('d-none');
-    document.getElementById('btn-subir-siguiente').classList.remove('d-none');
-    document.getElementById('btn-subir-volver').classList.add('d-none');
-    document.getElementById('btn-subir-registrar').classList.add('d-none');
-  }
-
-  function mostrar_paso_metadatos_subida() {
-    document.getElementById('subir-paso-elegir').classList.add('d-none');
-    document.getElementById('subir-paso-metadatos').classList.remove('d-none');
-    document.getElementById('btn-subir-cancelar').classList.add('d-none');
-    document.getElementById('btn-subir-siguiente').classList.add('d-none');
-    document.getElementById('btn-subir-volver').classList.remove('d-none');
-    document.getElementById('btn-subir-registrar').classList.remove('d-none');
-  }
-
-  window.subir_ficheros = function (url_subir) {
-    var metadatos = [];
-    var formData = new FormData();
-    document.querySelectorAll('#subir-meta-tbody tr').forEach(function (tr, i) {
-      // Un fichero que ya está en el expediente no se envía salvo que se marque «Subir igualmente».
-      if (!fila_incluida(tr)) return;
-      metadatos.push(Object.assign({
-        tipo_doc_id:          tr.querySelector('.tipo-doc-select').value || '1',
-        fecha_administrativa: _ef_subida[i] ? _ef_subida[i].getValue() : null,
-        prioridad:            tr.querySelector('.prioridad-check').checked,
-      }, datos_reformado(tr)));
-      formData.append('ficheros', _archivos_subir[i]);
-    });
-    formData.append('metadatos', JSON.stringify(metadatos));
-
-    var btn = document.getElementById('btn-subir-registrar');
-    btn.disabled = true;
-
-    fetch(url_subir, { method: 'POST', body: formData })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      if (data.ok) {
-        bootstrap.Modal.getInstance(document.getElementById('modal-subir')).hide();
-        setTimeout(function () {
-          mostrar_toast('success', 'Se han subido ' + data.creados + ' documento(s) al pool.');
-          setTimeout(function () { window.location.reload(); }, 1800);
-        }, 350);
-      } else {
-        document.getElementById('subir-meta-error').textContent = data.error || 'Error al subir.';
-        document.getElementById('subir-meta-error').classList.remove('d-none');
-        btn.disabled = false;
-      }
-    })
-    .catch(function () {
-      document.getElementById('subir-meta-error').textContent = 'Error de red.';
-      document.getElementById('subir-meta-error').classList.remove('d-none');
-      btn.disabled = false;
-    });
-  };
-
-  function resetear_modal_subir() {
-    _archivos_subir = [];
-    _ef_subida = [];
-    _comprobacion++;            // si había una comprobación en curso, su respuesta se ignora
-    _comprobando = false;
-    document.getElementById('subir-input-ficheros').value = '';
-    document.getElementById('subir-meta-tbody').innerHTML = '';
-    document.getElementById('subir-error-elegir').classList.add('d-none');
-    document.getElementById('subir-meta-error').classList.add('d-none');
-    document.getElementById('btn-subir-siguiente').disabled = true;
-    mostrar_paso_elegir_subida();
-  }
-
-  // ================================================================
-  // EDITAR METADATOS (individual)
-  // ================================================================
-  // El corte del proyecto en el modal de edición (ADR-044 §C). El control solo
-  // existe mientras el tipo elegido es DOC_PROYECTO y concentra los dos sentidos:
-  // marcar declara, desmarcar retira. Sobre un documento que ya abre corte nace
-  // marcado —ahí no expresa un acto por hacer, sino un hecho—, pero al cambiar de
-  // tipo se resetea: el acto debe ser consciente, no heredado.
-  var _reformado_original = { abre: false, origen: 'VOLUNTARIO', ultimo: false };
-  var _principal_original = false;
-
-  function editar_es_proyecto() {
-    var opt = document.getElementById('editar-tipo-doc-id').selectedOptions[0];
-    return !!(opt && opt.dataset.codigo === 'DOC_PROYECTO');
-  }
-
-  // De los dos controles se muestra el que describe lo que este documento es —o, si
-  // no es nada todavía, el que corresponde a la pregunta viva del expediente—.
-  function rama_editar() {
-    if (_principal_original) return 'PRINCIPAL';
-    if (_reformado_original.abre) return 'REFORMADO';
-    return RAMA_INGESTA === RAMA_PRINCIPAL ? 'PRINCIPAL' : 'REFORMADO';
-  }
-
-  function pintar_reformado_editar() {
-    var proyecto  = editar_es_proyecto();
-    var rama      = rama_editar();
-    var check     = document.getElementById('editar-reformado-check');
-    var check_p   = document.getElementById('editar-principal-check');
-    var bloqueado = _reformado_original.abre && !_reformado_original.ultimo;
-
-    document.getElementById('editar-principal-bloque')
-      .classList.toggle('d-none', !(proyecto && rama === 'PRINCIPAL'));
-    document.getElementById('editar-principal-aviso')
-      .classList.toggle('d-none', !(check_p.checked && !_principal_original));
-
-    document.getElementById('editar-reformado-bloque')
-      .classList.toggle('d-none', !(proyecto && rama === 'REFORMADO'));
-    document.getElementById('editar-reformado-detalle')
-      .classList.toggle('d-none', !check.checked);
-    document.getElementById('editar-reformado-aviso')
-      .classList.toggle('d-none', !(check.checked && !_reformado_original.abre));
-    document.getElementById('editar-reformado-bloqueo')
-      .classList.toggle('d-none', !bloqueado);
-    check.disabled = bloqueado;
-  }
-
-  // Al cambiar el tipo: si deja de ser el que era, la marca no se hereda.
-  window.sincronizar_reformado_editar = function () {
-    var proyecto = editar_es_proyecto();
-    document.getElementById('editar-reformado-check').checked =
-      proyecto && _reformado_original.abre;
-    document.getElementById('editar-principal-check').checked =
-      proyecto && _principal_original;
-    pintar_reformado_editar();
-  };
-
-  window.alternar_principal_editar = function () {
-    var check = document.getElementById('editar-principal-check');
-    // Desmarcar el ancla deja al expediente sin decir cuál es su proyecto, y con eso
-    // el motor bloquea seguir la solicitud: se pregunta una vez.
-    if (!check.checked && _principal_original) {
-      if (!confirm('Este documento es el proyecto de la instalación.\n\n' +
-                   'Al desmarcarlo, el expediente deja de tener proyecto identificado y ' +
-                   'no se podrá seguir con la solicitud hasta anclar otro. ¿Continuar?')) {
-        check.checked = true;
-      }
+        if (item.abrir_en === 'modal') {
+            // Enlace y no `.btn`: con el tema, un `.btn` pinta el nombre del fichero en mayúsculas (#1044).
+            return `<a href="#" role="button" class="fw-semibold" data-pool-abrir-modal ` +
+                   `data-url="${_esc(item.enlace)}" data-titulo="${nombre}">` +
+                   `<i class="fas fa-file fa-xs me-1 text-secondary"></i>${nombre}</a>`;
+        }
+        const icono = item.externo ? 'fa-external-link-alt' : 'fa-file';
+        return `<a href="${_esc(item.enlace)}" target="_blank" rel="noopener" class="fw-semibold">` +
+               `<i class="fas ${icono} fa-xs me-1 text-secondary"></i>${nombre}</a>`;
     }
-    pintar_reformado_editar();
-  };
 
-  window.alternar_reformado_editar = function () {
-    var check = document.getElementById('editar-reformado-check');
-    // Desmarcar un corte que existe destruye un dato: se pregunta una vez.
-    if (!check.checked && _reformado_original.abre) {
-      if (!confirm('Este documento abre un reformado de proyecto.\n\n' +
-                   'Al desmarcarlo, el proyecto vuelve a tener una versión menos y ' +
-                   'las fases dejan de poder colgar de ella. ¿Continuar?')) {
-        check.checked = true;
-      }
-    }
-    pintar_reformado_editar();
-  };
-
-  window.abrir_modal_editar = function (btn) {
-    document.getElementById('editar-doc-id').value        = btn.dataset.docId;
-    document.getElementById('editar-url').value           = btn.dataset.docUrl;
-    document.getElementById('editar-tipo-doc-id').value   = btn.dataset.docTipoDocId;
-    document.getElementById('editar-asunto').value        = btn.dataset.docAsunto;
-    document.getElementById('editar-prioridad').checked   =
-      btn.dataset.docPrioridad !== '0' && btn.dataset.docPrioridad !== '';
-    document.getElementById('editar-observaciones').value = btn.dataset.docObservaciones;
-    document.getElementById('editar-error').classList.add('d-none');
-
-    var campo_url = document.getElementById('editar-url-campo');
-    campo_url.classList.toggle('d-none', btn.dataset.docEsUrlExterna !== 'true');
-
-    _reformado_original = {
-      abre:   btn.dataset.docAbreReformado === 'true',
-      origen: btn.dataset.docOrigenReformado || 'VOLUNTARIO',
-      ultimo: btn.dataset.docReformadoUltimo === 'true',
+    // Las marcas, como iconos con tooltip: los mismos que `fila_documento`.
+    const ICONOS_MARCA = {
+        PROYECTO:    'bi-flag-fill text-primary',
+        REFORMADO:   'bi-layers-fill text-warning',
+        PRIORITARIO: 'bi-star-fill text-warning'
     };
-    _principal_original = btn.dataset.docEsPrincipal === 'true';
-    document.getElementById('editar-reformado-check').checked = _reformado_original.abre;
-    document.getElementById('editar-reformado-origen').value  = _reformado_original.origen;
-    document.getElementById('editar-principal-check').checked = _principal_original;
-    pintar_reformado_editar();
-
-    if (!_modal_editar_bs) _modal_editar_bs = new bootstrap.Modal(_modal_editar_el);
-    _modal_editar_bs.show();
-
-    setTimeout(function () {
-      if (_ef_editar) {
-        _ef_editar.clear();
-        if (btn.dataset.docFechaAdmin) _ef_editar.setValue(btn.dataset.docFechaAdmin);
-      }
-    }, 150);
-  };
-
-  window.guardar_edicion = function () {
-    var doc_id     = document.getElementById('editar-doc-id').value;
-    var url_editar =
-      URL_BASE_DOCS.replace(/\/documentos$/, '/documentos/') + doc_id + '/editar';
-
-    var payload = {
-      tipo_doc_id:          document.getElementById('editar-tipo-doc-id').value || 1,
-      fecha_administrativa: _ef_editar ? _ef_editar.getValue() : null,
-      asunto:               document.getElementById('editar-asunto').value.trim(),
-      prioridad:            document.getElementById('editar-prioridad').checked,
-      observaciones:        document.getElementById('editar-observaciones').value.trim(),
-    };
-
-    // La URL solo se rectifica en un documento de URL externa (ADR-050 §M): solo viaja
-    // si el campo es visible; en un fichero propio la clave no se manda y el backend
-    // conserva (clave ausente conserva).
-    if (!document.getElementById('editar-url-campo').classList.contains('d-none')) {
-      payload.url = document.getElementById('editar-url').value.trim();
+    function _celdaTipo(v, item) {
+        const marcas = (item.marcas || []).map(m =>
+            `<i class="bi ${ICONOS_MARCA[m.codigo] || 'bi-tag-fill'} me-1" role="img" ` +
+            `title="${_esc(m.texto)}" aria-label="${_esc(m.texto)}"></i>`).join('');
+        return marcas + (item.tipo_doc ? _esc(item.tipo_doc) : _VACIO);
     }
 
-    // Solo se habla del corte si el control está visible. Si el tipo ha dejado de
-    // ser DOC_PROYECTO no se manda la clave: el backend retira el corte por el
-    // cambio de tipo, que es lo mismo que desmarcarlo.
-    if (editar_es_proyecto()) {
-      // Solo se habla del control visible: cada rama manda su clave y la otra no
-      // viaja, así que el backend no la interpreta (clave ausente conserva).
-      if (!document.getElementById('editar-principal-bloque').classList.contains('d-none')) {
-        payload.es_principal = document.getElementById('editar-principal-check').checked;
-      }
-      if (!document.getElementById('editar-reformado-bloque').classList.contains('d-none')) {
-        payload.abre_reformado   = document.getElementById('editar-reformado-check').checked;
-        payload.origen_reformado = document.getElementById('editar-reformado-origen').value;
-      }
+    function _celdaFecha(iso) {
+        if (!iso) return _VACIO;
+        const p = iso.slice(0, 10).split('-');
+        return `${p[2]}/${p[1]}/${p[0]}`;
     }
 
-    fetch(url_editar, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      if (data.ok) { window.location.reload(); }
-      else {
-        document.getElementById('editar-error').textContent = data.error || 'Error.';
-        document.getElementById('editar-error').classList.remove('d-none');
-      }
-    })
-    .catch(function () {
-      document.getElementById('editar-error').textContent = 'Error de red.';
-      document.getElementById('editar-error').classList.remove('d-none');
-    });
-  };
-
-  // ================================================================
-  // BORRAR (individual)
-  // ================================================================
-  window.borrar_documento = function (btn, url_borrar) {
-    if (!confirm('¿Borrar este registro del pool?\nEl fichero del servidor NO se eliminará.')) return;
-    var doc_id = btn.dataset.docId;
-    fetch(url_borrar, { method: 'POST' })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      if (data.ok) {
-        var fila = document.getElementById('fila-doc-' + doc_id);
-        if (fila) fila.remove();
-        _masivo_ids.delete(parseInt(doc_id, 10));
-        actualizar_panel_masivo();
-        mostrar_toast('info', 'Registro eliminado del pool.');
-      } else {
-        mostrar_toast('danger', data.error || 'No se pudo borrar el documento.');
-      }
-    })
-    .catch(function () {
-      mostrar_toast('danger', 'Error de red al borrar.');
-    });
-  };
-
-  // ================================================================
-  // SUSTITUIR FICHERO (ADR-050 §F, #1007)
-  // ================================================================
-  var _modal_sustituir_bs = null;
-
-  window.actualizar_boton_sustituir = function () {
-    var hay_fichero = document.getElementById('sustituir-fichero').files.length > 0;
-    var hay_motivo  = document.getElementById('sustituir-motivo').value.trim() !== '';
-    document.getElementById('btn-sustituir').disabled = !(hay_fichero && hay_motivo);
-  };
-
-  window.abrir_modal_sustituir = function (btn) {
-    document.getElementById('sustituir-doc-id').value       = btn.dataset.docId;
-    document.getElementById('sustituir-nombre').textContent = btn.dataset.docNombre;
-    document.getElementById('sustituir-fichero').value      = '';
-    document.getElementById('sustituir-motivo').value       = '';
-    document.getElementById('sustituir-error').classList.add('d-none');
-    window.actualizar_boton_sustituir();
-
-    if (!_modal_sustituir_bs) {
-      _modal_sustituir_bs = new bootstrap.Modal(document.getElementById('modal-sustituir'));
-      document.getElementById('sustituir-fichero').addEventListener('change', function (e) {
-        quitar_comprimidos(e.target);
-        window.actualizar_boton_sustituir();
-      });
-      document.getElementById('sustituir-motivo')
-        .addEventListener('input', window.actualizar_boton_sustituir);
+    // Nº de usos y, al pasar el ratón, cuáles (`services/usos_documento.py`).
+    function _celdaUsos(n, item) {
+        if (!n) return _VACIO;
+        const cuales = (item.usos || []).map(u => u.texto).join('\n');
+        return `<span class="badge text-bg-secondary" title="${_esc(cuales)}">${n}</span>`;
     }
-    _modal_sustituir_bs.show();
-  };
 
-  window.enviar_sustitucion = function () {
-    var doc_id   = document.getElementById('sustituir-doc-id').value;
-    var fichero  = document.getElementById('sustituir-fichero').files[0];
-    var error    = document.getElementById('sustituir-error');
-    var boton    = document.getElementById('btn-sustituir');
-    if (!fichero) return;
-
-    var formData = new FormData();
-    formData.append('fichero', fichero);
-    formData.append('motivo', document.getElementById('sustituir-motivo').value.trim());
-
-    boton.disabled = true;
-    error.classList.add('d-none');
-    fetch(URL_BASE_DOCS.replace(/\/documentos$/, '/documentos/') + doc_id + '/sustituir',
-          { method: 'POST', body: formData })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      if (data.ok) {
-        _modal_sustituir_bs.hide();
-        mostrar_toast('success', 'Fichero sustituido: el documento ahora es «' + data.nombre + '».');
-        setTimeout(function () { window.location.reload(); }, 1500);
-      } else {
-        error.textContent = data.error || 'No se pudo sustituir el fichero.';
-        error.classList.remove('d-none');
-        boton.disabled = false;
-      }
-    })
-    .catch(function () {
-      error.textContent = 'Error de red.';
-      error.classList.remove('d-none');
-      boton.disabled = false;
+    const scrollInfinito = new ScrollInfinito({
+        apiUrl:      '{{ url_for("api_pool_documentos.listar_documentos", expediente_id=expediente.id) }}',
+        tableClass:  '.pool-table',
+        entityLabel: 'documentos',
+        columns: [
+            { key: 'nombre',    label: 'Documento', type: 'custom', renderFn: _celdaNombre },
+            { key: 'asunto',    label: 'Asunto',    type: 'custom', hide: 'lg', truncate: true,
+              renderFn: v => v ? `<span title="${_esc(v)}">${_esc(v)}</span>` : _VACIO },
+            { key: 'tipo_doc',  label: 'Tipo',      type: 'custom', hide: 'md', renderFn: _celdaTipo },
+            { key: 'fecha',     label: 'Fecha adm.', type: 'custom', renderFn: _celdaFecha },
+            { key: 'extension', label: 'Ext.',      type: 'custom', hide: 'xl',
+              renderFn: v => v ? `<span class="badge border border-secondary text-secondary">.${_esc(v)}</span>` : _VACIO },
+            { key: 'n_usos',    label: 'Usos',      type: 'custom', renderFn: _celdaUsos },
+        ],
+        selection: {
+            fragmentUrl: id   => `/expedientes/{{ expediente.id }}/documentos/${id}/fragmento`,
+            title:       item => item.nombre || ''
+        }
+        {% if puede_editar %},
+        // El modo de casillas de la edición masiva no fuerza ningún filtro (a diferencia de la
+        // asignación de expedientes, que solo enseña los sin asignar).
+        bulkCheckbox: true,
+        bulkParams: {}
+        {% endif %}
     });
-  };
 
-  // ================================================================
-  // UTILIDADES
-  // ================================================================
-  function escapar_html(str) {
-    return String(str)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
+    const filtros = new FiltrosListado(scrollInfinito);
 
-  function formatear_bytes(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  }
+    // El clic en el nombre abre el documento, no el inspector. En fase de captura, antes de que el
+    // `<tr>` reciba el suyo; un enlace sigue su camino (solo se corta la propagación) y el botón de
+    // un diagnóstico o un certificado abre el modal grande.
+    document.querySelector('.pool-table tbody').addEventListener('click', e => {
+        const modal = e.target.closest('[data-pool-abrir-modal]');
+        const enlace = e.target.closest('a');
+        if (!modal && !enlace) return;
+        e.stopPropagation();
+        if (modal) {
+            e.preventDefault();
+            if (window.AppModalLarge) AppModalLarge.open(modal.dataset.url, { title: modal.dataset.titulo });
+        }
+    }, true);
 
-}());
+    // El pool cambió desde el inspector (borrar): se vuelve a pedir la lista.
+    document.addEventListener('pool:cambiado', () => scrollInfinito.reload());
+
+    {% if puede_editar %}
+    // ── Edición masiva ────────────────────────────────────────────────────────
+    // Un `POST …/editar` (el JSON de siempre) por documento, con solo los campos rellenados: lo que no
+    // viaja no se toca (#832). Cada documento pasa por las mismas reglas que una edición suelta —el
+    // sello de un certificado, la fecha obligatoria del tipo—, así que unos pueden fallar y otros no.
+    (function () {
+        const toggle     = document.getElementById('toggle-edicion-masiva');
+        const panel      = document.getElementById('panel-masivo');
+        const selTipo    = document.getElementById('masivo-tipo');
+        const selPrio    = document.getElementById('masivo-prioridad-sel');
+        const btnAplicar = document.getElementById('btn-aplicar-masivo');
+        const btnQuitar  = document.getElementById('btn-cancelar-masivo');
+        const cuenta     = document.getElementById('masivo-count');
+        const errorDiv   = document.getElementById('masivo-error');
+        const urlBase    = '{{ url_for("expedientes.pool_documentos", id=expediente.id) }}';
+        const efFecha    = new EntradaFecha('#ef-masivo-fecha', {
+            name: '_f_masivo', maxHoy: '{{ hoy_sistema.isoformat() }}', onChange: actualizarBoton
+        });
+
+        function cuerpo() {
+            const c = {};
+            if (selTipo.value) c.tipo_doc_id = parseInt(selTipo.value, 10);
+            if (efFecha.getValue()) c.fecha_administrativa = efFecha.getValue();
+            if (selPrio.value !== '') c.prioridad = (selPrio.value === '1');
+            return c;
+        }
+
+        function actualizarBoton() {
+            btnAplicar.disabled = !(scrollInfinito._bulkSelected.size > 0 && Object.keys(cuerpo()).length > 0);
+        }
+
+        function activar(activo) {
+            toggle.checked = activo;
+            panel.classList.toggle('d-none', !activo);
+            errorDiv.classList.add('d-none');
+            if (!activo) { selTipo.value = ''; selPrio.value = ''; efFecha.clear(); }
+            scrollInfinito.setBulkMode(activo);
+            actualizarBoton();
+        }
+
+        toggle.addEventListener('change', () => activar(toggle.checked));
+        btnQuitar.addEventListener('click', () => scrollInfinito.clearBulkSelection());
+        selTipo.addEventListener('change', actualizarBoton);
+        selPrio.addEventListener('change', actualizarBoton);
+        document.addEventListener('bulk:selection-changed', e => {
+            cuenta.textContent = e.detail.size;
+            actualizarBoton();
+        });
+
+        btnAplicar.addEventListener('click', async () => {
+            const ids = Array.from(scrollInfinito._bulkSelected);
+            const datos = cuerpo();
+            if (!ids.length || !Object.keys(datos).length) return;
+            btnAplicar.disabled = true;
+            errorDiv.classList.add('d-none');
+            const resultados = await Promise.all(ids.map(id =>
+                fetch(`${urlBase}/${id}/editar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                }).then(r => r.json()).catch(() => ({ ok: false, error: 'Error de red.' }))
+            ));
+            const fallos = resultados.filter(r => !r.ok);
+            const hechos = ids.length - fallos.length;
+            if (hechos) window.mostrar_toast('success', `Cambios aplicados a ${hechos} documento(s).`);
+            if (fallos.length) {
+                errorDiv.textContent = `${fallos.length} de ${ids.length} documento(s) no se han modificado: ` +
+                                       (fallos[0].error || 'error desconocido');
+                errorDiv.classList.remove('d-none');
+            }
+            // Los cambiados se repintan; la selección se vacía (los que fallaron se ven en la lista).
+            scrollInfinito.clearBulkSelection();
+            scrollInfinito.reload();
+        });
+    }());
+    {% endif %}
+
+    // Sync inspector ↔ URL ?sel (ADR-023 §1)
+    function _updateSelParam(selId) {
+        const url = new URL(location.href);
+        if (selId) url.searchParams.set('sel', selId);
+        else url.searchParams.delete('sel');
+        history.replaceState(null, '', url.toString());
+    }
+    document.addEventListener('inspector:opened',  e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:swapped', e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:closed',  () => _updateSelParam(null));
+
+    // Abrir el inspector si la URL trae ?sel=<id> (también tras recargar al sustituir un fichero)
+    const _selParam = new URLSearchParams(location.search).get('sel');
+    if (_selParam && window.AppInspector) {
+        AppInspector.open({
+            selId:       _selParam,
+            title:       '',
+            fragmentUrl: `/expedientes/{{ expediente.id }}/documentos/${_selParam}/fragmento`
+        });
+    }
 </script>
 {% endblock %}

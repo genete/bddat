@@ -580,6 +580,32 @@ function borrarHuerfano(btn, expedienteId, docId) {
 }
 window.borrarHuerfano = borrarHuerfano;
 
+// Destino declarado sin tarea (#881): el documento no está consumido por ninguna tarea, pero algo ya lo
+// referencia (el escrito que ancla una solicitud, el proyecto principal, un reformado…). No sale del
+// radar —si ninguna tarea llega a consumirlo, el recordatorio sigue haciendo falta—, pero va marcado, y
+// el tooltip dice qué lo referencia (`usos`, de services/usos_documento.py).
+function renderDestino(item) {
+    if (!item.n_usos) return '';
+    const cuales = (item.usos || []).map(u => u.texto).join('\n');
+    return ` <span class="badge text-bg-light border text-primary fw-normal"
+                   title="Con destino declarado, aún sin tarea:\n${escapeHtml(cuales)}">con destino</span>`;
+}
+
+// Un documento con destino no se borra (la guarda del pool lo rechazaría): el botón lo dice en vez de fallar.
+function renderBorrar(item) {
+    if (item.n_usos) {
+        const motivo = (item.usos || []).map(u => u.texto).join('; ');
+        return `<button type="button" class="btn btn-sm btn-outline-secondary" disabled
+                        title="No se puede borrar: ${escapeHtml(motivo)}" onclick="event.stopPropagation()">
+                    <i class="fas fa-lock"></i>
+                </button>`;
+    }
+    return `<button type="button" class="btn btn-sm btn-outline-danger" title="Borrar del pool"
+                    onclick="event.stopPropagation(); borrarHuerfano(this, ${item.expediente_id}, ${item.id})">
+                <i class="fas fa-trash"></i>
+            </button>`;
+}
+
 const huerfanosColumns = [
     { key: 'num_at',      label: 'Expediente',  type: 'custom' },
     { key: 'responsable', label: 'Asignación',   type: 'custom' },
@@ -590,13 +616,10 @@ const huerfanosColumns = [
 ].map(col => ({ ...col, renderFn: {
     num_at:      (val) => `<span class="num-at-pill"><strong>AT-${val}</strong></span>`,
     responsable: (val) => renderAsignacion(val),
-    tipo_doc:    (val) => escapeHtml(val || '—'),
+    tipo_doc:    (val, item) => escapeHtml(val || '—') + renderDestino(item),
     asunto:      (val) => `<span class="celda-ellipsis" title="${escapeHtml(val || '')}">${escapeHtml(val || '—')}</span>`,
     nombre:      (val, item) => `<span class="celda-ellipsis" title="${escapeHtml(val)}">${escapeHtml(val)}</span> ${renderVerAccion(item)}`,
-    _acciones:   (val, item) => `<button type="button" class="btn btn-sm btn-outline-danger" title="Borrar del pool"
-                                         onclick="event.stopPropagation(); borrarHuerfano(this, ${item.expediente_id}, ${item.id})">
-                                     <i class="fas fa-trash"></i>
-                                 </button>`,
+    _acciones:   (val, item) => renderBorrar(item),
 }[col.key] }));
 
 class HuerfanosScroll extends ScrollInfinito {

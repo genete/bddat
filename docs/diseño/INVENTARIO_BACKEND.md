@@ -1,7 +1,7 @@
 # Inventario de backend — Fase 2.5
 
 > Insumo neutro para la fase 3 del revamping de UI. Datos objetivos sobre modelos, motor, servicios, ADRs e issues abiertos. Sin propuestas de cambio.
-> Fecha del corte: 2026-05-28. Actualizado el 2026-10-03 (#1007, ADR-050 fase 1) solo en §1.3, §8 y §10.6.4, y el 2026-10-05 (#1007, PR 3) en §6.2; el resto sigue siendo el corte de mayo.
+> Fecha del corte: 2026-05-28. Actualizado el 2026-10-03 (#1007, ADR-050 fase 1) solo en §1.3, §8 y §10.6.4, el 2026-10-05 (#1007, PR 3) en §6.2 y el 2026-11-01 (#881) en §6.1 y §6.2; el resto sigue siendo el corte de mayo.
 
 ---
 
@@ -309,6 +309,7 @@ Selección (#785): de las entradas activas del nivel, se descartan las cuyo `cam
 | Blueprint | Endpoints principales | Consumidor UI |
 |---|---|---|
 | `api_expedientes` | `/api/expedientes/` (listado paginado), filtros, búsqueda | `lista_v2_base.html` |
+| `api_pool_documentos` | `/api/expedientes/<id>/documentos` (pool paginado con cursor, filtros `search`, `ext`, `tipo`, `prioridad`; cada fila lleva `n_usos` y `usos`; #881) | `expedientes/pool_documentos.html` |
 | `api_entidades` | `/api/entidades/` listado, `/api/entidades/candidatos_autorizacion` | `entidades/index.html`, `entidades/detalle.html` |
 | `api_proyectos` | `/api/proyectos/` listado | `proyectos/index.html` |
 | `api_seguimiento` | `/api/seguimiento/` agregación por solicitud con `estado_solicitud` | `seguimiento_y_huerfanos/index.html` (pestaña Seguimiento, #630 ADR-038) |
@@ -319,7 +320,7 @@ Selección (#785): de las entradas activas del nivel, se descartan las cuyo `cam
 ### 6.2 APIs en `app/modules/*/routes.py`
 
 - `admin_plantillas`: 5 endpoints JSON (`/api/admin_plantillas/tipos-solicitud`, `/tipos-fase`, `/tipos-tramite`, `/fs`, `/tokens`).
-- `expedientes` (pool documentos): `/subir` (errores del contenido con 409 y 503; la respuesta trae cada documento creado como la fila común, `detalle_nodo.documento_fila`, igual que el pool, el detalle de un nodo, el radar de huérfanos y la NOTIFICAR: #1044, ADR-053 §E), `/documentos/json` se retiró en #1044 (sin consumidor), `/url-externa` (solo `http(s)://`; otra cosa, 422), `/editar` (la `url` solo se rectifica en un documento de URL externa, con la anterior en la bitácora), `/borrar`. El registro in situ (`/explorador-fs`, `/registrar-rutas`) y «abrir carpeta» (`/abrir-en-carpeta`, `/expedientes/<id>/abrir-carpeta`) se retiraron en #1007 (ADR-050).
+- `expedientes` (pool documentos): `/subir` (errores del contenido con 409 y 503; la respuesta trae cada documento creado como la fila común, `detalle_nodo.documento_fila`, igual que el pool, el detalle de un nodo, el radar de huérfanos y la NOTIFICAR: #1044, ADR-053 §E), `/documentos/json` se retiró en #1044 (sin consumidor), `/url-externa` (solo `http(s)://`; otra cosa, 422), `/editar` (JSON, la que usa la edición masiva; la `url` solo se rectifica en un documento de URL externa, con la anterior en la bitácora), `/borrar` (la guarda es `bool(usos_documento(doc))`: dieciséis FK, #881). Desde #881, el inspector del pool: `/documentos/<id>/fragmento` (lectura), `/editar-fragmento` y `/guardar` (el formulario, con respuesta `{ok, message}` o `{ok: false, errors}`; mismo núcleo de reglas que `/editar`, `_aplicar_edicion_documento`); los tres dan 404 si el documento no es del expediente de la URL. El registro in situ (`/explorador-fs`, `/registrar-rutas`) y «abrir carpeta» (`/abrir-en-carpeta`, `/expedientes/<id>/abrir-carpeta`) se retiraron en #1007 (ADR-050).
 
 ---
 
