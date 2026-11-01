@@ -1,0 +1,67 @@
+{#
+  documento_fila.html — Renderizador Jinja de la fila común de documento (ADR-053 §E y su
+  anexo, #1044). Su gemelo en React es el componente de la fase 4; los dos pintan lo mismo
+  con las mismas clases (`.fila-doc*`, en v2-components.css) a partir del mismo dato: la
+  fila que entrega `detalle_nodo.documento_fila`.
+
+  Uso: {% from 'macros/documento_fila.html' import fila_documento, enlace_documento %}
+
+  fila_documento(d)
+    d — una fila de documento (`documento_fila`): nombre, tipo_doc, fecha (ISO o None),
+        asunto, marcas [{codigo, texto}], enlace, puede_abrir, abrir_en y, si es el
+        documento de una tarea, rol y subrol.
+    Dos líneas apiladas, nunca columnas y sin scroll propio. Línea 1: el nombre (el enlace
+    que abre el documento). Línea 2: rol o subrol, fecha dd/mm/aaaa, marcas (iconos con
+    tooltip) y tipo. Lo que no cabe se trunca con puntos suspensivos y el valor completo va
+    en el `title`; el asunto no se pinta, va en el `title` de la fila.
+    Solo modo «vinculados» (lectura): el modo selector y las acciones («quitar») son de los
+    mini-listados que las necesitan, hoy los de React.
+
+  enlace_documento(d)
+    La pieza «enlace»: el nombre como lo que abre el documento. También sirve para los sitios
+    de un solo documento. Un certificado o un diagnóstico se consultan en el modal grande
+    (`abrir_en` 'modal'); el resto abre en una pestaña nueva; sin apertura, solo el nombre.
+    Nunca pinta `href="None"`.
+#}
+
+{% macro enlace_documento(d) -%}
+{%- if d.puede_abrir and d.abrir_en == 'modal' -%}
+<button type="button" class="fila-doc__nombre fila-doc__enlace"
+        data-modal-large-url="{{ d.enlace }}" data-modal-large-title="{{ d.nombre }}"
+        title="{{ d.nombre }}">{{ d.nombre }}</button>
+{%- elif d.puede_abrir -%}
+<a href="{{ d.enlace }}" target="_blank" rel="noopener" class="fila-doc__nombre"
+   title="{{ d.nombre }}">{{ d.nombre }}</a>
+{%- else -%}
+<span class="fila-doc__nombre text-muted" title="{{ d.nombre }}">{{ d.nombre }}</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro fila_documento(d) -%}
+{%- set rotulos = {'CONSUMIDO': 'Consumido', 'PRODUCIDO': 'Producido'} -%}
+{%- set rotulos_subrol = {'A_NOTIFICAR': 'A notificar', 'JUSTIFICANTE_PREVIO': 'Previo'} -%}
+{%- set iconos = {'PROYECTO': 'bi-flag-fill text-primary',
+                  'REFORMADO': 'bi-layers-fill text-warning',
+                  'PRIORITARIO': 'bi-star-fill text-warning'} -%}
+<div class="fila-doc"{% if d.asunto %} title="{{ d.asunto }}"{% endif %}>
+  <div class="fila-doc__l1">
+    <i class="bi bi-file-earmark flex-shrink-0"></i>
+    {{ enlace_documento(d) }}
+  </div>
+  <div class="fila-doc__l2 small text-muted">
+    {%- if d.rol %}
+    <span class="badge {{ 'text-bg-primary' if d.rol == 'PRODUCIDO' else 'text-bg-success' }}">
+      {{- rotulos_subrol.get(d.subrol) or rotulos.get(d.rol, d.rol) -}}
+    </span>
+    {%- endif %}
+    <span>{{ (d.fecha|fecha_es) if d.fecha else 'sin fecha' }}</span>
+    {%- for m in d.marcas or [] %}
+    <i class="bi {{ iconos.get(m.codigo, 'bi-tag-fill') }}" role="img"
+       title="{{ m.texto }}" aria-label="{{ m.texto }}"></i>
+    {%- endfor %}
+    {%- if d.tipo_doc %}
+    <span class="fila-doc__tipo" title="{{ d.tipo_doc }}">· {{ d.tipo_doc }}</span>
+    {%- endif %}
+  </div>
+</div>
+{%- endmacro %}

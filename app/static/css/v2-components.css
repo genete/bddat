@@ -214,6 +214,58 @@
  * (.lt-hide-*) y de truncado (.lt-truncate) directamente en su template
  * (admin_plantillas/listado.html). Ya no necesita reglas nth-child propias. */
 
+/* ===== FILA COMÚN DE DOCUMENTO (ADR-053 §E, #1044) =====
+   La pintan el macro Jinja (macros/documento_fila.html) y el componente React. Dos líneas
+   apiladas, nunca columnas y sin scroll propio: arriba el nombre (el enlace que abre el
+   documento) y las acciones; debajo rol o subrol, fecha, marcas y tipo. Lo que no cabe se
+   trunca con puntos suspensivos y el valor completo va en el title. En la línea 2, el tipo es
+   lo único que se encoge: el rótulo, la fecha y las marcas conservan su ancho. */
+.fila-doc__l1 {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+}
+.fila-doc__nombre {
+  flex: 1 1 auto;
+  min-width: 0;                 /* sin esto el flex no deja truncar */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* El botón que abre el modal grande se ve como un enlace, sin el estilo de .btn (que pone el
+   texto en mayúsculas: un nombre de fichero no debe cambiar de forma según cómo se abra). */
+.fila-doc__enlace {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: var(--bs-link-color);
+  cursor: pointer;
+}
+.fila-doc__enlace:hover {
+  color: var(--bs-link-hover-color);
+  text-decoration: underline;
+}
+.fila-doc__l2 {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  margin-left: 1.5rem;          /* bajo el nombre, no bajo el icono */
+  min-width: 0;
+}
+.fila-doc__l2 > * {
+  flex-shrink: 0;
+}
+.fila-doc__l2 > .fila-doc__tipo {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ===== BADGES ESTADOS ===== */
 .badge {
   display: inline-flex;
