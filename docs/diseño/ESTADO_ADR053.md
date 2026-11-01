@@ -254,3 +254,10 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 - **01/11/2026** — **#1044, decisión de Carlos sobre los justificantes previos de una NOTIFICAR:** se quedan en su
   tarjeta y también en la lista «Documentos»; si en el futuro molesta, se quitan de la lista «Documentos». Sin cambios
   de código. La rama se rebasa sobre `develop` (087cb0b, el estudio de edición de escritos con Microsoft 365, ajeno).
+- **01/11/2026** — **#1044, Carlos confirma ocho de las *Interpretación* del anexo a ADR-053 §E:** la función única
+  `documento_fila` y sus campos; `texto_opcion` dentro de la fila; el subrol como segundo icono (avión de papel y
+  clip); `text-secondary` en la línea de detalle; los modos vinculados y selector (con el icono del rol en lugar del
+  borde verde); el botón del modal como enlace; el recién subido arriba del pool; y el autorrelleno solo en los tipos
+  que exigen fecha. Siguen como *Interpretación*, sin confirmar: las dos piezas (enlace y fila), el pool cargado una
+  vez por vida de la isla, el orden de truncado, los iconos concretos de las marcas, la medida y parte de la tabla
+  «caso a caso». Abierto el PR de cierre, #1083.
