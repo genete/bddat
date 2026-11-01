@@ -265,6 +265,36 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Las acciones de la línea 1 (quitar, abrir) conservan su ancho: el nombre es lo que se trunca. */
+.fila-doc__acciones {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+/* Modo selector (el pool de la Despensa): la fila entera elige el documento. Es un contenedor y no un
+   .btn porque lleva dentro enlaces y botones, y porque .btn pone el texto en mayúsculas. */
+.fila-doc--selector {
+  border: 1px solid var(--bs-border-color);
+  border-radius: .375rem;
+  padding: .25rem .5rem;
+  font-size: .8125rem;
+  cursor: pointer;
+  background: var(--bs-body-bg);
+}
+.fila-doc--selector:hover {
+  border-color: var(--bs-secondary-color);
+}
+.fila-doc--selector:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 1px;
+}
+.fila-doc--seleccionada,
+.fila-doc--seleccionada:hover {
+  border-color: var(--bs-primary);
+  background: var(--bs-primary-bg-subtle);
+}
 
 /* ===== BADGES ESTADOS ===== */
 .badge {

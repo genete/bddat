@@ -32,7 +32,7 @@ import { patchNotificar, postNotificarParsearDocumento } from '../../api.js'
 import { showToast } from '../../../shared/ui/toast.js'
 import { BloqueoForzar } from '../TiposCreablesCompartido.jsx'
 import { TarjetaDatos, CampoDato, ValorSoloLectura } from '../TarjetaDatos.jsx'
-import EnlaceDocumento from './EnlaceDocumento.jsx'
+import { EnlaceDocumento } from '../FilaDocumento.jsx'
 
 const ETIQUETA_CANAL = {
   NOTIFICA: 'Notifica-PNT',
@@ -283,9 +283,7 @@ export default function BloqueRegistro({ expedienteId, tareaId, payload, onPaylo
                     disabled={poolCargando || previsualizando || enviando} onChange={seleccionarDocumento}>
               {!producido && <option value="">— Selecciona documento —</option>}
               {documentosFinales.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.nombre}{d.tipo_doc ? ` — ${d.tipo_doc}` : ''}{d.fecha ? ` · ${fechaIso(d.fecha)}` : ''}
-                </option>
+                <option key={d.id} value={d.id}>{d.texto_opcion}</option>
               ))}
             </select>
             {previsualizando && <div className="text-muted small mt-1">Previsualizando…</div>}

@@ -7,7 +7,7 @@
 import React from 'react'
 import { useArbolStore } from '../store.js'
 import { getTiposDocumento } from '../api.js'
-import { fechaLarga } from '../plazoActo.js'
+import FilaDocumento from './FilaDocumento.jsx'
 import { quitarComprimidos } from '../../shared/subida.js'
 import { AvisoYaExiste, useAvisoYaExiste } from '../../shared/avisoYaExiste.jsx'
 import { estaSellado } from '../sellado.js'
@@ -234,73 +234,8 @@ export const AYUDA_PRODUCIDO_ESPERAR_PLAZO =
   + 'solicitud, justificante de BandeJA o acuse de publicación. Los anexos que lo '
   + 'acompañen se consumen después, en la tarea de análisis.'
 
-// Apertura de un documento del pool — mismo mecanismo que Inspector.jsx en modo
-// lectura, disponible aquí también antes de decidir enlazar el documento a la
-// tarea (#609).
-function AccionesApertura({ doc }) {
-  return (
-    <div className="d-flex align-items-center gap-1" onClick={(e) => e.stopPropagation()}>
-      {doc.enlace && doc.abrir_en === 'modal' && (
-        <button
-          type="button"
-          // El div padre corta la propagación (stopPropagation, más abajo) para
-          // que estos botones no disparen el onClick de selección de FichaDoc —
-          // eso impide que el atributo declarativo data-modal-large-url llegue
-          // al listener global de document (inspector-overlay.js). Se llama
-          // AppModalLarge directamente en vez de depender de esa delegación.
-          onClick={() => window.AppModalLarge && window.AppModalLarge.open(doc.enlace, { title: doc.nombre })}
-          className="btn btn-sm btn-link p-0 text-secondary lh-1"
-          style={{ fontSize: '0.85rem' }}
-          title="Ver documento"
-        >
-          <i className="bi bi-box-arrow-up-right" />
-        </button>
-      )}
-      {doc.enlace && doc.abrir_en !== 'modal' && (
-        <a
-          href={doc.enlace}
-          target="_blank"
-          rel="noreferrer"
-          className="btn btn-sm btn-link p-0 text-secondary lh-1"
-          style={{ fontSize: '0.85rem' }}
-          title="Abrir documento"
-        >
-          <i className="bi bi-box-arrow-up-right" />
-        </a>
-      )}
-    </div>
-  )
-}
-
-// Contenedor no-button (para poder anidar enlace/botón de apertura sin HTML
-// inválido) con el mismo aspecto visual que el botón que sustituye.
-function FichaDoc({ doc, vinculado, seleccionada, onClick }) {
-  return (
-    <div
-      className={`btn btn-sm w-100 text-start border rounded px-2 py-1 d-flex align-items-center gap-2 ${
-        seleccionada
-          ? 'btn-primary'
-          : vinculado
-            ? 'btn-outline-success'
-            : 'btn-outline-secondary'
-      }`}
-      style={{ fontSize: '0.78rem', cursor: 'pointer' }}
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
-      title={doc.nombre}
-    >
-      <div className="flex-grow-1 text-truncate">
-        <div className="text-truncate fw-semibold">{doc.nombre}</div>
-        <div className="text-truncate opacity-75">
-          {[doc.tipo_doc, fechaLarga(doc.fecha)].filter(Boolean).join(' · ')}
-        </div>
-      </div>
-      <AccionesApertura doc={doc} />
-    </div>
-  )
-}
+// El pool de la Despensa pinta cada documento con la fila común, en modo selector (`FilaDocumento.jsx`,
+// ADR-053 §E): antes eran `FichaDoc` y `AccionesApertura`, con su propio pintado.
 
 // Ancla documental de la solicitud que se está creando (#428).
 //
@@ -349,9 +284,7 @@ function AnclaSolicitud() {
         >
           <option value="">— Elija el documento —</option>
           {candidatos.map((d) => (
-            <option key={d.id} value={d.id}>
-              {fechaLarga(d.fecha)} · {d.nombre}
-            </option>
+            <option key={d.id} value={d.id}>{d.texto_opcion}</option>
           ))}
         </select>
       )}
@@ -620,39 +553,21 @@ function DespensaDocs({ deshabilitarProducido, esEsperarPlazo }) {
   const seleccionarDocVincular  = useArbolStore((s) => s.seleccionarDocVincular)
   const cancelarVincular        = useArbolStore((s) => s.cancelarVincular)
   const vincularDoc             = useArbolStore((s) => s.vincularDoc)
-  const quitarDoc               = useArbolStore((s) => s.quitarDoc)
 
   React.useEffect(() => {
     cargarPool()
     cargarSugerenciaSubida(seleccion?.id)
   }, [seleccion?.id])  // eslint-disable-line
 
-  // Separar roles para poder distinguirlos (#517: validaciones y lista activos)
+  // Separar roles para poder distinguirlos (#517: validaciones del staging). Los vinculados se
+  // enseñan y se quitan en la lista «Documentos» de la zona de datos (ADR-053 §E): la Despensa ya no
+  // los repite, solo marca en el pool cuáles están vinculados y como qué.
   const consumidosIds = React.useMemo(
     () => new Set(borrador.documentos_consumidos_ids || []),
     [borrador.documentos_consumidos_ids],
   )
   const producidoId = borrador.documento_producido_id ?? null
-
-  // Lookup rápido id→doc del pool para mostrar nombres en la lista de vínculos activos
-  const poolById = React.useMemo(
-    () => Object.fromEntries(pool.map((d) => [d.id, d])),
-    [pool],
-  )
-
-  // Lista ordenada: consumidos primero, producido al final
-  const vinculadosActivos = React.useMemo(() => {
-    const items = []
-    for (const id of consumidosIds) {
-      const doc = poolById[id]
-      if (doc) items.push({ doc, rol: 'CONSUMIDO' })
-    }
-    if (producidoId) {
-      const doc = poolById[producidoId]
-      if (doc) items.push({ doc, rol: 'PRODUCIDO' })
-    }
-    return items
-  }, [consumidosIds, producidoId, poolById])
+  const rolEnBorrador = (id) => (consumidosIds.has(id) ? 'CONSUMIDO' : producidoId === id ? 'PRODUCIDO' : undefined)
 
   if (poolCargando) {
     return <div className="p-2 text-muted small fst-italic">Cargando documentos…</div>
@@ -666,35 +581,6 @@ function DespensaDocs({ deshabilitarProducido, esEsperarPlazo }) {
   return (
     <div className="p-2 d-flex flex-column gap-2">
 
-      {/* ── Vínculos activos (solo si hay alguno) ── */}
-      {vinculadosActivos.length > 0 && (
-        <div className="d-flex flex-column gap-1">
-          <span className="text-muted small fw-semibold">Documentos de esta tarea</span>
-          {vinculadosActivos.map(({ doc, rol }) => (
-            <div
-              key={`${rol}-${doc.id}`}
-              className="d-flex align-items-center gap-1 px-2 py-1 rounded border border-success-subtle bg-success-subtle"
-              style={{ fontSize: '0.78rem' }}
-            >
-              <span className={`badge me-1 ${rol === 'CONSUMIDO' ? 'text-bg-success' : 'text-bg-primary'}`}>
-                {rol === 'CONSUMIDO' ? 'Consumido' : 'Producido'}
-              </span>
-              <span className="text-truncate flex-grow-1 fw-semibold" title={doc.nombre}>{doc.nombre}</span>
-              <AccionesApertura doc={doc} />
-              <button
-                type="button"
-                className="btn btn-sm btn-link text-danger p-0 lh-1"
-                style={{ fontSize: '0.9rem' }}
-                title="Quitar vínculo"
-                onClick={() => quitarDoc(rol, doc.id)}
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* ── Pool ── */}
       <span className="text-muted small fw-semibold">Pool de documentos</span>
 
@@ -703,12 +589,13 @@ function DespensaDocs({ deshabilitarProducido, esEsperarPlazo }) {
       ) : (
         <div className="d-flex flex-column gap-1" style={{ maxHeight: 120, overflowY: 'auto' }}>
           {pool.map((doc) => (
-            <FichaDoc
+            <FilaDocumento
               key={doc.id}
               doc={doc}
-              vinculado={consumidosIds.has(doc.id) || producidoId === doc.id}
+              modo="selector"
+              rol={rolEnBorrador(doc.id)}
               seleccionada={docVinculandoPendiente?.id === doc.id}
-              onClick={() =>
+              onSeleccionar={() =>
                 docVinculandoPendiente?.id === doc.id
                   ? cancelarVincular()
                   : seleccionarDocVincular(doc)

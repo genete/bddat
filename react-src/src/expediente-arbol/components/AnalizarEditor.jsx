@@ -36,6 +36,7 @@ import {
 } from '../api.js'
 import { showToast } from '../../shared/ui/toast.js'
 import { tienePermiso } from '../../shared/auth.js'
+import { EnlaceDocumento } from './FilaDocumento.jsx'
 
 export const ETIQUETA_RESULTADO = {
   favorable: 'Favorable',
@@ -368,7 +369,7 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido,
 
       {item.documento && (
         <div className="d-flex align-items-center gap-2 small mb-1">
-          <span className="text-truncate">{item.documento.nombre}</span>
+          <EnlaceDocumento doc={item.documento} />
           {!soloLectura && (
             <button
               type="button"
@@ -431,7 +432,7 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido,
           >
             <option value="">Selecciona un documento…</option>
             {pool.map((d) => (
-              <option key={d.id} value={d.id}>{d.nombre}</option>
+              <option key={d.id} value={d.id}>{d.texto_opcion}</option>
             ))}
           </select>
           <button

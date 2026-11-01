@@ -7,12 +7,11 @@
 // listan, por separado del registro: se vinculan desde la Despensa de abajo, que es el
 // único sitio (decisión 1 de #929, resuelta en «no»: sin atajo de subida por tipo).
 //
-// Tarjeta de datos igual en lectura y en edición: es una lista, no tiene control vivo.
+// Tarjeta de datos igual en lectura y en edición: es una lista, no tiene control vivo. Cada documento
+// es la fila común (#1044, ADR-053 §E); sin rótulo de rol, porque el título de la tarjeta ya lo dice.
 import React from 'react'
 import { TarjetaDatos } from '../TarjetaDatos.jsx'
-import EnlaceDocumento from './EnlaceDocumento.jsx'
-
-const fechaIso = (iso) => (iso ? iso.split('-').reverse().join('/') : null)
+import FilaDocumento from '../FilaDocumento.jsx'
 
 export default function BloqueJustificantesPrevios({ previos, soloLectura }) {
   return (
@@ -26,17 +25,10 @@ export default function BloqueJustificantesPrevios({ previos, soloLectura }) {
                 + 'sede), se vinculan como consumidos desde la Despensa.'}
           </div>
         ) : (
-          <ul className="list-unstyled small mb-0">
+          <ul className="list-group list-group-flush">
             {previos.map((d) => (
-              <li key={d.id} className="mb-1">
-                <div className="d-flex align-items-center gap-2">
-                  <i className="bi bi-file-earmark" />
-                  <EnlaceDocumento doc={d} />
-                </div>
-                <div className="text-muted ms-4">
-                  {d.tipo_doc || d.tipo_doc_codigo}
-                  {d.fecha ? ` · ${fechaIso(d.fecha)}` : ' · sin fecha'}
-                </div>
+              <li key={d.id} className="list-group-item px-0 py-2 bg-transparent">
+                <FilaDocumento doc={d} />
               </li>
             ))}
           </ul>

@@ -17,6 +17,8 @@ import { barraDeActo, fechaLarga } from '../plazoActo.js'
 import Despensa from './Despensa.jsx'
 import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
 import DatosNodo from './DatosNodo.jsx'
+import FilaDocumento from './FilaDocumento.jsx'
+import { documentosDelBorrador } from '../documentosBorrador.js'
 import { disenoDeNodo } from '../disenosDatos.js'
 import { superficieDeNodoTarea, tieneDisenoTarea } from '../superficiesTarea.js'
 import { entradaDe, useHechosDelNodo } from '../registroEditores.jsx'
@@ -43,8 +45,6 @@ const ETIQUETA_PLAZO = {
   INDEFINIDO:     'Indefinido',
   SIN_PLAZO:      'Sin plazo',
 }
-
-const ROL_DOC = { CONSUMIDO: 'Consumido', PRODUCIDO: 'Producido' }
 
 // --- Búsqueda y conteo de subárbol (para confirmación de borrado, §7) -----------
 
@@ -311,44 +311,25 @@ function Organismos({ organismos, seleccionar }) {
   )
 }
 
-function Documentos({ documentos }) {
-  if (!documentos || documentos.length === 0) return null
+// Los documentos del nodo, como la fila común (#1044, ADR-053 §E). Un solo sitio para ellos: en edición
+// de una tarea la lista sale del borrador y cada fila lleva «Quitar vínculo» (la Despensa ya no repite los
+// vinculados); en lectura, y en los nodos sin Despensa, es la lista del detalle, sin acciones.
+function Documentos({ documentos, editable }) {
+  const borrador = useArbolStore((s) => s.borrador)
+  const pool = useArbolStore((s) => s.pool)
+  const quitarDoc = useArbolStore((s) => s.quitarDoc)
+  const filas = React.useMemo(
+    () => (editable ? documentosDelBorrador(documentos, borrador, pool) : (documentos || [])),
+    [editable, documentos, borrador, pool],
+  )
+  if (filas.length === 0) return null
   return (
     <div className="mb-3">
       <div className="text-muted fw-semibold small mb-1">Documentos</div>
       <ul className="list-group list-group-flush">
-        {documentos.map((d) => (
+        {filas.map((d) => (
           <li key={`${d.rol}-${d.id}`} className="list-group-item px-0 py-2">
-            <div className="d-flex align-items-center gap-2">
-              <i className="bi bi-file-earmark" />
-              {d.puede_abrir && d.abrir_en === 'modal' ? (
-                // .btn global (v2-components.css) es inline-flex + justify-content:center
-                // (pensado para botones icono+texto de ancho ajustado); este botón además
-                // crece con flex-grow-1 dentro de la fila, así que sin justify-content-start
-                // el nombre queda centrado en el hueco sobrante — text-start no basta, ese
-                // solo afecta text-align, no la alineación del flex item (#696).
-                <button type="button"
-                        className="btn btn-link p-0 text-start justify-content-start flex-grow-1 text-truncate"
-                        data-modal-large-url={d.enlace}
-                        data-modal-large-title={d.nombre}
-                        title={d.nombre}>
-                  {d.nombre}
-                </button>
-              ) : d.puede_abrir ? (
-                <a href={d.enlace} target="_blank" rel="noreferrer" className="flex-grow-1 text-truncate" title={d.nombre}>
-                  {d.nombre}
-                </a>
-              ) : (
-                <span className="flex-grow-1 text-truncate text-muted" title={d.nombre}>
-                  {d.nombre}
-                </span>
-              )}
-            </div>
-            <div className="small text-muted ms-4">
-              {ROL_DOC[d.rol] || d.rol}
-              {d.tipo_doc ? ` · ${d.tipo_doc}` : ''}
-              {d.fecha ? ` · ${fechaLarga(d.fecha)}` : ''}
-            </div>
+            <FilaDocumento doc={d} onQuitar={editable ? () => quitarDoc(d.rol, d.id) : undefined} />
           </li>
         ))}
       </ul>
@@ -375,6 +356,11 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
   const superficie = esHoja ? superficieDeNodoTarea(arbol, nodo) : null
   const tareaConDiseno = esHoja && !!nodo && tieneDisenoTarea(superficie)
   const diseno = disenoDeNodo(tipo, { tareaConDiseno })
+  // Los vínculos se tocan aquí solo en una tarea en edición cuya entrada tiene Despensa y que no está
+  // sellada: es lo mismo que decide si la Despensa se pinta (ver `Despensa.jsx`).
+  const seleccion = useArbolStore((s) => s.seleccion)
+  const editarDocumentos = modoEdicion && esHoja && !entrada.despensa.oculta && !!seleccion
+    && !estaSellado(arbol, seleccion)
   // Fase cerrada (#720, ADR-036): los controles vivos se deshabilitan.
   const faseCerrada = tipo === 'fase' && !!nodo && nodo.estado === 'FINALIZADA'
   return (
@@ -387,7 +373,7 @@ function ZonaDatos({ nodo, tipo, detalle, seleccionar }) {
       <Plazo plazo={detalle.plazo} />
       <PlazosActos nodo={nodo} tipo={tipo} />
       <Organismos organismos={detalle.organismos} seleccionar={modoEdicion ? null : seleccionar} />
-      <Documentos documentos={detalle.documentos} />
+      <Documentos documentos={detalle.documentos} editable={editarDocumentos} />
     </>
   )
 }

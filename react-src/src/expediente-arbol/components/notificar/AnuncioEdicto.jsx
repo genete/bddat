@@ -18,7 +18,7 @@ import { useArbolStore } from '../../store.js'
 import { getEdicto, postEdicto } from '../../api.js'
 import { showToast, showAvisos } from '../../../shared/ui/toast.js'
 import { TarjetaDatos } from '../TarjetaDatos.jsx'
-import EnlaceDocumento from './EnlaceDocumento.jsx'
+import { EnlaceDocumento } from '../FilaDocumento.jsx'
 
 const mensajeDe = (e, porDefecto) => (
   (e && e.payload && (e.payload.error || e.payload.motivo)) || (e && e.message) || porDefecto
