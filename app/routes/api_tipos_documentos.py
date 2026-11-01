@@ -17,6 +17,7 @@ from app import db
 from app.checks.catalogo_requerido import REGISTROS_REQUERIDOS
 from app.decorators import require_permiso
 from app.models.tipos_documentos import TipoDocumento
+from app.services.fechas import TIPOS_FECHA_OBLIGATORIA, mensaje_fecha_obligatoria
 
 api_tipos_documentos_bp = Blueprint(
     'api_tipos_documentos', __name__, url_prefix='/api'
@@ -99,14 +100,20 @@ def listar_tipos():
 
     data = []
     for t in tipos:
+        # La misma lista que valida el servidor al guardar el documento (models.documentos): el
+        # formulario de subida de la Despensa marca la fecha como obligatoria y dice qué fecha es
+        # (#1036), en vez de dejar que el usuario lo descubra con el 422.
+        exige_fecha = t.codigo in TIPOS_FECHA_OBLIGATORIA
         data.append({
-            'id':           t.id,
-            'codigo':       t.codigo,
-            'nombre':       t.nombre,
-            'descripcion':  t.descripcion,
-            'origen':       t.origen,
-            'origen_label': _ORIGEN_LABELS.get(t.origen, t.origen),
-            'protegido':    t.codigo in _CODIGOS_PROTEGIDOS,
+            'id':              t.id,
+            'codigo':          t.codigo,
+            'nombre':          t.nombre,
+            'descripcion':     t.descripcion,
+            'origen':          t.origen,
+            'origen_label':    _ORIGEN_LABELS.get(t.origen, t.origen),
+            'protegido':       t.codigo in _CODIGOS_PROTEGIDOS,
+            'fecha_obligatoria': exige_fecha,
+            'ayuda_fecha':     mensaje_fecha_obligatoria(t.codigo) if exige_fecha else None,
         })
 
     response = {

@@ -6,7 +6,7 @@
 //   · docs del pool (S3b-3):  tarea  → fichas de doc del pool + staging consumido/producido
 import React from 'react'
 import { useArbolStore } from '../store.js'
-import { getTiposDocumento } from '../api.js'
+import { getTiposDocumento, postParsearJustificante } from '../api.js'
 import FilaDocumento from './FilaDocumento.jsx'
 import { quitarComprimidos } from '../../shared/subida.js'
 import { AvisoYaExiste, useAvisoYaExiste } from '../../shared/avisoYaExiste.jsx'
@@ -423,6 +423,15 @@ function SubidaInline({ tareaId }) {
   const [prioridad, setPrioridad] = React.useState(false)
   const [tiposDoc, setTiposDoc]   = React.useState([])
 
+  // Fecha obligatoria y autorrelleno (#1036). Qué tipos exigen fecha lo dice el servidor
+  // (`fecha_obligatoria`, la misma lista que valida al guardar) y también qué fecha es (`ayuda_fecha`).
+  const tipoElegido = tiposDoc.find((t) => String(t.id) === String(tipoDocId))
+  const exigeFecha  = !!(tipoElegido && tipoElegido.fecha_obligatoria)
+  const fechaRef    = React.useRef('')   // lo último que hay en el campo, para el autorrelleno asíncrono
+  fechaRef.current  = fecha
+  const fechaAuto   = React.useRef('')   // la fecha que puso el autorrelleno (y no el usuario)
+  const peticion    = React.useRef(0)    // descarta la respuesta de una petición ya superada
+
   // Pre-rellena con la sugerencia ya cargada por cargarSugerenciaSubida() al
   // abrir el formulario — nunca bloqueante, siempre editable.
   React.useEffect(() => {
@@ -436,6 +445,24 @@ function SubidaInline({ tareaId }) {
     getTiposDocumento().then((d) => setTiposDoc(d.data || [])).catch(() => {})
   }, [abierto])  // eslint-disable-line
 
+  // Al elegir fichero y un tipo que exige fecha, se le pregunta al servidor qué fecha corresponde
+  // (solo en esos tipos: parsear un fichero solo merece la pena cuando la fecha es la que cuenta).
+  // Nunca pisa lo que el usuario haya tecleado y nunca bloquea: si falla o no propone nada, no pasa nada.
+  React.useEffect(() => {
+    if (!abierto || !fichero || !exigeFecha) return
+    const mia = ++peticion.current
+    postParsearJustificante(expedienteId, fichero, tipoElegido.codigo)
+      .then((r) => {
+        const sugerida = r && r.fecha_sugerida
+        if (mia !== peticion.current || !sugerida) return
+        if (fechaRef.current === '' || fechaRef.current === fechaAuto.current) {
+          fechaAuto.current = sugerida
+          setFecha(sugerida)
+        }
+      })
+      .catch(() => { /* autorrelleno de UX: sin bloquear la subida */ })
+  }, [abierto, fichero, tipoElegido?.codigo])  // eslint-disable-line
+
   if (!abierto) {
     return (
       <button
@@ -448,8 +475,9 @@ function SubidaInline({ tareaId }) {
     )
   }
 
+  const faltaFecha = exigeFecha && !fecha
   const enviar = async () => {
-    if (!fichero) return
+    if (!fichero || faltaFecha) return
     const ok = await subirDocumentoDespensa(fichero, {
       tipo_doc_id: tipoDocId || 1,
       asunto: asunto.trim() || null,
@@ -458,6 +486,7 @@ function SubidaInline({ tareaId }) {
     })
     if (ok) {
       setAbierto(false); setFichero(null); setTipoDocId(''); setAsunto(''); setFecha(''); setPrioridad(false)
+      fechaAuto.current = ''
       aviso.reiniciar()
     }
   }
@@ -507,12 +536,23 @@ function SubidaInline({ tareaId }) {
         onChange={(e) => setAsunto(e.target.value)}
         maxLength={500}
       />
+      <label className="small fw-semibold mb-0" htmlFor={`despensa-subida-fecha-${tareaId}`}>
+        Fecha administrativa{exigeFecha && <span className="text-danger"> *</span>}
+      </label>
       <input
         type="date"
-        className="form-control form-control-sm"
+        id={`despensa-subida-fecha-${tareaId}`}
+        className={`form-control form-control-sm${faltaFecha ? ' is-invalid' : ''}`}
         value={fecha}
+        required={exigeFecha}
         onChange={(e) => setFecha(e.target.value)}
       />
+      {exigeFecha && (
+        <div className={`small ${faltaFecha ? 'text-danger' : 'text-muted'}`}>
+          {tipoElegido.ayuda_fecha}
+          {fecha && fecha === fechaAuto.current && ' Propuesta a partir del justificante: revísala.'}
+        </div>
+      )}
       <div className="form-check">
         <input
           type="checkbox"
@@ -529,7 +569,8 @@ function SubidaInline({ tareaId }) {
         <button
           type="button"
           className="btn btn-sm btn-primary flex-grow-1"
-          disabled={!fichero || subiendoDocumento || aviso.bloqueaSubida}
+          disabled={!fichero || subiendoDocumento || aviso.bloqueaSubida || faltaFecha}
+          title={faltaFecha ? 'Falta la fecha administrativa' : undefined}
           onClick={enviar}
         >
           {subiendoDocumento ? 'Subiendo…' : 'Subir y vincular'}

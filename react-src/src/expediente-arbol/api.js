@@ -402,6 +402,18 @@ export function subirDocumentoPool(expedienteId, fichero, metadatos) {
   return api.post(`/expedientes/${expedienteId}/documentos/subir`, formData)
 }
 
+// Autorrelleno de la fecha al subir un justificante (#1036, #928 §10). Parsea el fichero en el servidor
+// sin guardar nada y devuelve, entre otras cosas, `fecha_sugerida` (AAAA-MM-DD o null): la fecha que
+// corresponde al tipo elegido, que decide el servidor (`notificaciones.fecha_sugerida`). Hoy solo la
+// propone para los dos justificantes de Notifica; para el resto, y si no reconoce el fichero, null.
+// Misma ruta que ya usa pool_documentos.html.
+export function postParsearJustificante(expedienteId, fichero, tipoDocCodigo) {
+  const formData = new FormData()
+  formData.append('fichero', fichero)
+  if (tipoDocCodigo) formData.append('tipo_doc_codigo', tipoDocCodigo)
+  return api.post(`/expedientes/${expedienteId}/documentos/parsear_justificante`, formData)
+}
+
 // Sugerencia de tipo_doc_id/asunto para el formulario de subida inline (#367).
 // Respuesta: {tipo_doc_id, asunto} | {tipo_doc_id:null, asunto:null} si no hay
 // coincidencia exacta y no ambigua en el catálogo.
@@ -409,7 +421,8 @@ export function getSugerenciaDocumento(expedienteId, tareaId) {
   return api.get(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/sugerencia_documento`)
 }
 
-// Catálogo de tipos de documento para el <select> del formulario de subida (#367).
+// Catálogo de tipos de documento para el <select> del formulario de subida (#367). Cada tipo trae
+// `fecha_obligatoria` y `ayuda_fecha` (#1036): si exige fecha administrativa y qué fecha es.
 export function getTiposDocumento() {
   return api.get('/api/tipos-documento?limit=100')
 }
