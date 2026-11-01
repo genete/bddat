@@ -17,12 +17,12 @@
 2. ~~**Notificaciones, lo que ya está libre**~~ Hecho.
    - ~~**#1038** (zona D de #929): representante y sede de la solicitud.~~ Hecho (PR #1081).
    - ~~**#1037** (zona C de #929): marcar las notificaciones que van por edicto y aplicar el anuncio.~~ Hecho (PR #1082).
-3. **Documentos y pool**. **Siguiente bloque** (confirmado por Carlos el 01/11/2026; el orden de las piezas dentro del bloque, sin confirmar).
+3. **Documentos y pool**. **Bloque en curso** (confirmado por Carlos el 01/11/2026, con el orden de las piezas; la fase 1 de #1044 es lo que se está haciendo).
    - **#1044**: mini-listados de documentos, con la fila común de tres modos. Unifica los documentos que hoy salen repetidos en el inspector.
-   - **#881**: listado del pool al estándar, con **#1036** (fecha del justificante) dentro o antes.
-   - **#1012** (ADR-050): papelera. Va después de #881.
+   - **#881**: listado del pool al estándar, con la mitad del pool de **#1036** (fecha del justificante) dentro; la mitad de la Despensa va en la fase 4 de #1044.
    - **#1008** (ADR-050): «Exportar expediente». El sitio del botón depende de #881. Va antes de producción.
-   - **#1009** (ADR-050): plantillas y fragmentos al almacén. Va antes de producción.
+   - **#1012** (ADR-050): papelera. Va después de #881 y de #1008 (usa sus tareas diarias y su marca de manifiesto).
+   - **#1009** (ADR-050): plantillas y fragmentos al almacén. Va antes de producción. No depende de las anteriores: al final del bloque, salvo presión de producción.
 4. **Cola y listados**
    - **#1039**: la cola de Mi trabajo al listado estándar.
    - **#1041**: los cinco listados fuera del estándar.

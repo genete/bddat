@@ -75,7 +75,7 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 | Pieza | Cruce |
 |---|---|
 | **#929, zona A** | Independiente del marco. La decisión 1 (atajo de subida por tipo en el editor) se resolvió en «no» (PRE-ADR D1); `ESTADO_ADR049` lo tenía como «sin tomar» y se corrige el 11/10 |
-| **#1036** (fecha en la subida) | Vive en `pool_documentos.html`, que #881 reescribe. Decidir si se arregla antes o dentro de #881. Con la decisión 1 en «no», no aplica la regla de fecha por tipo en el editor |
+| **#1036** (fecha en la subida) | Vive en `pool_documentos.html`, que #881 reescribe. *Decidido por Carlos el 01/11/2026:* se parte; la mitad del pool se arregla dentro de #881 y la de la Despensa (`SubidaInline`), en la fase 4 de #1044, junto al recorte de `subirDocumentoDespensa`. Con la decisión 1 en «no», no aplica la regla de fecha por tipo en el editor |
 | **#1037** (marcar y aplicar el anuncio del edicto) | **Hecho** (PR #1082, 30/10/2026). Sin choque con el marco. La marca va en el borrador del inspector y se guarda con el «Guardar» del marco; las casillas son un control propio de la tarjeta (`casillas` en el esquema editable), no un selector de documentos (D14). Sin superficie de trámite por código en el registro de editores: dos tarjetas y una acción en la entrada `TRAMITE`, que el dato decide si salen |
 | **#1038** (representante y sede de la solicitud) | **Hecho** (PR #1081, 23/10/2026). Tocaba el editor de la solicitud del árbol: la tarjeta «Solicitante» lee y edita representante y sede con el mismo texto (D15). El contrato del select quedó en la guía y solo lo cumple `ControlCampo` (#1080 alinea el resto) |
 | **Zona E de #929** (sin issue) | Tres de sus ocho puntos tocan lo decidido o lo pendiente: inspector en lectura (D15), Mi trabajo (D8) y radar de huérfanos (fila provisional de Seguimiento y huérfanos). *Propuesta:* no abrirla antes del marco ni de la Cola |
@@ -201,3 +201,6 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   `c.hayDetalle` no se pinta nunca; anotado en `GUIA_REACT_ISLAS.md`. Sin cambios en el contrato de un selector:
   el control de varias opciones aplica la regla 2 (las marcas que ya no son opción se conservan y la tarjeta lo
   avisa) y la 4 (una sola lista en el servicio, la misma que el validador).
+- **01/11/2026** — **Bloque 3 (documentos y pool) en curso.** Carlos confirma el orden: #1044, #881 (con la mitad
+  del pool de #1036), #1008, #1012 y #1009 (el detalle, en `CONTEXTO_ACTUAL.md` y `ESTADO_ADR050.md`). Empieza
+  la **fase 1 de #1044** (definición, sin código), en la rama `feature/issue-1044-mini-listados-documentos`.
