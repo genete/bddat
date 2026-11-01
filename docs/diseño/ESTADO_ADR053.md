@@ -251,3 +251,6 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   inspector»), `GUIA_COMPONENTES_INTERACTIVOS.md` (§«Fila de documento») y `REGLAS_DESARROLLO.md` (§«Documentos»: no
   se añaden serializadores ni pintados de documento nuevos). Con ella quedan hechas las cinco fases de #1044; falta
   el PR de cierre (`Closes #1044`), que no se ha creado.
+- **01/11/2026** — **#1044, decisión de Carlos sobre los justificantes previos de una NOTIFICAR:** se quedan en su
+  tarjeta y también en la lista «Documentos»; si en el futuro molesta, se quitan de la lista «Documentos». Sin cambios
+  de código. La rama se rebasa sobre `develop` (087cb0b, el estudio de edición de escritos con Microsoft 365, ajeno).
