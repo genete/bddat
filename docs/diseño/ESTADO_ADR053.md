@@ -240,3 +240,10 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   tipos trae `fecha_obligatoria` y `ayuda_fecha`; el formulario de subida marca la fecha como obligatoria, enseña
   qué fecha es y no deja subir sin ella, y autorrellena la de los justificantes de Notifica sin pisar lo tecleado.
   Comprobado en el navegador con un PDF sintético de Notifica. Queda la mitad del pool, dentro de #881.
+- **01/11/2026** — **#1044, enmienda de Carlos a la fila, tras verla en la app** (rama de trabajo, sin PR): los badges
+  de «Consumido» y «Producido» pasan a **iconos** —los mismos del árbol y del seguimiento, `bi-box-arrow-in-down` y
+  `bi-box-arrow-up`, en gris neutro— porque no eran coherentes con ellos y se leían peor; la **fecha va detrás del
+  nombre del fichero**, en la línea 1; los detalles (rol, subrol, marcas) van como iconos en la línea 2, con la
+  descripción detrás. **Todos los iconos de la fila llevan tooltip.** *Interpretación:* el subrol de una NOTIFICAR es un
+  segundo icono (avión de papel «A notificar», clip «Justificante previo») y la línea de detalle pasa de `text-muted`
+  a `text-secondary` por legibilidad. Cambian el macro Jinja, `FilaDocumento.jsx` y `.fila-doc*`.
