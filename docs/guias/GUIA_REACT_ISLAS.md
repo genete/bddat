@@ -518,7 +518,10 @@ fecha, los iconos y las acciones conservan su ancho. El asunto no se pinta: va e
 **Props de `FilaDocumento`:** `doc` (la fila del servidor), `modo` (`'vinculados'` por defecto o
 `'selector'`), `rol` (en el selector, el rol que dice el borrador, para marcar los ya vinculados),
 `seleccionada` y `onSeleccionar` (selector), `onQuitar` (vinculados: pinta la «✕» de «Quitar vínculo»). El
-tercer modo de ADR-053 §E, editar el documento, no existe aún: llega con #881.
+tercer modo de ADR-053 §E, editar el documento, existe desde #881 como **fragmento Jinja en el inspector del
+pool** (`_editar_fragmento_documento.html`), no como modo de este componente: la fila React no tiene botón
+«Editar». Cuál es el camino desde el árbol (el mismo fragmento en el modal grande, u otro) está **sin decidir y
+fuera de #881** (ADR-053, anexo a §E, decisión 6).
 
 **Reglas**
 

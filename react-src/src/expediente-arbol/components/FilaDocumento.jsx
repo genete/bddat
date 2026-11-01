@@ -17,7 +17,9 @@
 //     (el borrador de una tarea) lleva la ✕ de «Quitar vínculo».
 //   · `selector`: la fila entera elige el documento (`onSeleccionar`); el nombre es texto y la
 //     acción es abrir. Es el pool de la Despensa.
-//   · edición del documento: sin hacer, llega con #881 (el botón «Editar» de las filas).
+//   · edición del documento: no es un modo de esta fila. El formulario existe desde #881, como
+//     fragmento Jinja del inspector del pool; el botón «Editar» de estas filas está fuera de #881
+//     y por decidir (ADR-053, anexo a §E, decisión 6).
 //
 // También exporta la pieza «enlace» (`EnlaceDocumento`): el nombre como lo que abre el documento, para
 // los sitios de un solo documento (el anuncio del edicto, el del requisito del checklist).
