@@ -4,11 +4,13 @@
 // clases (`.fila-doc*`, en v2-components.css), a partir del mismo dato: la fila que entrega
 // `detalle_nodo.documento_fila`. Si cambia uno, cambia el otro.
 //
-// Dos líneas apiladas, nunca columnas y sin scroll propio. Línea 1: el nombre y, a la derecha, las
-// acciones. Línea 2: rol o subrol, fecha dd/mm/aaaa, marcas (iconos con tooltip) y tipo. Lo que no
-// cabe se trunca con puntos suspensivos y el valor completo va en el `title`; el asunto no se pinta,
-// va en el `title` de la fila. El orden de supervivencia lo fija el CSS: el nombre se trunca el
-// primero, después el tipo; el rótulo, la fecha y las marcas conservan su ancho.
+// Dos líneas apiladas, nunca columnas y sin scroll propio. Línea 1: el nombre (el enlace que abre el
+// documento), detrás su fecha dd/mm/aaaa y, a la derecha, las acciones. Línea 2: los detalles como
+// iconos con tooltip —el rol, con los mismos iconos del árbol y del seguimiento; el subrol de una
+// NOTIFICAR y las marcas— y, detrás, la descripción (el tipo). Lo que no cabe se trunca con puntos
+// suspensivos y el valor completo va en el `title`; el asunto no se pinta, va en el `title` de la
+// fila. El orden de supervivencia lo fija el CSS: se trunca primero el nombre y, en la línea 2, la
+// descripción; la fecha y los iconos conservan su ancho.
 //
 // Tres modos de interacción (D14):
 //   · `vinculados` (por defecto): el nombre es el enlace que abre el documento. Con `onQuitar`
@@ -22,8 +24,11 @@
 import React from 'react'
 import { fechaLarga } from '../plazoActo.js'
 
-const ROTULO_ROL = { CONSUMIDO: 'Consumido', PRODUCIDO: 'Producido' }
-const ROTULO_SUBROL = { A_NOTIFICAR: 'A notificar', JUSTIFICANTE_PREVIO: 'Previo' }
+// Los iconos del rol son los de `nodos/Docs.jsx` (el árbol) y `_inspector_seguimiento.html`.
+const ICONO_ROL = { CONSUMIDO: 'bi-box-arrow-in-down', PRODUCIDO: 'bi-box-arrow-up' }
+const TEXTO_ROL = { CONSUMIDO: 'Consumido', PRODUCIDO: 'Producido' }
+const ICONO_SUBROL = { A_NOTIFICAR: 'bi-send', JUSTIFICANTE_PREVIO: 'bi-paperclip' }
+const TEXTO_SUBROL = { A_NOTIFICAR: 'A notificar', JUSTIFICANTE_PREVIO: 'Justificante previo' }
 const ICONO_MARCA = {
   PROYECTO: 'bi-flag-fill text-primary',
   REFORMADO: 'bi-layers-fill text-warning',
@@ -73,22 +78,29 @@ function AbrirDocumento({ doc }) {
   )
 }
 
+const Fecha = ({ doc }) => (
+  <span className="fila-doc__fecha small text-secondary">{doc.fecha ? fechaLarga(doc.fecha) : 'sin fecha'}</span>
+)
+
+// Un icono de detalle: su texto va en el tooltip y en `aria-label` (no hay rótulo a la vista). Todos los
+// iconos de la fila los llevan: el del fichero, los de rol, subrol y marcas, y los de las acciones.
+const Icono = ({ clase, texto }) => <i className={`bi ${clase} fila-doc__ico`} role="img" title={texto} aria-label={texto} />
+const IconoDocumento = () => (
+  <i className="bi bi-file-earmark flex-shrink-0" role="img" title="Documento" aria-label="Documento" />
+)
+
 function LineaDos({ doc, rol }) {
   // En el selector el rol lo pone quien llama (el que dice el borrador); en una lista, el de la fila.
   const rolFila = rol ?? doc.rol
   const subrol = rol ? undefined : doc.subrol
-  const rotulo = ROTULO_SUBROL[subrol] || ROTULO_ROL[rolFila] || rolFila
   return (
-    <div className="fila-doc__l2 small text-muted">
-      {rolFila && (
-        <span className={`badge ${rolFila === 'PRODUCIDO' ? 'text-bg-primary' : 'text-bg-success'}`}>{rotulo}</span>
-      )}
-      <span>{doc.fecha ? fechaLarga(doc.fecha) : 'sin fecha'}</span>
+    <div className="fila-doc__l2 small text-secondary">
+      {rolFila && <Icono clase={ICONO_ROL[rolFila] || 'bi-file-earmark'} texto={TEXTO_ROL[rolFila] || rolFila} />}
+      {ICONO_SUBROL[subrol] && <Icono clase={ICONO_SUBROL[subrol]} texto={TEXTO_SUBROL[subrol]} />}
       {(doc.marcas || []).map((m) => (
-        <i key={m.codigo} className={`bi ${ICONO_MARCA[m.codigo] || 'bi-tag-fill'}`} role="img"
-           title={m.texto} aria-label={m.texto} />
+        <Icono key={m.codigo} clase={ICONO_MARCA[m.codigo] || 'bi-tag-fill'} texto={m.texto} />
       ))}
-      {doc.tipo_doc && <span className="fila-doc__tipo" title={doc.tipo_doc}>· {doc.tipo_doc}</span>}
+      {doc.tipo_doc && <span className="fila-doc__tipo" title={doc.tipo_doc}>{doc.tipo_doc}</span>}
     </div>
   )
 }
@@ -106,8 +118,9 @@ export default function FilaDocumento({
            onClick={elegir}
            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); elegir() } }}>
         <div className="fila-doc__l1">
-          <i className="bi bi-file-earmark flex-shrink-0" />
+          <IconoDocumento />
           <span className="fila-doc__nombre fw-semibold" title={doc.nombre}>{doc.nombre}</span>
+          <Fecha doc={doc} />
           <span className="fila-doc__acciones"><AbrirDocumento doc={doc} /></span>
         </div>
         <LineaDos doc={doc} rol={rol} />
@@ -118,8 +131,9 @@ export default function FilaDocumento({
   return (
     <div className="fila-doc" title={doc.asunto || undefined}>
       <div className="fila-doc__l1">
-        <i className="bi bi-file-earmark flex-shrink-0" />
+        <IconoDocumento />
         <EnlaceDocumento doc={doc} />
+        <Fecha doc={doc} />
         {onQuitar && (
           <span className="fila-doc__acciones">
             <button type="button" className="btn btn-sm btn-link text-danger p-0 lh-1" title="Quitar vínculo"
