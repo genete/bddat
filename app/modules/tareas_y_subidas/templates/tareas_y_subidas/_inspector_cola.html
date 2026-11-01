@@ -54,7 +54,7 @@
         <span class="badge bg-light text-dark border me-1">{{ d.rol|capitalize }}</span>
         <a href="{{ d.enlace }}" target="_blank" rel="noopener">{{ d.nombre }}</a>
         {% if d.tipo_doc %}<span class="text-secondary">· {{ d.tipo_doc }}</span>{% endif %}
-        {% if d.fecha %}<span class="text-secondary">· {{ d.fecha }}</span>{% endif %}
+        {% if d.fecha %}<span class="text-secondary">· {{ d.fecha|fecha_es }}</span>{% endif %}
       </li>
       {% endfor %}
     </ul>

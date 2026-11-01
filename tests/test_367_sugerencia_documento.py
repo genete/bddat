@@ -337,7 +337,8 @@ class TestPoolSubirDocumentoRespuestaExtendida:
         assert data['creados'] == 1
         assert len(data['documentos']) == 1
         doc = data['documentos'][0]
-        assert set(doc.keys()) == {'id', 'nombre', 'tipo_doc', 'tipo_doc_codigo', 'fecha'}
+        # La forma de la fila ya no se fija aquí con claves exactas: es la de `documento_fila`,
+        # la misma que sirve el pool (ADR-053 §E, #1044).
         assert doc['nombre'].endswith('informe_367.pdf')
 
     def test_contrato_previo_ok_creados_se_mantiene(

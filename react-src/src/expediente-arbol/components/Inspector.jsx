@@ -347,7 +347,7 @@ function Documentos({ documentos }) {
             <div className="small text-muted ms-4">
               {ROL_DOC[d.rol] || d.rol}
               {d.tipo_doc ? ` · ${d.tipo_doc}` : ''}
-              {d.fecha ? ` · ${d.fecha}` : ''}
+              {d.fecha ? ` · ${fechaLarga(d.fecha)}` : ''}
             </div>
           </li>
         ))}

@@ -35,7 +35,7 @@ from app.models.requerimientos_tarea import RequerimientoTarea
 from app.services.reformados import ultimo_reformado
 from app.services.arbol_expediente import construir_arbol
 from app.services.tipos_creables import tipos_creables_de_nodo
-from app.services.detalle_nodo import detalle_de_nodo, info_apertura_documento
+from app.services.detalle_nodo import detalle_de_nodo, documento_fila, opciones_fila_documento
 from app.services.esquema_editable import esquema_de_nodo
 from app.services import mutaciones_arbol as svc
 from app.services.almacenamiento.adaptador import AlmacenNoDisponible, MENSAJE_ALMACEN_NO_DISPONIBLE
@@ -1466,8 +1466,8 @@ def pool_documentos(expediente_id):
     """
     GET /api/expedientes/<id>/pool — pool estructurado para la despensa de tareas (S3b-3).
 
-    Devuelve: {documentos: [{id, nombre, tipo_doc, tipo_doc_codigo, fecha, enlace,
-    externo, puede_abrir, abrir_en}]}, orden id DESC. El enlace permite
+    Devuelve: {documentos: [documento_fila(...)]}, orden id DESC: la fila común de
+    ADR-053 §E (`detalle_nodo.documento_fila`, con la fecha en ISO). La apertura permite
     previsualizar cualquier documento del pool antes de decidir enlazarlo, no
     solo los ya consumidos/producidos de la tarea (#609).
     `tipo_doc_codigo` (#712): permite filtrar client-side (p.ej. los 4
@@ -1479,18 +1479,11 @@ def pool_documentos(expediente_id):
     if denegado:
         return denegado
 
-    docs = Documento.query.filter_by(
-        expediente_id=expediente_id
-    ).order_by(Documento.id.desc()).all()
+    docs = (Documento.query.filter_by(expediente_id=expediente_id)
+            .options(*opciones_fila_documento())
+            .order_by(Documento.id.desc()).all())
 
-    result = [{
-        'id': doc.id,
-        'nombre': doc.nombre_visible(),
-        'tipo_doc': doc.tipo_doc.nombre if doc.tipo_doc else None,
-        'tipo_doc_codigo': doc.tipo_doc.codigo if doc.tipo_doc else None,
-        'fecha': doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else None,
-        **info_apertura_documento(expediente_id, doc, estricto=False),
-    } for doc in docs]
+    result = [documento_fila(expediente_id, doc, estricto=False) for doc in docs]
     return jsonify({'documentos': result}), 200
 
 
@@ -1599,7 +1592,8 @@ def _checklist_documental_json(tarea) -> list:
             'norma': req.norma.titulo if req.norma else None,
             'articulo': req.articulo,
             'cubierto': it['cubierto'],
-            'documento': {'id': doc.id, 'nombre': doc.nombre_visible()} if doc else None,
+            'documento': (documento_fila(solicitud.expediente_id, doc, estricto=False)
+                          if doc else None),
         }
         es_requisito_proyecto = (req.tipo_documento
                                  and req.tipo_documento.codigo == CODIGO_DOC_PROYECTO)
@@ -1607,7 +1601,7 @@ def _checklist_documental_json(tarea) -> list:
                 anclado is None or anclado.id != doc.id):
             item['divergencia_ancla'] = {
                 'documento_anclado': (
-                    {'id': anclado.id, 'nombre': anclado.nombre_visible()}
+                    documento_fila(solicitud.expediente_id, anclado, estricto=False)
                     if anclado is not None else None
                 ),
             }
@@ -2413,23 +2407,13 @@ def _destinatario_json(notif: Notificacion) -> dict | None:
     }
 
 
-def _documento_notificar_json(expediente_id: int, doc) -> dict:
-    """Un documento de la `NOTIFICAR` con lo que hace falta para abrirlo
-    (`enlace`, `puede_abrir`, `abrir_en`: los mismos que el inspector en lectura
-    y el pool, #929)."""
-    return {
-        'id': doc.id,
-        'nombre': doc.nombre_visible(),
-        **info_apertura_documento(expediente_id, doc, estricto=False),
-    }
-
-
 def _fecha_notificacion_json(expediente_id: int, fn) -> dict | None:
-    """Una fecha derivada y el documento que la acredita, abrible (#929)."""
+    """Una fecha derivada y el documento que la acredita, abrible (#929): la fila
+    común de documento (`documento_fila`, ADR-053 §E)."""
     if not fn:
         return None
     return {'fecha': fn.fecha.isoformat(), 'documento_id': fn.documento.id,
-            'documento': _documento_notificar_json(expediente_id, fn.documento)}
+            'documento': documento_fila(expediente_id, fn.documento, estricto=False)}
 
 
 def _entidad_elegible_json(entidad) -> dict:
@@ -2488,15 +2472,9 @@ def _notificar_payload(tarea) -> dict:
             'fuentes_del_tramite': list(dest_svc.fuentes_del_tramite(tarea.tramite) or []),
         },
         'eleccion_destinatario': _eleccion_destinatario_json(tarea),
-        'documento_producido': _documento_notificar_json(expediente_id, doc) if doc else None,
+        'documento_producido': documento_fila(expediente_id, doc, estricto=False) if doc else None,
         'justificantes_previos': [
-            {
-                **_documento_notificar_json(expediente_id, d),
-                'tipo_doc_codigo': d.tipo_doc.codigo if d.tipo_doc else None,
-                'tipo_doc': d.tipo_doc.nombre if d.tipo_doc else None,
-                'fecha_administrativa': d.fecha_administrativa.isoformat()
-                    if d.fecha_administrativa else None,
-            }
+            documento_fila(expediente_id, d, estricto=False)
             for d in notif_svc.justificantes_previos(tarea)
         ],
         'fechas': {
@@ -2959,11 +2937,7 @@ def edicto_aplicar_anuncio(expediente_id, tramite_id):
 
     anuncio = svc.anuncio_publicado_edicto(tramite)
     return jsonify({
-        'anuncio': {
-            **_documento_notificar_json(expediente.id, anuncio),
-            'fecha_administrativa': anuncio.fecha_administrativa.isoformat()
-                if anuncio.fecha_administrativa else None,
-        } if anuncio else None,
+        'anuncio': documento_fila(expediente.id, anuncio, estricto=False) if anuncio else None,
         'recogidas': [marcas_edicto.fila(ta) for ta in notif_svc.recogidas_por_edicto(tramite)],
         'motivo_no_aplicar': svc.motivo_no_aplicar_anuncio(tramite),
     }), 200

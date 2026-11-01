@@ -38,7 +38,7 @@ from app.models.documentos import Documento
 from app.models.documentos_tarea import DocumentoTarea
 from app.models.expedientes import Expediente
 from app.models.entidad import Entidad
-from app.services.detalle_nodo import info_apertura_documento
+from app.services.detalle_nodo import documento_fila, opciones_fila_documento
 from app.services.huerfanos import tareas_candidatas
 
 api_huerfanos_bp = Blueprint('api_huerfanos', __name__, url_prefix='/api')
@@ -92,6 +92,7 @@ def listar_huerfanos():
         # NOT LIKE da NULL y el documento sale del radar sin ningún aviso.
         .filter(or_(Documento.url.is_(None), ~Documento.url.like('bddat://%')))
         .filter(*filtros)
+        .options(*opciones_fila_documento())
     )
 
     if cursor > 0:
@@ -109,14 +110,12 @@ def listar_huerfanos():
         expediente = doc.expediente
         responsable = expediente.responsable if expediente else None
         data.append({
-            'id':                   doc.id,
+            # Lo propio del radar (el expediente y su responsable) y, para el documento, la fila
+            # común (`documento_fila`, ADR-053 §E).
             'expediente_id':        expediente.id if expediente else None,
             'num_at':               expediente.numero_at if expediente else None,
             'responsable':          {'id': responsable.id, 'siglas': responsable.siglas} if responsable else None,
-            'tipo_doc':             doc.tipo_doc.nombre if doc.tipo_doc else None,
-            'asunto':               doc.asunto,
-            'nombre':               doc.nombre_visible(),
-            **info_apertura_documento(expediente.id, doc, estricto=False),
+            **documento_fila(expediente.id, doc, estricto=False),
         })
 
     return jsonify({

@@ -7,6 +7,7 @@
 import React from 'react'
 import { useArbolStore } from '../store.js'
 import { getTiposDocumento } from '../api.js'
+import { fechaLarga } from '../plazoActo.js'
 import { quitarComprimidos } from '../../shared/subida.js'
 import { AvisoYaExiste, useAvisoYaExiste } from '../../shared/avisoYaExiste.jsx'
 import { estaSellado } from '../sellado.js'
@@ -293,7 +294,7 @@ function FichaDoc({ doc, vinculado, seleccionada, onClick }) {
       <div className="flex-grow-1 text-truncate">
         <div className="text-truncate fw-semibold">{doc.nombre}</div>
         <div className="text-truncate opacity-75">
-          {[doc.tipo_doc, doc.fecha].filter(Boolean).join(' · ')}
+          {[doc.tipo_doc, fechaLarga(doc.fecha)].filter(Boolean).join(' · ')}
         </div>
       </div>
       <AccionesApertura doc={doc} />
@@ -349,7 +350,7 @@ function AnclaSolicitud() {
           <option value="">— Elija el documento —</option>
           {candidatos.map((d) => (
             <option key={d.id} value={d.id}>
-              {d.fecha} · {d.nombre}
+              {fechaLarga(d.fecha)} · {d.nombre}
             </option>
           ))}
         </select>

@@ -111,8 +111,8 @@ export function TarjetaAnuncioEdicto({ expedienteId, tramiteId }) {
         {anuncio ? (
           <div className="d-flex flex-wrap align-items-baseline gap-2">
             <EnlaceDocumento doc={anuncio} />
-            {anuncio.fecha_administrativa ? (
-              <span className="small text-muted">publicado el {fechaLarga(anuncio.fecha_administrativa)}</span>
+            {anuncio.fecha ? (
+              <span className="small text-muted">publicado el {fechaLarga(anuncio.fecha)}</span>
             ) : (
               <span className="badge text-bg-warning">Sin fecha de publicación</span>
             )}

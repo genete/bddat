@@ -277,7 +277,16 @@ def create_app(config_name='development'):
         """ADMISIBILIDAD_TECNICA → ADMISIBILIDAD TECNICA (para labels de tab)."""
         return s.replace('_', ' ') if s else ''
 
+    def _fecha_es(valor):
+        """'AAAA-MM-DD' (o una fecha) → 'DD/MM/AAAA'. La fila de documento (`documento_fila`,
+        ADR-053 §E) lleva la fecha en ISO y cada renderizador la pinta así."""
+        if not valor:
+            return ''
+        anio, mes, dia = str(valor)[:10].split('-')
+        return f'{dia}/{mes}/{anio}'
+
     app.jinja_env.filters.update({
+        'fecha_es':         _fecha_es,
         'icono_solicitud':  _icono_solicitud,  'color_solicitud': _color_solicitud,
         'icono_fase':       _icono_fase,       'color_fase':      _color_fase,
         'icono_tramite':    _icono_tramite,    'color_tramite':   _color_tramite,

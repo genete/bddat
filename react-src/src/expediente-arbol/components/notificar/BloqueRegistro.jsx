@@ -284,7 +284,7 @@ export default function BloqueRegistro({ expedienteId, tareaId, payload, onPaylo
               {!producido && <option value="">— Selecciona documento —</option>}
               {documentosFinales.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.nombre}{d.tipo_doc ? ` — ${d.tipo_doc}` : ''}{d.fecha ? ` · ${d.fecha}` : ''}
+                  {d.nombre}{d.tipo_doc ? ` — ${d.tipo_doc}` : ''}{d.fecha ? ` · ${fechaIso(d.fecha)}` : ''}
                 </option>
               ))}
             </select>

@@ -11,8 +11,7 @@ Contrato del payload (acordado en implementación de #500, cierra deuda §15
     {
       "nodo": {"tipo": str, "id": int},
       "campos": [{"etiqueta": str, "valor": str, "aviso"?: str}, ...],   # adaptativo por nivel
-      "documentos": [{"id","rol","nombre","tipo_doc","fecha","enlace","externo",
-                      "puede_abrir","abrir_en"}, ...],
+      "documentos": [documento_fila(...), ...],   # la fila común de ADR-053 §E (fecha en ISO)
       "plazo": {"estado","fecha_limite","dias_restantes"} | null,  # solo ESPERAR_PLAZO
       "marcas_edicto"?: {"filas","marcadas","aviso"},  # solo trámites con NOTIFICAR que admiten edicto (#1037)
       "referencia": str,                                  # cadena de ancestros (§8)
@@ -194,16 +193,94 @@ def info_apertura_documento(exp_id: int, doc, *, estricto: bool = True) -> dict:
     }
 
 
-def _serializar_documento(exp_id: int, doc, rol: str) -> dict:
-    """Documento clicable para el inspector (enlace de apertura + flags de acción)."""
-    return {
+def opciones_fila_documento() -> tuple:
+    """Eager loading de lo que lee `documento_fila` (`.options(*opciones_fila_documento())`).
+
+    Sin esto, listar un expediente con N documentos paga un lazy load por documento
+    para el tipo y otros dos para las marcas. Es función y no constante porque los
+    backrefs (`reformado_proyecto`, `anclado_como_proyecto_principal`) solo existen
+    cuando los mapeadores ya están configurados.
+    """
+    from sqlalchemy.orm import selectinload
+
+    from app.models.documentos import Documento
+    return (
+        selectinload(Documento.tipo_doc),
+        selectinload(Documento.reformado_proyecto),
+        selectinload(Documento.anclado_como_proyecto_principal),
+    )
+
+
+def _marcas_documento(doc) -> list:
+    """Marcas de un documento, `[{codigo, texto}]`: lo que lo distingue en una lista.
+
+    Las pinta cada renderizador como icono con tooltip (ADR-053 §E, anexo): el servidor
+    decide cuáles hay y qué dicen, y quien pinta no cambia al añadir una.
+    """
+    marcas = []
+    if doc.anclado_como_proyecto_principal:
+        marcas.append({'codigo': 'PROYECTO',
+                       'texto': 'Es el proyecto de la instalación'})
+    corte = doc.reformado_proyecto
+    if corte is not None:
+        origen = (corte.origen or '').lower()
+        marcas.append({'codigo': 'REFORMADO',
+                       'texto': 'Abre un reformado de proyecto' + (f' ({origen})' if origen else '')})
+    if doc.prioridad and doc.prioridad > 0:
+        marcas.append({'codigo': 'PRIORITARIO', 'texto': 'Prioritario'})
+    return marcas
+
+
+def texto_opcion_documento(doc) -> str:
+    """Texto de una opción de desplegable del pool: «nombre — tipo — fecha — asunto».
+
+    Una sola definición para los cinco desplegables (ADR-053 §E, anexo). Lo que falta se
+    omite; el asunto es lo que distingue dos documentos del mismo nombre. En un
+    `bddat://` el nombre es el del tipo y no se repite.
+    """
+    partes = [doc.nombre_visible()]
+    if doc.tipo_doc and doc.tipo_doc.nombre != partes[0]:
+        partes.append(doc.tipo_doc.nombre)
+    if doc.fecha_administrativa:
+        partes.append(_fecha(doc.fecha_administrativa))
+    if doc.asunto:
+        partes.append(doc.asunto)
+    return ' — '.join(partes)
+
+
+def documento_fila(exp_id: int, doc, rol: Optional[str] = None, *,
+                   subrol: Optional[str] = None, estricto: bool = True) -> dict:
+    """La fila de un documento: el contrato único de los mini-listados (ADR-053 §E, anexo).
+
+    Es lo que reciben todos los renderizadores (macro Jinja y componente React) y lo que
+    sirven el detalle de un nodo, el pool, la respuesta de la subida, la NOTIFICAR, el
+    radar de huérfanos y el checklist: el que entrega el dato se adapta a esta forma.
+
+    - `fecha` va en ISO (`AAAA-MM-DD`) o `None`; cada renderizador la pinta dd/mm/aaaa.
+    - `rol` (CONSUMIDO | PRODUCIDO) y `subrol` (solo en NOTIFICAR: A_NOTIFICAR |
+      JUSTIFICANTE_PREVIO) aparecen solo si se piden: son del vínculo con una tarea, no
+      del documento.
+    - `marcas`: ver `_marcas_documento`. `texto_opcion`: ver `texto_opcion_documento`.
+    - La apertura (`enlace`, `externo`, `puede_abrir`, `abrir_en`) es la de
+      `info_apertura_documento`, con su mismo `estricto`: un detalle falla alto ante un
+      recurso `bddat://` desconocido; un listado (`estricto=False`) lo degrada.
+    """
+    fila = {
         'id': doc.id,
-        'rol': rol,
         'nombre': doc.nombre_visible(),
         'tipo_doc': doc.tipo_doc.nombre if doc.tipo_doc else None,
-        'fecha': _fecha(doc.fecha_administrativa),
-        **info_apertura_documento(exp_id, doc),
+        'tipo_doc_codigo': doc.tipo_doc.codigo if doc.tipo_doc else None,
+        'fecha': doc.fecha_administrativa.isoformat() if doc.fecha_administrativa else None,
+        'asunto': doc.asunto,
+        'marcas': _marcas_documento(doc),
+        'texto_opcion': texto_opcion_documento(doc),
+        **info_apertura_documento(exp_id, doc, estricto=estricto),
     }
+    if rol is not None:
+        fila['rol'] = rol
+    if subrol is not None:
+        fila['subrol'] = subrol
+    return fila
 
 
 # ---------------------------------------------------------------------------
@@ -307,13 +384,13 @@ def _detalle_solicitud(exp, sol_id: int) -> dict:
                if sol.solicitud_afectada_id else None),
         _campo('Observaciones', sol.observaciones),
     )
-    documentos = [_serializar_documento(exp.id, doc_sol, 'CONSUMIDO')] if doc_sol else []
+    documentos = [documento_fila(exp.id, doc_sol, 'CONSUMIDO')] if doc_sol else []
     doc_fin = sol.documento_fin_instruccion
     if doc_fin:
-        documentos.append(_serializar_documento(exp.id, doc_fin, 'PRODUCIDO'))
+        documentos.append(documento_fila(exp.id, doc_fin, 'PRODUCIDO'))
     doc_cierre = sol.documento_cierre
     if doc_cierre:
-        documentos.append(_serializar_documento(exp.id, doc_cierre, 'PRODUCIDO'))
+        documentos.append(documento_fila(exp.id, doc_cierre, 'PRODUCIDO'))
     return {
         'nodo': {'tipo': 'solicitud', 'id': sol.id},
         'campos': campos,
@@ -372,7 +449,7 @@ def _detalle_fase(exp, fase_id: int) -> dict:
         _campo('Observaciones', fase.observaciones),
     )
     doc_res = fase.documento_resultado
-    documentos = [_serializar_documento(exp.id, doc_res, 'PRODUCIDO')] if doc_res else []
+    documentos = [documento_fila(exp.id, doc_res, 'PRODUCIDO')] if doc_res else []
     payload = {
         'nodo': {'tipo': 'fase', 'id': fase.id},
         'campos': campos,
@@ -397,7 +474,7 @@ def _detalle_fase(exp, fase_id: int) -> dict:
                                     id=exp.id, fase_id=fase.id),
         }
         if cert is not None:
-            documentos.append(_serializar_documento(exp.id, cert.documento, 'PRODUCIDO'))
+            documentos.append(documento_fila(exp.id, cert.documento, 'PRODUCIDO'))
         payload['cert_cierre'] = _cert_cierre(exp, fase)
     return payload
 
@@ -509,17 +586,16 @@ def _detalle_tarea(exp, tarea_id: int) -> dict:
         # #928 N1 §8: los consumidos de una NOTIFICAR son de dos clases — lo que
         # se notifica y los justificantes previos (presupuesto del final).
         for doc in ta.documentos_a_notificar:
-            documentos.append({**_serializar_documento(exp.id, doc, 'CONSUMIDO'),
-                               'subrol': 'A_NOTIFICAR'})
+            documentos.append(documento_fila(exp.id, doc, 'CONSUMIDO', subrol='A_NOTIFICAR'))
         for doc in ta.justificantes_previos:
-            documentos.append({**_serializar_documento(exp.id, doc, 'CONSUMIDO'),
-                               'subrol': 'JUSTIFICANTE_PREVIO'})
+            documentos.append(documento_fila(exp.id, doc, 'CONSUMIDO',
+                                             subrol='JUSTIFICANTE_PREVIO'))
     else:
         for doc in ta.documentos_consumidos:
-            documentos.append(_serializar_documento(exp.id, doc, 'CONSUMIDO'))
+            documentos.append(documento_fila(exp.id, doc, 'CONSUMIDO'))
     producido = ta.documento_producido
     if producido is not None:
-        documentos.append(_serializar_documento(exp.id, producido, 'PRODUCIDO'))
+        documentos.append(documento_fila(exp.id, producido, 'PRODUCIDO'))
 
     plazo = plazo_tarea(ta) if codigo == 'ESPERAR_PLAZO' else None
 
@@ -554,7 +630,7 @@ def _detalle_organismo(exp, oe_id: int) -> dict:
     )
     documentos = []
     if oe.documento:  # declaración responsable (via='declaracion_responsable')
-        documentos.append(_serializar_documento(exp.id, oe.documento, 'CONSUMIDO'))
+        documentos.append(documento_fila(exp.id, oe.documento, 'CONSUMIDO'))
     return {
         'nodo': {'tipo': 'organismo', 'id': oe.id},
         'campos': campos,
@@ -586,7 +662,7 @@ def _detalle_version(exp, nodo_id: int) -> dict:
         etiqueta = (f'PROYECTO de fecha {_fecha(doc_ancla.fecha_administrativa)}'
                     if doc_ancla and doc_ancla.fecha_administrativa else 'PROYECTO')
         campos = _campos(_campo('Nº de fases que cubre', len(fases)))
-        documentos = [_serializar_documento(exp.id, doc_ancla, 'CONSUMIDO')] if doc_ancla else []
+        documentos = [documento_fila(exp.id, doc_ancla, 'CONSUMIDO')] if doc_ancla else []
     else:
         reformado = ReformadoProyecto.query.get(nodo_id)
         if reformado is None or reformado.documento.expediente_id != exp.id:
@@ -600,7 +676,7 @@ def _detalle_version(exp, nodo_id: int) -> dict:
                    else 'Requerido por la Administración (art. 68.3 LPACAP)'),
             _campo('Nº de fases que cubre', len(fases)),
         )
-        documentos = [_serializar_documento(exp.id, reformado.documento, 'CONSUMIDO')]
+        documentos = [documento_fila(exp.id, reformado.documento, 'CONSUMIDO')]
 
     return {
         'nodo': {'tipo': 'version', 'id': nodo_id},

@@ -35,7 +35,7 @@ export default function BloqueJustificantesPrevios({ previos, soloLectura }) {
                 </div>
                 <div className="text-muted ms-4">
                   {d.tipo_doc || d.tipo_doc_codigo}
-                  {d.fecha_administrativa ? ` · ${fechaIso(d.fecha_administrativa)}` : ' · sin fecha'}
+                  {d.fecha ? ` · ${fechaIso(d.fecha)}` : ' · sin fecha'}
                 </div>
               </li>
             ))}
