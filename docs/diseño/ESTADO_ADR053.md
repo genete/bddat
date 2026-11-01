@@ -222,3 +222,9 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   el único test que se rompía (`test_367`, claves exactas de la respuesta de la subida) se adapta y los demás se
   quedan. *Interpretación* (cambio respecto al anexo): el texto de opción de los desplegables viaja en la fila
   (`texto_opcion`) en vez de definirse también en React. Comprobado en el navegador con la BD sintética.
+- **01/11/2026** — **#1044, fase 3 implementada** (rama de trabajo, sin PR): el macro Jinja
+  `macros/documento_fila.html` (`enlace_documento` y `fila_documento`) y las clases `.fila-doc*` de
+  `v2-components.css`; la Cola es su primer consumidor, y el único, porque ningún otro inspector Jinja lista
+  documentos (el del huérfano enseña uno, y queda para #1041 y #1046). La Cola pinta ya el subrol, abre un
+  diagnóstico en el modal grande y no puede pintar `href="None"`. *Interpretación:* el botón del modal se pinta como
+  enlace y no como `.btn`, para que el nombre no salga en mayúsculas. Comprobado en el inspector real a 320 y 560 px.
