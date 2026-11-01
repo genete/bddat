@@ -20,9 +20,12 @@
   }
 
   // Habilita o deshabilita un bloque entero de controles (un deshabilitado no viaja en el
-  // formulario: es lo que le dice al servidor «el usuario no pudo tocar esto»).
+  // formulario: es lo que le dice al servidor «el usuario no pudo tocar esto»). El bloque es un
+  // `<fieldset>`: un solo `disabled` cubre a la vez el marcador y los controles, de modo que no
+  // puede quedar el marcador enviado y la casilla sin enviar, que el servidor leería como
+  // «el usuario la desmarcó».
   function activar(bloque, activo) {
-    bloque.querySelectorAll('input, select').forEach(function (el) { el.disabled = !activo; });
+    bloque.disabled = !activo;
   }
 
   // Pinta los controles según el tipo elegido. Misma lógica que el estado inicial de Jinja.

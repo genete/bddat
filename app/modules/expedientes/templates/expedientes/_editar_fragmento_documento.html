@@ -9,8 +9,8 @@
 
    Contrato del cuerpo (#832): es un formulario completo (`_form_completo`) y `pool_guardar_documento`
    solo escribe lo que viaja. Los controles del proyecto llevan un marcador (`principal_activo`,
-   `reformado_activo`) que se deshabilita junto con ellos cuando no existen para el tipo elegido o
-   están bloqueados: un control que el usuario no pudo tocar no declara nada.
+   `reformado_activo`) dentro de un `<fieldset>` que se deshabilita entero cuando no existen para el
+   tipo elegido o están bloqueados: un control que el usuario no pudo tocar no declara nada.
 #}
 {%- set codigo_tipo = doc.tipo_doc.codigo if doc.tipo_doc else '' -%}
 {%- set es_proyecto = (codigo_tipo == 'DOC_PROYECTO') -%}
@@ -88,13 +88,19 @@
                               rows="2" maxlength="2000">{{ doc.observaciones or '' }}</textarea>
                 </div>
 
+                {# Cada control del proyecto es un `<fieldset>`: deshabilitarlo deshabilita a la vez su
+                   marcador y sus controles, y un deshabilitado no viaja. Así no se puede expresar «marcador
+                   enviado con la casilla desmarcada porque estaba deshabilitada», que el servidor leería
+                   como «el usuario la desmarcó» y retiraría el ancla o el corte sin que nadie lo pidiera. #}
+
                 {# El ancla del proyecto (ADR-044 §D). Solo existe mientras el tipo elegido es DOC_PROYECTO;
                    desmarcarla retira el ancla. #}
-                <div class="col-12{% if not ver_principal %} d-none{% endif %}" data-pool-bloque="principal">
-                    <input type="hidden" name="principal_activo" value="1"{% if not ver_principal %} disabled{% endif %}>
+                <fieldset class="col-12{% if not ver_principal %} d-none{% endif %}" data-pool-bloque="principal"
+                          {%- if not ver_principal %} disabled{% endif %}>
+                    <input type="hidden" name="principal_activo" value="1">
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="pe_principal" name="es_principal"
-                               {%- if es_principal %} checked{% endif %}{% if not ver_principal %} disabled{% endif %}>
+                               {%- if es_principal %} checked{% endif %}>
                         <label class="form-check-label fw-semibold small" for="pe_principal">Es el proyecto principal</label>
                     </div>
                     <div class="ms-4 mt-1 small text-secondary d-none" data-pool-aviso="principal">
@@ -102,23 +108,23 @@
                         De este documento cuelga saber sobre qué proyecto se instruye. Si ya había
                         otro anclado, el ancla se mueve a este.
                     </div>
-                </div>
+                </fieldset>
 
                 {# El corte que abre una versión del proyecto (ADR-044 §C). Solo existe mientras el tipo
                    elegido es DOC_PROYECTO. Un reformado con versiones posteriores se enseña pero no se
-                   toca: solo se deshace el último, y en orden inverso. #}
+                   toca (el fieldset va deshabilitado): solo se deshace el último, y en orden inverso. #}
                 {%- set reformado_activo = ver_reformado and not reformado_bloqueado -%}
-                <div class="col-12{% if not ver_reformado %} d-none{% endif %}" data-pool-bloque="reformado">
-                    <input type="hidden" name="reformado_activo" value="1"{% if not reformado_activo %} disabled{% endif %}>
+                <fieldset class="col-12{% if not ver_reformado %} d-none{% endif %}" data-pool-bloque="reformado"
+                          {%- if not reformado_activo %} disabled{% endif %}>
+                    <input type="hidden" name="reformado_activo" value="1">
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="pe_reformado" name="abre_reformado"
-                               {%- if abre_reformado %} checked{% endif %}{% if not reformado_activo %} disabled{% endif %}>
+                               {%- if abre_reformado %} checked{% endif %}>
                         <label class="form-check-label fw-semibold small" for="pe_reformado">Produce un reformado de proyecto</label>
                     </div>
                     <div class="ms-4 mt-1{% if not abre_reformado %} d-none{% endif %}" data-pool-detalle="reformado">
                         <label class="form-label small text-secondary mb-1" for="pe_origen">Origen del reformado</label>
-                        <select class="form-select form-select-sm" id="pe_origen" name="origen_reformado"
-                                {%- if not reformado_activo %} disabled{% endif %}>
+                        <select class="form-select form-select-sm" id="pe_origen" name="origen_reformado">
                             <option value="VOLUNTARIO"{% if origen_reformado == 'VOLUNTARIO' %} selected{% endif %}>Voluntario del promotor (art. 76.1 LPACAP)</option>
                             <option value="REQUERIDO"{% if origen_reformado == 'REQUERIDO' %} selected{% endif %}>Requerido por la Administración (art. 68.3 LPACAP)</option>
                         </select>
@@ -133,7 +139,7 @@
                         Este reformado tiene versiones posteriores. Solo se puede deshacer el
                         último del expediente, y en orden inverso.
                     </div>
-                </div>
+                </fieldset>
 
             </div>
         </div>
