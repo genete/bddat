@@ -126,7 +126,7 @@ Fase 1 de #1044 (definición, sin código), con Carlos, el 01/11/2026. Va como *
 - **Rol y subrol.** Rol: `CONSUMIDO` o `PRODUCIDO`, del vínculo documento-tarea. Subrol: solo en NOTIFICAR, afina el consumido en `A_NOTIFICAR` y `JUSTIFICANTE_PREVIO`. Rótulos propuestos: «A notificar», «Previo», «Consumido» y «Producido»; el color dice el rol (verde consumido, azul producido) y el texto, el subrol si lo hay. Pendiente: con el tema `primary` se pinta en verde, igual que los enlaces, y el color no distingue bien.
 - **Modo vinculados:** el nombre es el enlace y «quitar» solo existe en el borrador de una tarea. **Modo selector:** el nombre selecciona y la acción de la fila es abrir, en la caja de 120 px de la Despensa, sin una línea más.
 - **Iconos de las marcas:** bandera (proyecto), capas (reformado) y estrella (prioritario), con tooltip. Pendiente que se descubra en pantalla táctil, donde no hay `hover`.
-- **Texto de opción común** de los desplegables: «nombre — tipo — fecha — asunto» (la fecha, y el asunto si lo hay), definido una vez en el servidor (`esquema_editable._pool_docs`) y una vez en React. Los filtros (solo `JUSTIFICANTE_*`, solo con fecha) siguen siendo de cada editor.
+- **Texto de opción común** de los desplegables: «nombre — tipo — fecha — asunto» (lo que falta se omite, y en un `bddat://` el tipo no se repite). *Cambia respecto a lo redactado el 01/11:* se define **una sola vez**, en el servidor (`detalle_nodo.texto_opcion_documento`), y viaja en la fila como `texto_opcion`; los desplegables de React lo leen en vez de componerlo, para no tener un gemelo que mantener. Lo usa ya `esquema_editable._pool_docs` (los de la fase y el organismo). Los filtros (solo `JUSTIFICANTE_*`, solo con fecha) siguen siendo de cada editor.
 - **Medida, no estimación:** las fases 3 y 4 miden la fila con el barrido de #1043 (de 320 a 960 px, de 20 en 20, en lectura y en edición) antes de darla por buena.
 
 **Caso a caso** (de los sitios del §6.12 del pre-ADR; las filas 3, 7 y 8 son decisión de Carlos, el resto es *Interpretación*)
@@ -145,7 +145,9 @@ Fase 1 de #1044 (definición, sin código), con Carlos, el 01/11/2026. Va como *
 | 10 | `seguimiento_y_huerfanos` (JS propio e `_inspector_huerfano.html`) | Se quedan; el contrato no los rompe. Los decide #1041 |
 | 11 | `pool_documentos.html` | Fuera: el listado general es #881 (D6) |
 
-**Hallazgo del «hoy», por confirmar en la app:** `FichaDoc` es un `.btn` y con el tema los nombres de fichero de la Despensa salen en mayúsculas (visto solo en el mockup).
+**Hallazgo del «hoy», confirmado en la app el 01/11/2026:** `FichaDoc` es un `.btn` y con el tema los nombres de fichero del pool de la Despensa salen en mayúsculas (`JUSTIFICANTE_NOTIFICA.PDF`); también el botón que abre un diagnóstico en el inspector. No se corrige en #1044: lo decide la fila común al pintar el nombre.
+
+**Fase 2 implementada (01/11/2026).** El contrato queda en `detalle_nodo.documento_fila` (id, nombre, tipo_doc, tipo_doc_codigo, `fecha` en ISO, asunto, marcas, texto_opcion, apertura y, si se piden, rol y subrol) y lo sirven el detalle de un nodo, `/api/expedientes/<id>/pool`, la respuesta de la subida, la NOTIFICAR (`documento_producido`, `justificantes_previos`, `fechas.*.documento`, el anuncio del edicto), el radar de huérfanos y el documento del checklist. Se retiró `pool_documentos_json`. Los consumidores de la fecha (inspector, Despensa, justificantes previos, anuncio del edicto y la Cola) leen ahora la ISO y la pintan dd/mm/aaaa; ninguna fila cambia de forma hasta las fases 3 y 4. Las listas con documentos cargan los backrefs de las marcas con `opciones_fila_documento()` para no pagar dos consultas por documento.
 
 ### F — Listados: scroll infinito salvo excepciones (D5, D8, D16)
 

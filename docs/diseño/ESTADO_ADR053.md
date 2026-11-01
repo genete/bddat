@@ -214,3 +214,11 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   como *Interpretación*. Salió que los serializadores son ocho y no seis, y que el recorte de
   `subirDocumentoDespensa` viene de que la respuesta de la subida no sigue el contrato del pool. Falta la
   confirmación de Carlos y abrir la fase 2.
+- **01/11/2026** — **#1044, fase 2 implementada** (rama de trabajo, sin PR): una función única del servidor,
+  `detalle_nodo.documento_fila`, sirve el detalle de un nodo, el pool, la respuesta de la subida, la NOTIFICAR, el
+  radar de huérfanos y el documento del checklist; `pool_documentos_json` se retira. Decisiones de Carlos al
+  presentar la tabla de consumidores: la fecha pasa a ISO y sus lectores (inspector, Despensa, justificantes
+  previos, anuncio del edicto y Cola) se adaptan en el mismo PR; el documento del checklist también lleva la fila;
+  el único test que se rompía (`test_367`, claves exactas de la respuesta de la subida) se adapta y los demás se
+  quedan. *Interpretación* (cambio respecto al anexo): el texto de opción de los desplegables viaja en la fila
+  (`texto_opcion`) en vez de definirse también en React. Comprobado en el navegador con la BD sintética.
