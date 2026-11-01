@@ -51,8 +51,9 @@ Lo que ADR-050 necesita de fuera y está en otros issues: **#151** (infraestruct
 
 Su registro es [`ESTADO_ADR053.md`](ESTADO_ADR053.md); aquí solo los cruces con esta cadena.
 
-- **#1012** (papelera): «sigue en los listados, marcado». Consume el listado del pool (#881) y la guarda
-  `_documento_es_referenciado`, que #881 quiere convertir en lista de usos. *Propuesta:* #881 antes o junto.
+- **#1012** (papelera): «sigue en los listados, marcado». Consume el listado del pool y la guarda
+  `_documento_es_referenciado`, que #881 (hecho el 01/11/2026) ha convertido en lista de usos
+  (`services/usos_documento.py`: dieciséis FK, y todo uso bloquea el borrado).
 - **#1008**: el sitio del botón «Exportar expediente» no está fijado y cae en el pool o en el inspector del
   expediente, ambos afectados por el ADR de interfaz. La señal junto a la bombilla de `base_app.html` no.
 - **#1033** (aparcado): su listado plano de documentos de todos los expedientes es el modo «selector» de la

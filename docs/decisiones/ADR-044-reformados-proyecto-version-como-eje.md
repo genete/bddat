@@ -509,7 +509,7 @@ lo escrito arriba:
 
 | Issue | Relación |
 |---|---|
-| **#881** | Reforma del listado del pool: columna de usos, y cómo se presenta un documento con destino declarado sin tarea que lo consuma |
+| **#881** | Reforma del listado del pool: columna de usos, y cómo se presenta un documento con destino declarado sin tarea que lo consuma. *Implementado el 01/11/2026:* columna de usos en el pool y el radar de huérfanos lo marca, no lo excluye (anexo a ADR-053 §F; ADR-038 §3) |
 | **#882** | `publicadores_expediente` — destinatarios múltiples de publicación. Independiente: hace falta igual sin reformados |
 | **#883** | La guarda del pool no cubre el documento de resultado de fase. Defecto de hoy que el cierre conjunto agrava |
 | **#884** | El shuttle de requerimientos guarda por reemplazo total. **Precedente de R4** |
