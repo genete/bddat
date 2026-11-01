@@ -228,3 +228,12 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   documentos (el del huérfano enseña uno, y queda para #1041 y #1046). La Cola pinta ya el subrol, abre un
   diagnóstico en el modal grande y no puede pintar `href="None"`. *Interpretación:* el botón del modal se pinta como
   enlace y no como `.btn`, para que el nombre no salga en mayúsculas. Comprobado en el inspector real a 320 y 560 px.
+- **01/11/2026** — **#1044, fase 4 implementada, salvo la mitad de #1036 de la Despensa** (rama de trabajo, sin PR):
+  `components/FilaDocumento.jsx` (fila en modo vinculados y selector, y la pieza `EnlaceDocumento`) y
+  `documentosBorrador.js`. El inspector del árbol tiene ya **una sola lista de vinculados**, la de la zona de
+  datos, que en edición sale del borrador y lleva «Quitar vínculo»; la Despensa deja de repetirla y su pool es la
+  fila en modo selector. Las subidas meten en el pool la fila completa que devuelve el servidor y los desplegables
+  leen `texto_opcion`. Salió una observación sin decidir: en una NOTIFICAR los justificantes previos salen en su
+  tarjeta y en la lista «Documentos». Comprobado en el navegador con la BD sintética (lectura, edición, quitar,
+  vincular, cancelar y subir); sin comprobar el requisito del checklist, los justificantes previos y el anuncio del
+  edicto, porque la semilla no tiene casos.
