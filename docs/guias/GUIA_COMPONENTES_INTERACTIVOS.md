@@ -173,7 +173,10 @@ lectura lleva el mismo `aviso` en el campo (`detalle_nodo._campo`).
 ```
 
 **Dónde está implementado hoy:** solo en `ControlCampo` (React, `expediente-arbol/components/TarjetaDatos.jsx`),
-que lo aplica a todos los select del esquema editable. Pendiente de alinear: `SelectorBusqueda.setValue`
+que lo aplica a todos los select del esquema editable. El control de varias opciones a la vez (`casillas` en el esquema
+editable, `MarcasEdicto.jsx`, #1037) cumple las reglas 2 y 4 a su manera: las marcas que ya no son opción se conservan al
+guardar y la tarjeta lo dice en un aviso (no con el «!»), y la lista de marcables es una sola en el servicio
+(`notificaciones.candidatas_a_edicto`), la misma que valida `editar_tramite`; las reglas 1 y 3 no le aplican. Pendiente de alinear: `SelectorBusqueda.setValue`
 (que valide contra la lista), `SelectorEntidad` y los `<select>` de los formularios Jinja. Un caso
 concreto del riesgo, leído en el código y sin reproducir en la aplicación: el desplegable de responsable
 del formulario de expediente solo lista tramitadores activos (`usuarios_tramitadores`) y el guardado hace

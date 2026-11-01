@@ -49,7 +49,7 @@ ESPERAR_PLAZO  consume: JUSTIFICANTE_EDICTO                    produce: ANUNCIO_
 - **BOJA potestativo:** `NOTIFICAR` + `ESPERAR_PLAZO` adicionales en el mismo trámite, fuera de las tareas indicativas.
 - **Destinatario:** el BOE, elegido en `tramites_destinatario` entre entidades con dirección de rol publicador, como BOJA y BOP. El BOE tiene que existir como entidad (dato, no código).
 - **Los justificantes fallidos no pasan a este trámite:** se quedan en la `NOTIFICAR` de cada interesado, donde su posición dice de quién son (ADR-049 §B).
-- **Qué va por edicto lo marca el usuario (#1037).** En el trámite de notificación de las fases finalizadoras, el usuario marca las `NOTIFICAR` que van por edicto. Solo admiten la marca las de fuente `INTERESADOS_RECONOCIDOS` y `PROPIETARIOS_DUP` (personas físicas: el resto notifica por vía electrónica obligada o a un organismo). No se deduce de que haya dos intentos fallidos: la marca es una decisión, y cubre también el edicto directo (interesado desconocido o lugar ignorado, art. 44).
+- **Qué va por edicto lo marca el usuario (#1037).** En el trámite de notificación de las fases finalizadoras, el usuario marca las `NOTIFICAR` que van por edicto. Solo admiten la marca las de fuente `INTERESADOS_RECONOCIDOS` y `PROPIETARIOS_DUP` (personas físicas: el resto notifica por vía electrónica obligada o a un organismo). No se deduce de que haya dos intentos fallidos: la marca es una decisión, y cubre también el edicto directo (interesado desconocido o lugar ignorado, art. 44). Solo se marcan las no cerradas (sin producido), y la marca se puede quitar hasta que salga la remisión al BOE; después queda fija (Carlos, 23/10/2026).
 - **Crear un `NOTIFICACION_EDICTAL` exige marcas.** La puerta de creación del trámite lo rechaza si la fase no tiene ninguna `NOTIFICAR` marcada y sin recoger, y dice qué hacer (marcar, en el trámite de notificación de la fase, y guardar). Al crearse, el edicto **recoge** las marcadas que no eran de otro edicto, de su misma fase; un segundo edicto en la fase recoge solo las marcadas después.
 - **Dos estados de la marca:** *marcada* (`notificaciones.va_por_edicto`) y *recogida* (`tramite_edictal_id` del edicto que la recogió). Una recogida está marcada (`CHECK`). Si se borra el edicto, la recogida vuelve a marcada sin recoger.
 - **El redactor del anuncio lee las recogidas** (`ContextoAnuncioEdictal`, `interesados_edicto`): el anuncio sabe exactamente a quién notifica en cuanto se redacta.
@@ -103,15 +103,19 @@ Resuelve lo que ADR-051 dejó a este issue. **Rehecho en #1037:** el conjunto ya
 
 - **Una acción, sin lista de ids:** «Aplicar el anuncio», en el `NOTIFICACION_EDICTAL`, cierra las notificaciones que ese edicto recogió y siguen abiertas, con el anuncio publicado de su `ESPERAR_PLAZO`. `POST …/nodo/tramite/<id>/edicto`, sin cuerpo; `GET`, lo que la pantalla muestra (el anuncio con su fecha, las recogidas y por qué hoy no se puede aplicar).
 - **Por cada una:** crea otra fila `Documento` sobre el mismo fichero y con la misma fecha (el pool lo admite; #926), la vincula como producido y fija `CORRECTA`. El canal sale solo (§E). No toca el índice `uq_documento_un_productor` (decisión de Carlos, #928 H1).
-- **La pantalla:** tarjeta «Notificaciones por edicto» en el trámite de notificación (la marca, con el Guardar de siempre), tarjeta del anuncio y de lo recogido en el edicto, y el botón en la zona de acciones. El botón no pide confirmación: debajo dice cuántas notificaciones cerrará, y aplicar se deshace a mano desvinculando el producido (la tarea vuelve a «agotada»).
+- **La pantalla:** tarjeta «Notificaciones por edicto» en el trámite de notificación (la marca, con el Guardar de siempre), tarjeta del anuncio y de lo recogido en el edicto, y el botón en la zona de acciones, que debajo dice cuántas notificaciones cerrará.
 - **El anuncio identifica al afectado como manda la DA 7.ª LOPDGDD** (leída en `BOE-A-2018-16673`, bloque `da-7`): en las notificaciones por anuncios del art. 44 LPACAP, **por el número completo de su documento**; sin documento, **solo por nombre y apellidos**; **nunca el nombre junto al documento completo**. Por eso el contexto del redactor entrega ya la identificación publicable de cada interesado (un único elemento por afectado, sin dirección) y no nombre y documento por separado; el mismo interesado en dos notificaciones sale una vez. La parcela del propietario desconocido espera a #431.
 
-**Interpretación** (se decidió al implementar y no figuraba en la conversación de diseño; se rectifica si Carlos lo ve distinto):
+**Interpretación** (propuesta de la implementación, pendiente de confirmar por Carlos; figura igual en #1037):
 
-- La marca se puede quitar mientras el justificante de la remisión al BOE (`JUSTIFICANTE_EDICTO`) no esté vinculado; después, el conjunto del anuncio queda fijo.
-- «Aplicar el anuncio» comprueba todo antes de cerrar nada (anuncio publicado, destinatario de cada una): si algo falla, no se cierra ninguna. Si el fallo llega a mitad, responde 422 con las ya cerradas.
-- Con varios anuncios publicados en el edicto, se toma el de la primera `ESPERAR_PLAZO` por id (la indicativa).
-- Las recogidas de canal postal que quedan con la sede pendiente (art. 42.1) se avisan tras aplicar; no impiden aplicar.
+- El criterio de la casilla es la **fuente** de la notificación (`INTERESADOS_RECONOCIDOS`, `PROPIETARIOS_DUP`; constante en código), y no una lista de pares (fase, trámite).
+- Los **dos estados** de la marca (marcada y recogida) y que una marca hecha después de crear un edicto espera al siguiente, sin añadirse a uno existente.
+- Las marcas se guardan con el **PATCH del trámite**, es decir, con el «Guardar» del marco.
+- La guarda de creación es un **invariante de puerta cerrada**, no una regla del motor.
+- «Salió la remisión al BOE» = la `NOTIFICAR` del edicto tiene `JUSTIFICANTE_EDICTO` vinculado.
+- «Aplicar el anuncio» **no pide confirmación**: el botón dice cuántas cerrará y se deshace a mano desvinculando el producido. Comprueba todo antes de cerrar nada (anuncio publicado, destinatario de cada una); si el fallo llega a mitad, responde 422 con las ya cerradas. Con varios anuncios publicados en el edicto toma el de la primera `ESPERAR_PLAZO` por id.
+- Las recogidas de canal postal que quedan con la sede pendiente (art. 42.1) se avisan tras aplicar; no lo impiden.
+- **Fuera a propósito:** `SOLICITANTE` (incluido el tercero que pide ser reconocido como interesado), el desconocido identificado por su parcela (#431) y las 8 de las 13 fases del trámite transversal donde ya no podrá crearse al no poder tener marcas.
 
 ### H — Los certificados cuentan cómo y cuándo se notificó
 
