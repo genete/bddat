@@ -1,0 +1,143 @@
+{# _editar_fragmento_documento.html — Fragmento de edición del inspector del pool (ADR-023, ADR-053 §E, #881).
+   No extiende base_app.html. Inyectado vía «Editar» del marco (`data-edit-url` del fragmento de lectura).
+   Marco único (ADR-053 §A, #1042): sin botones de editar, cancelar ni guardar; un único
+   `form[data-inspector-form]`, que el marco envía por XHR a `data-action`.
+
+   El inspector inyecta el fragmento con innerHTML y NO ejecuta sus `<script>`: el estado inicial
+   de todo (la fecha obligatoria, los dos controles del proyecto) viene ya pintado de aquí, y
+   `static/js/pool_edicion.js` solo reacciona a los cambios, por delegación.
+
+   Contrato del cuerpo (#832): es un formulario completo (`_form_completo`) y `pool_guardar_documento`
+   solo escribe lo que viaja. Los controles del proyecto llevan un marcador (`principal_activo`,
+   `reformado_activo`) que se deshabilita junto con ellos cuando no existen para el tipo elegido o
+   están bloqueados: un control que el usuario no pudo tocar no declara nada.
+#}
+{%- set codigo_tipo = doc.tipo_doc.codigo if doc.tipo_doc else '' -%}
+{%- set es_proyecto = (codigo_tipo == 'DOC_PROYECTO') -%}
+{%- set exige_fecha = (codigo_tipo in tipos_fecha) -%}
+{%- set ver_principal = es_proyecto and rama == 'PRINCIPAL' -%}
+{%- set ver_reformado = es_proyecto and rama == 'REFORMADO' -%}
+
+{# Sin `data-min-width`: medido de 320 a 960 px de 20 en 20 (URL externa, y como proyecto con el control
+   marcado, en las dos ramas), cabe a 320 sin desbordar y con el control más estrecho en 162 px. #}
+<div class="p-3" data-inspector-frame="editar">
+
+<form data-inspector-form data-pool-form
+      data-action="{{ url_for('expedientes.pool_guardar_documento', id=expediente.id, doc_id=doc.id) }}"
+      data-principal-original="{{ '1' if es_principal else '' }}"
+      data-reformado-original="{{ '1' if abre_reformado else '' }}"
+      data-reformado-bloqueado="{{ '1' if reformado_bloqueado else '' }}"
+      data-rama="{{ rama }}">
+    <input type="hidden" name="_form_completo" value="1">
+
+    <div class="card mb-3">
+        <div class="card-header card-header-accent fw-semibold">
+            <i class="fas fa-file-alt me-1"></i> Datos del documento
+            <span class="fw-normal text-secondary small ms-1">— {{ nombre }}</span>
+        </div>
+        <div class="card-body card-body-tinted">
+            <div class="row g-2">
+
+                {% if es_url_externa %}
+                {# La URL solo se rectifica en un documento de URL externa (ADR-050 §M); la anterior queda en la bitácora. #}
+                <div class="col-12">
+                    <label class="form-label fw-semibold small" for="pe_url">URL <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm font-monospace" id="pe_url"
+                           name="url" value="{{ doc.url }}" required>
+                </div>
+                {% endif %}
+
+                <div class="col-12">
+                    <label class="form-label fw-semibold small" for="pe_tipo">Tipo de documento</label>
+                    <select class="form-select form-select-sm" id="pe_tipo" name="tipo_doc_id">
+                        {% for t in tipos_doc %}
+                        <option value="{{ t.id }}" data-codigo="{{ t.codigo }}"
+                                {%- if t.codigo in tipos_fecha %} data-fecha-obligatoria="1" data-ayuda-fecha="{{ tipos_fecha[t.codigo] }}"{% endif %}
+                                {%- if t.id == doc.tipo_doc_id %} selected{% endif %}>{{ t.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-8">
+                    <label class="form-label fw-semibold small" for="pe_fecha">Fecha administrativa</label>
+                    {# `required` cuando el tipo la exige: «Guardar» pasa por la validación HTML5 (#1036). #}
+                    <input type="date" class="form-control form-control-sm" id="pe_fecha" name="fecha_administrativa"
+                           max="{{ hoy_sistema.isoformat() }}"
+                           value="{{ doc.fecha_administrativa.isoformat() if doc.fecha_administrativa else '' }}"
+                           {%- if exige_fecha %} required{% endif %}>
+                </div>
+                <div class="col-4 d-flex align-items-end">
+                    <div class="form-check mb-1">
+                        <input type="checkbox" class="form-check-input" id="pe_prioridad" name="prioridad"
+                               {%- if (doc.prioridad or 0) > 0 %} checked{% endif %}>
+                        <label class="form-check-label fw-semibold small" for="pe_prioridad">Prioritario</label>
+                    </div>
+                </div>
+                <div class="col-12 small mt-0{% if not exige_fecha %} d-none{% endif %}" data-pool-fecha-ayuda>
+                    {%- if exige_fecha %}<span class="text-danger">*</span> {{ tipos_fecha[codigo_tipo] }}{% endif -%}
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-semibold small" for="pe_asunto">Asunto</label>
+                    <input type="text" class="form-control form-control-sm" id="pe_asunto" name="asunto"
+                           maxlength="500" value="{{ doc.asunto or '' }}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold small" for="pe_observaciones">Observaciones</label>
+                    <textarea class="form-control form-control-sm" id="pe_observaciones" name="observaciones"
+                              rows="2" maxlength="2000">{{ doc.observaciones or '' }}</textarea>
+                </div>
+
+                {# El ancla del proyecto (ADR-044 §D). Solo existe mientras el tipo elegido es DOC_PROYECTO;
+                   desmarcarla retira el ancla. #}
+                <div class="col-12{% if not ver_principal %} d-none{% endif %}" data-pool-bloque="principal">
+                    <input type="hidden" name="principal_activo" value="1"{% if not ver_principal %} disabled{% endif %}>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="pe_principal" name="es_principal"
+                               {%- if es_principal %} checked{% endif %}{% if not ver_principal %} disabled{% endif %}>
+                        <label class="form-check-label fw-semibold small" for="pe_principal">Es el proyecto principal</label>
+                    </div>
+                    <div class="ms-4 mt-1 small text-secondary d-none" data-pool-aviso="principal">
+                        <i class="fas fa-anchor me-1"></i>
+                        De este documento cuelga saber sobre qué proyecto se instruye. Si ya había
+                        otro anclado, el ancla se mueve a este.
+                    </div>
+                </div>
+
+                {# El corte que abre una versión del proyecto (ADR-044 §C). Solo existe mientras el tipo
+                   elegido es DOC_PROYECTO. Un reformado con versiones posteriores se enseña pero no se
+                   toca: solo se deshace el último, y en orden inverso. #}
+                {%- set reformado_activo = ver_reformado and not reformado_bloqueado -%}
+                <div class="col-12{% if not ver_reformado %} d-none{% endif %}" data-pool-bloque="reformado">
+                    <input type="hidden" name="reformado_activo" value="1"{% if not reformado_activo %} disabled{% endif %}>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="pe_reformado" name="abre_reformado"
+                               {%- if abre_reformado %} checked{% endif %}{% if not reformado_activo %} disabled{% endif %}>
+                        <label class="form-check-label fw-semibold small" for="pe_reformado">Produce un reformado de proyecto</label>
+                    </div>
+                    <div class="ms-4 mt-1{% if not abre_reformado %} d-none{% endif %}" data-pool-detalle="reformado">
+                        <label class="form-label small text-secondary mb-1" for="pe_origen">Origen del reformado</label>
+                        <select class="form-select form-select-sm" id="pe_origen" name="origen_reformado"
+                                {%- if not reformado_activo %} disabled{% endif %}>
+                            <option value="VOLUNTARIO"{% if origen_reformado == 'VOLUNTARIO' %} selected{% endif %}>Voluntario del promotor (art. 76.1 LPACAP)</option>
+                            <option value="REQUERIDO"{% if origen_reformado == 'REQUERIDO' %} selected{% endif %}>Requerido por la Administración (art. 68.3 LPACAP)</option>
+                        </select>
+                    </div>
+                    <div class="ms-4 mt-1 small text-warning-emphasis d-none" data-pool-aviso="reformado">
+                        <i class="fas fa-triangle-exclamation me-1"></i>
+                        El proyecto pasa a tener una versión más desde este documento: obliga a
+                        rehacer las fases preceptivas que correspondan.
+                    </div>
+                    <div class="ms-4 mt-1 small text-secondary{% if not reformado_bloqueado %} d-none{% endif %}" data-pool-bloqueo="reformado">
+                        <i class="fas fa-lock me-1"></i>
+                        Este reformado tiene versiones posteriores. Solo se puede deshacer el
+                        último del expediente, y en orden inverso.
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</form>
+
+</div>{# /p-3 #}

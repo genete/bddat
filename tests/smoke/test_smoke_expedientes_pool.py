@@ -17,3 +17,16 @@ def test_pool_documento_fragmento_render(usuario_supervisor, expediente_seed, ap
     r = usuario_supervisor.get(f'/expedientes/{expediente_seed}/documentos/{doc_id}/fragmento')
     assert r.status_code == 200
     assert b'data-inspector-frame="ver"' in r.data
+
+
+def test_pool_documento_editar_fragmento_render(usuario_supervisor, expediente_seed, app):
+    """GET /expedientes/<id>/documentos/<doc_id>/editar-fragmento → el formulario del inspector (#881)."""
+    from app.models.documentos import Documento
+    with app.app_context():
+        doc = Documento.query.filter_by(expediente_id=expediente_seed).order_by(Documento.id).first()
+        assert doc is not None, 'la semilla debe traer documentos en el expediente de prueba'
+        doc_id = doc.id
+    r = usuario_supervisor.get(f'/expedientes/{expediente_seed}/documentos/{doc_id}/editar-fragmento')
+    assert r.status_code == 200
+    assert b'data-inspector-frame="editar"' in r.data
+    assert r.data.count(b'data-inspector-form') == 1

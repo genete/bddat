@@ -13,6 +13,12 @@
 {% block tabla_clase %}pool-table{% endblock %}
 
 {% block btn_nuevo %}
+{% if puede_editar %}
+<div class="form-check form-switch me-3 d-flex align-items-center">
+    <input class="form-check-input" type="checkbox" role="switch" id="toggle-edicion-masiva">
+    <label class="form-check-label small ms-1" for="toggle-edicion-masiva">Edición masiva</label>
+</div>
+{% endif %}
 <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
    class="btn btn-sm btn-outline-primary me-1" title="Ficha del expediente">
     <i class="fas fa-info-circle me-1"></i> Expediente
@@ -29,6 +35,40 @@
         title="BOE, Notifica, sede electrónica…">
     <i class="fas fa-link me-1"></i> URL externa
 </button>
+{% endblock %}
+
+{# Edición masiva: tipo, fecha y prioridad de varios documentos a la vez, con el modo de casillas
+   del estándar (#612). Solo lo que se rellena viaja; cada documento pasa por las mismas reglas
+   que una edición suelta (`pool_editar_documento`). #}
+{% block panel_masivo %}
+{% if puede_editar %}
+<div id="panel-masivo" class="card card-body bg-light border mb-2 d-none">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="fw-semibold small">
+            Edición masiva (<span id="masivo-count">0</span> seleccionado(s)):
+        </span>
+        <select class="form-select form-select-sm" id="masivo-tipo" style="width:auto;min-width:180px">
+            <option value="">— Tipo (sin cambio) —</option>
+            {% for t in tipos_doc %}
+            <option value="{{ t.id }}">{{ t.nombre }}</option>
+            {% endfor %}
+        </select>
+        <div id="ef-masivo-fecha" style="width:155px"></div>
+        <select class="form-select form-select-sm" id="masivo-prioridad-sel" style="width:auto">
+            <option value="">— Prioridad (sin cambio) —</option>
+            <option value="1">Prioritario</option>
+            <option value="0">No prioritario</option>
+        </select>
+        <button type="button" class="btn btn-sm btn-primary" id="btn-aplicar-masivo" disabled>
+            <i class="fas fa-check me-1"></i> Aplicar
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" id="btn-cancelar-masivo">
+            <i class="fas fa-times me-1"></i> Deseleccionar
+        </button>
+        <div id="masivo-error" class="text-danger small w-100 d-none"></div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block filtros_extra %}
@@ -48,6 +88,12 @@
 
 {% block extra_css %}{{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
+<style>
+  /* La fecha del panel masivo, a la altura de un form-select-sm */
+  #ef-masivo-fecha .ef-input {
+    font-size: 0.875rem; padding: 0.25rem 2rem 0.25rem 0.5rem; line-height: 1.5; height: auto;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -76,6 +122,7 @@
 <script src="{{ url_for('static', filename='vendor/sha256/sha256.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pool_alta.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pool_acciones.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pool_edicion.js') }}"></script>
 <script>
     function _esc(s) {
         if (s === null || s === undefined) return '';
@@ -164,6 +211,12 @@
             fragmentUrl: id   => `/expedientes/{{ expediente.id }}/documentos/${id}/fragmento`,
             title:       item => item.nombre || ''
         }
+        {% if puede_editar %},
+        // El modo de casillas de la edición masiva no fuerza ningún filtro (a diferencia de la
+        // asignación de expedientes, que solo enseña los sin asignar).
+        bulkCheckbox: true,
+        bulkParams: {}
+        {% endif %}
     });
 
     const filtros = new FiltrosListado(scrollInfinito);
@@ -184,6 +237,83 @@
 
     // El pool cambió desde el inspector (borrar): se vuelve a pedir la lista.
     document.addEventListener('pool:cambiado', () => scrollInfinito.reload());
+
+    {% if puede_editar %}
+    // ── Edición masiva ────────────────────────────────────────────────────────
+    // Un `POST …/editar` (el JSON de siempre) por documento, con solo los campos rellenados: lo que no
+    // viaja no se toca (#832). Cada documento pasa por las mismas reglas que una edición suelta —el
+    // sello de un certificado, la fecha obligatoria del tipo—, así que unos pueden fallar y otros no.
+    (function () {
+        const toggle     = document.getElementById('toggle-edicion-masiva');
+        const panel      = document.getElementById('panel-masivo');
+        const selTipo    = document.getElementById('masivo-tipo');
+        const selPrio    = document.getElementById('masivo-prioridad-sel');
+        const btnAplicar = document.getElementById('btn-aplicar-masivo');
+        const btnQuitar  = document.getElementById('btn-cancelar-masivo');
+        const cuenta     = document.getElementById('masivo-count');
+        const errorDiv   = document.getElementById('masivo-error');
+        const urlBase    = '{{ url_for("expedientes.pool_documentos", id=expediente.id) }}';
+        const efFecha    = new EntradaFecha('#ef-masivo-fecha', {
+            name: '_f_masivo', maxHoy: '{{ hoy_sistema.isoformat() }}', onChange: actualizarBoton
+        });
+
+        function cuerpo() {
+            const c = {};
+            if (selTipo.value) c.tipo_doc_id = parseInt(selTipo.value, 10);
+            if (efFecha.getValue()) c.fecha_administrativa = efFecha.getValue();
+            if (selPrio.value !== '') c.prioridad = (selPrio.value === '1');
+            return c;
+        }
+
+        function actualizarBoton() {
+            btnAplicar.disabled = !(scrollInfinito._bulkSelected.size > 0 && Object.keys(cuerpo()).length > 0);
+        }
+
+        function activar(activo) {
+            toggle.checked = activo;
+            panel.classList.toggle('d-none', !activo);
+            errorDiv.classList.add('d-none');
+            if (!activo) { selTipo.value = ''; selPrio.value = ''; efFecha.clear(); }
+            scrollInfinito.setBulkMode(activo);
+            actualizarBoton();
+        }
+
+        toggle.addEventListener('change', () => activar(toggle.checked));
+        btnQuitar.addEventListener('click', () => scrollInfinito.clearBulkSelection());
+        selTipo.addEventListener('change', actualizarBoton);
+        selPrio.addEventListener('change', actualizarBoton);
+        document.addEventListener('bulk:selection-changed', e => {
+            cuenta.textContent = e.detail.size;
+            actualizarBoton();
+        });
+
+        btnAplicar.addEventListener('click', async () => {
+            const ids = Array.from(scrollInfinito._bulkSelected);
+            const datos = cuerpo();
+            if (!ids.length || !Object.keys(datos).length) return;
+            btnAplicar.disabled = true;
+            errorDiv.classList.add('d-none');
+            const resultados = await Promise.all(ids.map(id =>
+                fetch(`${urlBase}/${id}/editar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                }).then(r => r.json()).catch(() => ({ ok: false, error: 'Error de red.' }))
+            ));
+            const fallos = resultados.filter(r => !r.ok);
+            const hechos = ids.length - fallos.length;
+            if (hechos) window.mostrar_toast('success', `Cambios aplicados a ${hechos} documento(s).`);
+            if (fallos.length) {
+                errorDiv.textContent = `${fallos.length} de ${ids.length} documento(s) no se han modificado: ` +
+                                       (fallos[0].error || 'error desconocido');
+                errorDiv.classList.remove('d-none');
+            }
+            // Los cambiados se repintan; la selección se vacía (los que fallaron se ven en la lista).
+            scrollInfinito.clearBulkSelection();
+            scrollInfinito.reload();
+        });
+    }());
+    {% endif %}
 
     // Sync inspector ↔ URL ?sel (ADR-023 §1)
     function _updateSelParam(selId) {

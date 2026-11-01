@@ -1,7 +1,7 @@
 {# _inspector_documento.html — Fragmento de lectura del inspector del pool (ADR-023, ADR-053 §F, #881).
    No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
-   Marco único (ADR-053 §A, #1042): sin botones de editar, cancelar ni guardar los pinta el shell.
-   Hoy sin `data-edit-url`: la edición de los metadatos llega en la fase 4 de #881.
+   Marco único (ADR-053 §A, #1042): sin botones de editar, cancelar ni guardar los pinta el shell;
+   «Editar» sale de `data-edit-url`, solo para quien puede editar (`_editar_fragmento_documento.html`).
    Sustituir y Borrar son acciones propias de la lectura y se quedan en el cuerpo; su
    comportamiento vive en `static/js/pool_acciones.js` (un fragmento del inspector no ejecuta
    `<script>`: se engancha por delegación). El modal de sustituir está en la página.
@@ -11,7 +11,10 @@
                         'REFORMADO': 'bi-layers-fill text-warning',
                         'PRIORITARIO': 'bi-star-fill text-warning'} -%}
 
-<div class="p-3" data-inspector-frame="ver" data-title="{{ fila.nombre }}">
+{# Sin `data-min-width`: medido de 320 a 960 px de 20 en 20 (un documento usado y una URL externa libre),
+   cabe a 320 sin desbordar y con el control más estrecho en 120 px. #}
+<div class="p-3" data-inspector-frame="ver" data-title="{{ fila.nombre }}"
+     {%- if puede_editar %} data-edit-url="{{ url_for('expedientes.pool_documento_editar_fragmento', id=expediente.id, doc_id=doc.id) }}"{% endif %}>
 
 <!-- CABECERA — el documento como lo que abre -->
 <div class="card mb-3">

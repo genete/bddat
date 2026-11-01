@@ -68,6 +68,7 @@ from app.services.reformados import (
     revertir_reformado,
     sincronizar_principal,
     sincronizar_reformado,
+    ultimo_reformado,
 )
 from app.services import bitacora as bitacora_svc
 from app.services import sellos
@@ -616,6 +617,7 @@ def pool_documentos(id):
         expediente=expediente,
         tipos_doc=tipos_doc,
         tipos_fecha=tipos_fecha,
+        puede_editar=tiene_permiso('editar_expediente'),
         extensiones=extensiones_del_pool(expediente.id),
         rama_ingesta=rama_ingesta,
         rama_principal=RAMA_PRINCIPAL,
@@ -1089,30 +1091,22 @@ def _cambia_lo_sellable(doc, datos) -> bool:
     return False
 
 
-@bp.route('/<int:id>/documentos/<int:doc_id>/editar', methods=['POST'])
-@login_required
-def pool_editar_documento(id, doc_id):
-    """Editar metadatos de un documento del pool — devuelve JSON.
+def _aplicar_edicion_documento(doc, datos):
+    """Aplica `datos` a los metadatos de un documento del pool y confirma. Devuelve
+    `(cuerpo, estado)`: `({'ok': True}, 200)`, o `({'ok': False, 'error': …}, 422 | 500)`.
 
-    La `url` solo se rectifica en un documento de URL externa y por otra `http(s)://`, y la
-    anterior queda en la bitácora (ADR-050 §M, #1007); en un fichero propio o un `bddat://`
-    un cuerpo con una `url` distinta da 422. Una `url` vacía, igual a la actual o ausente no
-    cambia nada: el formulario reenvía los campos aunque no cambien.
+    Es el núcleo que comparten la ruta JSON (`pool_editar_documento`: la edición masiva y quien
+    reenvíe campos sueltos) y la del formulario del inspector (`pool_guardar_documento`, #881):
+    las dos hablan con las mismas reglas —la rectificación de la URL, el sello de un certificado,
+    la fecha obligatoria, el ancla del proyecto y el corte de un reformado—, y una tercera
+    puerta no puede saltárselas por tener su propia copia.
+
+    `datos` es un diccionario con el contrato de edición parcial (#832): una clave ausente
+    conserva el campo; presente y vacía, lo vacía. La `url` solo se rectifica en un documento de
+    URL externa y por otra `http(s)://`, y la anterior queda en la bitácora (ADR-050 §M, #1007);
+    en un fichero propio o un `bddat://` una `url` distinta da 422. Una `url` vacía, igual a la
+    actual o ausente no cambia nada: el formulario reenvía los campos aunque no cambien.
     """
-    expediente = Expediente.query.get_or_404(id)
-    resultado = verificar_acceso_expediente(expediente, 'editar')
-    if resultado:
-        return resultado
-
-    doc = Documento.query.get_or_404(doc_id)
-    if doc.expediente_id != id:
-        abort(404)
-
-    datos = request.get_json(silent=True) or {}
-    # Solo se actualizan los campos presentes en el payload.
-    # Esto permite edición masiva parcial (p.ej. solo cambiar prioridad)
-    # sin sobreescribir los demás metadatos.
-
     # La validez de la URL va ANTES que el sello: si fuera al revés, a quien intenta cambiar
     # la url de un fichero citado por un certificado se le diría «deshaga el certificado»
     # cuando, aun deshaciéndolo, no podría.
@@ -1122,7 +1116,7 @@ def pool_editar_documento(id, doc_id):
         try:
             comprobar_rectificacion_url(doc, url_nueva)
         except ValueError as e:
-            return jsonify({'ok': False, 'error': str(e)}), 422
+            return {'ok': False, 'error': str(e)}, 422
 
     # Sello (#947, ADR-049 §F): del documento que cita un certificado, o del propio
     # certificado, no se cambian la fecha, el tipo ni la URL. Se comparan
@@ -1133,7 +1127,7 @@ def pool_editar_documento(id, doc_id):
     if _cambia_lo_sellable(doc, datos):
         motivo = sellos.motivo_sellado(doc)
         if motivo is not None:
-            return jsonify({'ok': False, 'error': motivo}), 422
+            return {'ok': False, 'error': motivo}, 422
 
     try:
         if cambia_url:
@@ -1194,12 +1188,138 @@ def pool_editar_documento(id, doc_id):
         # notificación — #928 N1 §4) y el resto de validadores del modelo
         # lanzan ValueError: error del cliente, no del servidor (#928).
         db.session.rollback()
-        return jsonify({'ok': False, 'error': str(e)}), 422
+        return {'ok': False, 'error': str(e)}, 422
     except Exception as e:
         db.session.rollback()
-        return jsonify({'ok': False, 'error': str(e)}), 500
+        return {'ok': False, 'error': str(e)}, 500
 
-    return jsonify({'ok': True})
+    return {'ok': True}, 200
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/editar', methods=['POST'])
+@login_required
+def pool_editar_documento(id, doc_id):
+    """Editar metadatos de un documento del pool — cuerpo y respuesta JSON.
+
+    La usan la edición masiva de la página del pool y quien reenvíe campos sueltos; el
+    formulario del inspector tiene la suya (`pool_guardar_documento`) y las dos aplican las
+    mismas reglas (`_aplicar_edicion_documento`).
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return resultado
+
+    doc = Documento.query.get_or_404(doc_id)
+    if doc.expediente_id != id:
+        abort(404)
+
+    # Solo se actualizan los campos presentes en el payload.
+    # Esto permite edición masiva parcial (p.ej. solo cambiar prioridad)
+    # sin sobreescribir los demás metadatos.
+    cuerpo, estado = _aplicar_edicion_documento(doc, request.get_json(silent=True) or {})
+    return jsonify(cuerpo), estado
+
+
+def _datos_del_formulario_documento(form):
+    """El cuerpo de edición (`datos`) que sale del formulario del inspector, con el contrato
+    de #832 (ver `app/utils/formularios.py`): lo que no viaja no se toca.
+
+    - Los campos de texto, el tipo, la fecha, la URL y el origen del reformado viajan solo si
+      están en el formulario. Uno que viaja vacío se vacía.
+    - La casilla «Prioritario» solo se interpreta si el formulario declara el centinela
+      `_form_completo`: una casilla desmarcada no se envía, y sin centinela su ausencia
+      significaría «no la menciona».
+    - Las dos marcas del proyecto (`es_principal`, `abre_reformado`) se interpretan solo si
+      viaja su marcador (`principal_activo`, `reformado_activo`), un campo oculto que el
+      formulario deshabilita cuando el control no existe para el tipo elegido o está bloqueado
+      (un reformado con versiones posteriores): un control que el usuario no pudo tocar no
+      declara nada.
+    """
+    datos = {}
+    for campo in ('tipo_doc_id', 'fecha_administrativa', 'asunto', 'observaciones', 'url',
+                  'origen_reformado'):
+        if campo in form:
+            datos[campo] = form[campo]
+    if form_completo(form):
+        datos['prioridad'] = form.get('prioridad') == 'on'
+    if 'principal_activo' in form:
+        datos['es_principal'] = form.get('es_principal') == 'on'
+    if 'reformado_activo' in form:
+        datos['abre_reformado'] = form.get('abre_reformado') == 'on'
+    return datos
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/guardar', methods=['POST'])
+@login_required
+def pool_guardar_documento(id, doc_id):
+    """Guarda el formulario de edición del inspector del pool (ADR-023, ADR-053 §E, #881).
+
+    Respuesta `{ok, message}` o `{ok: False, errors: [...]}`, el contrato de los formularios
+    del inspector. El cuerpo es un formulario HTML y lo traduce `_datos_del_formulario_documento`
+    al mismo diccionario que recibe la ruta JSON; de ahí en adelante, las mismas reglas
+    (`_aplicar_edicion_documento`).
+    """
+    expediente = Expediente.query.get_or_404(id)
+    if verificar_acceso_expediente(expediente, 'editar'):
+        return jsonify({'ok': False, 'errors': ['Sin permiso para editar este documento']}), 403
+
+    doc = Documento.query.filter_by(id=doc_id, expediente_id=id).first_or_404()
+    cuerpo, estado = _aplicar_edicion_documento(doc, _datos_del_formulario_documento(request.form))
+    if cuerpo['ok']:
+        return jsonify({'ok': True, 'message': 'Documento guardado correctamente.'})
+    return jsonify({'ok': False, 'errors': [cuerpo['error']]}), estado
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/editar-fragmento')
+@login_required
+def pool_documento_editar_fragmento(id, doc_id):
+    """Fragmento de edición del inspector del pool (ADR-023, ADR-053 §E, #881).
+
+    Un único formulario con los metadatos del documento. El estado inicial de los dos controles
+    del proyecto (el ancla y el corte de un reformado, ADR-044 §C y §D) llega ya pintado: el
+    inspector no ejecuta los `<script>` de sus fragmentos, y `static/js/pool_edicion.js` solo
+    reacciona a los cambios.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    if verificar_acceso_expediente(expediente, 'editar'):
+        return '', 403
+
+    doc = (
+        Documento.query.filter_by(id=doc_id, expediente_id=id)
+        .options(*opciones_fila_documento())
+        .first_or_404()
+    )
+    corte = doc.reformado_proyecto
+    ultimo = ultimo_reformado(id)
+    es_principal = bool(doc.anclado_como_proyecto_principal)
+    abre_reformado = corte is not None
+    # El único corte reversible es el último (ADR-044 §C): si no lo es, se enseña pero no se toca.
+    reformado_bloqueado = abre_reformado and not (ultimo is not None and corte.id == ultimo.id)
+    # De los dos controles se enseña el que describe lo que el documento ya es o, si no es nada
+    # todavía, el que corresponde a la pregunta viva del expediente: mientras el proyecto no
+    # tenga principal anclado, si este documento lo es.
+    if es_principal:
+        rama = 'PRINCIPAL'
+    elif abre_reformado:
+        rama = 'REFORMADO'
+    else:
+        rama = 'PRINCIPAL' if rama_de_la_ingesta(expediente) == RAMA_PRINCIPAL else 'REFORMADO'
+
+    return render_template(
+        'expedientes/_editar_fragmento_documento.html',
+        expediente=expediente,
+        doc=doc,
+        nombre=doc.nombre_visible(),
+        tipos_doc=TipoDocumento.query.order_by(TipoDocumento.nombre).all(),
+        tipos_fecha={c: mensaje_fecha_obligatoria(c) for c in TIPOS_FECHA_OBLIGATORIA},
+        es_url_externa=(doc.url or '').startswith(('http://', 'https://')),
+        es_principal=es_principal,
+        abre_reformado=abre_reformado,
+        origen_reformado=(corte.origen if corte is not None else None) or 'VOLUNTARIO',
+        reformado_bloqueado=reformado_bloqueado,
+        rama=rama,
+    )
 
 
 @bp.route('/<int:id>/documentos/<int:doc_id>/sustituir', methods=['POST'])
