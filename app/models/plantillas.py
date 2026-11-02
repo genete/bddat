@@ -72,6 +72,13 @@ class Plantilla(db.Model):
         comment='Ruta relativa a PLANTILLAS_BASE/plantillas/'
     )
 
+    fichero_ref = db.Column(
+        db.Text,
+        db.ForeignKey('public.ficheros.ref', name='fk_plantillas_fichero_ref'),
+        nullable=True,
+        comment='Contenido de la plantilla en el almacén (ADR-050 §J). Solo lo usa el subsistema de almacenamiento'
+    )
+
     variante = db.Column(
         db.Text,
         nullable=True,
