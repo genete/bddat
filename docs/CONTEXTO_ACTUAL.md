@@ -19,7 +19,7 @@
    - ~~**#1037** (zona C de #929): marcar las notificaciones que van por edicto y aplicar el anuncio.~~ Hecho (PR #1082).
 3. **Documentos y pool**. **Bloque en curso** (confirmado por Carlos el 01/11/2026, con el orden de las piezas).
    - ~~**#1044**: mini-listados de documentos, con la fila común de tres modos.~~ Hecho (PR #1083).
-   - **#881**: listado del pool al estándar, con la mitad del pool de **#1036** (fecha del justificante) dentro; la mitad de la Despensa ya está hecha en #1044.
+   - ~~**#881**: listado del pool al estándar, con la mitad del pool de **#1036** (fecha del justificante) dentro; la mitad de la Despensa ya está hecha en #1044.~~ Hecho (PR #1084).
    - **#1008** (ADR-050): «Exportar expediente». El sitio del botón depende de #881. Va antes de producción.
    - **#1012** (ADR-050): papelera. Va después de #881 y de #1008 (usa sus tareas diarias y su marca de manifiesto).
    - **#1009** (ADR-050): plantillas y fragmentos al almacén. Va antes de producción. No depende de las anteriores: al final del bloque, salvo presión de producción.
