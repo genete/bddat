@@ -37,6 +37,7 @@ PERMITIDOS_MODELO = {
     'app/models/ficheros.py',      # define la tabla
     'app/models/documentos.py',    # define la columna `fichero_ref`
     'app/models/plantillas.py',    # define la columna `fichero_ref` de la plantilla (#1009)
+    'app/models/fragmentos.py',    # define la columna `fichero_ref` del fragmento (#1009)
 }
 SOLO_ADAPTADOR = 'app/services/almacenamiento/adaptador.py'
 
