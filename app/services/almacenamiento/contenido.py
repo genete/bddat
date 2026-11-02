@@ -20,6 +20,10 @@ resto trabaja con `documentos.id` y pide el contenido por aquí:
   sin bitácora.
 - `copiar_documento`: un documento nuevo sobre el mismo contenido que otro, sin enviar nada
   al almacén (la copia del anuncio edictal, #568).
+- `guardar_plantilla` / `leer_plantilla` y `guardar_fragmento` / `leer_fragmento`: el
+  contenido de las plantillas y los fragmentos de escritos (ADR-050 §J, #1009). Solo
+  `.odt` y `.docx`, los formatos que tienen motor. Aquí se escribe `fichero_ref` de
+  `plantillas` y `fragmentos`, igual que el de `documentos`.
 
 «Aportar desde otro expediente» (§H) está diferido por decisión de Carlos (2026-10-08): cuando
 llegue, será otro uso de `copiar_documento` con su listado.
@@ -42,7 +46,7 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import BinaryIO, Sequence
+from typing import BinaryIO, NamedTuple, Sequence
 from urllib.parse import quote
 
 from flask import Response, stream_with_context
@@ -52,13 +56,14 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app import db
 from app.models.documentos import Documento
 from app.models.ficheros import AUSENTE, CORRUPTO, OK, Fichero
+from app.models.fragmentos import Fragmento
 from app.services import bitacora as bitacora_svc
 from app.services import sellos
 from app.services.almacenamiento.adaptador import (
     AlmacenNoDisponible, ContenidoNoExiste, ErrorAlmacenamiento, obtener_adaptador,
 )
 from app.services.almacenamiento.formatos import (
-    FormatoNoAdmitido, es_visible_en_navegador, validar_fichero,
+    FormatoNoAdmitido, MIME_DOCX, MIME_ODT, es_visible_en_navegador, validar_fichero,
 )
 from app.services.almacenamiento.nombres import sanear_nombre
 
@@ -78,6 +83,19 @@ _CAMPOS_DEL_MODULO = frozenset({'url', 'nombre_fichero', 'fichero_ref', 'fecha_m
 VIA_REGENERACION = 'REGENERACION'
 VIA_SUSTITUCION = 'SUSTITUCION'
 
+# Plantillas y fragmentos (ADR-050 §J): los formatos de escrito que tienen motor (ADR-035 §2,
+# enmienda del 2026-11-02: el `.docx` se mantiene).
+_FORMATOS_DE_ESCRITO = {MIME_ODT: '.odt', MIME_DOCX: '.docx'}
+# GEMELO: lo que citan los dos motores con `{{r Nombre }}` (RE_FRAGMENTO en
+# generador_escritos_odt y la expresión de _cargar_fragmentos en generador_escritos_docx).
+# Si cambia una, cambiar las otras: un nombre que aquí vale y allí no, no se encuentra nunca.
+_RE_NOMBRE_FRAGMENTO = re.compile(r'\w+')
+
+# Qué pasó con un fragmento al guardarlo (`guardar_fragmento`).
+CREADO = 'CREADO'
+SUSTITUIDO = 'SUSTITUIDO'
+SIN_CAMBIOS = 'SIN_CAMBIOS'
+
 
 class ContenidoNoUtilizable(ErrorAlmacenamiento):
     """El contenido del documento está ausente o dañado, y no se puede usar. El mensaje
@@ -87,6 +105,31 @@ class ContenidoNoUtilizable(ErrorAlmacenamiento):
 class SustitucionBloqueada(ValueError):
     """Un sello impide sustituir el contenido del documento. El mensaje es para el usuario
     y nombra la salida (deshacer el certificado, reabrir la fase)."""
+
+
+class PlantillaSinFichero(ValueError):
+    """La plantilla no tiene fichero en el almacén, y sin él no se puede generar con ella.
+    El mensaje es para el usuario."""
+
+
+class FragmentoAusente(LookupError):
+    """No hay un fragmento activo con ese nombre y formato. Detiene la generación del
+    escrito (ADR-050 §J): sin el fragmento saldría sin el trozo de texto y nadie lo notaría.
+    El mensaje es para el usuario."""
+
+    def __init__(self, nombre: str, formato: str):
+        self.nombre = nombre
+        self.formato = formato
+        extension = _FORMATOS_DE_ESCRITO.get(formato, formato)
+        super().__init__(
+            f'Falta el fragmento «{nombre}» en formato {extension}, o está retirado. '
+            f'Súbelo en la gestión de plantillas antes de generar el escrito.')
+
+
+@dataclass(frozen=True)
+class ContenidoDePlantilla:
+    datos: bytes
+    formato: str                    # el de su fila de `ficheros`: elige el motor (.odt o .docx)
 
 
 @dataclass(frozen=True)
@@ -285,15 +328,7 @@ def leer(documento: Documento) -> ContenidoLeido:
     `AlmacenNoDisponible` y no marca nada.
     """
     fila = _fila_utilizable(documento)
-    flujo = _abrir(fila, documento)
-    try:
-        with flujo:
-            datos = flujo.read()
-    except OSError as exc:
-        raise AlmacenNoDisponible(f'El almacén no está disponible: {exc}') from exc
-    if hashlib.sha256(datos).hexdigest() != fila.contenido_sha256:
-        _marcar_estado(fila.ref, CORRUPTO)
-        raise ContenidoNoUtilizable(_mensaje_no_utilizable(CORRUPTO, documento))
+    datos = _leer_bytes(fila, documento)
     return ContenidoLeido(datos=datos, formato=fila.formato, nombre_fichero=documento.nombre_visible())
 
 
@@ -397,6 +432,127 @@ def servir_descarga(documento: Documento) -> Response:
     return respuesta
 
 
+# --- plantillas y fragmentos de escritos (ADR-050 §J, #1009) -------------------------
+
+def guardar_plantilla(plantilla, flujo: BinaryIO, nombre_fichero: str) -> bool:
+    """Da a la plantilla el contenido de `flujo`: lo valida, lo guarda en el almacén y apunta
+    `plantilla.fichero_ref` a él. Devuelve `False` y no cambia nada si es el contenido que ya
+    tiene (el mismo SHA-256).
+
+    Solo guarda el fichero. Que la plantilla sea utilizable (Jinja que compila, canonicidad,
+    fragmentos que existen) lo comprueba quien llama **antes**, con `validar_plantilla`; y
+    `activo` lo decide también quien llama: este módulo no activa ni desactiva nada.
+
+    Si el contenido ya estaba en el almacén se reutiliza sin enviar nada, y si estaba ausente o
+    dañado, volver a subir el original lo repara (§G). El contenido anterior no se toca: lo
+    recoge la limpieza (fase 7) cuando nadie lo referencie. No hace commit ni añade la
+    plantilla a la sesión: es de quien llama, como `subir`.
+
+    Lanza `FormatoNoAdmitido` (mensaje para el usuario) si el fichero no es un `.odt` o un
+    `.docx` que lo sea de verdad, o `AlmacenNoDisponible`.
+    """
+    formato = _validar_fichero_de_escrito(nombre_fichero, flujo, 'una plantilla')
+    fila = _guardar_contenido(flujo, formato)
+    if plantilla.fichero_ref == fila.ref:
+        return False
+    plantilla.fichero_ref = fila.ref
+    return True
+
+
+def leer_plantilla(plantilla) -> ContenidoDePlantilla:
+    """El contenido entero de la plantilla, con el hash comprobado (§G) y el formato de su fila
+    de `ficheros`, que es el que elige el motor.
+
+    Lanza `PlantillaSinFichero` si no tiene fichero, `ContenidoNoUtilizable` si está ausente
+    o dañado (la fila queda `AUSENTE` o `CORRUPTO`) y `AlmacenNoDisponible` si el almacén no
+    contesta, sin marcar nada.
+    """
+    if plantilla.fichero_ref is None:
+        raise PlantillaSinFichero(
+            f'La plantilla «{plantilla.nombre}» no tiene fichero. Súbelo en la gestión de '
+            f'plantillas antes de generar con ella.')
+    origen = _Origen(plantilla.fichero_ref, plantilla.nombre)
+    fila = _fila_utilizable(origen)
+    return ContenidoDePlantilla(datos=_leer_bytes(fila, origen), formato=fila.formato)
+
+
+def guardar_fragmento(nombre: str, flujo: BinaryIO, nombre_fichero: str, *,
+                      descripcion: str | None = None) -> tuple[Fragmento, str]:
+    """Crea el fragmento `nombre` o le sustituye el contenido por el de `flujo`.
+
+    La clave es (`nombre`, formato): un fragmento `.docx` y otro `.odt` pueden llamarse igual
+    y son dos fragmentos. El formato **sale del contenido**, nunca de quien llama (§E), así
+    que subir un `.docx` con un nombre que ya tiene un `.odt` crea otro fragmento, no
+    sustituye al `.odt`. Devuelve el fragmento y qué pasó: `CREADO`, `SUSTITUIDO` o
+    `SIN_CAMBIOS` (el contenido es el que ya tenía). `descripcion`, si se da, la actualiza.
+
+    No cambia `activo`: retirar o devolver un fragmento lo decide quien llama. Tampoco hace
+    commit ni añade el fragmento a la sesión.
+
+    Lanza `ValueError` (mensaje para el usuario) si `nombre` no se puede citar con
+    `{{r Nombre }}`; `FormatoNoAdmitido` si el fichero no es un `.odt` o `.docx` de verdad; y
+    `AlmacenNoDisponible`.
+    """
+    if not isinstance(nombre, str) or not _RE_NOMBRE_FRAGMENTO.fullmatch(nombre):
+        raise ValueError(
+            f'«{nombre}» no vale como nombre de fragmento: solo letras, números y guion bajo, '
+            f'porque es lo que se escribe en la plantilla, como {{{{r Nombre }}}}.')
+    formato = _validar_fichero_de_escrito(nombre_fichero, flujo, 'un fragmento')
+    fila = _guardar_contenido(flujo, formato)
+
+    fragmento = Fragmento.query.filter_by(nombre=nombre, formato=formato).first()
+    if fragmento is None:
+        return Fragmento(nombre=nombre, formato=formato, descripcion=descripcion,
+                         fichero_ref=fila.ref), CREADO
+    if descripcion is not None:
+        fragmento.descripcion = descripcion
+    if fragmento.fichero_ref == fila.ref:
+        return fragmento, SIN_CAMBIOS
+    fragmento.fichero_ref = fila.ref
+    return fragmento, SUSTITUIDO
+
+
+def leer_fragmento(nombre: str, formato: str) -> bytes:
+    """El contenido del fragmento activo `nombre` en `formato` (un MIME de `.odt` o `.docx`),
+    con el hash comprobado (§G). Es lo que se le da al motor para resolver `{{r Nombre }}`.
+
+    Un fragmento retirado (`activo = false`) cuenta como ausente: leerlo insertaría en el
+    escrito un texto que alguien ha dado por obsoleto, y sin aviso.
+
+    Lanza `FragmentoAusente` (detiene la generación) si no hay fragmento activo,
+    `ContenidoNoUtilizable` si su contenido está ausente o dañado, y `AlmacenNoDisponible`
+    si el almacén no contesta.
+    """
+    fragmento = Fragmento.query.filter_by(nombre=nombre, formato=formato, activo=True).first()
+    if fragmento is None:
+        raise FragmentoAusente(nombre, formato)
+    origen = _Origen(fragmento.fichero_ref, fragmento.nombre)
+    return _leer_bytes(_fila_utilizable(origen), origen)
+
+
+def _validar_fichero_de_escrito(nombre_fichero: str, flujo: BinaryIO, que: str) -> str:
+    """El MIME de un fichero que va a ser una plantilla o un fragmento: lo admitido en §E y,
+    además, de los formatos que tienen motor. `que` es para el mensaje."""
+    try:
+        formato = validar_fichero(nombre_fichero, flujo)
+    except FormatoNoAdmitido as exc:
+        raise FormatoNoAdmitido(f'«{nombre_fichero}»: {exc}') from exc
+    if formato not in _FORMATOS_DE_ESCRITO:
+        raise FormatoNoAdmitido(
+            f'«{nombre_fichero}»: {que} tiene que ser un documento de texto .odt o .docx.')
+    return formato
+
+
+class _Origen(NamedTuple):
+    """Lo que `_fila_utilizable`, `_abrir` y los mensajes piden de un documento, para quien no
+    lo es: el contenido de una plantilla o de un fragmento."""
+    fichero_ref: str
+    nombre: str
+
+    def nombre_visible(self) -> str:
+        return self.nombre
+
+
 # --- subir: el contenido ------------------------------------------------------------
 
 def _guardar_contenido(flujo: BinaryIO, formato: str, sha256: str | None = None, tamano: int | None = None):
@@ -477,6 +633,22 @@ def _fila_utilizable(documento: Documento):
     if fila.estado != OK:
         raise ContenidoNoUtilizable(_mensaje_no_utilizable(fila.estado, documento))
     return fila
+
+
+def _leer_bytes(fila, documento) -> bytes:
+    """El contenido entero de una fila utilizable, comprobando el hash: si no coincide, la
+    fila queda `CORRUPTO` y se lanza `ContenidoNoUtilizable`. `documento` es un `Documento` o
+    un `_Origen`: solo se usa para el nombre del mensaje."""
+    flujo = _abrir(fila, documento)
+    try:
+        with flujo:
+            datos = flujo.read()
+    except OSError as exc:
+        raise AlmacenNoDisponible(f'El almacén no está disponible: {exc}') from exc
+    if hashlib.sha256(datos).hexdigest() != fila.contenido_sha256:
+        _marcar_estado(fila.ref, CORRUPTO)
+        raise ContenidoNoUtilizable(_mensaje_no_utilizable(CORRUPTO, documento))
+    return datos
 
 
 def _abrir(fila, documento: Documento) -> BinaryIO:

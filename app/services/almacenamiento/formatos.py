@@ -59,6 +59,7 @@ _CADES = _Formato('application/pkcs7-signature', frozenset({'.csig', '.p7s'}))
 # `ficheros` (los lectores de texto: #717 y #657). Los demás se quedan privados.
 MIME_PDF = _PDF.mime
 MIME_ODT = _ODT.mime
+MIME_DOCX = _DOCX.mime
 
 # `mimetype` de la primera entrada de un ODF (ODT, ODS, ODG: lo admitido en §E).
 _ODF = {
