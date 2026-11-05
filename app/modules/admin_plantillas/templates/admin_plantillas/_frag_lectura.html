@@ -1,0 +1,90 @@
+{# _frag_lectura.html — Parcial de lectura de un fragmento para el inspector (#1009).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   - Marco único (ADR-053 §A): «Editar» lo pinta el shell a partir de data-edit-url.
+   - El nombre es la clave que citan las plantillas ({{r Nombre }}): no se edita.
+   - Pausar/devolver → form data-inspector-form (POST XHR → JSON → refresh).
+   El JS de copiar vive en plantillas-inspector.js (el inspector no re-ejecuta <script>).
+#}
+
+<div class="p-3" data-inspector-frame="ver"
+     data-title="{{ fragmento.nombre }}"
+     {% if puede_editar %}data-edit-url="{{ url_for('admin_plantillas.frag_edicion', id=fragmento.id) }}"{% endif %}>
+
+{% if motivo %}
+<div class="alert alert-warning py-2 small mb-3">
+    <i class="fas fa-triangle-exclamation me-1"></i>{{ motivo }}
+</div>
+{% endif %}
+
+<!-- CARD 1 — Identificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-puzzle-piece me-1"></i> Fragmento
+        {% if fragmento.activo %}
+            <span class="badge bg-success ms-1">Activo</span>
+        {% else %}
+            <span class="badge bg-secondary ms-1">Desactivado</span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Cómo se cita en una plantilla</label>
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control font-monospace" readonly
+                           value="{{ '{{r ' ~ fragmento.nombre ~ ' }}' }}" data-pl-token>
+                    <button class="btn btn-outline-secondary" type="button"
+                            data-pl-copy data-pl-copy-target="[data-pl-token]"
+                            title="Copiar el token">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small">Formato</label>
+                <div class="form-control form-control-sm font-monospace" style="background:#fff; pointer-events:none;">
+                    {{ extension }}
+                </div>
+            </div>
+            <div class="col-8">
+                <label class="form-label fw-semibold small">Descripción</label>
+                <input type="text" class="form-control form-control-sm" value="{{ fragmento.descripcion or '—' }}" readonly>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Fichero -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-file-word me-1"></i> Fichero
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="fw-semibold">
+            {{ fragmento.nombre }}{{ extension }}
+            <a href="{{ url_for('admin_plantillas.frag_descargar', id=fragmento.id) }}"
+               class="ms-2 small"><i class="fas fa-download me-1"></i>Descargar</a>
+        </div>
+        <div class="form-text">
+            Para cambiarlo: descárgalo, edítalo en tu equipo y súbelo desde «Editar». Cambiar el fichero
+            lo cambia en todas las plantillas que lo citan.
+        </div>
+    </div>
+</div>
+
+<!-- Acción pausar / devolver -->
+{% if puede_editar %}
+<form data-inspector-form
+      data-action="{{ url_for('admin_plantillas.frag_activar', id=fragmento.id) }}">
+    <button type="submit"
+            class="btn btn-sm {% if fragmento.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+        <i class="fas {% if fragmento.activo %}fa-toggle-off{% else %}fa-toggle-on{% endif %} me-1"></i>
+        {% if fragmento.activo %}Desactivar fragmento{% else %}Activar fragmento{% endif %}
+    </button>
+    <div class="form-text mt-1">
+        Un fragmento desactivado cuenta como ausente: las plantillas que lo citan no generan hasta que se active.
+    </div>
+</form>
+{% endif %}
+
+</div>{# /p-3 #}

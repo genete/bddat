@@ -7,9 +7,9 @@
  *
  *   [data-pl-copy]        — copia al portapapeles el valor de [data-pl-copy-target]
  *                           (o de data-pl-copy-value); feedback visual en el icono.
- *   [data-pl-explorador]  — abre el explorador de ficheros como modal grande
- *                           (capa 3) con onSaved no-op para NO refrescar el
- *                           inspector al cerrar y así no perder la edición en curso.
+ *
+ * (El explorador de ficheros del servidor y su botón «Cambiar fichero» se retiraron en #1009:
+ * el fichero de una plantilla o fragmento se sube desde el navegador.)
  */
 (function () {
   'use strict';
@@ -49,17 +49,6 @@
       });
     } else {
       _fallbackCopy(valor); feedback();
-    }
-  });
-
-  // ── Abrir el explorador de ficheros como modal grande ─────────────────────
-  document.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-pl-explorador]');
-    if (!btn) return;
-    var url = btn.getAttribute('data-pl-explorador-url');
-    if (url && window.AppModalLarge) {
-      // onSaved no-op: al cerrar el modal NO se refresca el inspector (la edición sigue viva).
-      AppModalLarge.open(url, { title: 'Seleccionar fichero del servidor', onSaved: function () {} });
     }
   });
 

@@ -59,6 +59,7 @@ _CADES = _Formato('application/pkcs7-signature', frozenset({'.csig', '.p7s'}))
 # `ficheros` (los lectores de texto: #717 y #657). Los demás se quedan privados.
 MIME_PDF = _PDF.mime
 MIME_ODT = _ODT.mime
+MIME_DOCX = _DOCX.mime
 
 # `mimetype` de la primera entrada de un ODF (ODT, ODS, ODG: lo admitido en §E).
 _ODF = {
@@ -84,7 +85,7 @@ _MENSAJE_COMPRIMIDO = (
 _MENSAJE_MACROS = (
     'Los documentos de Office con macros (DOCM, XLSM) no se admiten: '
     'guárdalo sin macros y vuelve a subirlo.')
-_MENSAJE_FORMATOS = (
+MENSAJE_FORMATOS = (
     'Formato no admitido. Se pueden subir PDF, ODT, ODS, ODG, DOCX, XLSX, JPEG, PNG, '
     'TIFF, XML y firmas CAdES.')
 
@@ -120,7 +121,7 @@ def validar_fichero(nombre: str, flujo: BinaryIO) -> str:
     if isinstance(detectado, _Rechazo):
         raise FormatoNoAdmitido(detectado.mensaje)
     if detectado is None:
-        raise FormatoNoAdmitido(_MENSAJE_FORMATOS)
+        raise FormatoNoAdmitido(MENSAJE_FORMATOS)
 
     # La extensión del nombre tal como se va a guardar (saneado): «informe.pdf » y
     # «informe.pdf» son el mismo fichero.
@@ -169,7 +170,7 @@ def _clasificar_zip(flujo: BinaryIO):
                 # declare su `mimetype` gigante no debe descomprimirse entero aquí.
                 with z.open(entradas[0]) as f:
                     tipo = f.read(100).strip()
-                return _ODF.get(tipo, _Rechazo(_MENSAJE_FORMATOS))
+                return _ODF.get(tipo, _Rechazo(MENSAJE_FORMATOS))
             if '[Content_Types].xml' in nombres:
                 if any(n.lower().endswith('vbaproject.bin') for n in nombres):
                     return _Rechazo(_MENSAJE_MACROS)
@@ -177,7 +178,7 @@ def _clasificar_zip(flujo: BinaryIO):
                     return _DOCX
                 if 'xl/workbook.xml' in nombres:
                     return _XLSX
-                return _Rechazo(_MENSAJE_FORMATOS)
+                return _Rechazo(MENSAJE_FORMATOS)
     except (zipfile.BadZipFile, RuntimeError, NotImplementedError):
         # Estropeado, cifrado o con un método de compresión raro: un ZIP que no es de la lista.
         pass
@@ -199,5 +200,5 @@ def _clasificar_xml(cabecera: bytes):
         return None
     primero = _RE_PRIMER_ELEMENTO.search(sin_bom)
     if primero and primero.group(1).split(b':')[-1].lower() in (b'html', b'svg'):
-        return _Rechazo(_MENSAJE_FORMATOS)
+        return _Rechazo(MENSAJE_FORMATOS)
     return _XML

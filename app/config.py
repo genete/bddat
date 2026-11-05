@@ -26,10 +26,8 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-fallback'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False
-    # Raíz de plantillas (.odt / .docx) para generación de escritos.
-    # Estructura: PLANTILLAS_BASE/plantillas/ y PLANTILLAS_BASE/fragmentos/
-    # Desarrollo: p.ej. D:/BDDAT/docs_prueba/plantillas_escritos
-    PLANTILLAS_BASE = _ruta_base_env('PLANTILLAS_BASE')
+    # Las plantillas y los fragmentos de escritos ya no tienen raíz propia: se suben desde
+    # el navegador y viven en el almacén (ADR-050 §J, #1009).
     # Zonas del servidor de ficheros del almacén documental (ADR-050 §A). Son de
     # despliegue, no se cambian desde la aplicación (§K). Cada una la escribe solo la
     # cuenta de servicio de BDDAT; los usuarios no tienen acceso.
@@ -84,7 +82,6 @@ class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL')
     SQLALCHEMY_ECHO = False
-    PLANTILLAS_BASE = _ruta_base_env('TEST_PLANTILLAS_BASE')
     ALMACEN_BASE = _ruta_base_env('TEST_ALMACEN_BASE')
     MANIFIESTOS_BASE = _ruta_base_env('TEST_MANIFIESTOS_BASE')
 

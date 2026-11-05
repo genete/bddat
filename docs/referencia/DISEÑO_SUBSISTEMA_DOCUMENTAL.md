@@ -159,7 +159,7 @@ plantillas
   codigo                TEXT UNIQUE NOT NULL      ← slug estable (REQUERIMIENTO_SUBSANACION)
   nombre                TEXT NOT NULL             ← nombre legible para la UI
   descripcion           TEXT NULL
-  ruta_plantilla        TEXT NOT NULL             ← ruta relativa a PLANTILLAS_BASE/plantillas/
+  fichero_ref           TEXT NULL FK ficheros     ← contenido en el almacén (ADR-050 §J, #1009); solo lo ve el subsistema de almacenamiento
   variante              TEXT NULL                 ← distingue plantillas del mismo contexto (Favorable, Denegatoria)
   tipo_documento_id     FK tipos_documentos NOT NULL  ← tipo que se asignará al Documento generado
   tipo_expediente_id    FK tipos_expedientes NULL ← NULL = aplica a cualquier tipo de expediente
@@ -168,17 +168,25 @@ plantillas
   tipo_tramite_id       FK tipos_tramites NULL    ← NULL = aplica a cualquier trámite
   contexto_clase        TEXT NULL                 ← nombre clase Python; NULL = solo capa base
   filtros_adicionales   JSONB DEFAULT '{}'        ← variables de negocio futuras (tensión, tecnología…)
-  activo                BOOLEAN DEFAULT TRUE      ← FALSE = retirada del catálogo activo, conservada para histórico
+  activo                BOOLEAN DEFAULT TRUE      ← pausa del supervisor; sin fichero no puede estar activa (CHECK ck_plantillas_activa_con_fichero)
 ```
 
 **Cambios respecto al diseño original (`tipos_escritos`):**
 - Renombrada a `plantillas` por claridad semántica
 - Añadidas 4 FKs ESFTT nullable (tipo_expediente, tipo_solicitud, tipo_fase, tipo_tramite) para filtrado por contexto de tarea — NULL = comodín
-- `plantilla_url` → `ruta_plantilla` (relativa a `PLANTILLAS_BASE/plantillas/`)
+- `plantilla_url` → `ruta_plantilla` → `fichero_ref` (#1009): la plantilla se sube desde el navegador y vive en el almacén; `PLANTILLAS_BASE` y la ruta desaparecen. El formato (.odt o .docx) es el de la fila de `ficheros`, no el de ningún nombre.
 - Añadido `tipo_documento_id` (NOT NULL): tipo semántico que se asigna al Documento generado
 - Añadido `variante`: texto libre para distinguir escritos del mismo contexto ESFTT
 - Añadido `filtros_adicionales`: JSON extensible para criterios futuros
 - Eliminado `campos_catalogo`: reemplazado por `consultas_nombradas` (tabla independiente)
+
+### Tabla `fragmentos` (nueva, #1009)
+
+Modelo: `app/models/fragmentos.py`. Trozos de texto que comparten varias plantillas (el pie de recurso,
+los fundamentos de derecho) y se citan con `{{r Nombre }}`. Único por (`nombre`, `formato`): cada motor
+busca el fragmento de su propio formato, y no se mezclan (ADR-050 §J). `fichero_ref` es obligatorio,
+`activo` es la misma pausa del supervisor que en `plantillas` (un fragmento desactivado cuenta como ausente
+y detiene la generación).
 
 ### Tabla `consultas_nombradas` (nueva, #167 Fase 3)
 
@@ -222,7 +230,7 @@ Si una consulta falla, se pasa como lista vacía (log warning, no rompe generaci
 ### Motor de generación (Fase 5 #167)
 
 `app/services/generador_escritos.py` orquesta el flujo:
-1. Carga plantilla .docx desde `PLANTILLAS_BASE/plantillas/`
+1. Lee la plantilla del almacén (`contenido.leer_plantilla`; .odt o .docx según su fila de `ficheros`)
 2. Capa 1: `ContextoBaseExpediente`
 3. Capa 2: Context Builder opcional (`plantilla.contexto_clase`)
 4. Capa 3: Consultas nombradas activas

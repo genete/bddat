@@ -189,21 +189,6 @@ que las plantillas pasen al almacén (fase 4 de ADR-050, #1009).
 Lo vigila `tests/test_1007_subsistema_almacenamiento.py`. **Si falla, el arreglo es pedir
 el contenido al módulo de contenido, no añadir el fichero a la lista de permitidos.**
 
-### Hasta la fase 4: no entran consumidores nuevos de las plantillas por ruta
-
-El modelo de rutas de los documentos se retiró en #1007 (PR 5): ya no existen
-`ruta_absoluta()`, `FILESYSTEM_BASE`, `hash_md5`, `ruta_pdf` ni las funciones de
-`rutas_esftt.py` que movían o nombraban ficheros. Quedan las plantillas y los
-fragmentos, que siguen leyéndose de una carpeta hasta la fase 4 de ADR-050 (#1009):
-nada nuevo los lee por su ruta. Cada consumidor nuevo es deuda que esa fase tendría
-que deshacer (ADR-050 §I).
-
-Símbolos congelados: `PLANTILLAS_BASE` y `ruta_plantilla`.
-
-Lo vigila `tests/test_1001_consumidores_modelo_rutas.py`, con el número de
-apariciones permitido en cada fichero de `app/`. **Si falla, el arreglo no es subir
-el número ni añadir el fichero.** La fase 4 lo baja a cero y entonces el test se borra.
-
 ### Estilos ODT
 
 Una variante de un estilo de párrafo existente (p. ej. el mismo título en mayúsculas) se crea como estilo **hijo** (`style:parent-style-name` apuntando al original) que declara solo la propiedad añadida. Nunca se muta el estilo compartido: así queda reutilizable, el hijo hereda los cambios del padre y la variante se quita sin riesgo. Antes de tocar una plantilla compartida entre carta y resolución, confirmar en qué fichero vive el texto que describe el ADR: «cabecera» o «encabezamiento» puede ser el membrete (familia `Cabecera - *`) o el título del cuerpo.

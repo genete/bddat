@@ -234,6 +234,58 @@ def plantilla_seed(app):
 
 
 @pytest.fixture
+def fragmento_commiteado(app, almacen_tmp):
+    """ID de un fragmento `.odt` activo (`Test_1009_Fragmento`, descripción «original») con su
+    fichero en el almacén, commiteado: las rutas no pasan por `app_ctx` (#836), y su limpieza —el
+    fragmento antes que la fila de `ficheros` que referencia— (#1009)."""
+    import io
+    import zipfile
+
+    from app.models.fragmentos import Fragmento
+    from app.services.almacenamiento import contenido
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as z:
+        z.writestr('mimetype', 'application/vnd.oasis.opendocument.text')
+        z.writestr('content.xml', '<root><p>fragmento de prueba #1009</p></root>')
+    with app.app_context():
+        fragmento, _ = contenido.guardar_fragmento(
+            'Test_1009_Fragmento', io.BytesIO(buffer.getvalue()), 'f.odt', descripcion='original')
+        _db.session.add(fragmento)
+        _db.session.commit()
+        fragmento_id = fragmento.id
+    yield fragmento_id
+    with app.app_context():
+        _db.session.rollback()
+        Fragmento.query.filter_by(id=fragmento_id).delete()
+        _db.session.commit()
+
+
+@pytest.fixture
+def elaborar_de_resolucion(app, expediente_seed):
+    """ID de una tarea ELABORAR de la resolución —un trámite sin destinatario— en una fase nueva
+    (abierta) del expediente semilla, commiteada: las rutas no pasan por `app_ctx` (#836). Su
+    limpieza borra la fase, y con ella el trámite, la tarea y sus vínculos (#1009)."""
+    from app.models.fases import Fase
+    from app.models.solicitudes import Solicitud
+
+    with app.app_context():
+        solicitud = (Solicitud.query.filter_by(expediente_id=expediente_seed)
+                     .order_by(Solicitud.id).first())
+        assert solicitud is not None, 'la semilla debe traer una solicitud en el expediente'
+        arbol = ArbolESFTT(_db)
+        fase = arbol.fase('RESOLUCION', solicitud=solicitud)
+        tarea = arbol.tarea(arbol.tramite(fase, 'ELABORACION'), 'ELABORAR')
+        _db.session.commit()
+        fase_id, tarea_id = fase.id, tarea.id
+    yield tarea_id
+    with app.app_context():
+        _db.session.rollback()
+        Fase.query.filter_by(id=fase_id).delete()
+        _db.session.commit()
+
+
+@pytest.fixture
 def primer_usuario_id(app):
     """ID del primer usuario en la BD de desarrollo. Skip si no existe ninguno.
 
@@ -903,3 +955,81 @@ def contar_consultas(funcion) -> int:
     finally:
         event.remove(motor, 'before_cursor_execute', _uno)
     return contador['n']
+
+
+# ---------------------------------------------------------------------------
+# El motor .odt sin almacén (#1009)
+# ---------------------------------------------------------------------------
+
+def generar_odt_de_prueba(ruta, contexto, codigo_seguimiento=None, fragmentos_dir=None) -> bytes:
+    """`generar_escrito_odt` con una plantilla que es un fichero y sus fragmentos en un directorio.
+
+    El motor trabaja con bytes y una función que da el fragmento por nombre (ADR-050 §J). Los
+    tests del motor fabrican sus `.odt` en un temporal: este helper lee la plantilla y monta esa
+    función sobre el directorio, como un fragmento por fichero `<nombre>.odt`. Un fragmento que
+    no está lanza `LookupError`, igual que el del almacén (`FragmentoAusente`).
+
+    Si cambia cómo el motor recibe plantilla y fragmentos, cambia este helper, no los tests.
+    """
+    from pathlib import Path
+
+    from app.services.generador_escritos_odt import generar_escrito_odt
+
+    fragmento = None
+    if fragmentos_dir is not None:
+        def fragmento(nombre):
+            fichero = Path(fragmentos_dir) / f'{nombre}.odt'
+            if not fichero.is_file():
+                raise LookupError(f'No hay fragmento «{nombre}» en {fragmentos_dir}')
+            return fichero.read_bytes()
+
+    return generar_escrito_odt(Path(ruta).read_bytes(), contexto,
+                               codigo_seguimiento=codigo_seguimiento, fragmento=fragmento)
+
+
+def _formato_de_ruta(ruta) -> str:
+    """El MIME de una plantilla de prueba, por su extensión (el módulo de contenido lo detecta
+    por el contenido; aquí el fichero lo ha fabricado el propio test). Una extensión sin motor
+    se devuelve tal cual."""
+    from pathlib import Path
+
+    from app.services.generador_escritos import TIPOS_CONTENIDO
+
+    extension = Path(ruta).suffix.lower()
+    return TIPOS_CONTENIDO.get(extension, extension)
+
+
+def validar_plantilla_de_prueba(ruta):
+    """`validar_plantilla` sobre un fichero de plantilla de prueba (el servicio trabaja con bytes)."""
+    from pathlib import Path
+
+    from app.services.generador_escritos import validar_plantilla
+
+    return validar_plantilla(Path(ruta).read_bytes(), _formato_de_ruta(ruta))
+
+
+def advertencias_de_prueba(ruta):
+    """`advertencias_plantilla` sobre un fichero de plantilla de prueba."""
+    from pathlib import Path
+
+    from app.services.generador_escritos import advertencias_plantilla
+
+    return advertencias_plantilla(Path(ruta).read_bytes(), _formato_de_ruta(ruta))
+
+
+def canonicidad_de_prueba(ruta):
+    """`comprobar_canonicidad` sobre un `.odt` de prueba."""
+    from pathlib import Path
+
+    from app.services.plantilla_canonica_odt import comprobar_canonicidad
+
+    return comprobar_canonicidad(Path(ruta).read_bytes())
+
+
+def marca_de_prueba(ruta):
+    """`leer_marca` sobre un `.odt` de prueba."""
+    from pathlib import Path
+
+    from app.services.plantilla_canonica_odt import leer_marca
+
+    return leer_marca(Path(ruta).read_bytes())

@@ -14,9 +14,10 @@ y la semilla le añadiría 7 usuarios con contraseña `test` y 4 expedientes
 ficticios. Esta base no es una copia de la del PC ni debe parecerlo: sin datos
 reales ni los ajustes acumulados (REGLAS_DESARROLLO.md §Migraciones).
 
-Dos efectos de la semilla que conviene conocer (vienen de la de tests):
-- desactiva las plantillas sembradas por migración, porque apuntan a .docx que
-  aquí no están: generar escritos exige registrar antes una plantilla;
+Dos cosas de la semilla que conviene conocer (vienen de la de tests):
+- las plantillas sembradas por migración no tienen fichero y están
+  desactivadas (ADR-050 §J, #1009); para generar escritos, la semilla registra
+  plantillas de demostración (`scripts/plantillas_demo.py`, códigos `DEMO_*`);
 - construye los expedientes-tipo sin reloj simulado (`efectos_desarrollo=False`).
 """
 import os

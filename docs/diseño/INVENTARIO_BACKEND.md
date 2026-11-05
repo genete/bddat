@@ -217,7 +217,7 @@ Pipeline completo: plantilla `.docx` + 2 capas de contexto + consultas nombradas
 
 ### 4.1 Plantillas (`models/plantillas.py`)
 
-`Plantilla(codigo, nombre, ruta_plantilla, tipo_documento_id, tipo_expediente_id?, tipo_solicitud_id?, tipo_fase_id?, tipo_tramite_id?, variante, contexto_clase, activo)`.
+`Plantilla(codigo, nombre, fichero_ref?, tipo_documento_id, tipo_expediente_id?, tipo_solicitud_id?, tipo_fase_id?, tipo_tramite_id?, variante, contexto_clase, activo)`. El fichero (`.odt` o `.docx`) se sube desde el navegador y vive en el almacén (`fichero_ref`, #1009); sin fichero no puede estar activa. Los fragmentos que cita (`{{r Nombre }}`) son filas de `Fragmento(nombre, formato, descripcion, activo, fichero_ref)`, únicas por nombre y formato.
 
 Las 4 FKs ESFTT son nullable: NULL = aplica a cualquier valor de esa dimensión. `contexto_clase` referencia un Context Builder Capa 2.
 
@@ -545,7 +545,6 @@ Cobertura amplia del backend de motor, plazos, ESFTT, documentos y CBs. La UI pr
 | Normativa BOE / cruce | `legalize_xref.py`, `legalize_compile.py`, `compile_hallazgos.py` | Integración con repo externo `legalize-es`; compilación para NotebookLM |
 | Contexto IA | `preparar_contexto.py`, `preparar_contexto_nblm.py` | Volcado del proyecto a fichero único para Gemini/NotebookLM |
 | Operativa | `flask_console.py` (GUI tkinter para servidor dev), `gen_issues.py` | |
-| Cliente Windows | `cliente/install.bat`, `cliente/install.ps1`, `cliente/bddat-explorador-handler.ps1`, `cliente/bddat-explorador-launcher.vbs` | Instalador del handler URL `bddat://` para abrir documentos desde navegador remoto (referenciado en issue #195) |
 | Build | `build_react.sh` | Compilación del bundle React (`react-diagramas/` → `app/static/js/react/diagrama-esftt.iife.js`) |
 
 ### 10.6.3 `react-diagramas/` — POC React aislado

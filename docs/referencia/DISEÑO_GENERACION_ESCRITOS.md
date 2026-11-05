@@ -20,14 +20,15 @@
 | Modelo `ConsultaNombrada` | HECHO | `app/models/consultas_nombradas.py` |
 | Migración BD (ambas tablas) | HECHO | `migrations/versions/20c5d1e9d782*.py` |
 | `ContextoBaseExpediente` (Capa 1) | HECHO | `app/services/escritos.py` |
-| `generar_escrito()` (despacho por extensión + nombre, ruta, guardado, MIME y validación) | HECHO | `app/services/generador_escritos.py` |
+| `generar_escrito()` (despacho por formato + nombre, bytes de plantilla y fragmentos, guardado, MIME y validación) | HECHO | `app/services/generador_escritos.py` |
 | Motor de render ODT (#726) | HECHO | `app/services/generador_escritos_odt.py` |
 | Motor de render DOCX (heredado, en retirada) | HECHO | `app/services/generador_escritos_docx.py` |
 | Dependencia `docxtpl` (solo la rama `.docx`) | HECHO | `requirements.txt` (commit 6b85fcf) |
 | Admin plantillas — CRUD 4 pantallas | HECHO | `app/modules/admin_plantillas/` |
 | Panel de tokens copiables | HECHO | `_panel_tokens.html` |
-| Protocolo URI `bddat-explorador://` | HECHO | Issue #231 |
-| Config `PLANTILLAS_BASE` | HECHO | `app/config.py` |
+| Tabla `fragmentos` y pestaña «Fragmentos» (subida desde el navegador) | HECHO | #1009, `app/models/fragmentos.py` |
+| Protocolo URI `bddat-explorador://` y `scripts/cliente/` | RETIRADO | #1009: el fichero se sube desde el navegador (era del Issue #231) |
+| Config `PLANTILLAS_BASE` | RETIRADA | #1009: plantillas y fragmentos viven en el almacén |
 | Guía Context Builders | HECHO (doc) | `docs/referencia/GUIA_CONTEXT_BUILDERS.md` |
 
 **Pendiente:**
@@ -112,10 +113,10 @@ trámite concreto lo necesita, un ajuste o sustitución).
 generado conserva el formato del que se generó.
 
 **Almacenamiento:** El contexto ESFTT vive en BD, no en el filesystem, y la
-convención de nombres evita colisiones sin necesidad de subdirectorios. Aun
-así el explorador del alta permite navegar carpetas bajo
-`PLANTILLAS_BASE/plantillas/` y `ruta_plantilla` guarda la subruta completa:
-las plantillas de desarrollo viven en `escritos/`.
+convención de nombres evita colisiones sin necesidad de subdirectorios. La
+propia plantilla no tiene ruta: se sube desde el navegador y vive en el
+almacén (`plantillas.fichero_ref`, ADR-050 §J, #1009); su descarga se llama
+como su código.
 
 **TODO:** Secuencial automático (sufijo ` (2)`, ` (3)`...) cuando ya existe
 un documento con el mismo nombre para el mismo expediente.
@@ -274,8 +275,9 @@ legado de Access, plantilla base canónica) están en
 `docs/decisiones/ADR-035-plantillas-escritos-odt.md` — **no duplicar aquí**.
 
 Implementado en #726: `app/services/generador_escritos_odt.py`, con
-`generador_escritos.generar_escrito` despachando por la extensión de
-`plantilla.ruta_plantilla`. El contexto lo construye
+`generador_escritos.generar_escrito` despachando por el formato del contenido
+de la plantilla (su fila de `ficheros`; desde #1009 los motores reciben bytes,
+no rutas). El contexto lo construye
 `escritos.construir_contexto` y es el mismo para los dos motores.
 
 Cabos de implementación del motor, y cómo quedaron:
@@ -340,15 +342,18 @@ la base canónica correspondiente.
    bloquea el guardado (se admite con aviso, ADR-035 §5) pero rompe la
    canonicidad.
 3. **Guardar como `.odt`** (no `.docx`: pierde la marca de versión de
-   `meta.xml` y la hoja de estilos común) y colocarlo en el servidor, dentro
-   de `PLANTILLAS_BASE/plantillas/` (o su subcarpeta correspondiente). No hay
-   subida desde el navegador: es una copia de fichero en el share/disco donde
-   vive `PLANTILLAS_BASE` (ANALISIS_DESPLIEGUE.md §6).
-4. **Registrarla en `/plantillas/nueva/`.** El botón «Seleccionar del
-   servidor» abre el explorador restringido a `PLANTILLAS_BASE/plantillas/`
-   con el fichero ya colocado en el paso 3. El alta valida sintaxis (Jinja2) y
-   avisa de desviaciones de canonicidad (fuente ajena, estilos personalizados
-   que faltan) sin bloquear el guardado.
+   `meta.xml` y la hoja de estilos común) en el PC. Las copias que el
+   supervisor guarda donde quiera son su versionado: BDDAT solo guarda la
+   plantilla vigente (ADR-050 §J).
+4. **Subirla en `/plantillas/nueva/`.** El campo «Fichero» sube el `.odt` (o
+   `.docx`) desde el navegador y se guarda en el almacén (#1009). El alta
+   valida sintaxis (Jinja2) **antes de guardar nada**: si no valida, no queda
+   ni plantilla ni fichero. Avisa de desviaciones de canonicidad (fuente
+   ajena, estilos personalizados que faltan) sin bloquear el guardado. Para
+   cambiarla después: «Descargar», editarla en el PC y subirla desde
+   «Editar»; una que no valida no sustituye a la vigente. Los fragmentos se
+   suben igual, desde la pestaña «Fragmentos». Una plantilla sin fichero no se
+   puede activar.
 
 ---
 
@@ -359,7 +364,7 @@ la base canónica correspondiente.
 | ID | Necesidad | Decisión |
 |----|-----------|----------|
 | A0 | Filtrado dinámico de tokens | Por `contexto_clase` (CB), no por ESFT. Sin whitelist (ADR-007) ni toggle (#552). Ver ADR-025 y §"Modelo de tokens del modal" |
-| A1 | Validación de sintaxis de la plantilla registrada | `generador_escritos.validar_plantilla`: formato + compilación Jinja2, por extensión (#726). Canonicidad ADR-035 §5 → #727 |
+| A1 | Validación de sintaxis de la plantilla registrada | `generador_escritos.validar_plantilla`: formato + compilación Jinja2, por el formato del contenido (#726; con bytes desde #1009). Canonicidad ADR-035 §5 → #727 |
 | A2 | Probar plantilla con datos reales | DIFERIBLE |
 | A3 | Parseo automático del .docx (detectar campos/consultas/fragmentos) | Necesario parcial (Fase 6) |
 | A4 | CRUD de consultas nombradas | Necesario (Fase 5) |

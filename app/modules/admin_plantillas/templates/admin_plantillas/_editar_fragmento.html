@@ -3,7 +3,8 @@
    Submit interceptado: POST XHR → JSON { ok, errors, message }.
    Marco único (ADR-053 §A, #1042): «Guardar» y «Cancelar/Cerrar» los pinta el shell.
    Selects ESFTT planos (sin cascada/whitelist — los endpoints api_tipos_* no filtran hoy).
-   "Cambiar fichero" abre el explorador como modal grande (plantillas-inspector.js, onSaved no-op).
+   El fichero se sube desde el navegador (#1009): el formulario viaja con `new FormData(form)`, así
+   que el input de fichero llega al servidor sin tocar el JS del inspector. Vacío = se conserva el actual.
 #}
 
 <div class="p-3" data-inspector-frame="editar" data-min-width="380" data-title="{{ plantilla.nombre }}">
@@ -13,7 +14,7 @@
   .form-plantilla-editar ::placeholder { color: #b9bec7 !important; opacity: 1; }
 </style>
 
-<form data-inspector-form class="form-plantilla-editar"
+<form data-inspector-form class="form-plantilla-editar" enctype="multipart/form-data"
       data-action="{{ url_for('admin_plantillas.editar', id=plantilla.id) }}">
 <input type="hidden" name="_form_completo" value="1">
 
@@ -126,19 +127,19 @@
         <i class="fas fa-file-word me-1"></i> Fichero de plantilla
     </div>
     <div class="card-body card-body-tinted">
-        {# Input oculto con la ruta relativa; vacío = conservar el fichero actual #}
-        <input type="hidden" name="ruta_plantilla" value="" data-pl-ruta-input>
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <button type="button" class="btn btn-outline-secondary btn-sm"
-                    data-pl-explorador
-                    data-pl-explorador-url="{{ url_for('admin_plantillas.explorador_fragmento', id=plantilla.id) }}">
-                <i class="fas fa-folder-open me-1"></i> Cambiar fichero…
-            </button>
-            <span class="text-secondary small" data-pl-ruta-label>
-                Actual: <strong>{{ plantilla.ruta_plantilla }}</strong>
-            </span>
+        <label class="form-label fw-semibold small" for="pf_fichero">
+            {% if extension %}Sustituir el fichero (opcional){% else %}Fichero de la plantilla{% endif %}
+        </label>
+        <input type="file" class="form-control form-control-sm" id="pf_fichero" name="fichero"
+               accept=".odt,.docx">
+        <div class="form-text mt-1">
+            {% if extension %}
+            Actual: <strong>{{ plantilla.codigo }}{{ extension }}</strong>. Si no eliges ninguno se conserva.
+            Se comprueba al guardar: si no es una plantilla válida no sustituye a la actual.
+            {% else %}
+            Todavía no tiene fichero: súbelo para poder activarla.
+            {% endif %}
         </div>
-        <div class="form-text mt-1">Si no seleccionas ninguno, se conserva el fichero actual.</div>
     </div>
 </div>
 
@@ -165,7 +166,10 @@
                    {% if plantilla.activo %}checked{% endif %}>
             <label class="form-check-label fw-semibold small" for="pf_activo">Plantilla activa</label>
         </div>
-        <div class="form-text">Las inactivas no se muestran en la tarea ELABORAR, pero se conservan para histórico.</div>
+        <div class="form-text">
+            Las inactivas no se muestran en la tarea ELABORAR, pero se conservan.
+            {% if not extension %}No se puede activar sin fichero, salvo que lo subas en este mismo guardado.{% endif %}
+        </div>
     </div>
 </div>
 

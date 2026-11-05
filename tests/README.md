@@ -20,8 +20,7 @@ donde nacieron —aquí se resumen y se enlazan—:
 La suite corre contra **su propia base de datos**, nunca la de desarrollo (#849):
 
 ```bash
-# .env: TEST_DATABASE_URL, TEST_PLANTILLAS_BASE, TEST_ALMACEN_BASE,
-#       TEST_MANIFIESTOS_BASE (ver .env.example)
+# .env: TEST_DATABASE_URL, TEST_ALMACEN_BASE, TEST_MANIFIESTOS_BASE (ver .env.example)
 python scripts/preparar_bd_test.py --recrear   # migraciones + semilla; repetir tras cada migración nueva
 pytest                                         # suite completa (~30 s)
 pytest tests/smoke                             # solo smoke
@@ -306,6 +305,12 @@ y ninguno decía cuál, así que el test no podía cumplir su papel de aviso.
      mismo expediente, con su escrito de ancla (`documento_ancla_de_prueba()`).
    - `documento_con_contenido_de_prueba()` — un documento con fichero. Nunca escribir
      el fichero a mano: el corte de ADR-050 cambia este helper, no los tests (#1014).
+   - `generar_odt_de_prueba()` — el motor `.odt` con una plantilla que es un fichero y sus
+     fragmentos en un directorio (`<nombre>.odt`). Los tests del motor no pasan por el
+     almacén: el motor recibe bytes (#1009).
+   - `fragmento_commiteado` — un fragmento `.odt` activo con su fichero en el almacén,
+     commiteado (las rutas no pasan por `app_ctx`, #836) y con su limpieza. Es lo que
+     necesita un test que pase por las rutas de la pestaña «Fragmentos».
 3. **Prefiere BD real a mocks.** Con `arbol_aislado` montar un árbol cuesta
    pocas líneas; un `MagicMock` que imita un modelo acepta cualquier atributo y se
    desalinea del modelo sin avisar.
