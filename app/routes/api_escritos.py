@@ -23,6 +23,7 @@ from app.services.codigo_seguimiento import componer_codigo
 from app.services.escritos import ContextoBaseExpediente, solicitud_de, variables_destinatario
 from app.services.generador_escritos import generar_escrito, componer_nombre_documento
 from app.services.regeneracion_escritos import regenerar_escrito
+from app.services.sellado_fase_sesion import SelladoFaseVioladoError
 from app.utils.permisos import puede_editar_expediente
 
 logger = logging.getLogger(__name__)
@@ -295,8 +296,9 @@ def generar():
     nombre_fichero, enlace}`. Errores con mensaje para el usuario: 422 si el
     contenido no es lo que dice la extensión del borrador (p. ej. una plantilla
     que ahora genera .odt sobre un borrador .docx) o el borrador aún tiene ruta
-    local; 409 si el borrador está ausente o dañado en el almacén; 503 si el
-    almacén no contesta.
+    local; 409 si el borrador está ausente o dañado en el almacén o si la fase de
+    la tarea está cerrada (el escrito no se vincula dentro de una fase sellada: hay
+    que reabrirla); 503 si el almacén no contesta.
     """
     data = request.get_json(silent=True) or {}
 
@@ -315,7 +317,10 @@ def generar():
     except AlmacenNoDisponible:
         db.session.rollback()
         return jsonify(ok=False, error=MENSAJE_ALMACEN_NO_DISPONIBLE), 503
-    except ContenidoNoUtilizable as e:
+    except (ContenidoNoUtilizable, SelladoFaseVioladoError) as e:
+        # El segundo es la red de cierre del sellado (#720, ADR-036 §6, capa 3): el flush
+        # intentó vincular el escrito al interior de una fase cerrada. Su mensaje ya dice
+        # qué fase es y que hay que reabrirla.
         db.session.rollback()
         return jsonify(ok=False, error=str(e)), 409
     except ValueError as e:   # FormatoNoAdmitido incluido
