@@ -52,29 +52,6 @@ def plantilla_desactivada(app, almacen_tmp):
         db.session.commit()
 
 
-@pytest.fixture
-def elaborar_de_resolucion(app, expediente_seed):
-    """ELABORAR de la resolución —un trámite sin destinatario— commiteada, y su limpieza."""
-    from app.models.fases import Fase
-    from app.models.solicitudes import Solicitud
-    from tests.conftest import ArbolESFTT
-
-    with app.app_context():
-        solicitud = (Solicitud.query.filter_by(expediente_id=expediente_seed)
-                     .order_by(Solicitud.id).first())
-        assert solicitud is not None, 'la semilla debe traer una solicitud en el expediente'
-        arbol = ArbolESFTT(db)
-        fase = arbol.fase('RESOLUCION', solicitud=solicitud)
-        tarea = arbol.tarea(arbol.tramite(fase, 'ELABORACION'), 'ELABORAR')
-        db.session.commit()
-        fase_id, tarea_id = fase.id, tarea.id
-    yield tarea_id
-    with app.app_context():
-        db.session.rollback()
-        Fase.query.filter_by(id=fase_id).delete()
-        db.session.commit()
-
-
 def test_generar_rechaza_una_plantilla_desactivada(usuario_supervisor, app, plantilla_desactivada,
                                                    elaborar_de_resolucion):
     from app.models.tareas import Tarea

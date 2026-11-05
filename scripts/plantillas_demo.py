@@ -71,7 +71,7 @@ PLANTILLAS = {
     },
 }
 
-# El texto que el fragmento inserta: el escrito generado lo lleva, y un test lo busca.
+# El texto con que empieza el párrafo del fragmento: el escrito generado lo lleva, y un test lo busca.
 TEXTO_DEL_FRAGMENTO = 'Pie de demostración: este párrafo procede del fragmento'
 
 
@@ -118,9 +118,12 @@ def odt_de_plantilla(clave: str, prefijo: str = PREFIJO) -> bytes:
     ])
 
 
-def odt_del_fragmento() -> bytes:
-    """El `.odt` del fragmento: su base con un texto reconocible (`TEXTO_DEL_FRAGMENTO`)."""
-    return _odt_con_cuerpo('fragmento_base.odt', [f'{TEXTO_DEL_FRAGMENTO} de demostración.'])
+def odt_del_fragmento(prefijo: str = PREFIJO) -> bytes:
+    """El `.odt` del fragmento: su base con un texto reconocible (`TEXTO_DEL_FRAGMENTO`) y su
+    nombre. Lleva el nombre a propósito: el almacén guarda el contenido por su hash, y dos
+    prefijos con el mismo texto compartirían la fila de `ficheros`."""
+    return _odt_con_cuerpo('fragmento_base.odt',
+                           [f'{TEXTO_DEL_FRAGMENTO} {nombre_fragmento(prefijo)}.'])
 
 
 def _id_del_catalogo(modelo, columna, valor, que: str) -> int:
@@ -149,7 +152,7 @@ def registrar(prefijo: str = PREFIJO, claves=None) -> dict[str, int]:
     from app.services.generador_escritos import validar_plantilla
 
     fragmento, resultado = contenido.guardar_fragmento(
-        nombre_fragmento(prefijo), io.BytesIO(odt_del_fragmento()),
+        nombre_fragmento(prefijo), io.BytesIO(odt_del_fragmento(prefijo)),
         f'{nombre_fragmento(prefijo)}.odt',
         descripcion='Pie de demostración (#1009): lo citan las plantillas de demostración.')
     if resultado == contenido.CREADO:

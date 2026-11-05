@@ -262,6 +262,30 @@ def fragmento_commiteado(app, almacen_tmp):
 
 
 @pytest.fixture
+def elaborar_de_resolucion(app, expediente_seed):
+    """ID de una tarea ELABORAR de la resolución —un trámite sin destinatario— en una fase nueva
+    (abierta) del expediente semilla, commiteada: las rutas no pasan por `app_ctx` (#836). Su
+    limpieza borra la fase, y con ella el trámite, la tarea y sus vínculos (#1009)."""
+    from app.models.fases import Fase
+    from app.models.solicitudes import Solicitud
+
+    with app.app_context():
+        solicitud = (Solicitud.query.filter_by(expediente_id=expediente_seed)
+                     .order_by(Solicitud.id).first())
+        assert solicitud is not None, 'la semilla debe traer una solicitud en el expediente'
+        arbol = ArbolESFTT(_db)
+        fase = arbol.fase('RESOLUCION', solicitud=solicitud)
+        tarea = arbol.tarea(arbol.tramite(fase, 'ELABORACION'), 'ELABORAR')
+        _db.session.commit()
+        fase_id, tarea_id = fase.id, tarea.id
+    yield tarea_id
+    with app.app_context():
+        _db.session.rollback()
+        Fase.query.filter_by(id=fase_id).delete()
+        _db.session.commit()
+
+
+@pytest.fixture
 def primer_usuario_id(app):
     """ID del primer usuario en la BD de desarrollo. Skip si no existe ninguno.
 
