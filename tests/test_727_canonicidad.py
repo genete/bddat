@@ -9,13 +9,17 @@ comprueban aparte, contra disco: son el contrato que este módulo protege.
 import os
 import zipfile
 
-from app.services.generador_escritos import advertencias_plantilla
 from app.services.plantilla_canonica_odt import (
     ESTILOS_CARTA,
     ESTILOS_COMUNES,
     ESTILOS_RESOLUCION,
-    comprobar_canonicidad,
-    leer_marca,
+)
+# Los helpers de `conftest.py` leen el fichero y llaman al servicio con bytes (#1009): aquí
+# conservan el nombre del servicio para que ningún `assert` cambie.
+from tests.conftest import (
+    advertencias_de_prueba as advertencias_plantilla,
+    canonicidad_de_prueba as comprobar_canonicidad,
+    marca_de_prueba as leer_marca,
 )
 
 NS_DECL = (

@@ -6,9 +6,13 @@ ENDPOINTS:
         + tipo_documento + tipo_fase.
         Devuelve {data, next_cursor, has_more, total?}
 
-VERSIÓN: 1.0
-FECHA: 2026-06-15
-ISSUE: #545 (ADR-023 — migración del listado de plantillas al patrón inspector)
+    GET /api/admin-fragmentos   (#1009)
+        La otra pestaña del hub: cursor + limit + search (nombre o descripción).
+        Cada fila lleva `motivo`, por qué no se puede usar (None si se puede).
+
+VERSIÓN: 1.1
+FECHA: 2026-11-05
+ISSUE: #545 (ADR-023 — migración del listado de plantillas al patrón inspector); #1009
 """
 
 from flask import Blueprint, request, jsonify
@@ -18,7 +22,9 @@ from sqlalchemy.orm import joinedload
 
 from app import db
 from app.decorators import require_permiso
+from app.models.fragmentos import Fragmento
 from app.models.plantillas import Plantilla
+from app.services.almacenamiento import contenido
 
 api_plantillas_bp = Blueprint('api_plantillas', __name__, url_prefix='/api')
 
@@ -148,4 +154,80 @@ def listar_plantillas():
     if total is not None:
         response['total'] = total
 
+    return jsonify(response), 200
+
+
+@api_plantillas_bp.route('/admin-fragmentos', methods=['GET'])
+@login_required
+@require_permiso('acceder_plantillas')
+def listar_fragmentos():
+    """
+    GET /api/admin-fragmentos  —  Listado paginado con cursor (#1009).
+
+    Query Parameters:
+        cursor (int, default 0)   : ID del último registro recibido.
+        limit  (int, default 50)  : Registros por página. Máx: 100.
+        search (str, mín 2 chars) : Búsqueda parcial en el nombre o la descripción.
+
+    Cada fila lleva `motivo`: por qué no se puede usar el fragmento (desactivado por el
+    supervisor o contenido no disponible), o None si se puede. Se calcula con una sola
+    consulta para toda la página.
+
+    Returns:
+        200 OK  con JSON {data, next_cursor, has_more, total?}.
+        400 Bad Request si parámetros inválidos.
+    """
+    try:
+        cursor = int(request.args.get('cursor', 0))
+        if cursor < 0:
+            return jsonify({'error': 'Cursor debe ser >= 0'}), 400
+
+        limit = int(request.args.get('limit', 50))
+        if limit < 1:
+            return jsonify({'error': 'Limit debe ser >= 1'}), 400
+        if limit > 100:
+            limit = 100
+
+        search_query = request.args.get('search', '').strip()
+        if search_query and len(search_query) < 2:
+            return jsonify({'error': 'Search debe tener al menos 2 caracteres'}), 400
+    except ValueError:
+        return jsonify({'error': 'Parámetros numéricos inválidos'}), 400
+
+    def aplicar_filtros(q, con_cursor=True):
+        if con_cursor and cursor > 0:
+            q = q.filter(Fragmento.id > cursor)
+        if search_query:
+            patron = func.lower(search_query)
+            q = q.filter(or_(
+                func.lower(Fragmento.nombre).contains(patron),
+                func.lower(func.coalesce(Fragmento.descripcion, '')).contains(patron),
+            ))
+        return q
+
+    fragmentos = aplicar_filtros(Fragmento.query).order_by(Fragmento.id.asc()).limit(limit + 1).all()
+
+    has_more = len(fragmentos) > limit
+    if has_more:
+        fragmentos = fragmentos[:limit]
+
+    next_cursor = fragmentos[-1].id if fragmentos else cursor
+
+    total = None
+    if search_query:
+        total = aplicar_filtros(db.session.query(func.count(Fragmento.id)), con_cursor=False).scalar()
+
+    motivos = contenido.motivos_no_usables_fragmentos(fragmentos)
+    data = [{
+        'id':          f.id,
+        'nombre':      f.nombre,
+        'extension':   contenido.extension_de_formato(f.formato),
+        'descripcion': f.descripcion,
+        'activo':      f.activo,
+        'motivo':      motivos[f.id],
+    } for f in fragmentos]
+
+    response = {'data': data, 'next_cursor': next_cursor, 'has_more': has_more}
+    if total is not None:
+        response['total'] = total
     return jsonify(response), 200

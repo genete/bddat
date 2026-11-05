@@ -1,0 +1,75 @@
+{# _frag_edicion.html — Parcial de edición de un fragmento para el inspector (#1009).
+   No extiende base_app.html. Cargado por el shell al pulsar «Editar» del marco.
+   Submit interceptado: POST XHR (FormData, así que el fichero viaja) → JSON { ok, errors, message }.
+   Marco único (ADR-053 §A): «Guardar» y «Cancelar/Cerrar» los pinta el shell.
+   El nombre no se edita: es la clave que citan las plantillas ({{r Nombre }}).
+   El fichero nuevo tiene que ser del mismo formato; para otro formato se crea un fragmento nuevo.
+#}
+
+<div class="p-3" data-inspector-frame="editar" data-min-width="380" data-title="{{ fragmento.nombre }}">
+
+<form data-inspector-form class="form-frag-editar" enctype="multipart/form-data"
+      data-action="{{ url_for('admin_plantillas.frag_guardar', id=fragmento.id) }}">
+<input type="hidden" name="_form_completo" value="1">
+
+<div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
+
+<!-- CARD 1 — Identificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-puzzle-piece me-1"></i> Fragmento
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-8">
+                <label class="form-label fw-semibold small" for="pfr_nombre">Nombre</label>
+                <input type="text" class="form-control form-control-sm font-monospace" id="pfr_nombre"
+                       value="{{ fragmento.nombre }}" readonly>
+                <div class="form-text">No se puede cambiar: las plantillas lo citan con <code>{{ '{{r ' ~ fragmento.nombre ~ ' }}' }}</code>.</div>
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small" for="pfr_formato">Formato</label>
+                <input type="text" class="form-control form-control-sm font-monospace" id="pfr_formato"
+                       value="{{ extension }}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="pfr_descripcion">Descripción</label>
+                <textarea class="form-control form-control-sm" id="pfr_descripcion" name="descripcion"
+                          rows="2">{{ fragmento.descripcion or '' }}</textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Fichero -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-file-word me-1"></i> Fichero
+    </div>
+    <div class="card-body card-body-tinted">
+        <label class="form-label fw-semibold small" for="pfr_fichero">Sustituir el fichero (opcional)</label>
+        <input type="file" class="form-control form-control-sm" id="pfr_fichero" name="fichero"
+               accept="{{ extension }}">
+        <div class="form-text">
+            Si no eliges ninguno se conserva el actual. Tiene que ser un <strong>{{ extension }}</strong>:
+            cambiarlo lo cambia en todas las plantillas que citan este fragmento.
+        </div>
+    </div>
+</div>
+
+<!-- CARD 3 — Estado -->
+<div class="card mb-3">
+    <div class="card-body card-body-tinted">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="pfr_activo" name="activo" role="switch"
+                   {% if fragmento.activo %}checked{% endif %}>
+            <label class="form-check-label fw-semibold small" for="pfr_activo">Fragmento activo</label>
+        </div>
+        <div class="form-text">
+            Desactivado cuenta como ausente: las plantillas que lo citan no generan hasta que se active.
+        </div>
+    </div>
+</div>
+
+</form>
+</div>{# /p-3 #}

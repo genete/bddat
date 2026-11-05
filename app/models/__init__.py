@@ -59,6 +59,9 @@ from app.models.autorizados_titular import AutorizadoTitular
 # Contenidos del almacén (#1007, ADR-050 — sin FKs; Documento apunta aquí)
 from app.models.ficheros import Fichero
 
+# Fragmentos de escritos (#1009, ADR-050 §J — depende de Fichero)
+from app.models.fragmentos import Fragmento
+
 # Modelos operacionales sin dependencias operacionales
 from app.models.proyectos import Proyecto
 
@@ -186,6 +189,8 @@ __all__ = [
     'AutorizadoTitular',
     # Contenidos del almacén (#1007)
     'Fichero',
+    # Fragmentos de escritos (#1009)
+    'Fragmento',
     # Operacionales
     'Proyecto',
     'Expediente',

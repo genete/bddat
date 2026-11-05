@@ -2,8 +2,8 @@
 
 Permanente: no se borra con `test_1001` cuando se retire el modelo de rutas. Es la otra
 mitad de la regla de §B: solo el subsistema de almacenamiento (`app/services/almacenamiento/`)
-lee o escribe `ficheros`, `documentos.fichero_ref` o una `ref`, y dentro de `app/` solo el
-adaptador importa la librería `almacen`.
+lee o escribe `ficheros`, `documentos.fichero_ref`, `plantillas.fichero_ref` o una `ref`, y
+dentro de `app/` solo el adaptador importa la librería `almacen`.
 
 Fallo silencioso que evita: un servicio que escriba `fichero_ref` por su cuenta se salta
 las comprobaciones que dan coherencia al contenido (sellado, bitácora, comprobación al
@@ -31,16 +31,18 @@ APP = RAIZ / 'app'
 SUBSISTEMA = 'app/services/almacenamiento/'
 
 # Nombres que solo puede usar el subsistema (más lo que el modelo necesita para definirlos).
-SIMBOLOS = {'fichero_ref', 'plantilla_ref', 'Fichero'}
+SIMBOLOS = {'fichero_ref', 'Fichero'}
 PERMITIDOS_MODELO = {
     'app/models/__init__.py',      # importa `Fichero`
     'app/models/ficheros.py',      # define la tabla
     'app/models/documentos.py',    # define la columna `fichero_ref`
+    'app/models/plantillas.py',    # define la columna `fichero_ref` de la plantilla (#1009)
+    'app/models/fragmentos.py',    # define la columna `fichero_ref` del fragmento (#1009)
 }
 SOLO_ADAPTADOR = 'app/services/almacenamiento/adaptador.py'
 
 _RE_SQL_FICHEROS = re.compile(r'\bpublic\.ficheros\b|\b(?:FROM|JOIN|INTO|UPDATE)\s+ficheros\b', re.I)
-_RE_HTML = re.compile(r'\b(?:fichero_ref|plantilla_ref)\b')
+_RE_HTML = re.compile(r'\bfichero_ref\b')
 _RE_COMENTARIO_HTML = re.compile(r'\{#.*?#\}|<!--.*?-->', re.S)
 
 _AYUDA = (

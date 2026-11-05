@@ -22,8 +22,7 @@ import zipfile
 import pytest
 from lxml import etree
 
-from app.services.generador_escritos_odt import generar_escrito_odt
-from app.services.plantilla_canonica_odt import comprobar_canonicidad
+from tests.conftest import canonicidad_de_prueba, generar_odt_de_prueba
 
 FIXTURES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fixtures')
 RUTA_PLANTILLA = os.path.join(FIXTURES_DIR, 'plantilla_732.odt')
@@ -67,7 +66,7 @@ def generador():
 @pytest.fixture(scope='module')
 def renderizado():
     """Render único del fixture, reutilizado por todos los tests del módulo."""
-    datos = generar_escrito_odt(
+    datos = generar_odt_de_prueba(
         RUTA_PLANTILLA, CONTEXTO,
         codigo_seguimiento=CODIGO_SEGUIMIENTO, fragmentos_dir=FIXTURES_DIR)
     return _partes(datos)
@@ -84,7 +83,7 @@ class TestFixtureEsRealDeLibreOffice:
             f'(leído: "{generador}") — no es el fichero real que #732 exige.')
 
     def test_pasa_la_canonicidad_de_727(self, generador):
-        avisos = comprobar_canonicidad(RUTA_PLANTILLA)
+        avisos = canonicidad_de_prueba(RUTA_PLANTILLA)
         assert avisos == [], (
             f'plantilla_732.odt no pasa la canonicidad de #727: {avisos} '
             f'(generado con {generador})')
@@ -179,7 +178,7 @@ class TestIntegracionPdf:
     def test_texto_y_codigo_sobreviven_al_pdf(self, tmp_path, generador):
         pypdf = pytest.importorskip('pypdf')
 
-        datos = generar_escrito_odt(
+        datos = generar_odt_de_prueba(
             RUTA_PLANTILLA, CONTEXTO,
             codigo_seguimiento=CODIGO_SEGUIMIENTO, fragmentos_dir=FIXTURES_DIR)
 

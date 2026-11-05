@@ -10,10 +10,16 @@ RESPONSABILIDAD:
     Como el ODT, recibe el contexto hecho (ADR-035 §6): no consulta la base de
     datos ni sabe qué es un expediente.
 
-MOTOR HEREDADO, EN RETIRADA (ADR-035 §2):
-    El formato de referencia es .odt. Este motor se conserva a propósito para
-    poder migrar plantilla a plantilla y tener vía de vuelta, y se retira
-    cuando no haya prisa — momento en el que este fichero desaparece entero.
+MOTOR QUE SE MANTIENE (ADR-035 §2, enmienda del 2026-11-02):
+    El formato de referencia es .odt, pero el .docx sigue siendo un formato de
+    plantilla válido: es el plan ante desastre si los puestos de la Junta pasan a
+    Microsoft 365 y pierden LibreOffice. Retirarlo o no se decidirá cuando conteste
+    la ADA (#1085).
+
+SIN DISCO NI BD:
+    Recibe la plantilla en bytes y una función que da el fragmento por nombre,
+    como el motor .odt. Las imágenes de `img()` no tienen sitio en el almacén
+    todavía (#1085): `img()` falla con un mensaje claro.
 
 LOS DOS PARCHES:
     docxtpl/docxcompose insertan los subdocumentos *dentro* del párrafo del
@@ -30,9 +36,9 @@ DEPENDENCIA:
 
 import io
 import logging
-import os
 import re
 import zipfile
+from typing import Callable
 
 from docxtpl import DocxTemplate
 
@@ -43,30 +49,38 @@ logger = logging.getLogger(__name__)
 # API pública
 # ======================================================================
 
-def generar_escrito_docx(plantilla_path: str, contexto: dict) -> bytes:
+def generar_escrito_docx(plantilla: bytes, contexto: dict,
+                         fragmento: Callable[[str], bytes] | None = None) -> bytes:
     """
-    Renderiza una plantilla .docx con el contexto dado.
+    Renderiza una plantilla .docx con el contexto dado. No toca el disco ni la BD.
 
     Añade al contexto lo que solo existe en este formato: la función img()
-    (InlineImage) y los fragmentos como Subdoc.
+    y los fragmentos como Subdoc.
 
     Args:
-        plantilla_path: Ruta absoluta de la plantilla .docx.
-        contexto:       Dict ya construido (escritos.construir_contexto).
+        plantilla: El contenido de la plantilla .docx.
+        contexto:  Dict ya construido (escritos.construir_contexto).
+        fragmento: Función que da el contenido (.docx) del fragmento con ese nombre. Si no
+                   hay fragmento, es la que lanza: un fragmento ausente detiene la
+                   generación (ADR-050 §J). None = no hay ninguno, y una plantilla que
+                   cite uno falla.
 
     Returns:
         bytes — Contenido del .docx generado.
+
+    Raises:
+        LookupError  — la plantilla cita un fragmento que no hay.
+        RuntimeError — la plantilla usa `img()`, que todavía no tiene sitio en el almacén.
     """
-    tpl = DocxTemplate(plantilla_path)
+    tpl = DocxTemplate(io.BytesIO(plantilla))
 
-    # Función img() para incrustar imágenes desde PLANTILLAS_BASE/recursos/
-    # Uso en plantilla: {{ img('logo.png', '3.5', '1.98') }}
-    from flask import current_app
-    _recursos = os.path.join(current_app.config.get('PLANTILLAS_BASE', ''), 'recursos')
-    contexto['img'] = _fn_imagen(tpl, _recursos)
+    # img() existe para que una plantilla que la use falle con un mensaje claro y no con un
+    # «'img' is undefined»: las imágenes (antes PLANTILLAS_BASE/recursos/) no tienen sitio
+    # en el almacén (#1085).
+    contexto['img'] = _imagen_sin_recursos
 
-    # Fragmentos insertables: {{r NombreFragmento}} → tpl.new_subdoc(ruta)
-    contexto.update(_cargar_fragmentos(tpl, plantilla_path))
+    # Fragmentos insertables: {{r NombreFragmento}} → tpl.new_subdoc(contenido)
+    contexto.update(_cargar_fragmentos(tpl, plantilla, fragmento))
 
     tpl.render(contexto)
 
@@ -81,9 +95,9 @@ def generar_escrito_docx(plantilla_path: str, contexto: dict) -> bytes:
     return _corregir_anidados_en_zip(buffer.getvalue())
 
 
-def validar_plantilla_docx(ruta_abs: str) -> str | None:
+def validar_plantilla_docx(datos: bytes) -> str | None:
     """
-    Comprueba que el fichero sea un .docx utilizable como plantilla: formato
+    Comprueba que el contenido sea un .docx utilizable como plantilla: formato
     OOXML bien formado y sintaxis Jinja2 del XML ya parcheado por docxtpl.
 
     Returns:
@@ -94,12 +108,12 @@ def validar_plantilla_docx(ruta_abs: str) -> str | None:
     from jinja2 import Environment
 
     try:
-        DocxDocument(ruta_abs)
+        DocxDocument(io.BytesIO(datos))
     except Exception as e:
         return f'No es un .docx válido: {e}'
 
     try:
-        tpl = DocxTemplate(ruta_abs)
+        tpl = DocxTemplate(io.BytesIO(datos))
         tpl.init_docx()
         Environment().parse(tpl.patch_xml(tpl.get_xml()))
     except Exception as e:
@@ -112,68 +126,39 @@ def validar_plantilla_docx(ruta_abs: str) -> str | None:
 # Imágenes y fragmentos
 # ======================================================================
 
-def _fn_imagen(tpl, recursos_dir: str):
-    """
-    Devuelve la función img() que las plantillas Jinja2 usan para incrustar imágenes.
-
-    Uso en plantilla .docx:
-        {{ img('logo_portada.png', '3.5', '1.98') }}   — ancho y alto en cm
-        {{ img('firma.png', '4.0') }}                  — solo ancho; alto proporcional
-        {{ img('sello.png') }}                         — tamaño original del fichero
-
-    El fichero se busca en PLANTILLAS_BASE/recursos/<nombre_fichero>.
-    El anclaje lo controla la plantilla (inline, dentro de cuadro de texto, etc.),
-    no esta función — ver ADR-009.
-    """
-    from docx.shared import Cm
-    from docxtpl import InlineImage
-
-    def img(nombre_fichero: str, ancho=None, alto=None) -> InlineImage:
-        ruta = os.path.join(recursos_dir, nombre_fichero)
-        kwargs = {}
-        if ancho is not None:
-            kwargs['width'] = Cm(float(ancho))
-        if alto is not None:
-            kwargs['height'] = Cm(float(alto))
-        return InlineImage(tpl, ruta, **kwargs)
-
-    return img
+def _imagen_sin_recursos(*args, **kwargs):
+    """La `img()` de las plantillas .docx: las imágenes que insertaba (antes en
+    PLANTILLAS_BASE/recursos/) no tienen sitio en el almacén (#1085, ADR-050 §J)."""
+    raise RuntimeError(
+        'Esta plantilla inserta una imagen con img(), y las imágenes de plantilla todavía '
+        'no están disponibles en BDDAT. Avisa al supervisor.')
 
 
-def _cargar_fragmentos(tpl, plantilla_path) -> dict:
+def _cargar_fragmentos(tpl, plantilla: bytes, fragmento: Callable[[str], bytes] | None) -> dict:
     """
     Detecta etiquetas {{r NombreFragmento}} en el XML de la plantilla y carga
-    los subdocumentos correspondientes desde PLANTILLAS_BASE/fragmentos/.
+    los subdocumentos correspondientes con `fragmento`.
 
     python-docx-template requiere que el contexto contenga un objeto Subdoc
-    creado con tpl.new_subdoc(ruta) para cada {{r variable}}.
+    creado con tpl.new_subdoc(contenido) para cada {{r variable}}.
+
+    Un fragmento que falta detiene la generación (ADR-050 §J): sin él el escrito
+    saldría sin ese trozo y nadie lo notaría.
     """
     # Escanear todos los XML relevantes: body, cabeceras y pies de página
     _PARTES_ESCANEAR = re.compile(r'^word/(document|header\d*|footer\d*)\.xml$')
     nombres = set()
-    with zipfile.ZipFile(plantilla_path) as z:
+    with zipfile.ZipFile(io.BytesIO(plantilla)) as z:
         for nombre_parte in z.namelist():
             if _PARTES_ESCANEAR.match(nombre_parte):
                 xml = z.read(nombre_parte).decode('utf-8', errors='replace')
                 nombres.update(re.findall(r'\{\{r\s+(\w+)\s*\}\}', xml))
 
-    if not nombres:
-        return {}
-
-    from flask import current_app
-    base = current_app.config['PLANTILLAS_BASE']
-    fragmentos_dir = os.path.join(base, 'fragmentos')
-
     resultado = {}
-    for nombre in set(nombres):
-        ruta_frag = os.path.join(fragmentos_dir, nombre + '.docx')
-        if os.path.isfile(ruta_frag):
-            resultado[nombre] = tpl.new_subdoc(ruta_frag)
-        else:
-            logger.warning(
-                'Fragmento "%s.docx" referenciado en plantilla pero no encontrado en %s',
-                nombre, fragmentos_dir
-            )
+    for nombre in sorted(nombres):
+        if fragmento is None:
+            raise LookupError(f'La plantilla cita el fragmento «{nombre}» y no se ha dado ninguno.')
+        resultado[nombre] = tpl.new_subdoc(io.BytesIO(fragmento(nombre)))
 
     return resultado
 

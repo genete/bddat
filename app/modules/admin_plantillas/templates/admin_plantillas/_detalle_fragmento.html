@@ -4,12 +4,22 @@
      data-title: el nombre es editable, así que el fragmento declara el título.
    - "Tokens disponibles" → modal grande global (data-modal-large-url).
    - Activar/desactivar → form data-inspector-form (POST XHR → JSON → refresh).
-   El JS de copiar ruta vive en plantillas-inspector.js (el inspector no re-ejecuta <script>).
+   El JS de copiar vive en plantillas-inspector.js (el inspector no re-ejecuta <script>).
+   El fichero está en el almacén (#1009): se descarga, no se enseña ninguna ruta. `motivo` es por
+   qué no se puede generar con ella (sin fichero, contenido no disponible o pausada); `extension`
+   es None mientras no tenga fichero.
 #}
 
 <div class="p-3" data-inspector-frame="ver"
      data-title="{{ plantilla.nombre }}"
      {% if puede_editar %}data-edit-url="{{ url_for('admin_plantillas.editar_fragmento', id=plantilla.id) }}"{% endif %}>
+
+{# Sin fichero lo dice ya la tarjeta del fichero; el motivo («Avisa al supervisor…») es para quien genera #}
+{% if motivo and extension %}
+<div class="alert alert-warning py-2 small mb-3">
+    <i class="fas fa-triangle-exclamation me-1"></i>{{ motivo }}
+</div>
+{% endif %}
 
 <div class="d-flex justify-content-end gap-2 mb-3">
     <button type="button" class="btn btn-outline-primary btn-sm"
@@ -92,29 +102,19 @@
         <i class="fas fa-file-word me-1"></i> Fichero de plantilla
     </div>
     <div class="card-body card-body-tinted">
-        <div class="fw-semibold mb-2">
-            {{ plantilla.ruta_plantilla }}
+        {% if extension %}
+        <div class="fw-semibold">
+            {{ plantilla.codigo }}{{ extension }}
             <a href="{{ url_for('admin_plantillas.descargar', id=plantilla.id) }}"
                class="ms-2 small"><i class="fas fa-download me-1"></i>Descargar</a>
         </div>
-        {% if ruta_absoluta %}
-        <div class="input-group input-group-sm">
-            <input type="text" class="form-control font-monospace" value="{{ ruta_absoluta }}" readonly
-                   data-pl-ruta-abs>
-            <button class="btn btn-outline-secondary" type="button"
-                    data-pl-copy data-pl-copy-target="[data-pl-ruta-abs]"
-                    title="Pega esta ruta en la barra del Explorador de Windows">
-                <i class="fas fa-copy me-1"></i> Copiar ruta
-            </button>
+        <div class="form-text">
+            Para cambiarla: descárgala, edítala en tu equipo y súbela desde «Editar».
         </div>
-        {% if uri_explorador %}
-        <div class="mt-2">
-            <a href="{{ uri_explorador }}" class="btn btn-sm btn-outline-success"
-               title="Requiere el protocolo bddat-explorador:// instalado en este PC">
-                <i class="fas fa-folder-open me-1"></i> Abrir en Explorador
-            </a>
+        {% else %}
+        <div class="text-secondary">
+            Todavía no tiene fichero.{% if puede_editar %} Súbelo desde «Editar».{% endif %}
         </div>
-        {% endif %}
         {% endif %}
         {% if marca and marca.get('plantilla-base') %}
         <div class="mt-2 small text-muted"
@@ -146,8 +146,11 @@
 {% if puede_editar %}
 <form data-inspector-form
       data-action="{{ url_for('admin_plantillas.activar', id=plantilla.id) }}">
+    {# El inspector solo enseña un rechazo (`ok: false`) si el formulario trae esta caja #}
+    <div id="inspector-form-errors" class="alert alert-danger py-2 mb-2 small" style="display:none;"></div>
     <button type="submit"
-            class="btn btn-sm {% if plantilla.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+            class="btn btn-sm {% if plantilla.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
+            {% if not plantilla.activo and not extension %}disabled title="Sin fichero no se puede activar"{% endif %}>
         <i class="fas {% if plantilla.activo %}fa-toggle-off{% else %}fa-toggle-on{% endif %} me-1"></i>
         {% if plantilla.activo %}Desactivar plantilla{% else %}Activar plantilla{% endif %}
     </button>

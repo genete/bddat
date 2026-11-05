@@ -219,9 +219,9 @@ al share: funciona igual para BDDAT, pero saca la custodia de donde está hoy. S
   (ADR-050 §B).
 - **Restaurar: primero el almacén y después la BD.** Si sobran ficheros, son huérfanos y los recoge la
   limpieza; nunca faltan (ADR-050 §G). La `ref` dice qué fichero exacto pedir a Informática de la copia.
-- `PLANTILLAS_BASE` es caso aparte: casi solo lectura y sin requisito de
-  custodia — puede vivir en local si simplifica. Hasta la fase 4 de ADR-050 (#1009); después las
-  plantillas y los fragmentos pasan al almacén y la variable desaparece.
+- Las plantillas y los fragmentos de escritos ya no tienen carpeta propia: se suben desde el navegador y
+  viven en el almacén, como cualquier otro contenido (ADR-050 §J, #1009). `PLANTILLAS_BASE` desapareció
+  de la configuración.
 
 ### Subidas grandes: el proxy y el límite de 300 MB (ADR-050 §B, §E, §K)
 
@@ -292,8 +292,7 @@ Segunda instancia posible: servidor del edificio (SO desconocido — ver §7).
 
 - `Dockerfile` + `.dockerignore` (base `python:3.x-slim`, gunicorn como CMD)
 - `docker-compose.yml` — servicios `app` + `db`, volumen de datos Postgres,
-  montaje CIFS de las zonas del almacén (§6: `ALMACEN_BASE`, `MANIFIESTOS_BASE`), `PLANTILLAS_BASE`
-  local o CIFS (hasta la fase 4 de ADR-050), variables de entorno
+  montaje CIFS de las zonas del almacén (§6: `ALMACEN_BASE`, `MANIFIESTOS_BASE`), variables de entorno
 - `wsgi.py` + configuración de producción endurecida (§3.1–3.2, con #45)
 - Entrypoint que ejecute `flask db upgrade` al arrancar (la sustitución del
   contenedor aplica sola las migraciones pendientes)
@@ -303,10 +302,10 @@ Segunda instancia posible: servidor del edificio (SO desconocido — ver §7).
 - Ya recogidos en #330 y previos al contenedor: `Documento.url` a ruta
   relativa (superado: ADR-050 retira la ruta local de `Documento.url`),
   separador de rutas en `admin_plantillas`, auditoría de scripts de poblado
-- Copiar las tres plantillas base canónicas (#727) desde `app/data/plantillas_base/`
-  (repo) a `PLANTILLAS_BASE/plantillas/` en la instalación real. La descarga desde
-  el admin no depende de ello (sirve directo del repo), pero Carlos confirmó que
-  la copia sigue haciendo falta aparte
+- Las tres plantillas base canónicas (#727) se descargan desde el admin, que las sirve directo del repo
+  (`app/data/plantillas_base/`): ya no hay que copiarlas a ninguna carpeta de la instalación (la copia a
+  `PLANTILLAS_BASE/plantillas/` desapareció con la variable, #1009). Las plantillas y fragmentos reales los
+  sube el supervisor desde el navegador
 - **Salvaguarda para que la suite de tests nunca corra contra la BD de
   producción** (discusión 2026-08-02, a raíz de #715): hoy `DevelopmentConfig`
   y `ProductionConfig` (`app/config.py`) leen la misma variable `DATABASE_URL`

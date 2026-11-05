@@ -3,8 +3,12 @@
 ENDPOINTS:
     1. GET  /api/escritos/plantillas?tarea_id=X — Plantillas ESFTT compatibles
     2. GET  /api/escritos/preview?plantilla_id=X&tarea_id=Y — Campos del contexto del escrito
-    3. POST /api/escritos/generar — Genera el escrito (.odt, o .docx heredado), lo guarda en el
-       almacén y lo vincula como consumido de la tarea
+    3. POST /api/escritos/generar — Genera el escrito (.odt o .docx, el formato de su plantilla),
+       lo guarda en el almacén y lo vincula como consumido de la tarea
+
+Una plantilla que no se puede usar (sin fichero, contenido no disponible, desactivada por el
+supervisor) se rechaza en `preview` y en `generar` con 409 y su motivo (`motivo_no_usable`):
+el desplegable ya no la ofrece, pero el servidor no se fía de eso.
 """
 
 import logging
@@ -18,7 +22,10 @@ from app import db
 from app.models.plantillas import Plantilla
 from app.models.tareas import Tarea
 from app.services.almacenamiento.adaptador import AlmacenNoDisponible, MENSAJE_ALMACEN_NO_DISPONIBLE
-from app.services.almacenamiento.contenido import ContenidoNoUtilizable
+from app.services.almacenamiento import contenido
+from app.services.almacenamiento.contenido import (
+    ContenidoNoUtilizable, FragmentoAusente, PlantillaNoUsable,
+)
 from app.services.codigo_seguimiento import componer_codigo
 from app.services.escritos import ContextoBaseExpediente, solicitud_de, variables_destinatario
 from app.services.generador_escritos import generar_escrito, componer_nombre_documento
@@ -135,6 +142,12 @@ def preview():
     if not plantilla:
         return jsonify(ok=False, error='Plantilla no encontrada'), 404
 
+    # Elegirla en el desplegable es lo primero que se hace con ella: aquí sale el motivo
+    # si no se puede usar (sin fichero, contenido no disponible, desactivada).
+    motivo = contenido.motivo_no_usable(plantilla)
+    if motivo is not None:
+        return jsonify(ok=False, error=motivo), 409
+
     tarea, expediente = _obtener_tarea_y_expediente(tarea_id)
     if not tarea or not expediente:
         return jsonify(ok=False, error='Tarea no encontrada'), 404
@@ -209,7 +222,14 @@ def _preparar_generacion(data):
 
     _exigir_destinatario(tarea, data.get('destinatario'))
 
-    nombre_fichero = componer_nombre_documento(tarea, plantilla)
+    # El servidor no se fía de que el desplegable ya la ocultara: una plantilla que no se
+    # puede usar se rechaza aquí, con su motivo, venga o no de la interfaz.
+    motivo = contenido.motivo_no_usable(plantilla)
+    if motivo is not None:
+        raise _ErrorGenerar(motivo, 409)
+
+    nombre_fichero = componer_nombre_documento(tarea, plantilla,
+                                               contenido.extension_de_plantilla(plantilla))
 
     # Código de seguimiento (#182) se compone siempre; el motor .docx lo
     # ignora con un warning porque ningún canal de metadatos OOXML sobrevive
@@ -218,8 +238,12 @@ def _preparar_generacion(data):
     try:
         doc_bytes = generar_escrito(plantilla, expediente, db.session, tarea=tarea,
                                     codigo_seguimiento=codigo_seguimiento)
-    except FileNotFoundError as e:
-        raise _ErrorGenerar(f'Plantilla no encontrada: {e}', 404)
+    except AlmacenNoDisponible:
+        raise _ErrorGenerar(MENSAJE_ALMACEN_NO_DISPONIBLE, 503)
+    except (PlantillaNoUsable, ContenidoNoUtilizable) as e:
+        raise _ErrorGenerar(str(e), 409)
+    except FragmentoAusente as e:
+        raise _ErrorGenerar(str(e), 422)
     except jinja2.TemplateSyntaxError as e:
         raise _ErrorGenerar(f'Error de sintaxis en plantilla: {e.message} (línea {e.lineno})', 422)
     except jinja2.UndefinedError as e:
@@ -306,9 +330,11 @@ def generar():
     nombre_fichero, enlace}`. Errores con mensaje para el usuario: 422 si el
     contenido no es lo que dice la extensión del borrador (p. ej. una plantilla
     que ahora genera .odt sobre un borrador .docx) o el borrador aún tiene ruta
-    local, o si la fase de la tarea está cerrada (el escrito no se vincula dentro de
-    una fase sellada: hay que reabrirla, como en el resto de rutas); 409 si el
-    borrador está ausente o dañado en el almacén; 503 si el almacén no contesta.
+    local, si la plantilla cita un fragmento que no hay (el escrito no sale sin él) o si la
+    fase de la tarea está cerrada (el escrito no se vincula dentro de una fase sellada: hay
+    que reabrirla, como en el resto de rutas); 409 si la plantilla no se puede usar o su
+    contenido, o el del borrador, está ausente o dañado en el almacén; 503 si el almacén
+    no contesta.
     """
     data = request.get_json(silent=True) or {}
 

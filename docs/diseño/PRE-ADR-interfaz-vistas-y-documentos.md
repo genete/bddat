@@ -145,7 +145,7 @@ Jinja (E1–E4).
 | ✅ | Entidades (`entidades.index`) | `_detalle` + `_editar` | Modal grande ×2: direcciones y autorizaciones. Alta en página aparte (§4.4) |
 | ✅ | Catálogo de plazos | `_detalle` + `_editar` | JS propio de cascada en edición (`catalogo-plazos-cascada.js`) |
 | ✅ | Usuarios, Tipos de documento, Catálogo de requerimientos, Efectos de plazo, Firmantes, Ítems técnicos, Requisitos documentales, Mensajes internos | `_detalle` + `_editar` (el mismo molde) | Ninguna por tipo. Requisitos lleva `requisitos-inspector.js` |
-| ⚠ parcial | Plantillas de escritos | `_detalle` + `_editar` | Modal grande de tokens y modal del explorador de ficheros (este desaparece con #1009). Alta en página completa (`form.html`) |
+| ⚠ parcial | Plantillas de escritos | `_detalle` + `_editar` | Modal grande de tokens (el modal del explorador de ficheros desapareció con #1009: el fichero se sube desde el navegador). Alta en página completa (`form.html`) |
 
 ### 4.2 Vistas que ofrecen el estándar pero no lo cumplen `[VERIFICADO]`
 
