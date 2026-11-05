@@ -933,3 +933,51 @@ def generar_odt_de_prueba(ruta, contexto, codigo_seguimiento=None, fragmentos_di
 
     return generar_escrito_odt(Path(ruta).read_bytes(), contexto,
                                codigo_seguimiento=codigo_seguimiento, fragmento=fragmento)
+
+
+def _formato_de_ruta(ruta) -> str:
+    """El MIME de una plantilla de prueba, por su extensión (el módulo de contenido lo detecta
+    por el contenido; aquí el fichero lo ha fabricado el propio test). Una extensión sin motor
+    se devuelve tal cual."""
+    from pathlib import Path
+
+    from app.services.generador_escritos import TIPOS_CONTENIDO
+
+    extension = Path(ruta).suffix.lower()
+    return TIPOS_CONTENIDO.get(extension, extension)
+
+
+def validar_plantilla_de_prueba(ruta):
+    """`validar_plantilla` sobre un fichero de plantilla de prueba (el servicio trabaja con bytes)."""
+    from pathlib import Path
+
+    from app.services.generador_escritos import validar_plantilla
+
+    return validar_plantilla(Path(ruta).read_bytes(), _formato_de_ruta(ruta))
+
+
+def advertencias_de_prueba(ruta):
+    """`advertencias_plantilla` sobre un fichero de plantilla de prueba."""
+    from pathlib import Path
+
+    from app.services.generador_escritos import advertencias_plantilla
+
+    return advertencias_plantilla(Path(ruta).read_bytes(), _formato_de_ruta(ruta))
+
+
+def canonicidad_de_prueba(ruta):
+    """`comprobar_canonicidad` sobre un `.odt` de prueba."""
+    from pathlib import Path
+
+    from app.services.plantilla_canonica_odt import comprobar_canonicidad
+
+    return comprobar_canonicidad(Path(ruta).read_bytes())
+
+
+def marca_de_prueba(ruta):
+    """`leer_marca` sobre un `.odt` de prueba."""
+    from pathlib import Path
+
+    from app.services.plantilla_canonica_odt import leer_marca
+
+    return leer_marca(Path(ruta).read_bytes())

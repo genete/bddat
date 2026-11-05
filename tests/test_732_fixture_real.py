@@ -22,8 +22,7 @@ import zipfile
 import pytest
 from lxml import etree
 
-from app.services.plantilla_canonica_odt import comprobar_canonicidad
-from tests.conftest import generar_odt_de_prueba
+from tests.conftest import canonicidad_de_prueba, generar_odt_de_prueba
 
 FIXTURES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fixtures')
 RUTA_PLANTILLA = os.path.join(FIXTURES_DIR, 'plantilla_732.odt')
@@ -84,7 +83,7 @@ class TestFixtureEsRealDeLibreOffice:
             f'(leído: "{generador}") — no es el fichero real que #732 exige.')
 
     def test_pasa_la_canonicidad_de_727(self, generador):
-        avisos = comprobar_canonicidad(RUTA_PLANTILLA)
+        avisos = canonicidad_de_prueba(RUTA_PLANTILLA)
         assert avisos == [], (
             f'plantilla_732.odt no pasa la canonicidad de #727: {avisos} '
             f'(generado con {generador})')

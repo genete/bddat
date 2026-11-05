@@ -38,6 +38,7 @@ MARCA DE VERSIÓN:
     se reconoce, se comprueban solo las fuentes: sin saber de qué base deriva,
     no hay lista de estilos que exigir sin adivinar.
 """
+import io
 import zipfile
 
 from lxml import etree
@@ -88,17 +89,17 @@ def es_vineta(nombre: str) -> bool:
     return (nombre or '').startswith('WW_') or nombre == 'Graphics'
 
 
-def leer_marca(ruta_abs: str) -> dict | None:
+def leer_marca(datos: bytes) -> dict | None:
     """
-    Lee las claves `BDDAT:*` de meta:user-defined.
+    Lee las claves `BDDAT:*` de meta:user-defined del contenido de un .odt.
 
     Returns:
         dict  — {'plantilla-base': ..., 'version-hoja-estilos': ..., 'origen': ...}
                  (solo las claves presentes; ninguna es obligatoria).
-        None  — el fichero no es un .odt legible o no tiene meta.xml.
+        None  — el contenido no es un .odt legible o no tiene meta.xml.
     """
     try:
-        with zipfile.ZipFile(ruta_abs) as z:
+        with zipfile.ZipFile(io.BytesIO(datos)) as z:
             if 'meta.xml' not in z.namelist():
                 return None
             meta = etree.fromstring(z.read('meta.xml'))
@@ -113,14 +114,14 @@ def leer_marca(ruta_abs: str) -> dict | None:
     return marca or None
 
 
-def comprobar_canonicidad(ruta_abs: str) -> list[str]:
+def comprobar_canonicidad(datos: bytes) -> list[str]:
     """
-    Avisos de canonicidad, listos para enseñar al supervisor. Lista vacía si
-    no hay nada que decir (no implica que la plantilla sea válida: eso lo
-    decide `validar_plantilla_odt`).
+    Avisos de canonicidad del contenido de un .odt, listos para enseñar al
+    supervisor. Lista vacía si no hay nada que decir (no implica que la
+    plantilla sea válida: eso lo decide `validar_plantilla_odt`).
     """
     try:
-        with zipfile.ZipFile(ruta_abs) as z:
+        with zipfile.ZipFile(io.BytesIO(datos)) as z:
             styles_xml = z.read('styles.xml') if 'styles.xml' in z.namelist() else None
             content_xml = z.read('content.xml') if 'content.xml' in z.namelist() else None
     except (zipfile.BadZipFile, OSError):
@@ -131,7 +132,7 @@ def comprobar_canonicidad(ruta_abs: str) -> list[str]:
     avisos = []
     avisos.extend(_avisos_fuentes(styles_xml, content_xml))
 
-    marca = leer_marca(ruta_abs) or {}
+    marca = leer_marca(datos) or {}
     base = marca.get('plantilla-base')
     estilos_esperados = ESTILOS_POR_BASE.get(base)
     if estilos_esperados and styles_xml is not None:

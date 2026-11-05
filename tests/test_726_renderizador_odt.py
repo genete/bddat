@@ -13,8 +13,10 @@ import zipfile
 
 import pytest
 
-from app.services.generador_escritos import validar_plantilla
+# `validar_plantilla_de_prueba` lee el fichero y llama al servicio con bytes (#1009): aquí
+# conserva el nombre del servicio para que ningún `assert` cambie.
 from tests.conftest import generar_odt_de_prueba
+from tests.conftest import validar_plantilla_de_prueba as validar_plantilla
 
 # ----------------------------------------------------------------------
 # Fabricación de ODT mínimos

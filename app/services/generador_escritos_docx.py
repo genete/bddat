@@ -95,9 +95,9 @@ def generar_escrito_docx(plantilla: bytes, contexto: dict,
     return _corregir_anidados_en_zip(buffer.getvalue())
 
 
-def validar_plantilla_docx(ruta_abs: str) -> str | None:
+def validar_plantilla_docx(datos: bytes) -> str | None:
     """
-    Comprueba que el fichero sea un .docx utilizable como plantilla: formato
+    Comprueba que el contenido sea un .docx utilizable como plantilla: formato
     OOXML bien formado y sintaxis Jinja2 del XML ya parcheado por docxtpl.
 
     Returns:
@@ -108,12 +108,12 @@ def validar_plantilla_docx(ruta_abs: str) -> str | None:
     from jinja2 import Environment
 
     try:
-        DocxDocument(ruta_abs)
+        DocxDocument(io.BytesIO(datos))
     except Exception as e:
         return f'No es un .docx válido: {e}'
 
     try:
-        tpl = DocxTemplate(ruta_abs)
+        tpl = DocxTemplate(io.BytesIO(datos))
         tpl.init_docx()
         Environment().parse(tpl.patch_xml(tpl.get_xml()))
     except Exception as e:

@@ -47,7 +47,6 @@ DEPENDENCIA:
 """
 
 import logging
-import os
 import re
 
 from app.services.almacenamiento import contenido
@@ -186,9 +185,12 @@ def componer_nombre_documento(tarea, plantilla, extension: str) -> str:
     return nombre
 
 
-def validar_plantilla(ruta_abs: str) -> str | None:
+def validar_plantilla(datos: bytes, formato: str) -> str | None:
     """
-    Comprueba que el fichero sea una plantilla utilizable por su motor.
+    Comprueba que el contenido sea una plantilla utilizable por su motor.
+
+    `formato` es el MIME del contenido (el que detecta el módulo de contenido al
+    subirlo, ADR-050 §E), no una extensión: es lo que elige el motor.
 
     Dos cosas distintas, y ambas importan en el alta: que el fichero esté bien
     formado para su formato, y que su sintaxis Jinja2 compile — un `{% for %}`
@@ -198,21 +200,19 @@ def validar_plantilla(ruta_abs: str) -> str | None:
         str  — Mensaje de error, listo para enseñar al supervisor.
         None — La plantilla es válida.
     """
-    extension = os.path.splitext(ruta_abs or '')[1].lower()
-
-    if extension == '.odt':
+    if formato == MIME_ODT:
         from app.services.generador_escritos_odt import validar_plantilla_odt
-        return validar_plantilla_odt(ruta_abs)
+        return validar_plantilla_odt(datos)
 
-    if extension == '.docx':
+    if formato == MIME_DOCX:
         from app.services.generador_escritos_docx import validar_plantilla_docx
-        return validar_plantilla_docx(ruta_abs)
+        return validar_plantilla_docx(datos)
 
-    return (f'Formato de plantilla no soportado: "{extension}". '
+    return (f'Formato de plantilla no soportado: "{formato}". '
             f'Se admiten {", ".join(sorted(TIPOS_CONTENIDO))}.')
 
 
-def advertencias_plantilla(ruta_abs: str) -> list[str]:
+def advertencias_plantilla(datos: bytes, formato: str) -> list[str]:
     """
     Avisos de canonicidad (ADR-035 §5, #727). Solo el motor .odt los tiene: el
     concepto de plantilla base no existe para .docx.
@@ -226,8 +226,7 @@ def advertencias_plantilla(ruta_abs: str) -> list[str]:
         list[str] — avisos listos para enseñar al supervisor. Vacía si no hay
         nada que decir (no implica que la plantilla sea válida).
     """
-    extension = os.path.splitext(ruta_abs or '')[1].lower()
-    if extension != '.odt':
+    if formato != MIME_ODT:
         return []
     from app.services.plantilla_canonica_odt import comprobar_canonicidad
-    return comprobar_canonicidad(ruta_abs)
+    return comprobar_canonicidad(datos)

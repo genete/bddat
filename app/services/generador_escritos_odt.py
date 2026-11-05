@@ -138,9 +138,9 @@ def generar_escrito_odt(plantilla: bytes, contexto: dict,
 # Fragmentos
 # ======================================================================
 
-def validar_plantilla_odt(ruta_abs: str) -> str | None:
+def validar_plantilla_odt(datos: bytes) -> str | None:
     """
-    Comprueba que el fichero sea un .odt utilizable como plantilla.
+    Comprueba que el contenido sea un .odt utilizable como plantilla.
 
     Mira las dos cosas que pueden fallar sin que se note hasta el momento de
     generar: que el ZIP traiga sus partes y estén bien formadas, y que la
@@ -154,7 +154,7 @@ def validar_plantilla_odt(ruta_abs: str) -> str | None:
     """
     env = Environment(autoescape=True)
     try:
-        with zipfile.ZipFile(ruta_abs) as z:
+        with zipfile.ZipFile(io.BytesIO(datos)) as z:
             nombres = z.namelist()
             if 'content.xml' not in nombres:
                 return 'El fichero no es un .odt: le falta content.xml.'

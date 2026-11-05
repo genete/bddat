@@ -219,6 +219,17 @@ def _path_seguro_plantillas(ruta_relativa: str) -> str | None:
     return ruta_full
 
 
+def _leer_de_ruta(ruta_abs: str) -> tuple[bytes, str]:
+    """Contenido y formato (MIME) del fichero elegido en el explorador del servidor.
+
+    Provisional: la validación trabaja con bytes (#1009) y el explorador, que es lo que
+    entrega una ruta, desaparece con la subida desde el navegador."""
+    with open(ruta_abs, 'rb') as fichero:
+        datos = fichero.read()
+    extension = os.path.splitext(ruta_abs)[1].lower()
+    return datos, TIPOS_CONTENIDO.get(extension, extension)
+
+
 def _rellenar_plantilla(plantilla: Plantilla) -> list[str]:
     """
     Rellena los campos de una Plantilla desde request.form.
@@ -427,7 +438,8 @@ def nueva():
                 **_selects_context(),
             )
 
-        error_plantilla = validar_plantilla(ruta_abs)
+        datos, formato = _leer_de_ruta(ruta_abs)
+        error_plantilla = validar_plantilla(datos, formato)
         if error_plantilla:
             flash(f'La plantilla no es válida: {error_plantilla}', 'danger')
             return render_template(
@@ -465,7 +477,7 @@ def nueva():
             )
 
         flash(f'Plantilla «{p.nombre}» registrada correctamente.', 'success')
-        for aviso in advertencias_plantilla(ruta_abs):
+        for aviso in advertencias_plantilla(datos, formato):
             flash(aviso, 'warning')
         return redirect(url_for('admin_plantillas.detalle', id=p.id))
 
@@ -507,7 +519,8 @@ def fragmento(id):
     """Fragmento HTML de lectura para el inspector (ADR-023 §9 / #545)."""
     plantilla = Plantilla.query.get_or_404(id)
     ruta_absoluta, uri_explorador = _rutas_fichero(plantilla)
-    marca = leer_marca(ruta_absoluta) if ruta_absoluta and os.path.isfile(ruta_absoluta) else None
+    marca = (leer_marca(_leer_de_ruta(ruta_absoluta)[0])
+             if ruta_absoluta and os.path.isfile(ruta_absoluta) else None)
     return render_template(
         'admin_plantillas/_detalle_fragmento.html',
         plantilla=plantilla, marca=marca,
@@ -590,10 +603,11 @@ def editar(id):
         ruta_abs = _path_seguro_plantillas(ruta_rel)
         if not ruta_abs or not os.path.isfile(ruta_abs):
             return _responder_errores(['La ruta del fichero seleccionado no es válida.'])
-        error_plantilla = validar_plantilla(ruta_abs)
+        datos, formato = _leer_de_ruta(ruta_abs)
+        error_plantilla = validar_plantilla(datos, formato)
         if error_plantilla:
             return _responder_errores([f'La plantilla no es válida: {error_plantilla}'])
-        avisos = advertencias_plantilla(ruta_abs)
+        avisos = advertencias_plantilla(datos, formato)
 
     errores = _rellenar_plantilla(plantilla)
     if errores:
