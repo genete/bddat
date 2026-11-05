@@ -22,8 +22,8 @@ import zipfile
 import pytest
 from lxml import etree
 
-from app.services.generador_escritos_odt import generar_escrito_odt
 from app.services.plantilla_canonica_odt import comprobar_canonicidad
+from tests.conftest import generar_odt_de_prueba
 
 FIXTURES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fixtures')
 RUTA_PLANTILLA = os.path.join(FIXTURES_DIR, 'plantilla_732.odt')
@@ -67,7 +67,7 @@ def generador():
 @pytest.fixture(scope='module')
 def renderizado():
     """Render único del fixture, reutilizado por todos los tests del módulo."""
-    datos = generar_escrito_odt(
+    datos = generar_odt_de_prueba(
         RUTA_PLANTILLA, CONTEXTO,
         codigo_seguimiento=CODIGO_SEGUIMIENTO, fragmentos_dir=FIXTURES_DIR)
     return _partes(datos)
@@ -179,7 +179,7 @@ class TestIntegracionPdf:
     def test_texto_y_codigo_sobreviven_al_pdf(self, tmp_path, generador):
         pypdf = pytest.importorskip('pypdf')
 
-        datos = generar_escrito_odt(
+        datos = generar_odt_de_prueba(
             RUTA_PLANTILLA, CONTEXTO,
             codigo_seguimiento=CODIGO_SEGUIMIENTO, fragmentos_dir=FIXTURES_DIR)
 

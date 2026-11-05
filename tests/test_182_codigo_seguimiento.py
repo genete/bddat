@@ -14,7 +14,7 @@ import subprocess
 import pytest
 
 from app.services.codigo_seguimiento import componer_codigo, extraer_tarea_id
-from app.services.generador_escritos_odt import generar_escrito_odt
+from tests.conftest import generar_odt_de_prueba
 
 FIXTURES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fixtures')
 RUTA_PLANTILLA = os.path.join(FIXTURES_DIR, 'plantilla_732.odt')
@@ -88,7 +88,7 @@ class TestCicloCompletoConFixtureReal:
             'municipios': ['Cádiz', 'Jerez', 'Rota'],
         }
 
-        datos = generar_escrito_odt(
+        datos = generar_odt_de_prueba(
             RUTA_PLANTILLA, contexto,
             codigo_seguimiento=codigo, fragmentos_dir=FIXTURES_DIR)
 

@@ -35,9 +35,9 @@ PARTES DEL ODT QUE SE TOCAN:
 import copy
 import io
 import logging
-import os
 import re
 import zipfile
+from typing import Callable
 from xml.sax.saxutils import escape
 
 from jinja2 import Environment
@@ -77,27 +77,30 @@ RE_TOKEN = re.compile(r'\{\{.*?\}\}|\{%.*?%\}', re.S)
 # API pública
 # ======================================================================
 
-def generar_escrito_odt(plantilla_path: str, contexto: dict,
+def generar_escrito_odt(plantilla: bytes, contexto: dict,
                         codigo_seguimiento: str | None = None,
-                        fragmentos_dir: str | None = None) -> bytes:
+                        fragmento: Callable[[str], bytes] | None = None) -> bytes:
     """
-    Renderiza una plantilla .odt con el contexto dado.
+    Renderiza una plantilla .odt con el contexto dado. No toca el disco ni la BD.
 
     Args:
-        plantilla_path:     Ruta absoluta de la plantilla .odt.
+        plantilla:          El contenido de la plantilla .odt.
         contexto:           Dict ya construido (escritos.construir_contexto).
         codigo_seguimiento: Código de trazabilidad a embeber (#182). None = no
                             se inyecta nada.
-        fragmentos_dir:     Directorio de fragmentos .odt. Si es None se toma
-                            de PLANTILLAS_BASE/fragmentos (requiere app context).
+        fragmento:          Función que da el contenido (.odt) del fragmento con ese
+                            nombre. Si no hay fragmento, es la que lanza: un fragmento
+                            ausente detiene la generación (ADR-050 §J), no se omite. None
+                            = no hay ninguno, y una plantilla que cite uno falla.
 
     Returns:
         bytes — Contenido del .odt generado.
-    """
-    if fragmentos_dir is None:
-        fragmentos_dir = _fragmentos_dir()
 
-    with zipfile.ZipFile(plantilla_path) as zin:
+    Raises:
+        LookupError — la plantilla cita un fragmento que no hay (lo lanza `fragmento`,
+                      o este motor si no se dio ninguno).
+    """
+    with zipfile.ZipFile(io.BytesIO(plantilla)) as zin:
         partes = {n: zin.read(n) for n in zin.namelist()}
         infos = {i.filename: i for i in zin.infolist()}
 
@@ -110,7 +113,7 @@ def generar_escrito_odt(plantilla_path: str, contexto: dict,
         root = etree.fromstring(partes[nombre])
 
         if nombre == 'content.xml':
-            insertados = _insertar_fragmentos(root, fragmentos_dir)
+            insertados = _insertar_fragmentos(root, fragmento)
             if insertados:
                 logger.debug('Fragmentos insertados: %s', ', '.join(insertados))
 
@@ -174,7 +177,7 @@ def validar_plantilla_odt(ruta_abs: str) -> str | None:
     return None
 
 
-def _insertar_fragmentos(root, directorio: str) -> list[str]:
+def _insertar_fragmentos(root, fragmento: Callable[[str], bytes] | None) -> list[str]:
     """
     Sustituye cada párrafo que contenga {{r Nombre }} por los bloques del
     fragmento correspondiente.
@@ -182,6 +185,9 @@ def _insertar_fragmentos(root, directorio: str) -> list[str]:
     Sustituir en vez de insertar dentro es la diferencia esencial con docxtpl:
     no queda párrafo contenedor cuyo formato herede el fragmento, ni bloques
     anidados que reparar después.
+
+    Un fragmento que falta **detiene la generación** (ADR-050 §J): sin él el
+    escrito saldría sin el trozo de texto, y nadie lo notaría hasta notificarlo.
 
     Devuelve la lista de nombres insertados.
     """
@@ -197,15 +203,10 @@ def _insertar_fragmentos(root, directorio: str) -> list[str]:
         posicion = list(padre).index(parrafo)
 
         for nombre in nombres:
-            ruta = os.path.join(directorio or '', f'{nombre}.odt')
-            if not os.path.isfile(ruta):
-                logger.warning(
-                    'Fragmento "%s.odt" referenciado en plantilla pero no '
-                    'encontrado en %s', nombre, directorio
-                )
-                continue
-
-            bloques, estilos = _cargar_fragmento(ruta, f'frg{nombre}')
+            if fragmento is None:
+                raise LookupError(
+                    f'La plantilla cita el fragmento «{nombre}» y no se ha dado ninguno.')
+            bloques, estilos = _cargar_fragmento(fragmento(nombre), f'frg{nombre}')
             if estilos_auto is not None:
                 for e in estilos:
                     estilos_auto.append(e)
@@ -221,17 +222,17 @@ def _insertar_fragmentos(root, directorio: str) -> list[str]:
     return insertados
 
 
-def _cargar_fragmento(ruta_odt: str, prefijo: str):
+def _cargar_fragmento(contenido_odt: bytes, prefijo: str):
     """
-    Devuelve (bloques, estilos) de un fragmento .odt, con sus estilos
-    automáticos renombrados con `prefijo` para que no choquen con los del
-    documento destino.
+    Devuelve (bloques, estilos) de un fragmento .odt (su contenido), con sus
+    estilos automáticos renombrados con `prefijo` para que no choquen con los
+    del documento destino.
 
     Si plantilla y fragmento derivan de la misma plantilla base (#727) el
     renombrado apenas tiene trabajo, porque los estilos con nombre propio
     viven en la base y no se duplican.
     """
-    with zipfile.ZipFile(ruta_odt) as z:
+    with zipfile.ZipFile(io.BytesIO(contenido_odt)) as z:
         root = etree.fromstring(z.read('content.xml'))
 
     cuerpo = root.find(f'{Q["office"]}body/{Q["office"]}text')
@@ -540,10 +541,3 @@ def _escribir_odt(partes: dict, infos: dict) -> bytes:
         for nombre, datos in partes.items():
             zout.writestr(infos.get(nombre, nombre), datos)
     return buffer.getvalue()
-
-
-def _fragmentos_dir() -> str:
-    """Directorio de fragmentos .odt dentro de PLANTILLAS_BASE."""
-    from flask import current_app
-    base = current_app.config.get('PLANTILLAS_BASE', '')
-    return os.path.join(base, 'fragmentos') if base else ''
