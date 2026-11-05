@@ -18,7 +18,7 @@
    - **#982**: el silencio de un organismo (art. 146.1: sin objeción) cierra su consulta sin forzar la fase.
 2. **Publicaciones y cierre de la instrucción** (fases INFORMACION_PUBLICA, RESOLUCION y RESOLUCION_DUP)
    - **#994**: remisión a boletín. La `NOTIFICAR` de `ANUNCIO_BOJA`, `ANUNCIO_BOP`, `PUBLICACION` y `PUBLICACION_BOP/BOJA/BOE` no tiene documento de salida, y no se puede terminar por el circuito normal.
-   - **Botón del certificado de plazo cumplido** (*sin issue*): la segunda espera de los cuatro `ANUNCIO_*` solo tiene la ruta `generar_cert`, sin pantalla.
+   - **#1088**: botón del certificado de plazo cumplido: la segunda espera de los cuatro `ANUNCIO_*` solo tiene la ruta `generar_cert`, sin pantalla.
    - Cerrar las fases de instrucción sin forzar, **diseño conjunto**: **#955**, **#980**, **#805**.
 3. **Propietarios** (fases DATOS_CATASTRALES y RESOLUCION_DUP)
    - **#431**: empieza por un hilo de diseño con la norma ya leída (RD 1955/2000, arts. 143.3.e, 144 y 148.2). Hoy nada convierte la RBDA en `interesados_expediente`, y `PROPIETARIOS_DUP` nunca devuelve a nadie.
