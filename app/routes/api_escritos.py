@@ -205,7 +205,7 @@ def _preparar_generacion(data):
     # borrador de una fase sellada le cambiaba el fichero sin que nada saltara.
     bloqueo = check_invariante('MUTAR', 'TAREA', tarea.id)
     if bloqueo is not None:
-        raise _ErrorGenerar(bloqueo.motivo or bloqueo.norma_compilada, 409)
+        raise _ErrorGenerar(bloqueo.motivo or bloqueo.norma_compilada, 422)
 
     _exigir_destinatario(tarea, data.get('destinatario'))
 
@@ -306,9 +306,9 @@ def generar():
     nombre_fichero, enlace}`. Errores con mensaje para el usuario: 422 si el
     contenido no es lo que dice la extensión del borrador (p. ej. una plantilla
     que ahora genera .odt sobre un borrador .docx) o el borrador aún tiene ruta
-    local; 409 si el borrador está ausente o dañado en el almacén o si la fase de
-    la tarea está cerrada (el escrito no se vincula dentro de una fase sellada: hay
-    que reabrirla); 503 si el almacén no contesta.
+    local, o si la fase de la tarea está cerrada (el escrito no se vincula dentro de
+    una fase sellada: hay que reabrirla, como en el resto de rutas); 409 si el
+    borrador está ausente o dañado en el almacén; 503 si el almacén no contesta.
     """
     data = request.get_json(silent=True) or {}
 
@@ -327,14 +327,17 @@ def generar():
     except AlmacenNoDisponible:
         db.session.rollback()
         return jsonify(ok=False, error=MENSAJE_ALMACEN_NO_DISPONIBLE), 503
-    except (ContenidoNoUtilizable, SelladoFaseVioladoError) as e:
-        # El segundo es la red de cierre del sellado (#720, ADR-036 §6, capa 3): el flush
-        # intentó vincular el escrito al interior de una fase cerrada. Su mensaje ya dice
-        # qué fase es y que hay que reabrirla. El caso normal lo corta antes la guarda de
-        # `_preparar_generacion`; esto cubre que la fase se cierre entre esa comprobación
-        # y el flush.
+    except ContenidoNoUtilizable as e:
         db.session.rollback()
         return jsonify(ok=False, error=str(e)), 409
+    except SelladoFaseVioladoError as e:
+        # Red de cierre del sellado (#720, ADR-036 §6, capa 3): el flush intentó vincular
+        # el escrito al interior de una fase cerrada. Su mensaje ya dice qué fase es y que
+        # hay que reabrirla. El caso normal lo corta antes la guarda de
+        # `_preparar_generacion`; esto cubre que la fase se cierre entre esa comprobación
+        # y el flush. 422, como el resto de rutas ante una fase sellada.
+        db.session.rollback()
+        return jsonify(ok=False, error=str(e)), 422
     except ValueError as e:   # FormatoNoAdmitido incluido
         db.session.rollback()
         return jsonify(ok=False, error=str(e)), 422
