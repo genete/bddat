@@ -29,7 +29,9 @@ from app.services.almacenamiento.contenido import (
 from app.services.codigo_seguimiento import componer_codigo
 from app.services.escritos import ContextoBaseExpediente, solicitud_de, variables_destinatario
 from app.services.generador_escritos import generar_escrito, componer_nombre_documento
+from app.services.invariantes_esftt import check_invariante
 from app.services.regeneracion_escritos import regenerar_escrito
+from app.services.sellado_fase_sesion import SelladoFaseVioladoError
 from app.utils.permisos import puede_editar_expediente
 
 logger = logging.getLogger(__name__)
@@ -209,6 +211,15 @@ def _preparar_generacion(data):
     if not puede_editar_expediente(expediente):
         raise _ErrorGenerar('Sin permisos de edición sobre este expediente', 403)
 
+    # Fase cerrada (#720, ADR-036 §6, capa 2). Vincular el escrito a la tarea, o cambiarle
+    # el fichero al borrador, es mutar el interior de la fase. Va antes de elegir
+    # destinatario, de generar el documento y de subirlo al almacén, y vale también con
+    # borrador: el hook de sesión (capa 3) no vigila `Documento`, así que regenerar un
+    # borrador de una fase sellada le cambiaba el fichero sin que nada saltara.
+    bloqueo = check_invariante('MUTAR', 'TAREA', tarea.id)
+    if bloqueo is not None:
+        raise _ErrorGenerar(bloqueo.motivo or bloqueo.norma_compilada, 422)
+
     _exigir_destinatario(tarea, data.get('destinatario'))
 
     # El servidor no se fía de que el desplegable ya la ocultara: una plantilla que no se
@@ -319,9 +330,11 @@ def generar():
     nombre_fichero, enlace}`. Errores con mensaje para el usuario: 422 si el
     contenido no es lo que dice la extensión del borrador (p. ej. una plantilla
     que ahora genera .odt sobre un borrador .docx) o el borrador aún tiene ruta
-    local; 409 si la plantilla no se puede usar o su contenido, o el del borrador, está
-    ausente o dañado en el almacén; 422 si la plantilla cita un fragmento que no hay (el
-    escrito no sale sin él); 503 si el almacén no contesta.
+    local, si la plantilla cita un fragmento que no hay (el escrito no sale sin él) o si la
+    fase de la tarea está cerrada (el escrito no se vincula dentro de una fase sellada: hay
+    que reabrirla, como en el resto de rutas); 409 si la plantilla no se puede usar o su
+    contenido, o el del borrador, está ausente o dañado en el almacén; 503 si el almacén
+    no contesta.
     """
     data = request.get_json(silent=True) or {}
 
@@ -343,6 +356,14 @@ def generar():
     except ContenidoNoUtilizable as e:
         db.session.rollback()
         return jsonify(ok=False, error=str(e)), 409
+    except SelladoFaseVioladoError as e:
+        # Red de cierre del sellado (#720, ADR-036 §6, capa 3): el flush intentó vincular
+        # el escrito al interior de una fase cerrada. Su mensaje ya dice qué fase es y que
+        # hay que reabrirla. El caso normal lo corta antes la guarda de
+        # `_preparar_generacion`; esto cubre que la fase se cierre entre esa comprobación
+        # y el flush. 422, como el resto de rutas ante una fase sellada.
+        db.session.rollback()
+        return jsonify(ok=False, error=str(e)), 422
     except ValueError as e:   # FormatoNoAdmitido incluido
         db.session.rollback()
         return jsonify(ok=False, error=str(e)), 422
