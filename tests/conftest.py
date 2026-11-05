@@ -903,3 +903,33 @@ def contar_consultas(funcion) -> int:
     finally:
         event.remove(motor, 'before_cursor_execute', _uno)
     return contador['n']
+
+
+# ---------------------------------------------------------------------------
+# El motor .odt sin almacén (#1009)
+# ---------------------------------------------------------------------------
+
+def generar_odt_de_prueba(ruta, contexto, codigo_seguimiento=None, fragmentos_dir=None) -> bytes:
+    """`generar_escrito_odt` con una plantilla que es un fichero y sus fragmentos en un directorio.
+
+    El motor trabaja con bytes y una función que da el fragmento por nombre (ADR-050 §J). Los
+    tests del motor fabrican sus `.odt` en un temporal: este helper lee la plantilla y monta esa
+    función sobre el directorio, como un fragmento por fichero `<nombre>.odt`. Un fragmento que
+    no está lanza `LookupError`, igual que el del almacén (`FragmentoAusente`).
+
+    Si cambia cómo el motor recibe plantilla y fragmentos, cambia este helper, no los tests.
+    """
+    from pathlib import Path
+
+    from app.services.generador_escritos_odt import generar_escrito_odt
+
+    fragmento = None
+    if fragmentos_dir is not None:
+        def fragmento(nombre):
+            fichero = Path(fragmentos_dir) / f'{nombre}.odt'
+            if not fichero.is_file():
+                raise LookupError(f'No hay fragmento «{nombre}» en {fragmentos_dir}')
+            return fichero.read_bytes()
+
+    return generar_escrito_odt(Path(ruta).read_bytes(), contexto,
+                               codigo_seguimiento=codigo_seguimiento, fragmento=fragmento)

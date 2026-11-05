@@ -306,6 +306,9 @@ y ninguno decía cuál, así que el test no podía cumplir su papel de aviso.
      mismo expediente, con su escrito de ancla (`documento_ancla_de_prueba()`).
    - `documento_con_contenido_de_prueba()` — un documento con fichero. Nunca escribir
      el fichero a mano: el corte de ADR-050 cambia este helper, no los tests (#1014).
+   - `generar_odt_de_prueba()` — el motor `.odt` con una plantilla que es un fichero y sus
+     fragmentos en un directorio (`<nombre>.odt`). Los tests del motor no pasan por el
+     almacén: el motor recibe bytes (#1009).
 3. **Prefiere BD real a mocks.** Con `arbol_aislado` montar un árbol cuesta
    pocas líneas; un `MagicMock` que imita un modelo acepta cualquier atributo y se
    desalinea del modelo sin avisar.
