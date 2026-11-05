@@ -98,7 +98,7 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
 | **#1012** (papelera, fase 7) | «Sigue en los listados, marcado; acción “sacar de la papelera”»: consume el listado del pool (D5) y la guarda `_documento_es_referenciado`, que #881 **ha convertido** en lista de usos (`services/usos_documento.py`, dieciséis FK; el borrado se bloquea con cualquier uso). #881 está hecho el 01/11/2026 |
 | **#1008** (fase 2b) | El sitio del botón «Exportar expediente» no está fijado: cae en el pool o en el inspector del expediente, ambos afectados por D5 y el marco. La señal junto a la bombilla de `base_app.html` es del shell, fuera del inspector: sin choque |
 | **#1033** (aportar desde otro expediente, aparcado) | Su «listado plano de documentos de todos los expedientes» es el modo «selector» de D14 en un listado estándar. Cuando se retome, sobre el estándar y la fila común |
-| **#1009** (fase 4) | Retira el explorador de plantillas y sube plantillas desde el navegador: toca el inspector de Plantillas, hoy parcial frente al estándar. Alinear con el marco |
+| **#1009** (fase 4) | Hecho el 05/11/2026 (PR #1086): retiró el explorador de plantillas, sube plantillas y fragmentos desde el navegador y pasó el hub a pestañas. El inspector de Plantillas sigue parcial: el alta es una página completa y los tokens un modal grande |
 | **#1010** (fase 5) | Botón «Editar» (WebDAV) en `ElaborarEditor`, el mismo editor que toca #929. El rótulo «Editar» convive con el del inspector: a vigilar en el texto, no en el código |
 | «Orden de las fases 4–7: sin decidir» | Gana una restricción *(propuesta)*: #1012 después de #881 |
 
@@ -292,3 +292,10 @@ Tienen issue propio, los tres abiertos el 11/10/2026 y sin profundizar:
   acción, no una alternancia entre listados. La viewbar de Mi trabajo (un `btn-group` que alterna la cola y «Subir documento»)
   se alinea en #1039, y el hub de Plantillas y Fragmentos es un consumidor más de la base de varias listas de #1041. Texto
   en [ADR-053 §F](../decisiones/ADR-053-interfaz-inspector-listados-y-documentos.md).
+- **05/11/2026** — **#1009 hecho (PR #1086): el hub de Plantillas y Fragmentos ya son pestañas.** Sigue el patrón de Normas y variables
+  (`normas_variables/index.html`): cada pestaña es un `ScrollInfinito` con su inspector, y como `ScrollInfinito` y `FiltrosListado`
+  buscan sus elementos con `document.querySelector` sin ámbito, las clases genéricas (`filters-row`, `filters`,
+  `lista-scroll-container`, `pagination-info`, `btn-limpiar`) las lleva solo la pestaña visible (atributo `data-rol` y cambio de
+  clases al mostrar la pestaña). Los botones de acción (Plantillas base, Nueva plantilla; Fragmento base, Nuevo fragmento) van en
+  la barra superior y se alternan con la pestaña, no dentro de la fila de filtros. Sin «volver arriba» en la pestaña de
+  Fragmentos hasta #1041, como aceptó Carlos: es el consumidor que #1041 tiene que absorber con la base de varias listas.
