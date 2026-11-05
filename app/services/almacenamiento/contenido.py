@@ -24,6 +24,9 @@ resto trabaja con `documentos.id` y pide el contenido por aquí:
   contenido de las plantillas y los fragmentos de escritos (ADR-050 §J, #1009). Solo
   `.odt` y `.docx`, los formatos que tienen motor. Aquí se escribe `fichero_ref` de
   `plantillas` y `fragmentos`, igual que el de `documentos`.
+- `motivo_no_usable` y `extension_de_plantilla`: si se puede generar con una plantilla y, si
+  no, por qué (sin fichero, contenido no disponible o desactivada), y en qué formato sale el
+  escrito. Calculan a partir de la fila de `ficheros`; no escriben `activo`.
 
 «Aportar desde otro expediente» (§H) está diferido por decisión de Carlos (2026-10-08): cuando
 llegue, será otro uso de `copiar_documento` con su listado.
@@ -107,7 +110,13 @@ class SustitucionBloqueada(ValueError):
     y nombra la salida (deshacer el certificado, reabrir la fase)."""
 
 
-class PlantillaSinFichero(ValueError):
+class PlantillaNoUsable(ValueError):
+    """No se puede generar con esta plantilla ahora mismo: no tiene fichero, su contenido no
+    está en el almacén o el supervisor la ha desactivado. El mensaje es para el usuario y dice
+    cuál de las tres (`motivo_no_usable`)."""
+
+
+class PlantillaSinFichero(PlantillaNoUsable):
     """La plantilla no tiene fichero en el almacén, y sin él no se puede generar con ella.
     El mensaje es para el usuario."""
 
@@ -457,6 +466,54 @@ def guardar_plantilla(plantilla, flujo: BinaryIO, nombre_fichero: str) -> bool:
         return False
     plantilla.fichero_ref = fila.ref
     return True
+
+
+def motivo_no_usable(plantilla) -> str | None:
+    """Por qué no se puede generar con la plantilla, o `None` si se puede. El motivo es un
+    mensaje para el usuario, y distingue tres casos (ADR-050 §J, enmienda del 2026-11-02):
+
+    - **sin fichero**: nunca se le subió contenido;
+    - **contenido no disponible**: la fila de `ficheros` está `AUSENTE` o `CORRUPTO`;
+    - **desactivada**: el supervisor la ha pausado (mantenimiento, un error detectado).
+
+    **Calcula, no escribe**: no cambia `activo` ni ninguna otra cosa. Que el contenido haya
+    desaparecido lo sabe el almacén en cuanto alguien lo intenta leer (`leer_plantilla` marca
+    la fila), y desde entonces esto lo cuenta; no pregunta al almacén por su cuenta, así que un
+    contenido ausente que nadie ha intentado leer aún sale como usable. Si el almacén no
+    contesta no marca nada, y esto tampoco: no es un fallo de la plantilla.
+
+    Si hay más de un motivo sale el del fichero: es lo que hay que arreglar primero.
+    """
+    if plantilla.fichero_ref is None:
+        return (f'La plantilla «{plantilla.nombre}» no tiene fichero. '
+                f'Avisa al supervisor para que lo suba.')
+    fila = _fila_por_ref(plantilla.fichero_ref)
+    if fila is None:
+        raise ErrorAlmacenamiento(f'Falta la fila de ficheros de {plantilla.fichero_ref}')
+    if fila.estado != OK:
+        return _mensaje_no_utilizable(fila.estado, _Origen(plantilla.fichero_ref, plantilla.nombre))
+    if not plantilla.activo:
+        return (f'La plantilla «{plantilla.nombre}» está desactivada por el supervisor '
+                f'(en mantenimiento). Inténtalo más tarde o avísale.')
+    return None
+
+
+def extension_de_plantilla(plantilla) -> str:
+    """`.odt` o `.docx`: la extensión del escrito que se genera con la plantilla, que
+    conserva el formato de su plantilla (ADR-035 §2). Sale de la fila de `ficheros`, no de
+    ningún nombre. Lanza `PlantillaSinFichero` si no tiene fichero.
+    """
+    if plantilla.fichero_ref is None:
+        raise PlantillaSinFichero(
+            f'La plantilla «{plantilla.nombre}» no tiene fichero. '
+            f'Avisa al supervisor para que lo suba.')
+    fila = _fila_por_ref(plantilla.fichero_ref)
+    if fila is None:
+        raise ErrorAlmacenamiento(f'Falta la fila de ficheros de {plantilla.fichero_ref}')
+    if fila.formato not in _FORMATOS_DE_ESCRITO:
+        raise ErrorAlmacenamiento(
+            f'El contenido de la plantilla «{plantilla.nombre}» es {fila.formato}, que no tiene motor.')
+    return _FORMATOS_DE_ESCRITO[fila.formato]
 
 
 def leer_plantilla(plantilla) -> ContenidoDePlantilla:
