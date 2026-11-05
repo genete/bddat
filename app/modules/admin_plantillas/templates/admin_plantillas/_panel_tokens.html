@@ -245,17 +245,15 @@
         {% if tokens.fragmentos %}
         <div class="list-group list-group-flush">
             {% for frag in tokens.fragmentos %}
-            {# Por extensión, no por longitud fija: .odt tiene una letra menos que .docx #}
-            {% set nombre_sin_ext = frag.rsplit('.', 1)[0] %}
             <div class="list-group-item list-group-item-action py-2 px-2">
                 <div class="d-flex align-items-center gap-2">
                     <div class="flex-grow-1 min-w-0">
-                        <code class="d-block text-primary small">{{ '{{r ' }}{{ nombre_sin_ext }}{{ '}}' }}</code>
-                        <span class="text-secondary" style="font-size:.8rem">{{ frag }}</span>
+                        <code class="d-block text-primary small">{{ '{{r ' }}{{ frag.nombre }}{{ '}}' }}</code>
+                        <span class="text-secondary" style="font-size:.8rem">{{ frag.nombre }}{{ frag.extension }}</span>
                     </div>
                     <button type="button"
                             class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
-                            data-token="{{ '{{r ' }}{{ nombre_sin_ext }}{{ '}}' }}"
+                            data-token="{{ '{{r ' }}{{ frag.nombre }}{{ '}}' }}"
                             title="Copiar token fragmento">
                         <i class="fas fa-copy"></i>
                     </button>
@@ -265,9 +263,9 @@
         </div>
         {% else %}
         <p class="text-secondary small mb-0">
-            No se encontraron fragmentos en <code>PLANTILLAS_BASE/fragmentos/</code>.
+            No hay fragmentos activos.
             {% if not solo_lectura %}
-            Coloca ficheros .odt (o .docx) en esa carpeta para verlos aquí.
+            Súbelos en la pestaña <a href="{{ url_for('admin_plantillas.listado', tab='fragmentos') }}">Fragmentos</a>.
             {% endif %}
         </p>
         {% endif %}

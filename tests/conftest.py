@@ -234,6 +234,34 @@ def plantilla_seed(app):
 
 
 @pytest.fixture
+def fragmento_commiteado(app, almacen_tmp):
+    """ID de un fragmento `.odt` activo (`Test_1009_Fragmento`, descripción «original») con su
+    fichero en el almacén, commiteado: las rutas no pasan por `app_ctx` (#836), y su limpieza —el
+    fragmento antes que la fila de `ficheros` que referencia— (#1009)."""
+    import io
+    import zipfile
+
+    from app.models.fragmentos import Fragmento
+    from app.services.almacenamiento import contenido
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as z:
+        z.writestr('mimetype', 'application/vnd.oasis.opendocument.text')
+        z.writestr('content.xml', '<root><p>fragmento de prueba #1009</p></root>')
+    with app.app_context():
+        fragmento, _ = contenido.guardar_fragmento(
+            'Test_1009_Fragmento', io.BytesIO(buffer.getvalue()), 'f.odt', descripcion='original')
+        _db.session.add(fragmento)
+        _db.session.commit()
+        fragmento_id = fragmento.id
+    yield fragmento_id
+    with app.app_context():
+        _db.session.rollback()
+        Fragmento.query.filter_by(id=fragmento_id).delete()
+        _db.session.commit()
+
+
+@pytest.fixture
 def primer_usuario_id(app):
     """ID del primer usuario en la BD de desarrollo. Skip si no existe ninguno.
 

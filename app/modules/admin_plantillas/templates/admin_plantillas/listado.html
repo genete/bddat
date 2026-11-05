@@ -1,49 +1,233 @@
-{% extends 'layout/lista_v2_base.html' %}
+{# listado.html — Hub «Plantillas y fragmentos de escritos»: dos pestañas (#1009, ADR-053 §F).
+   Dos listados en una pantalla van con pestañas `nav-tabs` (decisión de Carlos, 2026-11-05):
+   la pestaña activa por defecto es Plantillas (el listado de siempre, #545) y la otra,
+   Fragmentos (#1009).
 
-{% block page_title %}Plantillas de escritos{% endblock %}
-{% block page_icon %}<i class="fas fa-file-word"></i>{% endblock %}
-{% block entity_label_plural %}plantillas{% endblock %}
-{% block search_placeholder %}Buscar por nombre o código...{% endblock %}
-{% block tabla_clase %}plantillas-table{% endblock %}
+   No extiende lista_v2_base.html (asume una sola lista) — mismo criterio que
+   normas_variables/index.html y tablas_maestras/listado.html: construye el patrón de listado
+   dos veces, una por pestaña, con un ScrollInfinito + AppInspector propio por pestaña. Como
+   ellas, no tiene el botón «volver arriba» hasta que #1041 entregue la base de varias listas.
 
-{% block btn_nuevo %}
-<div class="dropdown d-inline-block me-2">
-    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
-            data-bs-toggle="dropdown" aria-expanded="false">
+   OJO — `ScrollInfinito` y `FiltrosListado` (v2-scroll-infinito.js, v2-filtros.js) buscan sus
+   elementos con `document.querySelector` SIN ámbito de contenedor: cogen siempre el primero del
+   documento, y en fetch hacen `document.querySelectorAll('.filters select')`. Con dos listas
+   en la página, cada una cogería los de la otra. Solución: las clases genéricas
+   (`filters-row`, `filters`, `lista-scroll-container`, `pagination-info`, `btn-limpiar`) las
+   lleva SOLO la pestaña visible. Cada elemento declara su papel en `data-rol`, y
+   `activarPane()` mueve las clases al mostrar una pestaña. Así, tanto al construir una lista
+   como al pedir sus filas, el documento solo contiene los elementos de la lista activa.
+#}
+{% extends "layout/base_app.html" %}
+
+{% block title %}Plantillas y fragmentos de escritos — BDDAT{% endblock %}
+
+{% block extra_css %}{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_filtro.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/input_filtro.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/v1-tablas-maestras.css') }}">
+{% endblock %}
+
+{% block viewbar %}
+<span class="app-viewbar__title">
+  <i class="fas fa-file-word"></i>
+  <span>Plantillas y fragmentos de escritos</span>
+</span>
+<div class="app-viewbar__spacer"></div>
+{# Los botones de la barra son de la pestaña visible: activarAcciones() muestra un grupo y oculta el otro #}
+<div class="app-viewbar__actions">
+  <div class="d-flex align-items-center gap-2" data-acciones="plantillas">
+    <div class="dropdown d-inline-block">
+      <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false">
         <i class="fas fa-download me-1"></i> Plantillas base
-    </button>
-    <ul class="dropdown-menu">
+      </button>
+      <ul class="dropdown-menu">
         <li><a class="dropdown-item" href="{{ url_for('admin_plantillas.descargar_base', clave='carta') }}">Carta</a></li>
         <li><a class="dropdown-item" href="{{ url_for('admin_plantillas.descargar_base', clave='resolucion') }}">Resolución</a></li>
         <li><a class="dropdown-item" href="{{ url_for('admin_plantillas.descargar_base', clave='fragmento') }}">Fragmento</a></li>
-    </ul>
+      </ul>
+    </div>
+    {% if puede_gestionar %}
+    <a href="{{ url_for('admin_plantillas.nueva') }}" class="btn btn-primary btn-sm">
+      <i class="fas fa-plus me-1"></i> Nueva plantilla
+    </a>
+    {% endif %}
+  </div>
+  <div class="d-flex align-items-center gap-2 d-none" data-acciones="fragmentos">
+    <a href="{{ url_for('admin_plantillas.descargar_base', clave='fragmento') }}"
+       class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-download me-1"></i> Fragmento base
+    </a>
+    {% if puede_gestionar %}
+    <button type="button" class="btn btn-primary btn-sm"
+            data-bs-toggle="modal" data-bs-target="#crearFragmentoModal">
+      <i class="fas fa-plus me-1"></i> Nuevo fragmento
+    </button>
+    {% endif %}
+  </div>
 </div>
-{% if tiene_permiso('gestionar_plantillas') %}
-<a href="{{ url_for('admin_plantillas.nueva') }}" class="btn btn-primary btn-sm">
-    <i class="fas fa-plus me-1"></i> Nueva plantilla
-</a>
+{% endblock %}
+
+{% block content %}
+<div class="tm-shell">
+
+  <ul class="nav nav-tabs tm-tabs" id="plTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="pl-tab-plantillas" data-bs-toggle="tab"
+              data-bs-target="#pane-plantillas" type="button" role="tab"
+              aria-controls="pane-plantillas" aria-selected="true" data-tipo="plantillas">
+        <i class="fas fa-file-word me-1"></i>Plantillas
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="pl-tab-fragmentos" data-bs-toggle="tab"
+              data-bs-target="#pane-fragmentos" type="button" role="tab"
+              aria-controls="pane-fragmentos" aria-selected="false" data-tipo="fragmentos">
+        <i class="fas fa-puzzle-piece me-1"></i>Fragmentos
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content tm-tab-content" id="plTabContent">
+
+    {# ===== Pestaña Plantillas — las clases genéricas ya están, se inicializa al cargar ===== #}
+    <div class="tab-pane fade show active" id="pane-plantillas" role="tabpanel"
+         aria-labelledby="pl-tab-plantillas">
+      <div class="lista-cabecera">
+        <div class="filters-row" data-rol="filters-row">
+          <div class="filters" data-rol="filters">
+            <input type="search" placeholder="Buscar por nombre o código..." aria-label="Buscar">
+            <div id="sf-estado"></div>
+            <div id="sf-documento"></div>
+            <div id="sf-fase"></div>
+            <button class="btn btn-outline-primary btn-limpiar" data-rol="limpiar" disabled>
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+          <div class="pagination-info" data-rol="pagination">
+            <i class="fas fa-filter filtro-indicador me-1"></i><span>0</span> de <span>0</span>
+          </div>
+        </div>
+      </div>
+      <div class="lista-scroll-container" data-rol="scroll">
+        <div class="py-3">
+          <div class="card tabla-bloque">
+            <table class="lista-table plantillas-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th class="lt-truncate">Código</th>
+                  <th class="lt-hide-md">Tipo documento</th>
+                  <th class="lt-hide-lg">Expediente</th>
+                  <th class="lt-hide-xl">Solicitud</th>
+                  <th class="lt-hide-xl">Fase</th>
+                  <th class="lt-hide-xl">Trámite</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ===== Pestaña Fragmentos — SIN clases genéricas todavía, ver nota de cabecera ===== #}
+    <div class="tab-pane fade" id="pane-fragmentos" role="tabpanel"
+         aria-labelledby="pl-tab-fragmentos">
+      <div class="lista-cabecera">
+        <div data-rol="filters-row">
+          <div data-rol="filters">
+            <input type="search" placeholder="Buscar por nombre o descripción..." aria-label="Buscar">
+            <button class="btn btn-outline-primary" data-rol="limpiar" disabled>
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+          <div data-rol="pagination">
+            <i class="fas fa-filter filtro-indicador me-1"></i><span>0</span> de <span>0</span>
+          </div>
+        </div>
+      </div>
+
+      <div data-rol="scroll">
+        <div class="py-3">
+          <div class="card tabla-bloque">
+            <table class="lista-table fragmentos-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th class="lt-hide-md">Formato</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% if puede_gestionar %}
+<div class="modal fade" id="crearFragmentoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('admin_plantillas.frag_crear') }}"
+          enctype="multipart/form-data" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-puzzle-piece me-1"></i> Nuevo fragmento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="nf_nombre">
+              Nombre <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control form-control-sm font-monospace" id="nf_nombre"
+                   name="nombre" maxlength="60" required pattern="\w+"
+                   title="Letras, números y guion bajo, sin espacios">
+            <div class="form-text">
+              Es lo que se escribe en la plantilla: <code>{{ '{{r Pie_Recurso }}' }}</code>. Solo letras,
+              números y guion bajo. No se podrá cambiar después.
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="nf_descripcion">Descripción</label>
+            <textarea class="form-control form-control-sm" id="nf_descripcion" name="descripcion"
+                      rows="2" placeholder="Qué texto es y dónde se usa"></textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="nf_fichero">
+              Fichero <span class="text-danger">*</span>
+            </label>
+            <input type="file" class="form-control form-control-sm" id="nf_fichero" name="fichero"
+                   accept=".odt,.docx" required>
+            <div class="form-text">
+              Un <strong>.odt</strong> o un <strong>.docx</strong>. Cada motor busca el fragmento de
+              su formato: una plantilla .odt usa el fragmento .odt.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i> Crear fragmento</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endif %}
-{% endblock %}
 
-{% block filtros_extra %}
-<div id="sf-estado"></div>
-<div id="sf-documento"></div>
-<div id="sf-fase"></div>
-{% endblock %}
-
-{% block thead_cols %}
-<th>Nombre</th>
-<th class="lt-truncate">Código</th>
-<th class="lt-hide-md">Tipo documento</th>
-<th class="lt-hide-lg">Expediente</th>
-<th class="lt-hide-xl">Solicitud</th>
-<th class="lt-hide-xl">Fase</th>
-<th class="lt-hide-xl">Trámite</th>
-<th>Estado</th>
 {% endblock %}
 
 {% block extra_js %}
 {{ super() }}
+<script src="{{ url_for('static', filename='js/v2-scroll-infinito.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v2-filtros.js') }}"></script>
+<script src="{{ url_for('static', filename='js/selector_filtro.js') }}"></script>
+<script src="{{ url_for('static', filename='js/input_filtro.js') }}"></script>
 <script src="{{ url_for('static', filename='js/plantillas-inspector.js') }}"></script>
 <script>
     // Escape básico para valores de texto libre antes de inyectarlos como innerHTML
@@ -58,80 +242,178 @@
         return val ? _esc(val) : '<span class="text-secondary">Cualquiera</span>';
     }
 
-    // Filtros
-    new SelectorFiltro('#sf-estado', [
-        { v: 'true',  t: 'Activas'   },
-        { v: 'false', t: 'Inactivas' }
-    ], { label: 'Estado', name: 'estado' });
+    // Papel de cada elemento → clase genérica que busca ScrollInfinito/FiltrosListado.
+    // Solo la pestaña visible la lleva (ver la nota de cabecera).
+    const CLASE_DEL_ROL = {
+        'filters-row': 'filters-row',
+        'filters':     'filters',
+        'scroll':      'lista-scroll-container',
+        'pagination':  'pagination-info',
+        'limpiar':     'btn-limpiar'
+    };
+    function activarPane(idPane) {
+        document.querySelectorAll('#plTabContent [data-rol]').forEach(el => {
+            el.classList.toggle(CLASE_DEL_ROL[el.dataset.rol], !!el.closest('#' + idPane));
+        });
+    }
 
-    new SelectorFiltro('#sf-documento', [
-        {% for td in tipos_documento %}{ v: '{{ td.id }}', t: '{{ td.nombre|e }}' }{{ ',' if not loop.last }}{% endfor %}
-    ], { label: 'Tipo documento', name: 'tipo_documento' });
+    // Los botones de la barra superior son de la pestaña visible
+    function activarAcciones(tipo) {
+        document.querySelectorAll('[data-acciones]').forEach(el => {
+            el.classList.toggle('d-none', el.dataset.acciones !== tipo);
+        });
+    }
 
-    new SelectorFiltro('#sf-fase', [
-        {% for tf in tipos_fase %}{ v: '{{ tf.id }}', t: '{{ tf.nombre|e }}' }{{ ',' if not loop.last }}{% endfor %}
-    ], { label: 'Fase', name: 'tipo_fase' });
+    const instances = {};
 
-    const scrollInfinito = new ScrollInfinito({
-        apiUrl:      '{{ url_for("api_plantillas.listar_plantillas") }}',
-        tableClass:  '.plantillas-table',
-        entityLabel: 'plantillas',
-        columns: [
-            { key: 'nombre', label: 'Nombre', type: 'custom', renderFn: (v, item) => {
-                let html = '<span class="fw-semibold">' + _esc(item.nombre) + '</span>';
-                if (item.variante) {
-                    html += ' <span class="badge bg-secondary" style="font-weight:400">'
-                          + _esc(item.variante) + '</span>';
-                }
-                if (item.descripcion) {
-                    html += '<div class="small text-secondary">' + _esc(item.descripcion) + '</div>';
-                }
-                return html;
-            }},
-            { key: 'codigo', label: 'Código', type: 'custom', truncate: true,
-              renderFn: v => '<code>' + _esc(v) + '</code>' },
-            { key: 'tipo_documento', label: 'Tipo documento', type: 'text', hide: 'md' },
-            { key: 'tipo_expediente', label: 'Expediente', type: 'custom', hide: 'lg',
-              renderFn: v => _cualquiera(v) },
-            { key: 'tipo_solicitud', label: 'Solicitud', type: 'custom', hide: 'xl',
-              renderFn: v => _cualquiera(v) },
-            { key: 'tipo_fase', label: 'Fase', type: 'custom', hide: 'xl',
-              renderFn: v => _cualquiera(v) },
-            { key: 'tipo_tramite', label: 'Trámite', type: 'custom', hide: 'xl',
-              renderFn: v => _cualquiera(v) },
-            { key: 'activo', label: 'Estado', type: 'custom', renderFn: v => v
-                ? '<span class="badge bg-success">Activa</span>'
-                : '<span class="badge bg-secondary">Inactiva</span>' },
-        ],
-        selection: {
-            fragmentUrl: id   => `/plantillas/${id}/fragmento`,
-            title:       item => item.nombre || ''
-        }
-    });
+    function initPlantillas() {
+        activarPane('pane-plantillas');
+        activarAcciones('plantillas');
+        if (instances.plantillas) return instances.plantillas;
 
-    const filtros = new FiltrosListado(scrollInfinito);
+        new SelectorFiltro('#sf-estado', [
+            { v: 'true',  t: 'Activas'   },
+            { v: 'false', t: 'Inactivas' }
+        ], { label: 'Estado', name: 'estado' });
 
-    // Sync inspector ↔ URL ?sel (ADR-023 §1)
-    function _updateSelParam(selId) {
+        new SelectorFiltro('#sf-documento', [
+            {% for td in tipos_documento %}{ v: '{{ td.id }}', t: '{{ td.nombre|e }}' }{{ ',' if not loop.last }}{% endfor %}
+        ], { label: 'Tipo documento', name: 'tipo_documento' });
+
+        new SelectorFiltro('#sf-fase', [
+            {% for tf in tipos_fase %}{ v: '{{ tf.id }}', t: '{{ tf.nombre|e }}' }{{ ',' if not loop.last }}{% endfor %}
+        ], { label: 'Fase', name: 'tipo_fase' });
+
+        const scroll = new ScrollInfinito({
+            apiUrl:      '{{ url_for("api_plantillas.listar_plantillas") }}',
+            tableClass:  '.plantillas-table',
+            entityLabel: 'plantillas',
+            columns: [
+                { key: 'nombre', label: 'Nombre', type: 'custom', renderFn: (v, item) => {
+                    let html = '<span class="fw-semibold">' + _esc(item.nombre) + '</span>';
+                    if (item.variante) {
+                        html += ' <span class="badge bg-secondary" style="font-weight:400">'
+                              + _esc(item.variante) + '</span>';
+                    }
+                    if (item.descripcion) {
+                        html += '<div class="small text-secondary">' + _esc(item.descripcion) + '</div>';
+                    }
+                    return html;
+                }},
+                { key: 'codigo', label: 'Código', type: 'custom', truncate: true,
+                  renderFn: v => '<code>' + _esc(v) + '</code>' },
+                { key: 'tipo_documento', label: 'Tipo documento', type: 'text', hide: 'md' },
+                { key: 'tipo_expediente', label: 'Expediente', type: 'custom', hide: 'lg',
+                  renderFn: v => _cualquiera(v) },
+                { key: 'tipo_solicitud', label: 'Solicitud', type: 'custom', hide: 'xl',
+                  renderFn: v => _cualquiera(v) },
+                { key: 'tipo_fase', label: 'Fase', type: 'custom', hide: 'xl',
+                  renderFn: v => _cualquiera(v) },
+                { key: 'tipo_tramite', label: 'Trámite', type: 'custom', hide: 'xl',
+                  renderFn: v => _cualquiera(v) },
+                { key: 'activo', label: 'Estado', type: 'custom', renderFn: v => v
+                    ? '<span class="badge bg-success">Activa</span>'
+                    : '<span class="badge bg-secondary">Inactiva</span>' },
+            ],
+            selection: {
+                fragmentUrl: id   => `/plantillas/${id}/fragmento`,
+                title:       item => item.nombre || ''
+            }
+        });
+        const filtros = new FiltrosListado(scroll);
+        instances.plantillas = { scroll, filtros };
+        return instances.plantillas;
+    }
+
+    function initFragmentos() {
+        activarPane('pane-fragmentos');
+        activarAcciones('fragmentos');
+        if (instances.fragmentos) return instances.fragmentos;
+
+        const scroll = new ScrollInfinito({
+            apiUrl:      '{{ url_for("api_plantillas.listar_fragmentos") }}',
+            tableClass:  '.fragmentos-table',
+            entityLabel: 'fragmentos',
+            columns: [
+                { key: 'nombre', label: 'Nombre', type: 'custom', renderFn: (v, item) => {
+                    let html = '<code class="fw-semibold">' + _esc(item.nombre) + '</code>';
+                    if (item.descripcion) {
+                        html += '<div class="small text-secondary">' + _esc(item.descripcion) + '</div>';
+                    }
+                    return html;
+                }},
+                { key: 'extension', label: 'Formato', type: 'custom', hide: 'md',
+                  renderFn: v => '<code>' + _esc(v) + '</code>' },
+                { key: 'activo', label: 'Estado', type: 'custom', renderFn: (v, item) => {
+                    if (!v) {
+                        return '<span class="badge bg-secondary" title="' + _esc(item.motivo) + '">Desactivado</span>';
+                    }
+                    if (item.motivo) {
+                        return '<span class="badge bg-warning-subtle text-warning-emphasis" title="'
+                             + _esc(item.motivo) + '">Contenido no disponible</span>';
+                    }
+                    return '<span class="badge bg-success">Activo</span>';
+                }},
+            ],
+            selection: {
+                fragmentUrl: id   => `/plantillas/fragmentos/${id}/fragmento`,
+                title:       item => item.nombre || ''
+            }
+        });
+        const filtros = new FiltrosListado(scroll);
+        instances.fragmentos = { scroll, filtros };
+        return instances.fragmentos;
+    }
+
+    function _tabActiva() {
+        const btn = document.querySelector('#plTabs .nav-link.active');
+        return btn ? btn.dataset.tipo : 'plantillas';
+    }
+
+    // Sync inspector ↔ URL ?tab=&sel= (ADR-023 §1)
+    function _updateUrl(tab, selId) {
         const url = new URL(location.href);
+        if (tab === 'fragmentos') url.searchParams.set('tab', 'fragmentos');
+        else url.searchParams.delete('tab');
         if (selId) url.searchParams.set('sel', selId);
         else url.searchParams.delete('sel');
         history.replaceState(null, '', url.toString());
     }
-    document.addEventListener('inspector:opened',  e => _updateSelParam(e.detail.selId));
-    document.addEventListener('inspector:swapped', e => _updateSelParam(e.detail.selId));
-    document.addEventListener('inspector:closed',  () => _updateSelParam(null));
 
-    // Abrir inspector si la URL trae ?sel=<id>
-    const _selParam = new URLSearchParams(location.search).get('sel');
-    if (_selParam && window.AppInspector) {
+    document.addEventListener('inspector:opened',  e => _updateUrl(_tabActiva(), e.detail.selId));
+    document.addEventListener('inspector:swapped', e => _updateUrl(_tabActiva(), e.detail.selId));
+    document.addEventListener('inspector:closed',  () => _updateUrl(_tabActiva(), null));
+
+    document.getElementById('pl-tab-plantillas').addEventListener('shown.bs.tab', () => {
+        initPlantillas();
+        _updateUrl('plantillas', null);
+    });
+    document.getElementById('pl-tab-fragmentos').addEventListener('shown.bs.tab', () => {
+        initFragmentos();
+        _updateUrl('fragmentos', null);
+    });
+
+    // Estado inicial desde ?tab=&sel= (deep link; sin tab, la pestaña Plantillas de siempre)
+    const _params = new URLSearchParams(location.search);
+    const _tabIni = _params.get('tab') === 'fragmentos' ? 'fragmentos' : 'plantillas';
+    const _selIni = _params.get('sel');
+
+    if (_tabIni === 'fragmentos') {
+        new bootstrap.Tab(document.getElementById('pl-tab-fragmentos')).show();
+    } else {
+        initPlantillas();
+    }
+
+    if (_selIni && window.AppInspector) {
         AppInspector.open({
-            selId:       _selParam,
+            selId:       _selIni,
             title:       '',
-            fragmentUrl: `/plantillas/${_selParam}/fragmento`
+            fragmentUrl: _tabIni === 'fragmentos'
+                ? `/plantillas/fragmentos/${_selIni}/fragmento`
+                : `/plantillas/${_selIni}/fragmento`
         });
     }
 
-    console.log('Listado de plantillas v2 inicializado (#545)');
+    console.log('Plantillas y fragmentos inicializado (#545, #1009)');
 </script>
 {% endblock %}

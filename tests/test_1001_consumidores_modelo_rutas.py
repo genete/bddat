@@ -58,7 +58,6 @@ PERMITIDOS = {
     'app/modules/admin_plantillas/routes.py': 10,
     'app/modules/admin_plantillas/templates/admin_plantillas/_detalle_fragmento.html': 1,
     'app/modules/admin_plantillas/templates/admin_plantillas/_editar_fragmento.html': 2,
-    'app/modules/admin_plantillas/templates/admin_plantillas/_panel_tokens.html': 1,
     'app/modules/admin_plantillas/templates/admin_plantillas/form.html': 5,
 }
 

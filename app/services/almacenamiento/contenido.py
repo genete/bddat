@@ -27,6 +27,9 @@ resto trabaja con `documentos.id` y pide el contenido por aquí:
 - `motivo_no_usable` y `extension_de_plantilla`: si se puede generar con una plantilla y, si
   no, por qué (sin fichero, contenido no disponible o desactivada), y en qué formato sale el
   escrito. Calculan a partir de la fila de `ficheros`; no escriben `activo`.
+- Para la gestión de fragmentos (#1009): `motivos_no_usables_fragmentos` (una consulta para un
+  listado), `contenido_de_fragmento` (descargar, esté activo o no), `sustituir_fragmento` (el
+  mismo formato) y `formato_de_escrito` (detectar el formato antes de validar el contenido).
 
 «Aportar desde otro expediente» (§H) está diferido por decisión de Carlos (2026-10-08): cuando
 llegue, será otro uso de `copiar_documento` con su listado.
@@ -585,6 +588,96 @@ def leer_fragmento(nombre: str, formato: str) -> bytes:
         raise FragmentoAusente(nombre, formato)
     origen = _Origen(fragmento.fichero_ref, fragmento.nombre)
     return _leer_bytes(_fila_utilizable(origen), origen)
+
+
+def extension_de_formato(formato: str) -> str:
+    """`.odt` o `.docx` para el MIME de un escrito. Un formato sin motor se devuelve tal cual."""
+    return _FORMATOS_DE_ESCRITO.get(formato, formato)
+
+
+def formato_de_escrito(nombre_fichero: str, flujo: BinaryIO, que: str = 'un fichero') -> str:
+    """El MIME de un fichero que se va a subir como plantilla o fragmento, detectado por el
+    contenido (§E) y comprobado contra los formatos con motor. Para que quien sube pueda
+    validar el contenido con el motor **antes** de guardarlo. Deja el flujo al principio.
+
+    Lanza `FormatoNoAdmitido` (mensaje para el usuario).
+    """
+    return _validar_fichero_de_escrito(nombre_fichero, flujo, que)
+
+
+def motivos_no_usables_fragmentos(fragmentos) -> dict[int, str | None]:
+    """Por qué no se puede usar cada fragmento, o `None` si se puede (misma idea que
+    `motivo_no_usable` para las plantillas), con **una sola consulta** a `ficheros` para
+    todos: está pensado para el listado. La clave es `fragmento.id`.
+
+    Calcula, no escribe: ni `activo` ni la fila de `ficheros`. Sale el del fichero antes que
+    el de la pausa del supervisor, porque es lo primero que hay que arreglar.
+    """
+    fragmentos = list(fragmentos)
+    refs = {f.fichero_ref for f in fragmentos}
+    estados = {}
+    if refs:
+        with db.engine.connect() as conexion:
+            estados = {fila.ref: fila.estado for fila in conexion.execute(
+                select(_T.c.ref, _T.c.estado).where(_T.c.ref.in_(refs)))}
+
+    resultado = {}
+    for f in fragmentos:
+        estado = estados.get(f.fichero_ref)
+        if estado is None:
+            raise ErrorAlmacenamiento(f'Falta la fila de ficheros de {f.fichero_ref}')
+        if estado != OK:
+            resultado[f.id] = _mensaje_no_utilizable(estado, _Origen(f.fichero_ref, f.nombre))
+        elif not f.activo:
+            resultado[f.id] = (
+                f'El fragmento «{f.nombre}» ({extension_de_formato(f.formato)}) está desactivado '
+                f'por el supervisor (en mantenimiento): las plantillas que lo citan no generan '
+                f'mientras tanto.')
+        else:
+            resultado[f.id] = None
+    return resultado
+
+
+def motivo_no_usable_fragmento(fragmento) -> str | None:
+    """`motivos_no_usables_fragmentos` para uno solo."""
+    return motivos_no_usables_fragmentos([fragmento])[fragmento.id]
+
+
+def contenido_de_fragmento(fragmento) -> bytes:
+    """El contenido del fragmento tal cual, esté activo o no, con el hash comprobado (§G). Para
+    descargarlo: `leer_fragmento` es para el motor y solo da los activos.
+
+    Lanza `ContenidoNoUtilizable` si está ausente o dañado y `AlmacenNoDisponible` si el
+    almacén no contesta.
+    """
+    origen = _Origen(fragmento.fichero_ref, fragmento.nombre)
+    return _leer_bytes(_fila_utilizable(origen), origen)
+
+
+def sustituir_fragmento(fragmento, flujo: BinaryIO, nombre_fichero: str) -> str:
+    """Cambia el contenido de un fragmento que ya existe. Devuelve `SUSTITUIDO` o
+    `SIN_CAMBIOS` (el contenido es el que ya tenía).
+
+    El formato tiene que ser **el mismo** del fragmento: la clave es (`nombre`, formato), así
+    que un `.docx` con el nombre de un `.odt` sería otro fragmento y el `.odt` seguiría
+    usándose sin aviso. Para otro formato se crea uno nuevo (`guardar_fragmento`).
+
+    No cambia `activo`, no hace commit.
+
+    Lanza `ValueError` (mensaje para el usuario) si el formato no coincide, `FormatoNoAdmitido`
+    si no es un `.odt` o `.docx` de verdad, y `AlmacenNoDisponible`.
+    """
+    formato = _validar_fichero_de_escrito(nombre_fichero, flujo, 'un fragmento')
+    if formato != fragmento.formato:
+        raise ValueError(
+            f'«{nombre_fichero}» es {extension_de_formato(formato)} y el fragmento '
+            f'«{fragmento.nombre}» es {extension_de_formato(fragmento.formato)}. Para otro '
+            f'formato crea un fragmento nuevo con el mismo nombre.')
+    fila = _guardar_contenido(flujo, formato)
+    if fragmento.fichero_ref == fila.ref:
+        return SIN_CAMBIOS
+    fragmento.fichero_ref = fila.ref
+    return SUSTITUIDO
 
 
 def _validar_fichero_de_escrito(nombre_fichero: str, flujo: BinaryIO, que: str) -> str:

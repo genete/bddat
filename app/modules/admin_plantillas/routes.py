@@ -18,10 +18,19 @@ Rutas de formulario:
 - POST /plantillas/<id>/activar — Activar/desactivar plantilla
 - GET  /plantillas/base/<clave>/descargar — Descarga de una plantilla base canónica (#727)
 
+Fragmentos (#1009) — segunda pestaña del hub `/plantillas/?tab=fragmentos`:
+- POST /plantillas/fragmentos/crear                  — Alta (modal): nombre, descripción, fichero
+- GET  /plantillas/fragmentos/<id>/fragmento         — Lectura para el inspector
+- GET  /plantillas/fragmentos/<id>/editar-fragmento  — Edición para el inspector
+- POST /plantillas/fragmentos/<id>/guardar           — Guardar la edición (XHR → JSON)
+- POST /plantillas/fragmentos/<id>/activar           — Pausar / devolver
+- GET  /plantillas/fragmentos/<id>/descargar         — Descargar el fichero
+
 Endpoints AJAX:
 - GET  /plantillas/api/tokens           — Tokens Capa 1 (stub — Capa 2 en Fase 5)
 - GET  /plantillas/api/fs               — Explorador de servidor restringido a PLANTILLAS_BASE/plantillas/
 """
+import io
 import os
 
 from flask import (Blueprint, abort, current_app, flash, jsonify, redirect,
@@ -31,12 +40,17 @@ from flask_login import login_required
 from app import db
 from app.decorators import require_permiso
 from app.models.consultas_nombradas import ConsultaNombrada
+from app.models.fragmentos import Fragmento
 from app.models.plantillas import Plantilla
 from app.models.tipos_documentos import TipoDocumento
 from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_fases import TipoFase
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tramites import TipoTramite
+from app.services.almacenamiento import contenido
+from app.services.almacenamiento.adaptador import (AlmacenNoDisponible,
+                                                   MENSAJE_ALMACEN_NO_DISPONIBLE)
+from app.services.almacenamiento.contenido import ContenidoNoUtilizable
 from app.services.generador_escritos import (TIPOS_CONTENIDO,
                                              advertencias_plantilla,
                                              validar_plantilla)
@@ -129,17 +143,18 @@ def _plantillas_base_dir():
     return os.path.join(current_app.root_path, 'data', 'plantillas_base')
 
 
-def _listar_fragmentos() -> list[str]:
-    """Devuelve los ficheros de fragmento en PLANTILLAS_BASE/fragmentos/.
+def _listar_fragmentos() -> list[dict]:
+    """Los fragmentos activos, para el panel de tokens: `[{nombre, extension}]`.
 
     Lista los dos formatos: un fragmento solo sirve para plantillas de su mismo
     formato, pero el panel no sabe cuál es la plantilla en curso y ocultarlos
-    confundiría más que mostrarlos.
+    confundiría más que mostrarlos. Los desactivados no salen: no se pueden citar.
     """
-    d = _fragmentos_dir()
-    if not d or not os.path.isdir(d):
-        return []
-    return sorted(f for f in os.listdir(d) if f.lower().endswith(EXTENSIONES))
+    return [
+        {'nombre': f.nombre, 'extension': contenido.extension_de_formato(f.formato)}
+        for f in (Fragmento.query.filter_by(activo=True)
+                  .order_by(Fragmento.nombre, Fragmento.formato).all())
+    ]
 
 
 def _tokens_context_builder(contexto_clase) -> list:
@@ -164,7 +179,7 @@ def _build_tokens(contexto_clase=None) -> dict:
 
     campos:     CAMPOS_BASE (Capa 1 fija, universal)
     consultas:  ConsultaNombrada activas (universal, nivel expediente)
-    fragmentos: ficheros de fragmento en PLANTILLAS_BASE/fragmentos/ (universal)
+    fragmentos: los fragmentos activos de la tabla `fragmentos` (universal)
     cb_tokens:  manifiesto TOKENS del Context Builder en contexto_clase (Capa 2).
                 Vacío si la plantilla no usa CB. Es lo único que varía por
                 plantilla — se ancla a contexto_clase, no al ESFT (ADR-025).
@@ -382,7 +397,7 @@ def api_tokens():
             {'nombre': c.nombre, 'descripcion': getattr(c, 'descripcion', '')}
             for c in tokens['consultas']
         ],
-        'fragmentos': tokens['fragmentos'],
+        'fragmentos': [f"{f['nombre']}{f['extension']}" for f in tokens['fragmentos']],
     })
 
 
@@ -410,6 +425,7 @@ def listado():
         'admin_plantillas/listado.html',
         tipos_documento=tipos_documento,
         tipos_fase=tipos_fase,
+        puede_gestionar=tiene_permiso('gestionar_plantillas'),
     )
 
 
@@ -674,3 +690,181 @@ def activar(id):
         return jsonify({'ok': True, 'message': msg, 'activo': plantilla.activo})
     flash(msg, 'success')
     return redirect(url_for('admin_plantillas.listado', sel=id))
+
+
+# ---------------------------------------------------------------------------
+# Fragmentos (#1009, ADR-050 §J) — la segunda pestaña del hub
+#
+# Un fragmento es una fila de `fragmentos` con su contenido en el almacén. Aquí solo se
+# habla con el módulo de contenido: ninguna ruta ve una `ref`.
+# ---------------------------------------------------------------------------
+
+def _volver_a_fragmentos(**parametros):
+    return redirect(url_for('admin_plantillas.listado', tab='fragmentos', **parametros))
+
+
+def _fichero_subido():
+    """El fichero del campo `fichero`, o None si no se ha elegido ninguno."""
+    archivo = request.files.get('fichero')
+    return archivo if archivo is not None and archivo.filename else None
+
+
+def _validar_contenido_subido(archivo, que: str) -> list[str]:
+    """Valida lo subido con el motor de su formato y devuelve los avisos de canonicidad.
+
+    El formato sale del contenido (§E), no de la extensión. Lanza `ValueError` (mensaje
+    para el usuario) si no es un `.odt` o `.docx` de verdad o el motor no lo acepta.
+    """
+    formato = contenido.formato_de_escrito(archivo.filename, archivo.stream, que)
+    datos = archivo.stream.read()
+    archivo.stream.seek(0)
+    error = validar_plantilla(datos, formato)
+    if error:
+        raise ValueError(f'El fichero no es válido: {error}')
+    return advertencias_plantilla(datos, formato)
+
+
+@bp.route('/fragmentos/crear', methods=['POST'])
+@login_required
+@require_permiso('gestionar_plantillas')
+def frag_crear():
+    """Alta de un fragmento: nombre, descripción y fichero (modal de la pestaña)."""
+    nombre = request.form.get('nombre', '').strip()
+    descripcion = request.form.get('descripcion', '').strip() or None
+    archivo = _fichero_subido()
+    if archivo is None:
+        flash('Elige el fichero del fragmento (.odt o .docx).', 'danger')
+        return _volver_a_fragmentos()
+
+    try:
+        avisos = _validar_contenido_subido(archivo, 'un fragmento')
+        fragmento, resultado = contenido.guardar_fragmento(
+            nombre, archivo.stream, archivo.filename, descripcion=descripcion)
+    except AlmacenNoDisponible:
+        flash(MENSAJE_ALMACEN_NO_DISPONIBLE, 'danger')
+        return _volver_a_fragmentos()
+    except ValueError as e:      # FormatoNoAdmitido incluido
+        flash(str(e), 'danger')
+        return _volver_a_fragmentos()
+
+    if resultado != contenido.CREADO:
+        # El alta no sustituye: pisar un fragmento que usan las plantillas es otra decisión.
+        db.session.rollback()
+        flash(f'Ya existe el fragmento «{nombre}» en ese formato. Ábrelo y sustituye su fichero.',
+              'danger')
+        return _volver_a_fragmentos()
+
+    db.session.add(fragmento)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al guardar: {e}', 'danger')
+        return _volver_a_fragmentos()
+
+    flash(f'Fragmento «{fragmento.nombre}» creado.', 'success')
+    for aviso in avisos:
+        flash(aviso, 'warning')
+    return _volver_a_fragmentos(sel=fragmento.id)
+
+
+@bp.route('/fragmentos/<int:id>/fragmento')
+@login_required
+@require_permiso('acceder_plantillas')
+def frag_lectura(id):
+    """Fragmento HTML de lectura para el inspector."""
+    fragmento = Fragmento.query.get_or_404(id)
+    return render_template(
+        'admin_plantillas/_frag_lectura.html',
+        fragmento=fragmento,
+        extension=contenido.extension_de_formato(fragmento.formato),
+        motivo=contenido.motivo_no_usable_fragmento(fragmento),
+        puede_editar=tiene_permiso('gestionar_plantillas'),
+    )
+
+
+@bp.route('/fragmentos/<int:id>/editar-fragmento')
+@login_required
+@require_permiso('gestionar_plantillas')
+def frag_edicion(id):
+    """Fragmento HTML de edición para el inspector."""
+    fragmento = Fragmento.query.get_or_404(id)
+    return render_template(
+        'admin_plantillas/_frag_edicion.html',
+        fragmento=fragmento,
+        extension=contenido.extension_de_formato(fragmento.formato),
+    )
+
+
+@bp.route('/fragmentos/<int:id>/guardar', methods=['POST'])
+@login_required
+@require_permiso('gestionar_plantillas')
+def frag_guardar(id):
+    """Guardar la edición de un fragmento (XHR → JSON): descripción, pausa y, si se elige,
+    otro fichero del mismo formato. El nombre no se cambia: es la clave que citan las
+    plantillas."""
+    fragmento = Fragmento.query.get_or_404(id)
+
+    def con_errores(errores):
+        db.session.rollback()
+        return jsonify({'ok': False, 'errors': errores})
+
+    avisos = []
+    archivo = _fichero_subido()
+    resultado = None
+    if archivo is not None:
+        try:
+            avisos = _validar_contenido_subido(archivo, 'un fragmento')
+            resultado = contenido.sustituir_fragmento(fragmento, archivo.stream, archivo.filename)
+        except AlmacenNoDisponible:
+            return con_errores([MENSAJE_ALMACEN_NO_DISPONIBLE])
+        except ValueError as e:
+            return con_errores([str(e)])
+
+    aplicar_texto(request.form, 'descripcion', fragmento)
+    aplicar_checkbox(request.form, 'activo', fragmento, form_completo(request.form))
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        return con_errores([f'Error al guardar: {e}'])
+
+    msg = f'Fragmento «{fragmento.nombre}» actualizado correctamente.'
+    if resultado == contenido.SUSTITUIDO:
+        msg = f'Fragmento «{fragmento.nombre}» actualizado: el fichero se ha sustituido.'
+    return jsonify({'ok': True, 'message': msg, 'warnings': avisos})
+
+
+@bp.route('/fragmentos/<int:id>/activar', methods=['POST'])
+@login_required
+@require_permiso('gestionar_plantillas')
+def frag_activar(id):
+    """Pausar o devolver un fragmento. Pausado cuenta como ausente: las plantillas que lo
+    citan no generan hasta que se devuelva (ADR-050 §J)."""
+    fragmento = Fragmento.query.get_or_404(id)
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    fragmento.activo = not fragmento.activo
+    db.session.commit()
+    estado = 'activado' if fragmento.activo else 'desactivado'
+    msg = f'Fragmento «{fragmento.nombre}» {estado}.'
+    if is_xhr:
+        return jsonify({'ok': True, 'message': msg, 'activo': fragmento.activo})
+    flash(msg, 'success')
+    return _volver_a_fragmentos(sel=id)
+
+
+@bp.route('/fragmentos/<int:id>/descargar')
+@login_required
+@require_permiso('acceder_plantillas')
+def frag_descargar(id):
+    """Descarga del fichero del fragmento, esté activo o no (para editarlo en el PC)."""
+    fragmento = Fragmento.query.get_or_404(id)
+    try:
+        datos = contenido.contenido_de_fragmento(fragmento)
+    except AlmacenNoDisponible:
+        abort(503, MENSAJE_ALMACEN_NO_DISPONIBLE)
+    except ContenidoNoUtilizable as e:
+        abort(409, str(e))
+    nombre = f'{fragmento.nombre}{contenido.extension_de_formato(fragmento.formato)}'
+    return send_file(io.BytesIO(datos), as_attachment=True, download_name=nombre,
+                     mimetype=fragmento.formato)
