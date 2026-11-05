@@ -115,23 +115,6 @@ def _entidades(db):
     return creadas
 
 
-def _plantillas_inactivas(db):
-    """Las plantillas sembradas por migración apuntan a .docx que aquí no están.
-
-    Cuatro migraciones (#402, #403, #404, #776) registran plantillas con su
-    `ruta_plantilla` bajo PLANTILLAS_BASE. En la base de tests los registros
-    existen pero los ficheros no, así que un test de generación fallaría por el
-    fichero ausente y no por la lógica. Se desactivan: el test que quiera
-    ejercitar una plantilla se fabrica la suya.
-    """
-    from app.models.plantillas import Plantilla
-
-    afectadas = Plantilla.query.filter_by(activo=True).all()
-    for p in afectadas:
-        p.activo = False
-    return len(afectadas)
-
-
 def _modulos_expediente_tipo():
     """Los expedientes-tipo que alimentan la base de tests.
 
@@ -251,7 +234,7 @@ def _arbol_ficheros(app):
     from app.services.almacenamiento.manifiestos import inicializar as inicializar_manifiestos
 
     creados = []
-    for clave in ('PLANTILLAS_BASE', 'ALMACEN_BASE', 'MANIFIESTOS_BASE'):
+    for clave in ('ALMACEN_BASE', 'MANIFIESTOS_BASE'):
         ruta = app.config.get(clave)
         if not ruta:
             raise RuntimeError(f'{clave} sin configurar en la config de tests')
@@ -272,13 +255,11 @@ def sembrar(app):
     with app.app_context():
         n_usuarios = _usuarios(db)
         n_entidades = _entidades(db)
-        n_plantillas = _plantillas_inactivas(db)
         db.session.commit()
         rutas = _arbol_ficheros(app)
 
     print(f'[semilla] usuarios creados: {n_usuarios} (de {len(USUARIOS)} previstos)')
     print(f'[semilla] entidades creadas: {n_entidades} (de {len(ENTIDADES)} previstas)')
-    print(f'[semilla] plantillas desactivadas: {n_plantillas}')
     for r in rutas:
         print(f'[semilla] creado directorio {r}')
 

@@ -5,10 +5,17 @@ class Plantilla(db.Model):
     """
     Catálogo de plantillas para generación de escritos administrativos.
 
-    FORMATO:
-        El de `ruta_plantilla`: .odt (formato de referencia, ADR-035) o .docx
-        (motor heredado, en retirada). No hay columna que lo declare — la
-        extensión del fichero elige el motor de render.
+    CONTENIDO Y FORMATO:
+        El fichero vive en el almacén (`fichero_ref`, ADR-050 §J) y se sube desde el
+        navegador. Su formato —.odt, el de referencia (ADR-035), o .docx, que se mantiene
+        mientras la ADA no decida— es el de su fila de `ficheros`: elige el motor de
+        render. No hay columna que lo declare aquí.
+
+    ACTIVO:
+        Pausa del supervisor, no «oculta»: solo la escribe él. Sin fichero no puede estar
+        activa (CHECK `ck_plantillas_activa_con_fichero`). Que se pueda usar se calcula
+        —activa, con fichero y contenido en buen estado—, en
+        `contenido.motivo_no_usable`.
 
     PROPÓSITO:
         Cada registro vincula una plantilla con su contexto ESFTT
@@ -64,12 +71,6 @@ class Plantilla(db.Model):
         db.Text,
         nullable=True,
         comment='Descripción ampliada de la plantilla'
-    )
-
-    ruta_plantilla = db.Column(
-        db.Text,
-        nullable=False,
-        comment='Ruta relativa a PLANTILLAS_BASE/plantillas/'
     )
 
     fichero_ref = db.Column(
@@ -139,7 +140,9 @@ class Plantilla(db.Model):
         nullable=False,
         default=True,
         server_default='true',
-        comment='FALSE = oculta en tarea ELABORAR pero conservada para histórico'
+        comment=('Pausa del supervisor (ADR-050 §J): FALSE = no se usa para generar, aunque se '
+                 'conserve. Solo la escribe el supervisor y sin fichero no puede estar activa (CHECK). '
+                 'Que se pueda usar se calcula: activa, con fichero y su contenido en buen estado')
     )
 
     # Relaciones

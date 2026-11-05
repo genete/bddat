@@ -69,7 +69,8 @@ from app.services.almacenamiento.adaptador import (
     AlmacenNoDisponible, ContenidoNoExiste, ErrorAlmacenamiento, obtener_adaptador,
 )
 from app.services.almacenamiento.formatos import (
-    FormatoNoAdmitido, MIME_DOCX, MIME_ODT, es_visible_en_navegador, validar_fichero,
+    FormatoNoAdmitido, MENSAJE_FORMATOS, MIME_DOCX, MIME_ODT, es_visible_en_navegador,
+    validar_fichero,
 )
 from app.services.almacenamiento.nombres import sanear_nombre
 
@@ -471,6 +472,13 @@ def guardar_plantilla(plantilla, flujo: BinaryIO, nombre_fichero: str) -> bool:
     return True
 
 
+def tiene_fichero(plantilla) -> bool:
+    """Si a la plantilla ya se le subió contenido. Es lo que decide si se puede activar: sin
+    fichero no se activa (§J). Solo mira la plantilla, no el almacén: que el contenido esté en
+    buen estado es `motivo_no_usable`."""
+    return plantilla.fichero_ref is not None
+
+
 def motivo_no_usable(plantilla) -> str | None:
     """Por qué no se puede generar con la plantilla, o `None` si se puede. El motivo es un
     mensaje para el usuario, y distingue tres casos (ADR-050 §J, enmienda del 2026-11-02):
@@ -683,13 +691,18 @@ def sustituir_fragmento(fragmento, flujo: BinaryIO, nombre_fichero: str) -> str:
 def _validar_fichero_de_escrito(nombre_fichero: str, flujo: BinaryIO, que: str) -> str:
     """El MIME de un fichero que va a ser una plantilla o un fragmento: lo admitido en §E y,
     además, de los formatos que tienen motor. `que` es para el mensaje."""
+    mensaje_no_es_de_texto = (
+        f'«{nombre_fichero}»: {que} tiene que ser un documento de texto .odt o .docx.')
     try:
         formato = validar_fichero(nombre_fichero, flujo)
     except FormatoNoAdmitido as exc:
+        # El mensaje general («se pueden subir PDF, ODT, ODS…») no sirve aquí: dice lo mismo
+        # que cuando el formato se reconoce pero no es de texto.
+        if str(exc) == MENSAJE_FORMATOS:
+            raise FormatoNoAdmitido(mensaje_no_es_de_texto) from exc
         raise FormatoNoAdmitido(f'«{nombre_fichero}»: {exc}') from exc
     if formato not in _FORMATOS_DE_ESCRITO:
-        raise FormatoNoAdmitido(
-            f'«{nombre_fichero}»: {que} tiene que ser un documento de texto .odt o .docx.')
+        raise FormatoNoAdmitido(mensaje_no_es_de_texto)
     return formato
 
 

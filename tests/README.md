@@ -20,8 +20,7 @@ donde nacieron —aquí se resumen y se enlazan—:
 La suite corre contra **su propia base de datos**, nunca la de desarrollo (#849):
 
 ```bash
-# .env: TEST_DATABASE_URL, TEST_PLANTILLAS_BASE, TEST_ALMACEN_BASE,
-#       TEST_MANIFIESTOS_BASE (ver .env.example)
+# .env: TEST_DATABASE_URL, TEST_ALMACEN_BASE, TEST_MANIFIESTOS_BASE (ver .env.example)
 python scripts/preparar_bd_test.py --recrear   # migraciones + semilla; repetir tras cada migración nueva
 pytest                                         # suite completa (~30 s)
 pytest tests/smoke                             # solo smoke

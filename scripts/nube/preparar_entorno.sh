@@ -132,8 +132,6 @@ else
     {
         echo "DATABASE_URL=postgresql://bddat_admin:$PG_PASSWORD@127.0.0.1:5432/bddat"
         echo "TEST_DATABASE_URL=postgresql://bddat_admin:$PG_PASSWORD@127.0.0.1:5432/bddat_test"
-        echo "PLANTILLAS_BASE=$REPO/docs_prueba/plantillas_escritos"
-        echo "TEST_PLANTILLAS_BASE=$REPO/docs_prueba_test/plantillas_escritos"
         echo "ALMACEN_BASE=$REPO/almacen_dev"
         echo "MANIFIESTOS_BASE=$REPO/manifiestos_dev"
         echo "TEST_ALMACEN_BASE=$REPO/docs_prueba_test/almacen"
@@ -145,8 +143,7 @@ else
     } > "$REPO/.env"
     nota ".env de la nube generado"
 fi
-mkdir -p "$REPO/docs_prueba/plantillas_escritos" "$REPO/docs_prueba_test/plantillas_escritos" \
-         "$REPO/manifiestos_dev"
+mkdir -p "$REPO/manifiestos_dev"
 # El almacén de desarrollo y la carpeta de manifiestos necesitan su marca de raíz
 # (sin ella no escriben nada). En el PC se inicializan a mano una vez; aquí, el
 # entorno. Idempotente. Las de tests las inicializa la semilla.

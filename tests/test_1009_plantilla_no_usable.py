@@ -40,8 +40,7 @@ def plantilla_desactivada(app, almacen_tmp):
         tipo = TipoDocumento.query.filter_by(codigo='OTROS').first()
         assert tipo is not None, 'la semilla debe traer el tipo de documento OTROS'
         plantilla = Plantilla(codigo='TEST_1009_DESACTIVADA', nombre='Plantilla de prueba #1009',
-                              ruta_plantilla='test_1009.odt', tipo_documento_id=tipo.id,
-                              activo=False)
+                              tipo_documento_id=tipo.id, activo=False)
         contenido.guardar_plantilla(plantilla, io.BytesIO(_odt_minimo()), 'test_1009.odt')
         db.session.add(plantilla)
         db.session.commit()

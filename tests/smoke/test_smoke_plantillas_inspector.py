@@ -96,7 +96,7 @@ def test_alta_error_conserva_campos(usuario_supervisor):
         'nombre': 'Plantilla de prueba XYZ',
         'codigo': 'PRUEBA_XYZ',
         'contexto_clase': 'ContextoResolucion',
-        # sin ruta_plantilla → error de validación; no se persiste
+        # sin `fichero` → error de validación; no se persiste
     }, follow_redirects=True)
     assert r.status_code == 200
     assert b'Plantilla de prueba XYZ' in r.data   # nombre conservado
@@ -159,7 +159,7 @@ def test_plantilla_editar_xhr_codigo_presente_vacio_error(usuario_supervisor, pr
 def test_plantilla_editar_xhr_success(usuario_supervisor, primera_plantilla_id, app):
     """POST editar con XHR reenviando los datos actuales → JSON {ok: true}.
 
-    Reenvía los valores existentes (sin tocar el .docx) para no provocar cambios netos.
+    Reenvía los valores existentes (sin subir fichero) para no provocar cambios netos.
     """
     with app.app_context():
         from app.models.plantillas import Plantilla

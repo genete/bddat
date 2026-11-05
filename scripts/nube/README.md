@@ -85,9 +85,9 @@ Límites:
 
 ## Generar escritos: no con plantillas reales
 
-Las plantillas reales del supervisor no están en git: viven en el PC
-(`PLANTILLAS_BASE`) y, con ADR-050 §J, vivirán en el almacén y la BD, subidas desde
-el navegador. En la nube **no hay ninguna**, y no las habrá. Lo único versionado son
+Las plantillas reales del supervisor no están en git: viven en el almacén y la BD
+(ADR-050 §J, #1009), subidas desde el navegador. En la nube **no hay ninguna**, y no las
+habrá. Lo único versionado son
 las bases canónicas de `app/data/plantillas_base/` (`carta_base.odt`,
 `resolucion_base.odt`, `fragmento_base.odt`), que son esqueletos sin tokens.
 

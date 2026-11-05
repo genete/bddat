@@ -66,8 +66,8 @@ TABLAS_OPERACIONALES = {
 
 # Columnas que difieren por decisión, no por defecto.
 COLUMNAS_IGNORADAS = {
-    # `semilla_test._plantillas_inactivas` las desactiva a propósito: en el
-    # mundo de tests los .docx no están en disco.
+    # En el mundo de tests las plantillas sembradas por migración no tienen fichero y no
+    # pueden estar activas (#1009); en desarrollo el supervisor las activa al subirlo.
     'plantillas': {'activo'},
 }
 
