@@ -22,6 +22,7 @@ from app.services.almacenamiento.contenido import ContenidoNoUtilizable
 from app.services.codigo_seguimiento import componer_codigo
 from app.services.escritos import ContextoBaseExpediente, solicitud_de, variables_destinatario
 from app.services.generador_escritos import generar_escrito, componer_nombre_documento
+from app.services.invariantes_esftt import check_invariante
 from app.services.regeneracion_escritos import regenerar_escrito
 from app.services.sellado_fase_sesion import SelladoFaseVioladoError
 from app.utils.permisos import puede_editar_expediente
@@ -197,6 +198,15 @@ def _preparar_generacion(data):
     if not puede_editar_expediente(expediente):
         raise _ErrorGenerar('Sin permisos de edición sobre este expediente', 403)
 
+    # Fase cerrada (#720, ADR-036 §6, capa 2). Vincular el escrito a la tarea, o cambiarle
+    # el fichero al borrador, es mutar el interior de la fase. Va antes de elegir
+    # destinatario, de generar el documento y de subirlo al almacén, y vale también con
+    # borrador: el hook de sesión (capa 3) no vigila `Documento`, así que regenerar un
+    # borrador de una fase sellada le cambiaba el fichero sin que nada saltara.
+    bloqueo = check_invariante('MUTAR', 'TAREA', tarea.id)
+    if bloqueo is not None:
+        raise _ErrorGenerar(bloqueo.motivo or bloqueo.norma_compilada, 409)
+
     _exigir_destinatario(tarea, data.get('destinatario'))
 
     nombre_fichero = componer_nombre_documento(tarea, plantilla)
@@ -320,7 +330,9 @@ def generar():
     except (ContenidoNoUtilizable, SelladoFaseVioladoError) as e:
         # El segundo es la red de cierre del sellado (#720, ADR-036 §6, capa 3): el flush
         # intentó vincular el escrito al interior de una fase cerrada. Su mensaje ya dice
-        # qué fase es y que hay que reabrirla.
+        # qué fase es y que hay que reabrirla. El caso normal lo corta antes la guarda de
+        # `_preparar_generacion`; esto cubre que la fase se cierre entre esa comprobación
+        # y el flush.
         db.session.rollback()
         return jsonify(ok=False, error=str(e)), 409
     except ValueError as e:   # FormatoNoAdmitido incluido
