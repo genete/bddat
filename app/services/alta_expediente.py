@@ -1,4 +1,4 @@
-"""Alta de expediente: proyecto + expediente + documento de solicitud + solicitud (#428).
+"""Alta de expediente: proyecto + expediente + documentos de solicitud y de proyecto + solicitud (#428, #1040).
 
 Una transacción y un solo punto de entrada, compartido por el formulario de alta y
 por los scripts de expediente-tipo. Antes de esto el alta vivía en el paso 3 del
@@ -16,16 +16,35 @@ fecha de inicio del plazo para resolver y notificar, y sin ella el art. 128 RD
 expediente con un dato pendiente: es uno cuyo plazo principal no ha empezado a
 correr y nadie lo sabe.
 
-`heredado` no exime. Marca que el expediente viene del sistema anterior con datos
-incompletos, pero hoy ese flag solo se pinta —ningún servicio lo lee— y aceptarlo
-como excusa reabriría por la puerta de atrás justo el agujero que este servicio
-cierra.
+`heredado` no exime del documento de solicitud. Marca que el expediente viene del
+sistema anterior con datos incompletos, pero aceptarlo como excusa reabriría por la
+puerta de atrás justo el agujero que este servicio cierra.
+
+EL PROYECTO PRINCIPAL (#1040, ADR-044 §D)
+=========================================
+
+**Tampoco hay alta sin documento de proyecto, salvo en un expediente heredado.** El
+proyecto nace con su ancla (`proyectos.documento_principal_id`) puesta: el documento
+que se sube con el alta es el proyecto principal, y los modificados o reformados
+entran después por el pool. Un expediente sin ancla no se puede tramitar más allá del
+análisis (regla de motor de #887, RD 1955/2000 arts. 123.1 y 130.1), y un alta que lo
+fabricara dejaría la falta sin que nadie la viera hasta el certificado de fin de
+instrucción. La fecha administrativa del documento es la `fecha_proyecto` del alta.
+
+El expediente heredado queda exento: llega del sistema anterior sin ese documento y su
+tratamiento está por decidir. La regla de motor lo exime por su cuenta
+(`expediente_heredado`). Si trae el fichero, se ancla igual.
+
+El alta no escribe en la bitácora —el proyecto y el expediente nacen sin entrada—, y
+el ancla inicial tampoco: forma parte de crear el proyecto, no del gesto de
+anclar un documento sobre otro ya existente.
 
 EL ORDEN, QUE ES FORZOSO
 ========================
 
     proyecto → municipios → numero_at → expediente (flush)
-        → documento al pool → solicitud con ancla → acreditativo del TITULAR → commit
+        → documentos al pool → ancla del proyecto → solicitud con ancla
+        → acreditativo del TITULAR → commit
 
 `Documento.expediente_id` es NOT NULL: el documento no puede existir antes que el
 expediente. De ahí se sigue que el signal `after_insert` de `Expediente` **no puede**
@@ -70,6 +89,27 @@ MENSAJE_SIN_ANCLA = (
     'de esa fecha cuelga el inicio del plazo para resolver, y sin ella el '
     'expediente nace sin plazo que computar.'
 )
+
+# Tipo documental del proyecto técnico que se ancla en el alta (#1040).
+CODIGO_DOC_PROYECTO = 'DOC_PROYECTO'
+
+MENSAJE_SIN_PROYECTO = (
+    'Debe adjuntar el proyecto técnico: es el documento que queda anclado como '
+    'proyecto principal del expediente, y sin él no se puede tramitar más allá del '
+    'análisis de la solicitud (RD 1955/2000, arts. 123.1 y 130.1).'
+)
+
+
+@dataclass(frozen=True)
+class DocumentoProyecto:
+    """El proyecto técnico que se sube con el alta y queda anclado como principal.
+
+    Sin fecha propia: su `fecha_administrativa` es la `fecha_proyecto` de `DatosAlta`
+    (la de firma o visado), que además es lo que ordena las versiones del proyecto
+    (ADR-044 §C).
+    """
+    contenido: bytes
+    nombre_original: str
 
 
 @dataclass(frozen=True)
@@ -117,6 +157,9 @@ class DatosAlta:
     # --- Ancla documental (obligatoria, ver EL INVARIANTE) ---
     documento: Optional[DocumentoSolicitud] = None
 
+    # --- Ancla del proyecto (obligatoria salvo en un expediente heredado) ---
+    documento_proyecto: Optional[DocumentoProyecto] = None
+
     # Campos extra del proyecto que el formulario no pide pero los
     # expedientes-tipo sí fijan (es_modificacion, sin_linea_aerea…).
     proyecto_extra: dict = field(default_factory=dict)
@@ -128,6 +171,8 @@ class ResultadoAlta:
     solicitud: Solicitud
     documento: Documento
     numero_at: int
+    # El proyecto principal anclado; None solo en un expediente heredado sin fichero.
+    documento_proyecto: Optional[Documento] = None
 
 
 def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
@@ -135,6 +180,8 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
 
     Raises:
         ValueError: si falta el documento de solicitud (`MENSAJE_SIN_ANCLA`), si
+            falta el del proyecto en un expediente que no es heredado
+            (`MENSAJE_SIN_PROYECTO`, #1040), si
             el catálogo no tiene el tipo documental o el tipo de solicitud pedidos,
             o si el representante o la sede no valen (`mutaciones_arbol.
             validar_representante` y `validar_sede`, las mismas reglas que al
@@ -153,12 +200,28 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
     if datos.documento is None or not datos.documento.contenido:
         raise ValueError(MENSAJE_SIN_ANCLA)
 
+    # Un fichero vacío cuenta como ausente: en un heredado se ignora; en el resto, rechaza.
+    proyecto_adjunto = (datos.documento_proyecto
+                        if datos.documento_proyecto is not None
+                        and datos.documento_proyecto.contenido else None)
+    if proyecto_adjunto is None and not datos.heredado:
+        raise ValueError(MENSAJE_SIN_PROYECTO)
+
     tipo_doc = TipoDocumento.query.filter_by(codigo=CODIGO_DOC_SOLICITUD).first()
     if tipo_doc is None:
         raise ValueError(
             f'El catálogo no tiene el tipo de documento {CODIGO_DOC_SOLICITUD!r}, '
             'necesario para clasificar el escrito de solicitud.'
         )
+
+    tipo_doc_proyecto = None
+    if proyecto_adjunto is not None:
+        tipo_doc_proyecto = TipoDocumento.query.filter_by(codigo=CODIGO_DOC_PROYECTO).first()
+        if tipo_doc_proyecto is None:
+            raise ValueError(
+                f'El catálogo no tiene el tipo de documento {CODIGO_DOC_PROYECTO!r}, '
+                'necesario para clasificar el proyecto técnico.'
+            )
 
     tipo_solicitud = TipoSolicitud.query.get(datos.tipo_solicitud_id)
     if tipo_solicitud is None:
@@ -209,16 +272,36 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
         db.session.add(expediente)
         db.session.flush()          # → expediente.id, y dispara el signal
 
-        # 4) El escrito de solicitud entra al pool como cualquier otro documento
-        [documento] = ingestar_en_pool(expediente, [FicheroAIngestar(
+        # 4) El escrito de solicitud y, si lo hay, el proyecto entran al pool como
+        #    cualquier otro documento, en una sola llamada: ingestar valida los
+        #    ficheros de todos antes de enviar el primero al almacén.
+        ficheros = [FicheroAIngestar(
             io.BytesIO(datos.documento.contenido),
             datos.documento.nombre_original,
             tipo_doc_id=tipo_doc.id,
             fecha_administrativa=datos.documento.fecha_registro,
             asunto=f'Solicitud de {tipo_solicitud.siglas}',
-        )])
-        db.session.add(documento)
-        db.session.flush()          # → documento.id
+        )]
+        if proyecto_adjunto is not None:
+            ficheros.append(FicheroAIngestar(
+                io.BytesIO(proyecto_adjunto.contenido),
+                proyecto_adjunto.nombre_original,
+                tipo_doc_id=tipo_doc_proyecto.id,
+                fecha_administrativa=datos.fecha_proyecto,
+                asunto=f'Proyecto técnico: {datos.titulo}'[:200],
+            ))
+        documentos = ingestar_en_pool(expediente, ficheros)
+        documento = documentos[0]
+        documento_proyecto = documentos[1] if proyecto_adjunto is not None else None
+        db.session.add_all(documentos)
+        db.session.flush()          # → ids
+
+        # 4 bis) El proyecto principal queda anclado. Por la relación y no por el id,
+        #        como `anclar_principal`, para que el backref del documento quede
+        #        poblado en la misma sesión. Sin bitácora: ver el docstring del módulo.
+        if documento_proyecto is not None:
+            proyecto.documento_principal = documento_proyecto
+            db.session.flush()
 
         # 5) Solicitud, ya anclada
         solicitud = Solicitud(
@@ -253,4 +336,5 @@ def alta_expediente(datos: DatosAlta) -> ResultadoAlta:
         solicitud=solicitud,
         documento=documento,
         numero_at=numero_at,
+        documento_proyecto=documento_proyecto,
     )
