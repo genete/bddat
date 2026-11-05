@@ -32,9 +32,10 @@ misma de la suite.
 - **Usuarios** (contraseña `test`): TADM, TSUP, TTRA, TADV, TMUL (varios roles:
   login de dos pasos), TTR2 y TOFF.
 - **Expedientes:** los tres de `scripts/expedientes_dummy/` y uno sin responsable.
-- **Plantillas desactivadas:** las que siembran las migraciones apuntan a `.docx`
-  que aquí no existen. Para generar un escrito hay que registrar antes una
-  plantilla (ver «Generar escritos» más abajo).
+- **Plantillas:** las cinco que siembran las migraciones no tienen fichero y están
+  desactivadas. La semilla añade cinco **de demostración** (`DEMO_*`, activas) y un
+  fragmento (`DEMO_Pie`), una por trámite ELABORAR de los expedientes-tipo, para generar
+  escritos (ver «Generar escritos» más abajo).
 - **Sin reloj simulado:** los expedientes se construyen con `efectos_desarrollo=False`.
 
 ## Login de dos pasos
@@ -100,9 +101,13 @@ con los datos de un expediente**. Eso se verifica en el PC. Los tests
 
 No se repuntan a las bases las plantillas que crean las migraciones (`RESOLUCION`,
 `NOTIF_ORGANISMO`…): representan las plantillas reales y quedarían haciéndose pasar
-por ellas. Cuando llegue la fase 4 de ADR-050 (plantillas y fragmentos al almacén),
-la semilla podrá registrar plantillas de demostración con su propio código, como
-prevé §M para `scripts/semilla_test.py`.
+por ellas. Con la fase 4 de ADR-050 (#1009) la semilla registra, con su propio código,
+**plantillas de demostración** (`scripts/plantillas_demo.py`): sintéticas, hechas desde
+las bases con unos marcadores (`numero_at`, `titular_nombre`, `fecha_hoy`) y la cita al
+fragmento `DEMO_Pie`, y con el tipo de documento y el contexto ESFTT de cada trámite.
+Con ellas se puede generar un escrito de punta a punta desde un expediente dummy, por la
+ruta real (`POST /api/escritos/generar`). Dos límites: la tarea tiene que estar en una
+fase **abierta** (en una cerrada el sellado de fase lo impide), y solo hay `.odt`.
 
 ## Lo que sigue necesitando el PC (#949 §D)
 

@@ -115,6 +115,22 @@ def _entidades(db):
     return creadas
 
 
+def _plantillas_de_demostracion(app):
+    """Las plantillas y el fragmento de demostración (`scripts/plantillas_demo.py`, #1009).
+
+    Las cinco plantillas que siembran las migraciones no tienen fichero y están desactivadas
+    (ADR-050 §J), así que sin esto ningún expediente de la semilla podría generar un escrito.
+    Estas son sintéticas, con código propio, y se registran por las mismas funciones de
+    contenido que usa la subida desde el navegador. Devuelve cuántas plantillas hay."""
+    from app import db
+    from scripts import plantillas_demo
+
+    with app.app_context():
+        registradas = plantillas_demo.registrar()
+        db.session.commit()
+    return len(registradas)
+
+
 def _modulos_expediente_tipo():
     """Los expedientes-tipo que alimentan la base de tests.
 
@@ -262,6 +278,12 @@ def sembrar(app):
     print(f'[semilla] entidades creadas: {n_entidades} (de {len(ENTIDADES)} previstas)')
     for r in rutas:
         print(f'[semilla] creado directorio {r}')
+
+    # Con el almacén ya inicializado: las plantillas de demostración suben su contenido a él.
+    from scripts import plantillas_demo
+    n_plantillas = _plantillas_de_demostracion(app)
+    print(f'[semilla] plantillas de demostración registradas: {n_plantillas} '
+          f'(de {len(plantillas_demo.PLANTILLAS)} previstas)')
 
     # Fuera del app_context de arriba: cada expediente-tipo abre el suyo propio,
     # y necesitan el árbol de ficheros ya creado para subir documentos al pool.

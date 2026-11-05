@@ -60,6 +60,9 @@ TABLAS_OPERACIONALES = {
     'contador_numero_at',
     # Contenidos del almacén (ADR-050, #1007): los escribe la subida, no el catálogo.
     'ficheros',
+    # Los fragmentos (#1009) los sube el supervisor desde el navegador: son contenido, no catálogo
+    # que traigan las migraciones. En la base de tests solo está el de demostración.
+    'fragmentos',
     # Control de Alembic.
     'alembic_version',
 }
@@ -71,7 +74,12 @@ COLUMNAS_IGNORADAS = {
     'plantillas': {'activo'},
 }
 
-# Filas presentes solo en desarrollo que no deben llegar a ninguna instalación.
+# Las plantillas de demostración (#1009) las registra la semilla en la base migrada y en la de
+# desarrollo de la nube; en el PC de desarrollo no existen ni deben llegar a ninguna instalación.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import plantillas_demo  # noqa: E402  (no importa `app`: solo sus códigos)
+
+# Filas presentes solo en una de las dos bases que no deben llegar a ninguna instalación.
 FILAS_IGNORADAS = {
     'plantillas': {
         'OTRO': 'alta de prueba en desarrollo',
@@ -79,6 +87,8 @@ FILAS_IGNORADAS = {
         'PRUEBA_CANONICIDAD_727': 'prueba del motor ODT (#727)',
         'RESOLUCION_ODT': 'prueba del motor ODT (#726)',
         'RESOLUCION_ODT_V2': 'prueba del motor ODT (#726)',
+        **{codigo: 'plantilla de demostración de la semilla (#1009)'
+           for codigo in plantillas_demo.codigos()},
     },
 }
 

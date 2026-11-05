@@ -16,8 +16,8 @@ reales ni los ajustes acumulados (REGLAS_DESARROLLO.md §Migraciones).
 
 Dos cosas de la semilla que conviene conocer (vienen de la de tests):
 - las plantillas sembradas por migración no tienen fichero y están
-  desactivadas (ADR-050 §J, #1009): generar escritos exige subir antes una
-  plantilla desde la gestión de plantillas;
+  desactivadas (ADR-050 §J, #1009); para generar escritos, la semilla registra
+  plantillas de demostración (`scripts/plantillas_demo.py`, códigos `DEMO_*`);
 - construye los expedientes-tipo sin reloj simulado (`efectos_desarrollo=False`).
 """
 import os
