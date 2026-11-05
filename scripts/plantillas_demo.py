@@ -28,13 +28,24 @@ semilla: leer su contenido desde un almacén que no lo tiene las marcaría como 
 
 Este módulo no importa `app` al cargarse (lo hacen las funciones), para que
 `scripts/comparar_catalogo.py` pueda leer `codigos()` sin una app.
+
+**Desde la línea de comandos** (la BD es la de `DATABASE_URL` del `.env`; el almacén, el de
+`ALMACEN_BASE`, que tiene que estar inicializado):
+
+    python scripts/plantillas_demo.py                        # registra las cinco y el fragmento
+    python scripts/plantillas_demo.py --claves RESOLUCION    # solo algunas
+    python scripts/plantillas_demo.py --prefijo PRUEBA_      # con otro prefijo (PRUEBA_RESOLUCION…)
+    python scripts/plantillas_demo.py --quitar               # las borra (con el mismo prefijo)
+
+Es idempotente: ejecutarlo dos veces no duplica nada. Desde Python, `registrar(prefijo, claves)`.
 """
 import io
 import zipfile
 from pathlib import Path
 
 PREFIJO = 'DEMO_'
-BASES = Path(__file__).resolve().parent.parent / 'app' / 'data' / 'plantillas_base'
+RAIZ = Path(__file__).resolve().parent.parent
+BASES = RAIZ / 'app' / 'data' / 'plantillas_base'
 
 # El texto de ejemplo de cada base, que se sustituye. Todas lo llevan en un párrafo `Normal`.
 _EJEMPLO = {
@@ -186,3 +197,63 @@ def registrar(prefijo: str = PREFIJO, claves=None) -> dict[str, int]:
         db.session.flush()
         registradas[clave] = plantilla.id
     return registradas
+
+
+def quitar(prefijo: str = PREFIJO) -> tuple[int, int]:
+    """Borra las plantillas y el fragmento de demostración de ese prefijo y devuelve cuántas
+    filas de cada tipo. No hace commit. El contenido ya subido al almacén lo recoge la limpieza
+    cuando nada lo referencie (ADR-050 §G): aquí solo se borran las filas."""
+    from app.models.fragmentos import Fragmento
+    from app.models.plantillas import Plantilla
+
+    plantillas = Plantilla.query.filter(Plantilla.codigo.in_(codigos(prefijo))).delete(
+        synchronize_session=False)
+    fragmentos = Fragmento.query.filter_by(nombre=nombre_fragmento(prefijo)).delete()
+    return plantillas, fragmentos
+
+
+def _principal(argv=None) -> int:
+    """Punto de entrada de la línea de comandos (ver la cabecera del módulo)."""
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(
+        description='Registra (o quita) las plantillas y el fragmento de demostración en la BD y '
+                    'el almacén del .env.')
+    parser.add_argument('--prefijo', default=PREFIJO,
+                        help=f'prefijo de los códigos y del fragmento (por defecto {PREFIJO})')
+    parser.add_argument('--claves', nargs='+', choices=sorted(PLANTILLAS), metavar='CLAVE',
+                        help='solo estas plantillas (por defecto, todas): '
+                             + ', '.join(sorted(PLANTILLAS)))
+    parser.add_argument('--quitar', action='store_true',
+                        help='borra las filas de ese prefijo en lugar de registrarlas')
+    args = parser.parse_args(argv)
+
+    sys.path.insert(0, str(RAIZ))
+    from dotenv import load_dotenv
+    load_dotenv(RAIZ / '.env')       # antes de importar `app`: la configuración lee el entorno al cargar
+
+    from app import create_app, db
+    app = create_app('development')
+    with app.app_context():
+        url = db.engine.url
+        print(f'Base de datos: {url.database} en {url.host}:{url.port}')
+        print(f'Almacén: {app.config.get("ALMACEN_BASE")}')
+        if args.quitar:
+            plantillas, fragmentos = quitar(args.prefijo)
+            db.session.commit()
+            print(f'Borradas: {plantillas} plantillas y {fragmentos} fragmento(s) '
+                  f'con el prefijo {args.prefijo}')
+            return 0
+        registradas = registrar(args.prefijo, args.claves)
+        db.session.commit()
+        print(f'Registradas {len(registradas)} plantillas y el fragmento '
+              f'{nombre_fragmento(args.prefijo)}:')
+        for clave, plantilla_id in registradas.items():
+            print(f'  {args.prefijo}{clave}  (id {plantilla_id})')
+    return 0
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(_principal())
