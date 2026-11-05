@@ -308,6 +308,9 @@ y ninguno decía cuál, así que el test no podía cumplir su papel de aviso.
    - `generar_odt_de_prueba()` — el motor `.odt` con una plantilla que es un fichero y sus
      fragmentos en un directorio (`<nombre>.odt`). Los tests del motor no pasan por el
      almacén: el motor recibe bytes (#1009).
+   - `fragmento_commiteado` — un fragmento `.odt` activo con su fichero en el almacén,
+     commiteado (las rutas no pasan por `app_ctx`, #836) y con su limpieza. Es lo que
+     necesita un test que pase por las rutas de la pestaña «Fragmentos».
 3. **Prefiere BD real a mocks.** Con `arbol_aislado` montar un árbol cuesta
    pocas líneas; un `MagicMock` que imita un modelo acepta cualquier atributo y se
    desalinea del modelo sin avisar.

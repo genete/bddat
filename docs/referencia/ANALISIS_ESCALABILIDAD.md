@@ -252,7 +252,9 @@ anterior de esta sección:
      `explorer.exe /select,"<ruta>"` localmente al recibir la URI. Ya
      funciona en producción para plantillas
      (`admin_plantillas/routes.py::_rutas_fichero` +
-     `_detalle_fragmento.html`). Aplicar el mismo patrón a
+     `_detalle_fragmento.html`). **Nota del 2026-11-05: `scripts/cliente/` y su uso en
+     plantillas se retiraron en #1009 (la plantilla ya no tiene ruta); este patrón habría
+     que reconstruirlo.** Aplicar el mismo patrón a
      `pool_documentos.html`: sustituir el botón que hoy dispara
      `pool_abrir_en_carpeta` por un enlace `bddat-explorador://` construido
      desde `doc.ruta_absoluta()`.

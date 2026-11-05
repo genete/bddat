@@ -9,7 +9,7 @@
 Builders), #181 (inspección automática), #552, #553
 **Documento de diseño:** `docs/referencia/DISEÑO_GENERACION_ESCRITOS.md`
 **Estudio abierto (2026-11-01):** [`ESTUDIO_EDICION_ESCRITOS_M365`](../diseño/ESTUDIO_EDICION_ESCRITOS_M365.md) — qué pasa con esta decisión (requisitos 1 y 2, el `.odt` como formato de plantillas y borradores) si los puestos de la Junta dejan de tener LibreOffice y pasan a Microsoft 365 en el navegador. No cambia lo decidido aquí; sin respuesta segura de la ADA todavía. Léase junto a este ADR.
-**Ampliada por:** [ADR-050](ADR-050-almacen-documental-privado-por-contenido.md) §J (2026-09-25, pendiente de implementar) — plantillas y fragmentos pasan al almacén de BDDAT, con **una sola plantilla vigente**: el supervisor la edita en su PC (el versionado es suyo, fuera de BDDAT) y la sube desde el navegador, que la valida y la sustituye de forma atómica (desaparecen `PLANTILLAS_BASE` y el explorador del servidor). Los fragmentos tienen tabla propia, y un fragmento ausente detiene la generación en vez de omitirse. El motor trabaja con bytes. (Enmienda del 2026-11-02: no se guarda en cada escrito qué plantilla ni qué fragmentos lo produjeron.) §6 «Lo que no cambia» deja de ser cierto en lo del pool y del protocolo `bddat-explorador://`. **§2: el motor `.docx` se mantiene** (enmienda del 2026-11-02, decisión de Carlos; sustituye a la del 2026-10-02, que lo retiraba en la fase 4 de ADR-050): los puestos de la Junta pueden pasar a Microsoft 365 y el plan ante desastre es migrar las plantillas a `.docx`. Pasa a trabajar con bytes y sus fragmentos `.docx` entran en la tabla `fragmentos` (única por nombre y formato); las imágenes de `recursos/` siguen sin sitio en el almacén. El formato ODT, el renderizador y la plantilla base canónica en el repositorio no cambian
+**Ampliada por:** [ADR-050](ADR-050-almacen-documental-privado-por-contenido.md) §J (2026-09-25; implementado en #1009, 2026-11-05) — plantillas y fragmentos pasan al almacén de BDDAT, con **una sola plantilla vigente**: el supervisor la edita en su PC (el versionado es suyo, fuera de BDDAT) y la sube desde el navegador, que la valida y la sustituye de forma atómica (desaparecen `PLANTILLAS_BASE` y el explorador del servidor). Los fragmentos tienen tabla propia, y un fragmento ausente detiene la generación en vez de omitirse. El motor trabaja con bytes. (Enmienda del 2026-11-02: no se guarda en cada escrito qué plantilla ni qué fragmentos lo produjeron.) §6 «Lo que no cambia» deja de ser cierto en lo del pool y del protocolo `bddat-explorador://`. **§2: el motor `.docx` se mantiene** (enmienda del 2026-11-02, decisión de Carlos; sustituye a la del 2026-10-02, que lo retiraba en la fase 4 de ADR-050): los puestos de la Junta pueden pasar a Microsoft 365 y el plan ante desastre es migrar las plantillas a `.docx`. Pasa a trabajar con bytes y sus fragmentos `.docx` entran en la tabla `fragmentos` (única por nombre y formato); las imágenes de `recursos/` siguen sin sitio en el almacén. El formato ODT, el renderizador y la plantilla base canónica en el repositorio no cambian
 
 ---
 
@@ -73,6 +73,8 @@ desarrollo son prescindibles: se rehacen en el formato nuevo.
 
 No se reescribe el existente. Se añade un motor hermano y la elección se hace **por la
 extensión de `plantilla.ruta_plantilla`** — sin columna nueva ni migración.
+*(Nota del 2026-11-05, #1009: `ruta_plantilla` ya no existe; el formato sale del contenido de la
+plantilla en el almacén y los motores reciben bytes, ADR-050 §J.)*
 
 Conservar el camino `.docx` cuesta dos motores que mantener y compra dos cosas: permite
 migrar plantilla a plantilla en vez de de golpe, y deja una vía de vuelta si el motor
@@ -168,7 +170,7 @@ alguien decidido: copiar dos líneas de `meta.xml` es trivial. No es un control 
 
 La capa de contexto es agnóstica del formato: `ContextoBaseExpediente`, los Context
 Builders (ADR-025) y las consultas nombradas producen un diccionario. No se tocan. Tampoco
-la lógica de pool, el protocolo `bddat-explorador://` ni el reparto de responsabilidades
+la lógica de pool, el protocolo `bddat-explorador://` (retirado después, en #1009) ni el reparto de responsabilidades
 del modal de generación.
 
 ---
