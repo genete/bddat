@@ -146,7 +146,7 @@ def documento_proyecto_del_alta(variante=None):
 
 
 def subir(client, expediente_id, codigo_tipo_doc, tipo_doc_id, fecha_admin, asunto,
-          variante=None, *, es_principal=False, abre_reformado=False, origen_reformado=None):
+          variante=None, *, abre_reformado=False, origen_reformado=None):
     """Sube un documento dummy por la ruta real de ingesta.
 
     El PDF no se lee de ningún sitio: lo construye `pdf_dummy` a partir del tipo
@@ -155,11 +155,11 @@ def subir(client, expediente_id, codigo_tipo_doc, tipo_doc_id, fecha_admin, asun
     `tipo_doc_id` no es el tipo `codigo_tipo_doc`: un id equivocado subiría un documento de
     un tipo con el nombre de otro, y la semilla seguiría pareciendo buena.
 
-    `es_principal`/`abre_reformado`/`origen_reformado` (ADR-044 §C/§D, #896/#903): mismas
-    claves que lee `declarar_desde_metadatos` del dict de metadatos de un `DOC_PROYECTO` —
-    la rama la decide el estado del ancla, no el caller, así que pasar `es_principal=True`
-    cuando el proyecto ya tiene ancla, o `abre_reformado=True` cuando todavía no la tiene,
-    simplemente no hace nada (ver `rama_de_la_ingesta`).
+    `abre_reformado`/`origen_reformado` (ADR-044 §C, #903): mismas claves que lee
+    `declarar_desde_metadatos` del dict de metadatos de un `DOC_PROYECTO`. La rama la decide
+    el estado del ancla, no el caller; desde #1040 el alta ya ancla el proyecto principal
+    (`documento_proyecto_del_alta`), así que todo `DOC_PROYECTO` que se sube con `subir` se
+    encuentra la pregunta del reformado.
     """
     from app.models.tipos_documentos import TipoDocumento
 
@@ -176,8 +176,6 @@ def subir(client, expediente_id, codigo_tipo_doc, tipo_doc_id, fecha_admin, asun
         'asunto': asunto,
         'prioridad': False,
     }
-    if es_principal:
-        metadato['es_principal'] = True
     if abre_reformado:
         metadato['abre_reformado'] = True
         metadato['origen_reformado'] = origen_reformado or 'VOLUNTARIO'
