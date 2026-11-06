@@ -10,7 +10,8 @@
 #   - todo es-an/ (Andalucía: BOE-A-* históricas y BOJA-b-*), y
 #   - de es/ solo los ficheros de las normas de docs/referencia/normas_catalog.csv
 #     (id_tecnico BOE-A-*), que es lo que consulta el skill /legalize.
-# Los patrones los calcula scripts/nube/legalize_patrones.py.
+# Los ficheros cuelgan de subcarpetas de 2 hex (es/fa/BOE-A-2000-24019.md), no de
+# es/<id>.md. Los patrones los calcula scripts/nube/legalize_patrones.py.
 #
 # NO sirve para legalize_xref.py ni legalize_compile.py: buscan en todo el
 # corpus y necesitan el clon COMPLETO (solo PC, D:\legalize-es).
@@ -43,8 +44,13 @@ else
     git -C "$DESTINO" reset --hard FETCH_HEAD
 fi
 
-"$PYTHON" "$REPO/scripts/nube/legalize_patrones.py" "$DESTINO" \
-    | git -C "$DESTINO" sparse-checkout set --no-cone --stdin
+# Los patrones pasan por fichero, no por tubería: si legalize_patrones.py falla
+# (p. ej. no reconoce el layout del clon), `set -e` corta aquí sin tocar el sparse
+# checkout, en vez de aplicarle una lista vacía.
+PATRONES="$(mktemp)"
+trap 'rm -f "$PATRONES"' EXIT
+"$PYTHON" "$REPO/scripts/nube/legalize_patrones.py" "$DESTINO" > "$PATRONES"
+git -C "$DESTINO" sparse-checkout set --no-cone --stdin < "$PATRONES"
 
 n_normas="$(find "$DESTINO/es" "$DESTINO/es-an" -name '*.md' 2>/dev/null | wc -l)"
 n_es="$(find "$DESTINO/es" -name '*.md' 2>/dev/null | wc -l)"
