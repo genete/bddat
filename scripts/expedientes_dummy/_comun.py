@@ -128,6 +128,23 @@ def pdf_de_tipo(codigo, variante=None):
     return pdf_dummy(tipo, variante)
 
 
+def documento_proyecto_del_alta(variante=None):
+    """El `DocumentoProyecto` que lleva el alta de expediente (#1040): el PDF dummy del
+    tipo `DOC_PROYECTO` con el nombre de fichero que le daría `subir`.
+
+    El alta lo sube junto al escrito de solicitud y lo ancla como proyecto principal; su
+    fecha administrativa es la `fecha_proyecto` del `DatosAlta`. Los reformados siguen
+    entrando por `subir(..., abre_reformado=True)`."""
+    from app.services.alta_expediente import DocumentoProyecto
+
+    tipo = tipo_documento('DOC_PROYECTO')
+    if tipo is None:
+        print("ABORTADO: el catálogo no tiene el tipo de documento DOC_PROYECTO.")
+        sys.exit(1)
+    return DocumentoProyecto(contenido=pdf_dummy(tipo, variante),
+                             nombre_original=nombre_fichero(tipo, variante))
+
+
 def subir(client, expediente_id, codigo_tipo_doc, tipo_doc_id, fecha_admin, asunto,
           variante=None, *, es_principal=False, abre_reformado=False, origen_reformado=None):
     """Sube un documento dummy por la ruta real de ingesta.
