@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCertificarFinInstruccion, deleteCertFinInstruccion, postCertificarCumplimiento, deleteCertCumplimiento, postCerrarFaseFinalizadora, postCertificarCierreSolicitud, deleteCertCierreSolicitud, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCrearOrganismo, postCertificarFinInstruccion, deleteCertFinInstruccion, postCertificarCumplimiento, deleteCertCumplimiento, postCerrarFaseFinalizadora, postCertificarCierreSolicitud, deleteCertCierreSolicitud, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
 import { showToast, showAvisos } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -88,6 +88,9 @@ export const useArbolStore = create((set, get) => ({
 
   // --- enviar consultas (ADR-042 §C, #396 bloque 5) ---
   enviandoConsultas: false,
+
+  // --- alta de organismo consultado (ADR-042 §C, #1078) ---
+  anadiendoOrganismo: false,
 
   // --- certificar el fin de instrucción (#827, ADR-043 §E) ---
   certificandoFinInstruccion: false,
@@ -412,6 +415,47 @@ export const useArbolStore = create((set, get) => ({
       } else {
         showToast(e.message || 'No se pudieron enviar las consultas', 'danger')
       }
+    }
+  },
+
+  // --- alta de organismo consultado (ADR-042 §C, #1078) ---
+
+  // Acción de la fase CONSULTAS en modo edición. Es un bloque que guarda por su cuenta: no pasa
+  // por el borrador del marco, así que refresca en silencio (sin vaciar el detalle ni desmontar el
+  // formulario, que sigue abierto para dar de alta el siguiente) y NO cambia de nodo: el organismo
+  // no tiene nada más que rellenar y lo siguiente, «Enviar consultas pendientes», está en esta fase.
+  //
+  // El formulario necesita el desenlace, no solo un toast: un bloqueo forzable del motor se queda
+  // en pantalla para ofrecer el escape con justificación (mismo criterio que `crearHijo`). Devuelve
+  // {ok:true, id} o {ok:false, error, url_norma?, puede_escapar?}.
+  altaOrganismo: async (body) => {
+    const { expedienteId, seleccion } = get()
+    if (!seleccion || seleccion.tipo !== 'fase' || !expedienteId) {
+      return { ok: false, error: 'No hay una fase seleccionada' }
+    }
+    set({ anadiendoOrganismo: true })
+    try {
+      const data = await postCrearOrganismo(expedienteId, seleccion.id, body)
+      set({ anadiendoOrganismo: false })
+      showToast(body.bypass ? 'Organismo añadido (forzado, registrado en bitácora)' : 'Organismo añadido', 'success')
+      if (data.advertencia) {
+        const a = data.advertencia
+        showToast(typeof a === 'string' ? a : (a.motivo || 'Revisa la advertencia'), 'warning')
+      }
+      await get().refrescarArbolSilencioso()
+      return { ok: true, id: (data.ids || [])[0] }
+    } catch (e) {
+      set({ anadiendoOrganismo: false })
+      if (e.status === 401 || e.status === 403) return { ok: false, abortado: true } // shared/api.js ya mostró su toast
+      if (e.status === 422 && e.payload) {
+        return {
+          ok: false,
+          error: e.payload.motivo || e.payload.error || 'Operación bloqueada',
+          url_norma: e.payload.url_norma || '',
+          puede_escapar: !!e.payload.puede_escapar,
+        }
+      }
+      return { ok: false, error: e.message || 'No se pudo añadir el organismo' }
     }
   },
 
