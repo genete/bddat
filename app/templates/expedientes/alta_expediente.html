@@ -29,7 +29,7 @@
                 <div>
                     <strong>Revise los datos marcados.</strong>
                     Se ha conservado todo lo escrito, pero
-                    <strong>debe volver a seleccionar el escrito de solicitud</strong>:
+                    <strong>debe volver a seleccionar el escrito de solicitud y el proyecto técnico</strong>:
                     por seguridad, el navegador no permite conservar un fichero elegido.
                 </div>
             </div>
@@ -145,19 +145,52 @@
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold">
-                                    Fecha del proyecto <span class="text-danger">*</span>
-                                </label>
-                                {# EntradaFecha construye su propio HTML; el form va novalidate. #}
-                                <div id="ef-fecha"></div>
-                                <div id="ef-fecha-error" class="text-danger small mt-1" style="display:none">
-                                    Campo obligatorio.
-                                </div>
-                                <div class="form-text">Fecha de firma/visado.</div>
+                        {# --- El proyecto principal (#1040, ADR-044 §D) --- #}
+                        <div class="border rounded p-3 mb-3 bg-light">
+                            <p class="fw-semibold mb-1">
+                                <i class="fas fa-paperclip me-1 text-secondary"></i>
+                                Documento del proyecto
+                                <span id="proyecto-obligatorio" class="text-danger">*</span>
+                            </p>
+                            <div class="alert alert-info small py-2 mb-3">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Este documento queda anclado como el <strong>proyecto principal</strong>
+                                del expediente, no como un modificado o un reformado. Los modificados y
+                                reformados se aportan después desde Documentos.
+                                Sin proyecto principal no se puede tramitar más allá del análisis de la
+                                solicitud.
+                                <span id="proyecto-heredado-nota" style="display:none;">
+                                    En un expediente heredado puede dejarse en blanco.
+                                </span>
                             </div>
-                            <div class="col-md-8 mb-3">
+
+                            <div class="row">
+                                <div class="col-md-7 mb-3 mb-md-0">
+                                    <label for="documento_proyecto" class="form-label small fw-semibold">
+                                        Fichero <span id="proyecto-fichero-obligatorio" class="text-danger">*</span>
+                                    </label>
+                                    <input type="file" id="documento_proyecto" name="documento_proyecto"
+                                           class="form-control">
+                                    <div id="fichero-proyecto-error" class="text-danger small mt-1" style="display:none;">
+                                        <i class="fas fa-exclamation-circle me-1"></i>Debe adjuntar el proyecto técnico.
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-semibold">
+                                        Fecha del proyecto <span class="text-danger">*</span>
+                                    </label>
+                                    {# EntradaFecha construye su propio HTML; el form va novalidate. #}
+                                    <div id="ef-fecha"></div>
+                                    <div id="ef-fecha-error" class="text-danger small mt-1" style="display:none">
+                                        Campo obligatorio.
+                                    </div>
+                                    <div class="form-text">Fecha de firma/visado.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
                                 <label for="ia_id" class="form-label fw-semibold">Instrumento ambiental</label>
                                 <select id="ia_id" name="ia_id" class="form-select">
                                     <option value="" {% if not form.get('ia_id') %}selected{% endif %}>
@@ -588,8 +621,30 @@
 
     fichero.addEventListener('change', function () { quitar_comprimidos(fichero); });
 
+    // El proyecto técnico es obligatorio salvo en un expediente heredado (#1040).
+    const ficheroProyecto      = document.getElementById('documento_proyecto');
+    const ficheroProyectoError = document.getElementById('fichero-proyecto-error');
+    const chkHeredado          = document.getElementById('heredado');
+
+    ficheroProyecto.addEventListener('change', function () { quitar_comprimidos(ficheroProyecto); });
+
+    function pintarObligatoriedadProyecto() {
+        const obligatorio = !chkHeredado.checked;
+        ['proyecto-obligatorio', 'proyecto-fichero-obligatorio'].forEach(function (id) {
+            document.getElementById(id).style.display = obligatorio ? '' : 'none';
+        });
+        document.getElementById('proyecto-heredado-nota').style.display = obligatorio ? 'none' : '';
+        if (!obligatorio) ficheroProyectoError.style.display = 'none';
+    }
+    chkHeredado.addEventListener('change', pintarObligatoriedadProyecto);
+    pintarObligatoriedadProyecto();   // también tras un rebote con «heredado» marcado
+
     document.getElementById('form-alta').addEventListener('submit', function (e) {
         let ok = true;
+
+        if (!chkHeredado.checked) {
+            ok = marcar(ficheroProyecto.files && ficheroProyecto.files.length, ficheroProyectoError) && ok;
+        }
 
         ok = marcar(efFecha.getValue(), efFechaError) && ok;
         ok = marcar(efRegistro.getValue(), efRegistroError) && ok;
