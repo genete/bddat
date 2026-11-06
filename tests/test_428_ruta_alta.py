@@ -170,6 +170,31 @@ class TestRechazos:
         assert r.status_code == 422
         assert 'adjuntar el escrito de solicitud'.encode() in r.data
 
+    def test_sin_proyecto_no_crea_el_expediente(self, usuario_supervisor, app, almacen_tmp):
+        """El formulario exige el proyecto técnico en un expediente no heredado (#1040).
+
+        Fallo silencioso que evita: si la ruta dejara pasar un alta sin el fichero del
+        proyecto, o la repintara sin avisar, se crearía un expediente sin ancla que
+        nadie sabría que lo está hasta el bloqueo del motor en plena instrucción.
+        """
+        from app import db
+
+        cat = _catalogo(app)
+        with app.app_context():
+            antes = db.session.execute(
+                db.text('SELECT valor FROM public.contador_numero_at')).scalar()
+
+        r = usuario_supervisor.post(
+            RUTA, data=_formulario(app, cat, con_proyecto=False),
+            content_type='multipart/form-data')
+
+        assert r.status_code == 422
+        assert 'Debe adjuntar el proyecto técnico'.encode() in r.data
+        with app.app_context():
+            despues = db.session.execute(
+                db.text('SELECT valor FROM public.contador_numero_at')).scalar()
+        assert despues == antes
+
     def test_sin_fecha_de_registro_tampoco(self, usuario_supervisor, app, almacen_tmp):
         cat = _catalogo(app)
         r = usuario_supervisor.post(
@@ -326,6 +351,15 @@ def test_alta_completa_crea_el_expediente_anclado(usuario_supervisor, app, almac
             # #930, el de cada acto de la solicitud).
             plazos = plazos_de_la_solicitud(solicitud)
             assert plazos and all(p.estado != 'SIN_PLAZO' for p in plazos)
+
+            # …y el proyecto subido con el alta, anclado como principal (#1040), con
+            # la fecha del proyecto como fecha administrativa del documento.
+            principal = exp.proyecto.documento_principal
+            assert principal is not None
+            assert principal.id != solicitud.documento_solicitud_id
+            assert principal.tipo_doc.codigo == 'DOC_PROYECTO'
+            assert principal.fecha_administrativa == _hoy(app)
+            assert leer(principal).datos == CONTENIDO_PROYECTO
     finally:
         _borrar_expediente(app, siguiente)
 
