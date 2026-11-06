@@ -392,6 +392,7 @@ en cada nodo está en la tabla del anexo a ADR-053 §C. El código, en `expedien
 | `components/Inspector.jsx` | `ZonaDatos` (el diseño, las tarjetas propias del nodo y la lista «Documentos») e `InspectorEdicion` (datos → Despensa → acciones propias → «Borrar» → pie «Copiar referencia»). Ninguno de los dos pregunta por el tipo de nodo: leen su entrada del registro. La lista de documentos es la fila común (ver «Los documentos en el inspector», abajo) |
 | `registroEditores.jsx` | **Qué lleva cada nodo**: una entrada por tipo de nodo y por superficie de tarea (ver «El registro de editores del árbol», abajo) |
 | `components/AccionesNodo.jsx` | Las acciones propias de la solicitud (fin de instrucción, cierre, informe) y de la fase (consultas, cumplimiento, cierre, reapertura y su confirmación) |
+| `components/AltaOrganismo.jsx` | «Añadir organismo» (#1078, ADR-042 §C): la acción de la fase CONSULTAS abierta que da de alta un organismo consultado. Es un bloque que guarda por su cuenta: busca la entidad con `GET /api/entidades?q=&rol=consultado`, pide la vía y, si es declaración responsable, el documento del pool; los errores del servidor (organismo repetido, bloqueo del motor con su norma) se quedan en el formulario y un bloqueo forzable ofrece la justificación. Tras el alta refresca en silencio y no cambia de nodo |
 | `superficiesTarea.js` | Qué superficie lleva una tarea: tabla `SUPERFICIES_TAREA` con `defecto`, `variante(nodo)` y `porTramite` |
 
 **Para migrar o crear un nodo:** añadir su diseño en `disenosDatos.js` y su entrada en

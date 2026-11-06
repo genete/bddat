@@ -488,7 +488,7 @@ def calcular_fecha_fin(
     Calcula la fecha límite (último día hábil inclusive) dado el acto y el plazo.
 
     Art. 30 LPACAP:
-    - El cómputo empieza el día siguiente al acto (art. 30.1).
+    - El cómputo empieza el día siguiente al acto (art. 30.3; el 30.1 es el de las horas).
     - DIAS_HABILES: suma plazo_valor días saltando fines de semana e inhábiles.
       El último día es siempre hábil por construcción (art. 30.2).
     - DIAS_NATURALES: suma plazo_valor días naturales; si cae en inhábil,

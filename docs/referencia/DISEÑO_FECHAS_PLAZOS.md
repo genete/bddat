@@ -873,7 +873,7 @@ Puntos abiertos:
    - `PROXIMO_VENCER` → `dias_habiles(hoy, fecha_limite) ≤ umbral_alerta`
    - `EN_PLAZO` → resto
 
-3. **El conteo empieza el día siguiente al acto** (art. 30.1 LPACAP). La función recibe `fecha_acto` y arranca desde `fecha_acto + 1 día`.
+3. **El conteo empieza el día siguiente al acto** (art. 30.3 LPACAP; el 30.1 es el de los plazos por horas). La función recibe `fecha_acto` y arranca desde `fecha_acto + 1 día`.
 
 4. **Días inhábiles y días en suspensión se tratan igual:** el reloj no avanza. Solo cuentan días que sean hábiles *y* estén fuera de cualquier período de suspensión activo.
 

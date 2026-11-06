@@ -67,6 +67,24 @@ export function postEnviarConsultas(expedienteId, faseId) {
   return api.post(`/api/expedientes/${expedienteId}/nodo/fase/${faseId}/organismos/enviar-consultas`, {})
 }
 
+// Alta de un organismo consultado en una fase CONSULTAS (POST, ADR-042 §C, #396, #1078).
+// body: {organismo_id, via: 'consulta'|'declaracion_responsable', documento_id?} y, para forzar
+// un bloqueo forzable del motor, {bypass:true, justificacion}. `documento_id` es obligatorio con
+// 'declaracion_responsable' y no admitido con 'consulta'. No lleva plazo: lo calcula el servidor
+// al enviar la separata. Respuesta éxito: {ok:true, ids:[id del organismo], advertencia?} 201.
+// 422: {error} (organismo ya registrado en la ronda, entidad sin rol de consultado, documento
+// ajeno) o, si es un bloqueo del motor, {error, motivo, url_norma, puede_escapar}.
+export function postCrearOrganismo(expedienteId, faseId, body) {
+  return api.post(`/api/expedientes/${expedienteId}/nodo/fase/${faseId}/organismos`, body)
+}
+
+// Autocompletado de entidades con rol de consultado (GET, modo `q` de /api/entidades): activas,
+// máximo 10, mínimo 2 caracteres. Respuesta: {results:[{id, text}]} con text = «Nombre (NIF)».
+// `opts` admite { signal } para cancelar la búsqueda anterior al seguir tecleando.
+export function buscarEntidadesConsultadas(q, opts) {
+  return api.get(`/api/entidades?q=${encodeURIComponent(q)}&rol=consultado`, opts)
+}
+
 // Revisa la instrucción de la solicitud y, si no queda nada pendiente, consolida el
 // CERT_FIN_INSTRUCCION (POST, #827, ADR-043 §E). Sin body: no hay nada que elegir.
 // Repetible desde el primer día de la solicitud — preguntar «¿cómo va esto?» no

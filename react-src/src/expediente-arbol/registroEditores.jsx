@@ -35,6 +35,7 @@ import TarjetaDestinatarioTramite from './components/notificar/DestinatarioTrami
 import { AnalisisExtendido, AccionProducirDiagnostico } from './components/AnalizarEditor.jsx'
 import { TarjetaResultadoDiagnostico } from './components/AnalizarSimple.jsx'
 import { useDiagnosticoPendiente } from './analizarEstado.js'
+import { AccionAltaOrganismo } from './components/AltaOrganismo.jsx'
 import {
   CertFinInstruccion, CierreSolicitud, ModalInformeFinInstruccion,
   AccionesFaseConsultas, organismosPendientesSeparata, CertCumplimientoFase, CierreFase, ReabrirFase,
@@ -80,11 +81,17 @@ const esFaseConsultas = (c) => !!c.nodo && c.nodo.tipo_codigo === 'CONSULTAS'
 // trae su certificado (`cert_cumplimiento`/`cert_cierre`) solo en ellas.
 const conCertificados = (c) => c.hayDetalle && !!(c.detalle.cert_cumplimiento || c.detalle.cert_cierre)
 
-// Fase: las consultas pendientes, el cumplimiento del plazo, el cierre y la reapertura, en este orden, y el modal
-// de confirmación del cierre. «Enviar consultas» solo se enseña con organismos pendientes.
+// Fase: el alta de un organismo (#1078), las consultas pendientes, el cumplimiento del plazo, el cierre y la
+// reapertura, en este orden, y el modal de confirmación del cierre. «Añadir organismo» solo existe en la fase
+// CONSULTAS abierta (una cerrada solo se reabre); «Enviar consultas» solo se enseña con organismos pendientes.
 const FASE = entrada({
   borrable: (c) => !faseCerrada(c),
   acciones: [
+    {
+      clave: 'alta-organismo',
+      hay: (c) => esFaseConsultas(c) && !faseCerrada(c),
+      render: (c) => (esFaseConsultas(c) && !faseCerrada(c) ? <AccionAltaOrganismo /> : null),
+    },
     {
       clave: 'consultas',
       hay: (c) => esFaseConsultas(c) && organismosPendientesSeparata(c.nodo).length > 0,

@@ -96,8 +96,9 @@ Ninguna mutación ocurre desde el listado — solo navegación. La regla general
 `OrganismoExpediente` no es un nodo ESFTT creable por despensa —no cuelga del árbol de
 dominio—, así que su alta no encaja como "crear hijo" de ningún nodo. Vive como acción dentro
 del bloque `Organismos` del inspector de fase CONSULTAS (formulario corto: entidad
-`rol_consultado=True`, vía, plazo, documento si `declaracion_responsable`), sin abrir pantalla
-aparte y sin modificar el contrato de edición de ADR-023.
+`rol_consultado=True`, vía, documento si `declaracion_responsable`), sin abrir pantalla
+aparte y sin modificar el contrato de edición de ADR-023. El formulario no lleva plazo: lo
+calcula el servidor al recibir el acuse de notificación (Carlos, 2026-11-06; #1078).
 
 "Enviar consultas" (`enviar_consultas()`, #462, ya construido) es una **acción rápida de
 fase** — la columna que ADR-016 §5 ya reserva por nivel. Vive como botón en ese mismo bloque.
