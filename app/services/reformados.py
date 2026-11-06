@@ -329,28 +329,6 @@ def anclar_principal(documento, *, usuario_id: int):
     return proyecto
 
 
-def desanclar_principal(proyecto, *, usuario_id: int) -> None:
-    """Retira el ancla del proyecto principal (sin commit).
-
-    No hay condición de «solo el último», como en los reformados: aquí no se corta
-    una línea temporal, se deja de decir cuál es el proyecto. Lo que impide que el
-    expediente siga así es la regla de motor de §D, no esta función.
-    """
-    anterior = proyecto.documento_principal_id
-    if anterior is None:
-        raise ValueError('Este proyecto no tiene documento principal anclado.')
-
-    proyecto.documento_principal = None   # por la relación, para que el backref caiga
-    db.session.flush()
-
-    bitacora_svc.registrar(
-        usuario_id, 'BORRAR', 'proyectos', proyecto.id,
-        columna='documento_principal_id',
-        detalle={'de': anterior, 'a': None},
-    )
-    log.info('Proyecto principal desanclado: proyecto=%s (era doc=%s)', proyecto.id, anterior)
-
-
 MENSAJE_PRINCIPAL_FIJO = (
     'Este documento es el proyecto principal del expediente: no se puede reclasificar '
     'ni dejar de ser el proyecto. Si el fichero no es el correcto, sustitúyalo '

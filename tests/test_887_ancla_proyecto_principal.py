@@ -1,7 +1,8 @@
 """Tests #887 — el ancla del proyecto principal y su regla de motor (ADR-044 §D).
 
 Cinco bloques:
-  A) El ancla: anclar, mover el ancla y desanclar, cada acto con su bitácora.
+  A) El ancla: anclar y mover el ancla, cada acto con su bitácora; y que el principal
+     no se suelta (#1040).
   B) La bifurcación de la ingesta (§C): la rama la decide el estado del ancla, no el
      cliente, así que en un lote el primer DOC_PROYECTO puede anclar y el siguiente
      ya se encuentra la otra pregunta.
@@ -94,19 +95,6 @@ def test_solo_un_doc_proyecto_puede_ser_el_principal(app_ctx, arbol_esftt, usuar
 
     with pytest.raises(ValueError, match='clasificado como proyecto'):
         anclar_principal(otro, usuario_id=usuario_id)
-
-
-def test_desanclar_deja_el_proyecto_sin_documento(app_ctx, arbol_esftt, usuario_id):
-    from app.services.reformados import anclar_principal, desanclar_principal
-
-    sol = arbol_esftt.solicitud_nueva()
-    doc = _proyecto_doc(arbol_esftt, sol.expediente_id, 'desancla')
-    proyecto = anclar_principal(doc, usuario_id=usuario_id)
-
-    desanclar_principal(proyecto, usuario_id=usuario_id)
-
-    assert proyecto.documento_principal_id is None
-    assert _anotaciones(proyecto.id)[-1].operacion == 'BORRAR'
 
 
 def test_dejar_de_ser_proyecto_suelta_el_ancla(app_ctx, arbol_esftt, usuario_id):
