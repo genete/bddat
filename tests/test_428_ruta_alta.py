@@ -19,6 +19,7 @@ import pytest
 
 RUTA = '/expedientes/nuevo/'
 CONTENIDO = b'%PDF-1.4 escrito de solicitud de prueba de ruta'
+CONTENIDO_PROYECTO = b'%PDF-1.4 proyecto tecnico de prueba de ruta'
 
 
 def _catalogo(app):
@@ -62,8 +63,11 @@ def _hoy(app):
         return hoy()
 
 
-def _formulario(app, cat, *, con_fichero=True, **cambios):
-    """Cuerpo multipart de un alta válida, con lo que se quiera romper encima."""
+def _formulario(app, cat, *, con_fichero=True, con_proyecto=True, **cambios):
+    """Cuerpo multipart de un alta válida, con lo que se quiera romper encima.
+
+    Lleva los dos ficheros del alta —el escrito de solicitud y, desde #1040, el
+    proyecto técnico que queda anclado—; `con_fichero` y `con_proyecto` quitan cada uno."""
     hoy = _hoy(app)
     datos = {
         'tipo_expediente_id': str(cat['tipo_expediente_id']),
@@ -82,6 +86,8 @@ def _formulario(app, cat, *, con_fichero=True, **cambios):
     }
     if con_fichero:
         datos['documento_solicitud'] = (io.BytesIO(CONTENIDO), 'solicitud_ruta.pdf')
+    if con_proyecto:
+        datos['documento_proyecto'] = (io.BytesIO(CONTENIDO_PROYECTO), 'proyecto_ruta.pdf')
     datos.update(cambios)
     return datos
 
@@ -92,6 +98,8 @@ def _borrar_expediente(app, numero_at):
     Mismo orden que `limpiar_reciclables.py`, y por la misma razón: el escrito de
     solicitud lo referencian dos tablas —la solicitud que ancla y el interesado
     TITULAR al que acredita— y solo la segunda se puede neutralizar con un UPDATE.
+    El proyecto técnico lo referencia el ancla del proyecto (#1040): se suelta antes
+    de borrar los documentos.
     """
     with app.app_context():
         from app import db
@@ -106,6 +114,9 @@ def _borrar_expediente(app, numero_at):
         db.session.execute(db.text(
             'UPDATE public.interesados_expediente SET documento_acreditativo_id = NULL '
             'WHERE expediente_id = :eid'), p)
+        db.session.execute(db.text(
+            'UPDATE public.proyectos SET documento_principal_id = NULL '
+            'WHERE id = :pid'), {'pid': proyecto_id})
         for sql in (
             'DELETE FROM public.historico_titulares_expediente WHERE expediente_id = :eid',
             'DELETE FROM public.interesados_expediente WHERE expediente_id = :eid',
