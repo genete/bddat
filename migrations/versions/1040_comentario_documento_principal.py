@@ -33,10 +33,11 @@ COMENTARIO_NUEVO = (
     'DOC_PROYECTO posterior abre reformado y el motor bloquea seguir la solicitud'
 )
 
+# El que dejó la migración 887 en la BD. El del modelo era más largo («…en el alta el único
+# documento que entra es el escrito de solicitud…») y la BD nunca llegó a tenerlo.
 COMENTARIO_ANTERIOR = (
-    'FK a DOCUMENTOS. El DOC_PROYECTO que materializa el proyecto (ADR-044 §D). NULL hasta que '
-    'llega al pool: en el alta el único documento que entra es el escrito de solicitud. Sin él, '
-    'el sistema no sabe si un DOC_PROYECTO posterior abre reformado'
+    'FK a DOCUMENTOS. El DOC_PROYECTO que materializa el proyecto (ADR-044 §D). '
+    'NULL hasta que llega al pool'
 )
 
 
