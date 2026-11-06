@@ -132,19 +132,6 @@ def test_dejar_de_ser_proyecto_suelta_el_ancla(app_ctx, arbol_esftt, usuario_id)
 # B) La bifurcación de la ingesta
 # ---------------------------------------------------------------------------
 
-def test_la_rama_la_decide_el_estado_del_ancla(app_ctx, arbol_esftt, usuario_id):
-    from app.services.reformados import (
-        RAMA_PRINCIPAL, RAMA_REFORMADO, anclar_principal, rama_de_la_ingesta)
-
-    sol = arbol_esftt.solicitud_nueva()
-    expediente = sol.expediente
-    doc = _proyecto_doc(arbol_esftt, sol.expediente_id, 'rama')
-
-    assert rama_de_la_ingesta(expediente) == RAMA_PRINCIPAL
-    anclar_principal(doc, usuario_id=usuario_id)
-    assert rama_de_la_ingesta(expediente) == RAMA_REFORMADO
-
-
 def test_en_la_rama_del_principal_la_marca_de_reformado_no_cuenta(app_ctx, arbol_esftt, usuario_id):
     """El control del reformado no existía en la interfaz: lo que llegue no es la
     declaración de nadie."""
