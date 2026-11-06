@@ -17,8 +17,11 @@ from datetime import timedelta
 import pytest
 
 from app import db
-from app.services.alta_expediente import DocumentoSolicitud, MENSAJE_SIN_ANCLA
+from app.services.alta_expediente import (
+    DocumentoSolicitud, MENSAJE_SIN_ANCLA, MENSAJE_SIN_PROYECTO,
+)
 from tests.conftest import (
+    CONTENIDO_PROYECTO_PRUEBA as CONTENIDO_PROYECTO,
     CONTENIDO_SOLICITUD_PRUEBA as CONTENIDO, crear_expediente_de_prueba,
 )
 
@@ -79,6 +82,26 @@ class TestAltaCompleta:
             assert estado.fecha_disparo == alta.documento.fecha_administrativa
             assert estado.fecha_limite is not None
 
+    def test_el_proyecto_queda_anclado_como_principal(self, alta):
+        """El proyecto que sube el alta es el principal del expediente (#1040, ADR-044 §D).
+
+        Fallo silencioso que evita: un alta que sube el proyecto pero no lo ancla deja
+        el expediente sin proyecto principal, y nadie lo ve hasta que el motor bloquea
+        la fase siguiente al análisis; y un documento sin la fecha del proyecto
+        desordenaría después las versiones contra los reformados.
+        """
+        from app.services.almacenamiento.contenido import leer
+
+        proyecto = alta.expediente.proyecto
+        principal = proyecto.documento_principal
+
+        assert principal is not None
+        assert principal.id == alta.documento_proyecto.id
+        assert principal.id != alta.documento.id
+        assert principal.tipo_doc.codigo == 'DOC_PROYECTO'
+        assert principal.fecha_administrativa == proyecto.fecha
+        assert leer(principal).datos == CONTENIDO_PROYECTO
+
 
 # ---------------------------------------------------------------------------
 # El invariante: sin documento no hay expediente
@@ -100,6 +123,24 @@ class TestSinAncla:
         with pytest.raises(ValueError) as exc:
             crear_expediente_de_prueba(documento=vacio)
         assert str(exc.value) == MENSAJE_SIN_ANCLA
+
+    def test_sin_proyecto_no_hay_alta(self, app_ctx, almacen_tmp):
+        """Un expediente no heredado no nace sin proyecto técnico (#1040).
+
+        Fallo silencioso que evita: si el servicio aceptara un alta sin proyecto,
+        nacería un expediente sin ancla que parece sano y no se puede tramitar más allá
+        del análisis; nadie lo vería hasta el bloqueo del motor, ya en plena instrucción.
+        """
+        antes = db.session.execute(
+            db.text('SELECT valor FROM public.contador_numero_at')).scalar()
+
+        with pytest.raises(ValueError) as exc:
+            crear_expediente_de_prueba(documento_proyecto=None)
+
+        assert str(exc.value) == MENSAJE_SIN_PROYECTO
+        despues = db.session.execute(
+            db.text('SELECT valor FROM public.contador_numero_at')).scalar()
+        assert despues == antes
 
     def test_el_rechazo_no_consume_numero_de_expediente(self, app_ctx, almacen_tmp):
         """El contador es gapless: un alta rechazada no puede gastar un AT."""
