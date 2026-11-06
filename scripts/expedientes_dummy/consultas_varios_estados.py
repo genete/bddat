@@ -183,6 +183,8 @@ def _cargar_catalogo():
         'tarea_notificar': _tarea('NOTIFICAR'),
         'tarea_esperar_plazo': _tarea('ESPERAR_PLAZO'),
 
+        # Ya no se sube con `subir`: lo resuelve `alta_expediente` por código (#1040).
+        # Se conserva para que, si falta del catálogo, el script aborte aquí.
         'doc_proyecto': _doc('DOC_PROYECTO'),
         'doc_justificante_pago_tasa': _doc('JUSTIFICANTE_PAGO_TASA'),
         'doc_dr_no_dup': _doc('DR_NO_DUP'),
@@ -274,7 +276,9 @@ def _crear_expediente(cat, fecha_base):
 
     Devuelve el `ResultadoAlta`, que trae ya el escrito de solicitud creado: es
     el documento que ancla la solicitud y el que después cubre su requisito en el
-    checklist documental.
+    checklist documental. Lo mismo el proyecto técnico (#1040): entra con el alta y
+    queda anclado como proyecto principal, sin lo cual `crear_fase(CONSULTAS)` se
+    bloquea por la regla de #887 (`proyecto_sin_principal`).
     """
     from app.services.alta_expediente import (
         DatosAlta, DocumentoSolicitud, alta_expediente,
@@ -317,6 +321,7 @@ def _crear_expediente(cat, fecha_base):
             nombre_original='modelo_solicitud.pdf',
             fecha_registro=fecha_base,
         ),
+        documento_proyecto=_comun.documento_proyecto_del_alta(),
     ))
 
     print(f"Expediente AT-{resultado.numero_at} creado "
@@ -393,14 +398,11 @@ def main(app=None, *, efectos_desarrollo=True):
         expediente, solicitud = alta.expediente, alta.solicitud
         exp_id = expediente.id
 
-        # Pool documental de la presentación. El escrito de solicitud ya entró con
-        # el alta (#428); el resto lo aporta el titular con ella.
-        docs = {'MODELO_SOLICITUD': alta.documento.id}
-        # es_principal=True: sin anclar el proyecto, crear_fase(CONSULTAS) se bloquea
-        # por la regla de R2 (#887, proyecto_sin_principal) — #896.
-        docs['DOC_PROYECTO'] = _comun.subir(
-            client, exp_id, 'DOC_PROYECTO', cat['doc_proyecto'].id, fecha_base,
-            'Proyecto técnico de la línea aérea 66 kV', es_principal=True)
+        # Pool documental de la presentación. El escrito de solicitud y el proyecto
+        # técnico ya entraron con el alta (#428, #1040) y el proyecto quedó anclado
+        # como principal; el resto lo aporta el titular con la solicitud.
+        docs = {'MODELO_SOLICITUD': alta.documento.id,
+                'DOC_PROYECTO': alta.documento_proyecto.id}
         docs['JUSTIFICANTE_PAGO_TASA'] = _comun.subir(
             client, exp_id, 'JUSTIFICANTE_PAGO_TASA',
             cat['doc_justificante_pago_tasa'].id, fecha_base,
