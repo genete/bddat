@@ -63,6 +63,7 @@ from app.services.reformados import (
     anclar_principal,
     declarar_desde_metadatos,
     es_doc_proyecto,
+    exigir_principal_intacto,
     motivo_fases_enganchadas,
     rama_de_la_ingesta,
     revertir_reformado,
@@ -564,8 +565,8 @@ def _motivo_ancla(doc):
     if doc.anclado_como_proyecto_principal:
         return (
             'Este documento es el proyecto de la instalación: de él cuelga saber '
-            'sobre qué versión se instruye. Para retirarlo, desmarque «Es el proyecto '
-            'principal» al editar sus metadatos, o ancle otro documento en su lugar.'
+            'sobre qué versión se instruye, y no se puede eliminar ni reclasificar. '
+            'Si el fichero no es el correcto, sustitúyalo indicando el motivo.'
         )
     for atributo, plantilla in _MOTIVO_ANCLA.items():
         solicitudes = getattr(doc, atributo, None) or []
@@ -1161,6 +1162,14 @@ def _aplicar_edicion_documento(doc, datos):
         # por las mismas reglas que el desmarcado.
         db.session.flush()
         db.session.expire(doc, ['tipo_doc'])   # el tipo puede acabar de cambiar
+
+        # El proyecto principal no se reclasifica ni se suelta (#1040): sale del alta y solo
+        # se sustituye su contenido. Va antes de cualquier otra rama a propósito: un cuerpo con
+        # `tipo_doc_id` y `abre_reformado` pero sin `es_principal` no se salta la guarda, y el
+        # ValueError deshace también el cambio de tipo ya asignado arriba.
+        exigir_principal_intacto(
+            doc, es_principal=bool(datos['es_principal']) if 'es_principal' in datos else True)
+
         if 'es_principal' in datos:
             sincronizar_principal(
                 doc,
@@ -1175,12 +1184,11 @@ def _aplicar_edicion_documento(doc, datos):
                 usuario_id=current_user.id,
             )
         elif 'tipo_doc_id' in datos and not es_doc_proyecto(doc):
-            # Dejar de ser proyecto suelta lo que el documento sostenía, con las
-            # mismas reglas que desmarcarlo a mano.
+            # Dejar de ser proyecto suelta el corte que el documento sostenía, con las
+            # mismas reglas que desmarcarlo a mano. El ancla no: si fuera el principal,
+            # `exigir_principal_intacto` ya habría rechazado el cambio de tipo.
             if doc.reformado_proyecto is not None:
                 revertir_reformado(doc, usuario_id=current_user.id)
-            if doc.anclado_como_proyecto_principal:
-                sincronizar_principal(doc, es_principal=False, usuario_id=current_user.id)
 
         db.session.commit()
     except ValueError as e:
