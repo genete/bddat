@@ -33,7 +33,7 @@
    - **#1039**: la cola de Mi trabajo al listado estándar. **#1041**: los cinco listados fuera del estándar. **Zona E de #929** (sin issue): visibilidad de las notificaciones; se abre después de la Cola.
    - **#1045** (estudio del contrato), **#1046** (huérfano), **#1048** (el alta), **#1080** (alinear los selectores con el contrato de #1038; recoge #1065).
 
-**Sin bloque todavía:** #1079 (revocar una autorización no mira las solicitudes que tienen a esa entidad de representante) y #1089 (retirar el gesto de mover el ancla del proyecto principal, `anclar-principal`; sale de #1040, fuera del foco ahora). **Diferidos a propósito** *(no cortan la ruta con AAP+AAC+DUP; interpretación)*: #997, #998 y #1057.
+**Sin bloque todavía:** #1079 (revocar una autorización no mira las solicitudes que tienen a esa entidad de representante), #1089 (retirar el gesto de mover el ancla del proyecto principal, `anclar-principal`; sale de #1040, fuera del foco ahora) y #1092 (plazo de cada consulta: una sola fuente para los días y vencimiento visible en el organismo y el trámite; sale de #1078). **Diferidos a propósito** *(no cortan la ruta con AAP+AAC+DUP; interpretación)*: #997, #998 y #1057.
 
 **Pendientes para el PC:** aplicar la migración `1040_comentario_documento_principal` (`flask db upgrade`; solo cambia el comentario de una columna); un escrito real con plantilla (zona A de #929; las reales se suben ahora desde `/plantillas/`) y, para el anuncio del edicto, su plantilla real con `{{ i }}` sobre `interesados_edicto`; y `/sync-derivados` de la fila de `INVENTARIO_BACKEND.md` (zona A de #929); ver [`ESTADO_ADR049.md`](diseño/ESTADO_ADR049.md). **Aparcado:** #1033 y #1034 (ADR-050).
 
