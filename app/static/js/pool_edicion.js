@@ -49,13 +49,18 @@
       ayuda.appendChild(document.createTextNode(opcion.dataset.ayudaFecha));
     }
 
-    // El ancla del proyecto
+    // El ancla del proyecto. Si el documento ya es el principal (#1040) el control se enseña
+    // marcado y bloqueado —el principal sale del alta y no se suelta ni se reclasifica, solo se
+    // sustituye su fichero—, y entonces el selector de tipo tampoco se toca (ya viene deshabilitado).
     var principal = form.querySelector('[data-pool-bloque="principal"]');
     var check_p   = principal.querySelector('[name="es_principal"]');
+    var principal_bloqueado = !!form.dataset.principalOriginal;
     principal.classList.toggle('d-none', !ver_principal);
-    activar(principal, ver_principal);
+    activar(principal, ver_principal && !principal_bloqueado);
     principal.querySelector('[data-pool-aviso]')
       .classList.toggle('d-none', !(check_p.checked && !form.dataset.principalOriginal));
+    principal.querySelector('[data-pool-bloqueo]')
+      .classList.toggle('d-none', !(principal_bloqueado && ver_principal));
 
     // El corte de un reformado
     var reformado = form.querySelector('[data-pool-bloque="reformado"]');
@@ -83,16 +88,6 @@
       var era_r = proyecto && !!form.dataset.reformadoOriginal;
       if (check_p.checked !== era_p) { check_p.checked = era_p; aviso_cambio(check_p); }
       if (check_r.checked !== era_r) { check_r.checked = era_r; aviso_cambio(check_r); }
-    }
-
-    if (campo.name === 'es_principal' && !campo.checked && form.dataset.principalOriginal) {
-      // Desmarcar el ancla deja al expediente sin decir cuál es su proyecto, y con eso el motor
-      // bloquea seguir la solicitud: se pregunta una vez.
-      if (!confirm('Este documento es el proyecto de la instalación.\n\n' +
-                   'Al desmarcarlo, el expediente deja de tener proyecto identificado y ' +
-                   'no se podrá seguir con la solicitud hasta anclar otro. ¿Continuar?')) {
-        campo.checked = true;
-      }
     }
 
     if (campo.name === 'abre_reformado' && !campo.checked && form.dataset.reformadoOriginal) {
