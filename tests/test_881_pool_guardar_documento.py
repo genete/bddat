@@ -175,9 +175,10 @@ def test_lo_ausente_se_conserva_y_lo_vacio_se_vacia(arbol_aislado, usuario_super
     assert estado['asunto'] == 'Asunto de partida', 'un campo ausente se borró (#832)'
 
 
-def test_desmarcar_el_ancla_con_su_marcador_la_retira_y_sin_el_no(arbol_aislado, usuario_supervisor):
+def test_el_principal_no_se_suelta_con_su_marcador_y_sin_el_no_cuenta(arbol_aislado, usuario_supervisor):
     """El marcador `principal_activo` es lo que dice «el control existía y esta es la respuesta»:
-    sin él, que la casilla no viaje no significa nada."""
+    sin él, que la casilla no viaje no significa nada; con él y la casilla sin enviar es
+    «desmarcada», y el proyecto principal no se suelta (#1040): 422 y el ancla sigue."""
     expediente_id, doc = _caso_proyecto_anclado(arbol_aislado)
     doc_id = doc.id
 
@@ -186,8 +187,8 @@ def test_desmarcar_el_ancla_con_su_marcador_la_retira_y_sin_el_no(arbol_aislado,
     assert _estado(doc_id)['anclado'], 'un cuerpo sin el marcador retiró el ancla del proyecto'
 
     r = _guardar(usuario_supervisor, expediente_id, doc_id, {'principal_activo': '1'})
-    assert r.status_code == 200, r.get_json()
-    assert not _estado(doc_id)['anclado'], 'desmarcar el ancla en el formulario no la retiró'
+    assert r.status_code == 422, r.get_json()
+    assert _estado(doc_id)['anclado'], 'desmarcar el principal en el formulario lo soltó'
 
 
 # ---------------------------------------------------------------------------
