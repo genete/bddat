@@ -160,10 +160,11 @@ class Proyecto(db.Model):
         db.Integer,
         db.ForeignKey('public.documentos.id', name='fk_proyectos_documento_principal'),
         nullable=True,
-        comment='FK a DOCUMENTOS. El DOC_PROYECTO que materializa el proyecto (ADR-044 §D). '
-                'NULL hasta que llega al pool: en el alta el único documento que entra es el '
-                'escrito de solicitud. Sin él, el sistema no sabe si un DOC_PROYECTO posterior '
-                'abre reformado'
+        comment='FK a DOCUMENTOS. El DOC_PROYECTO que materializa el proyecto (ADR-044 §D). Lo sube '
+                'el alta de expediente y queda anclado (#1040); no se reclasifica ni se suelta, '
+                'solo se sustituye su fichero. NULL solo en un expediente heredado sin proyecto. '
+                'Sin él, el sistema no sabe si un DOC_PROYECTO posterior abre reformado y el '
+                'motor bloquea seguir la solicitud'
     )
 
     # Relación con TipoIA
