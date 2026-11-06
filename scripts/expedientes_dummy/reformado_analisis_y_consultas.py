@@ -59,9 +59,11 @@ necesidad de DUP.
 
 Circuito real — nunca INSERT SQL directo (ver README.md de esta carpeta):
     - Alta expediente/proyecto/solicitud: `app.services.alta_expediente`.
+    - El proyecto principal entra con el alta y queda anclado (#1040).
     - El corte de versión: `declarar_desde_metadatos` (`app.services.reformados`),
-      disparado por la subida multipart real con `es_principal`/`abre_reformado`/
-      `origen_reformado` en los metadatos (`_comun.subir`, extendido en #903).
+      disparado por la subida multipart real con `abre_reformado`/`origen_reformado`
+      en los metadatos (`_comun.subir`, extendido en #903). Como el ancla ya existe,
+      el segundo `DOC_PROYECTO` se encuentra la pregunta del reformado.
     - Fase/trámite/tarea y organismos: `app.services.mutaciones_arbol` (pasa por el
       motor de reglas real). `crear_fase` engancha `reformado_id` solo, del último
       reformado del expediente en ese momento — no es parámetro.
@@ -296,6 +298,9 @@ def _crear_expediente(cat, fecha_base):
             nombre_original='modelo_solicitud.pdf',
             fecha_registro=fecha_base,
         ),
+        # El proyecto original (v1) entra con el alta y queda anclado como principal
+        # (#1040); el reformado se sube después y abre la v2.
+        documento_proyecto=_comun.documento_proyecto_del_alta(),
     ))
 
     print(f"Expediente AT-{resultado.numero_at} creado "
@@ -361,10 +366,9 @@ def main(app=None, *, efectos_desarrollo=True):
         # =====================================================================
         # v1 — proyecto original
         # =====================================================================
-        docs = {'MODELO_SOLICITUD': alta.documento.id}
-        docs['DOC_PROYECTO'] = _comun.subir(
-            client, exp_id, 'DOC_PROYECTO', cat['doc_proyecto'].id, fecha_base,
-            'Proyecto técnico de la línea aérea 66 kV', es_principal=True)
+        # El escrito de solicitud y el proyecto original entraron con el alta (#428, #1040).
+        docs = {'MODELO_SOLICITUD': alta.documento.id,
+                'DOC_PROYECTO': alta.documento_proyecto.id}
         docs['JUSTIFICANTE_PAGO_TASA'] = _comun.subir(
             client, exp_id, 'JUSTIFICANTE_PAGO_TASA',
             cat['doc_justificante_pago_tasa'].id, fecha_base,
