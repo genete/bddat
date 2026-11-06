@@ -150,7 +150,7 @@ def test_en_la_rama_del_principal_la_marca_de_reformado_no_cuenta(app_ctx, arbol
     declaración de nadie."""
     from app.services.reformados import declarar_desde_metadatos
 
-    sol = arbol_esftt.solicitud_nueva()
+    sol = arbol_esftt.solicitud_nueva(sin_ancla=True)
     doc = _proyecto_doc(arbol_esftt, sol.expediente_id, 'rama-marca')
 
     declarar_desde_metadatos(doc, {'abre_reformado': True}, usuario_id=usuario_id)
@@ -164,7 +164,7 @@ def test_en_un_lote_el_primero_ancla_y_el_siguiente_ya_es_reformado(app_ctx, arb
     ancla en el momento de procesar cada documento."""
     from app.services.reformados import declarar_desde_metadatos
 
-    sol = arbol_esftt.solicitud_nueva()
+    sol = arbol_esftt.solicitud_nueva(sin_ancla=True)
     primero = _proyecto_doc(arbol_esftt, sol.expediente_id, 'lote-1', dias_atras=20)
     segundo = _proyecto_doc(arbol_esftt, sol.expediente_id, 'lote-2', dias_atras=10)
 
@@ -186,7 +186,7 @@ def test_en_un_lote_el_primero_ancla_y_el_siguiente_ya_es_reformado(app_ctx, arb
 def _solicitud_de(arbol, siglas):
     from app import db
     from app.models.tipos_solicitudes import TipoSolicitud
-    sol = arbol.solicitud_nueva()
+    sol = arbol.solicitud_nueva(sin_ancla=True)
     tipo = TipoSolicitud.query.filter_by(siglas=siglas).first()
     assert tipo is not None, f'la semilla debe traer el TipoSolicitud {siglas}'
     sol.tipo_solicitud_id = tipo.id
@@ -212,7 +212,7 @@ def test_la_variable_dice_si_falta_el_ancla(app_ctx, arbol_esftt, usuario_id):
     from app.services.assembler import ExpedienteContext
     from app.services.reformados import anclar_principal
 
-    sol = arbol_esftt.solicitud_nueva()
+    sol = arbol_esftt.solicitud_nueva(sin_ancla=True)
     doc = _proyecto_doc(arbol_esftt, sol.expediente_id, 'variable')
     fn = _variable('proyecto_sin_principal')
 
