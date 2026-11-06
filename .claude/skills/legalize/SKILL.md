@@ -18,9 +18,19 @@ Devuelve el contenido completo del fichero si lo encuentras, o `NOT_FOUND` con m
 2. Si no, `~/legalize-es` (en la nube, `/root/legalize-es`) → clon **reducido**
    (solo `es-an/` completo y, de `es/`, las normas del catálogo de BDDAT).
 3. Si no existe ninguno, en la nube: pide al usuario que ejecute
-   `bash scripts/nube/preparar_legalize.sh` (unos 5 s, ~56 MB) y detente.
+   `bash scripts/nube/preparar_legalize.sh` (unos 20 s, ~75 MB) y detente.
 
 Comprueba la existencia con `Glob` (`/d/legalize-es/es-an` y, si no, `~/legalize-es/es-an`).
+
+**Layout: subcarpeta de 2 hex.** Los ficheros no cuelgan de `es/` ni de `es-an/`, sino de
+`<jurisdicción>/<xx>/<id>.md`, donde `<xx>` son los 2 primeros hex del SHA-1 del `<id>`
+(`es/fa/BOE-A-2000-24019.md`, `es-an/17/BOJA-b-2020-90326.md`; manifiesto `.legalize.yml`
+del repo). No se puede calcular con tus herramientas: **localiza un id por nombre con
+`Glob`**, `pattern="*/*/<id>.md"` y `path=<LEGALIZE>`, y lee la ruta que devuelva. (Un
+`Read <LEGALIZE>/es/<id>.md` directo falla siempre.) Si el `Glob` no devuelve nada, el
+id no está en este clon. El PC puede tener aún un clon antiguo con layout plano
+(`es/<id>.md`): si `Glob` con `*/*/` no encuentra nada en `/d/legalize-es`, prueba
+también `*/<id>.md`.
 
 ---
 
@@ -48,8 +58,8 @@ Mira `id_tecnico` (columna 6) de la fila encontrada:
 
 | `id_tecnico` | Qué hacer |
 |---|---|
-| `BOE-A-*` | El id **es** el nombre del fichero: `Read <LEGALIZE>/es/<id>.md`; si no está, `Read <LEGALIZE>/es-an/<id>.md` (normas históricas de Andalucía publicadas en el BOE) |
-| `BOJA-b-*` | `Read <LEGALIZE>/es-an/<id>.md` |
+| `BOE-A-*` | El id **es** el nombre del fichero: `Glob "*/*/<id>.md"` en `<LEGALIZE>` y `Read` de la ruta devuelta. Estará en `es/` (estatal) o, para normas históricas de Andalucía publicadas en el BOE, en `es-an/` |
+| `BOJA-b-*` | `Glob "es-an/*/<id>.md"` en `<LEGALIZE>` y `Read` de la ruta devuelta |
 | numérico | Es un id de **sedeboja**, no de legalize: derivar a `/boja` |
 | vacío | La norma no está identificada en el catálogo: seguir por el paso 2 |
 
@@ -61,10 +71,13 @@ Si el fichero se lee, has terminado: comprueba `title` del frontmatter y devuelv
 
 ```
 <LEGALIZE>/
-  es/          ← BOE estatal (8 646 normas, BOE-A-*.md)          [en la nube: solo las del catálogo]
-  es-an/       ← Andalucía: BOE-A-*.md (históricas) + BOJA-b-*.md (desde 2012)   [completo también en la nube]
+  es/<xx>/<id>.md      ← BOE estatal (~20 000 normas, BOE-A-*)   [en la nube: solo las del catálogo]
+  es-an/<xx>/<id>.md   ← Andalucía: BOE-A-* (históricas) + BOJA-b-* (desde 2012)   [completo también en la nube]
   es-ct/, es-ar/, ... (17 CCAA)                                   [solo PC]
 ```
+
+`<xx>` = 2 primeros hex del SHA-1 del `<id>` (256 subcarpetas en `es/`). Medido el
+2026-11-06: `es/` 19 960 ficheros, `es-an/` 324.
 
 Cada fichero tiene frontmatter YAML:
 ```yaml
@@ -123,10 +136,12 @@ contiene las normas del catálogo, no las 8 646. Añade siempre «prueba `/boe` 
 
 | Referencia | Fichero esperado |
 |---|---|
-| Decreto-ley 2/2018 | `es-an/BOJA-b-2018-90370.md` |
-| Decreto-ley 26/2021 | `es-an/BOJA-b-2021-90434.md` |
-| Decreto-ley 3/2024 | `es-an/BOJA-b-2024-*.md` (verificar con Grep) |
-| Decreto 356/2010 (AAU) | puede estar en `es-an/BOE-A-*.md` (publicado en BOE) |
+| Decreto-ley 2/2018 | `es-an/*/BOJA-b-2018-90370.md` |
+| Decreto-ley 26/2021 | `es-an/*/BOJA-b-2021-90434.md` |
+| Decreto-ley 3/2024 | `es-an/*/BOJA-b-2024-*.md` (verificar con Grep) |
+| Decreto 356/2010 (AAU) | puede estar en `es-an/*/BOE-A-*.md` (publicado en BOE) |
+
+(`*` = la subcarpeta de 2 hex; se resuelve con `Glob`.)
 
 ---
 

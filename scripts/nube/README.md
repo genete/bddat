@@ -58,16 +58,26 @@ El skill `/legalize` lee de un clon de legalize-es. En la nube no existe
 `/d/legalize-es`, así que el script deja uno **reducido** en
 `${LEGALIZE_DIR:-$HOME/legalize-es}` (fuera del repo): `git clone --depth 1
 --filter=blob:none --sparse` y sparse checkout sin conos con `es-an/` completo más
-los ficheros `es/<id>.md` de cada `id_tecnico` `BOE-A-*` de
+los ficheros de `es/` de cada `id_tecnico` `BOE-A-*` de
 `docs/referencia/normas_catalog.csv` (los patrones los calcula
 `legalize_patrones.py`). Es idempotente: si el clon existe, hace `fetch --depth 1`
 y recalcula los patrones; si `LEGALIZE_DIR` apunta a un clon no sparse, se niega a
 tocarlo. Al final imprime nº de normas, tamaño, commit y fecha.
 
-Medido en la nube (2026-09-29, commit `3afca50` de legalize-es): **~56 MB (14 MB de
-`.git`), 5 s, 339 ficheros** (`es/` 97, `es-an/` 242). El catálogo tiene 101 ids
-`BOE-A-*`/`BOJA-b-*`: 100 están en el clon; falta `BOE-A-2025-20694` (RD 917/2025),
-que legalize-es aún no publica.
+**Layout de legalize-es**: los ficheros no están en `es/<id>.md`, sino repartidos en
+subcarpetas con los 2 primeros hex del SHA-1 del id (`es/fa/BOE-A-2000-24019.md`,
+`es-an/17/BOJA-b-2020-90326.md`; lo declara el `.legalize.yml` del repo). El layout
+plano de antes dejó el script con «0 de 101 ids» (2026-11-06). `legalize_patrones.py`
+ya no lo asume ni calcula el SHA-1: indexa el árbol de git por nombre de fichero. Si
+no encuentra **ningún** id del catálogo, sale con error y enseña qué rutas ve (en vez
+de dejar un clon casi vacío), y `preparar_legalize.sh` no toca el sparse checkout.
+Los skills y scripts que lean el clon deben localizar por nombre (`Glob
+"*/*/<id>.md"`), no por ruta directa.
+
+Medido en la nube (2026-11-06, commit `10a77ba` de legalize-es): **~74 MB (16 MB de
+`.git`), 18 s, 422 ficheros** (`es/` 98, `es-an/` 324). El catálogo tiene 101 ids
+`BOE-A-*`/`BOJA-b-*`: están los 101 (el RD 917/2025, `BOE-A-2025-20694`, que en
+septiembre aún no estaba publicado, ya figura).
 
 ### `/boe` y `/boja` en la nube
 
