@@ -97,23 +97,32 @@ def test_solo_un_doc_proyecto_puede_ser_el_principal(app_ctx, arbol_esftt, usuar
         anclar_principal(otro, usuario_id=usuario_id)
 
 
-def test_dejar_de_ser_proyecto_suelta_el_ancla(app_ctx, arbol_esftt, usuario_id):
-    """Cambiar el tipo es desmarcar por la puerta de atrás: un proyecto no puede
-    materializarse en un documento que ya no es el proyecto."""
+def test_el_principal_no_se_reclasifica(app_ctx, arbol_esftt, usuario_id):
+    """El proyecto principal sale del alta y no cambia de tipo: solo se sustituye su
+    fichero (#1040, ADR-044 §D). Reclasificarlo se rechaza y el ancla sigue donde estaba.
+
+    Fallo silencioso que evita: si reclasificar el principal dejara el ancla en un
+    documento que ya no es proyecto, `proyecto_sin_principal` seguiría diciendo que hay
+    principal y el motor no bloquearía nada, con un expediente cuyo proyecto no existe.
+    """
     from app import db
     from app.models.tipos_documentos import TipoDocumento
-    from app.services.reformados import anclar_principal, sincronizar_principal
+    from app.services.reformados import (
+        MENSAJE_PRINCIPAL_FIJO, anclar_principal, sincronizar_principal)
 
-    sol = arbol_esftt.solicitud_nueva()
+    sol = arbol_esftt.solicitud_nueva(sin_ancla=True)
     doc = _proyecto_doc(arbol_esftt, sol.expediente_id, 'cambia-tipo')
     proyecto = anclar_principal(doc, usuario_id=usuario_id)
 
     doc.tipo_doc_id = TipoDocumento.query.filter_by(codigo='MODELO_SOLICITUD').first().id
     db.session.flush()
     db.session.expire(doc, ['tipo_doc'])
-    sincronizar_principal(doc, es_principal=True, usuario_id=usuario_id)
 
-    assert proyecto.documento_principal_id is None
+    with pytest.raises(ValueError) as exc:
+        sincronizar_principal(doc, es_principal=True, usuario_id=usuario_id)
+
+    assert str(exc.value) == MENSAJE_PRINCIPAL_FIJO
+    assert proyecto.documento_principal_id == doc.id
 
 
 # ---------------------------------------------------------------------------
