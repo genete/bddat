@@ -437,7 +437,8 @@ def _catalogo_para_alta():
     return tipo_exp, tipo_sol, municipio
 
 
-def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None, con_ancla=True):
+def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None, con_ancla=True,
+                               documento_proyecto='normal'):
     """Expediente completo fabricado por el test, por la vía real (#428).
 
     Pasa por `alta_expediente()` y no por INSERT sueltos, que es lo que garantiza
@@ -460,6 +461,8 @@ def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None, con_a
     los tests de la regla de motor de #887, que necesitan precisamente ese estado: se
     hace el alta completa y después se suelta el ancla (el documento sigue en el pool,
     como un proyecto subido sin marcar). No es un estado que el alta produzca.
+    `documento_proyecto=None` o un `DocumentoProyecto` propio ejercitan el rechazo del
+    alta sin proyecto: como `documento`, sin él el servicio no crea nada.
 
     Las fechas salen de `reloj_simulado.hoy()` y nunca de
     `date.today()`: bajo `app_ctx` el validador de #824 compara contra el reloj de
@@ -503,6 +506,12 @@ def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None, con_a
             fecha_registro=fecha_registro or hoy(),
         )
 
+    if documento_proyecto == 'normal':
+        documento_proyecto = DocumentoProyecto(
+            contenido=CONTENIDO_PROYECTO_PRUEBA,
+            nombre_original=f'proyecto_prueba_{n}.pdf',
+        )
+
     resultado = alta_expediente(DatosAlta(
         tipo_expediente_id=tipo_exp.id,
         responsable_id=None,
@@ -518,10 +527,7 @@ def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None, con_a
         tipo_solicitud_id=tipo_sol.id,
         observaciones=f'[TEST] expediente de prueba {n}',
         documento=documento,
-        documento_proyecto=DocumentoProyecto(
-            contenido=CONTENIDO_PROYECTO_PRUEBA,
-            nombre_original=f'proyecto_prueba_{n}.pdf',
-        ),
+        documento_proyecto=documento_proyecto,
     ))
 
     if not con_ancla:
@@ -653,9 +659,16 @@ class ArbolESFTT:
             pytest.skip('No hay solicitudes en la BD de desarrollo')
         return s
 
-    def solicitud_nueva(self):
+    def solicitud_nueva(self, *, sin_ancla=False):
         """Solicitud aislada, sin fases: para el caso 'sin hijos' de _check_borrar,
-        donde reutilizar `solicitud_existente()` arriesga hijos previos ajenos al test."""
+        donde reutilizar `solicitud_existente()` arriesga hijos previos ajenos al test.
+
+        Cuelga del primer expediente de la BD, que desde #1040 nace con su proyecto
+        anclado (el alta lo exige). `sin_ancla=True` suelta ese ancla —en la sesión del
+        test, que se revierte— para los tests que parten de «el proyecto aún no está
+        identificado»: la regla de motor de #887, la rama de la ingesta del pool, la
+        etiqueta de la versión inicial. Sin ese argumento el test depende de lo que la
+        semilla hubiera dejado en la primera fila."""
         from app.models.expedientes import Expediente
         from app.models.entidad import Entidad
         from app.models.tipos_solicitudes import TipoSolicitud
@@ -664,6 +677,9 @@ class ArbolESFTT:
         tipo = TipoSolicitud.query.first()
         if exp is None or ent is None or tipo is None:
             pytest.skip('Faltan expediente/entidad/tipo_solicitud base en la BD de desarrollo')
+        if sin_ancla and exp.proyecto.documento_principal_id is not None:
+            exp.proyecto.documento_principal = None
+            self.db.session.flush()
         return self.solicitud(exp, tipo, ent)
 
     def solicitud_propia(self):
