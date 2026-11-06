@@ -127,8 +127,8 @@ def _cargar_catalogo():
         'tarea_notificar': _tarea('NOTIFICAR'),
         'tarea_esperar_plazo': _tarea('ESPERAR_PLAZO'),
 
-        # Ya no se usa para subir nada —lo resuelve `alta_expediente` por código—,
-        # pero se conserva en la comprobación: si falta del catálogo, es preferible
+        # Ya no se usan para subir nada —los resuelve `alta_expediente` por código—,
+        # pero se conservan en la comprobación: si faltan del catálogo, es preferible
         # abortar aquí, con la lista de faltantes, que a mitad del alta.
         'doc_modelo_solicitud': _doc('MODELO_SOLICITUD'),
         'doc_proyecto': _doc('DOC_PROYECTO'),
@@ -159,7 +159,9 @@ def _crear_expediente(cat):
 
     Devuelve el `ResultadoAlta`, que trae ya el escrito de solicitud creado: no hay
     que subirlo después, y es ese documento el que luego cubre el requisito
-    MODELO_SOLICITUD del checklist documental.
+    MODELO_SOLICITUD del checklist documental. Lo mismo el proyecto técnico (#1040):
+    entra con el alta, queda anclado como principal y es el que cubre el requisito
+    DOC_PROYECTO.
     """
     from app.services.alta_expediente import (
         DatosAlta, DocumentoSolicitud, alta_expediente,
@@ -198,6 +200,7 @@ def _crear_expediente(cat):
             nombre_original='modelo_solicitud.pdf',
             fecha_registro=FECHA_BASE,
         ),
+        documento_proyecto=_comun.documento_proyecto_del_alta(),
     ))
 
     print(f"Expediente AT-{resultado.numero_at} creado "
@@ -246,9 +249,10 @@ def main(app=None, *, efectos_desarrollo=True):
         # el checklist documental, unas líneas más abajo.
         doc_solicitud_id = alta.documento.id
 
-        doc_proyecto_id = _comun.subir(client, exp_id, 'DOC_PROYECTO',
-                                  cat['doc_proyecto'].id, FECHA_BASE,
-                                  'Proyecto técnico')
+        # El proyecto técnico tampoco: entró con el alta y está anclado como proyecto
+        # principal (#1040). Su fecha administrativa es la `fecha_proyecto`, FECHA_BASE.
+        doc_proyecto_id = alta.documento_proyecto.id
+
         doc_tasa_id = _comun.subir(client, exp_id, 'JUSTIFICANTE_PAGO_TASA',
                               cat['doc_justificante_pago_tasa'].id, FECHA_BASE,
                               'Justificante de pago de la tasa')

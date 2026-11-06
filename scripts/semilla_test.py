@@ -236,6 +236,7 @@ def _expediente_sin_asignar(app):
                 nombre_original='modelo_solicitud.pdf',
                 fecha_registro=hoy() - timedelta(days=10),
             ),
+            documento_proyecto=_comun.documento_proyecto_del_alta(),
         ))
         return resultado.expediente.id
 

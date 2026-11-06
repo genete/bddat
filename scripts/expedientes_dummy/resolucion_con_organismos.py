@@ -225,6 +225,8 @@ def _cargar_catalogo():
         'tarea_notificar': _tarea('NOTIFICAR'),
         'tarea_esperar_plazo': _tarea('ESPERAR_PLAZO'),
 
+        # Ya no se sube con `subir`: lo resuelve `alta_expediente` por código (#1040).
+        # Se conserva para que, si falta del catálogo, el script aborte aquí.
         'doc_proyecto': _doc('DOC_PROYECTO'),
         'doc_justificante_pago_tasa': _doc('JUSTIFICANTE_PAGO_TASA'),
         'doc_dr_no_dup': _doc('DR_NO_DUP'),
@@ -392,6 +394,8 @@ def _crear_expediente(cat, fecha_base, observaciones):
             nombre_original='modelo_solicitud.pdf',
             fecha_registro=fecha_base,
         ),
+        # El proyecto técnico entra con el alta y queda anclado como principal (#1040).
+        documento_proyecto=_comun.documento_proyecto_del_alta(),
     ))
 
     print(f"Expediente AT-{resultado.numero_at} creado "
@@ -485,10 +489,9 @@ def main(app=None, *, efectos_desarrollo=True, sin_notificar_resolucion=False):
                                  representante_entidad_id=representante.id),
             'fijar representante de la solicitud')
 
-        docs = {'MODELO_SOLICITUD': alta.documento.id}
-        docs['DOC_PROYECTO'] = _comun.subir(
-            client, exp_id, 'DOC_PROYECTO', cat['doc_proyecto'].id, fecha_base,
-            'Proyecto técnico de la línea aérea 66 kV', es_principal=True)
+        # El escrito de solicitud y el proyecto técnico entraron con el alta (#428, #1040).
+        docs = {'MODELO_SOLICITUD': alta.documento.id,
+                'DOC_PROYECTO': alta.documento_proyecto.id}
         docs['JUSTIFICANTE_PAGO_TASA'] = _comun.subir(
             client, exp_id, 'JUSTIFICANTE_PAGO_TASA',
             cat['doc_justificante_pago_tasa'].id, fecha_base,

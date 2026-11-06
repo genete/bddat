@@ -329,47 +329,51 @@ def anclar_principal(documento, *, usuario_id: int):
     return proyecto
 
 
-def desanclar_principal(proyecto, *, usuario_id: int) -> None:
-    """Retira el ancla del proyecto principal (sin commit).
+MENSAJE_PRINCIPAL_FIJO = (
+    'Este documento es el proyecto principal del expediente: no se puede reclasificar '
+    'ni dejar de ser el proyecto. Si el fichero no es el correcto, sustitúyalo '
+    'indicando el motivo.'
+)
 
-    No hay condición de «solo el último», como en los reformados: aquí no se corta
-    una línea temporal, se deja de decir cuál es el proyecto. Lo que impide que el
-    expediente siga así es la regla de motor de §D, no esta función.
+
+def exigir_principal_intacto(documento, *, es_principal: bool = True) -> None:
+    """Lanza `ValueError(MENSAJE_PRINCIPAL_FIJO)` si lo que se pide soltaría el ancla del
+    proyecto principal (#1040).
+
+    El principal sale siempre del alta y no se suelta: ni desmarcándolo (`es_principal`
+    falso) ni cambiándole el tipo a algo que no sea `DOC_PROYECTO`. Lo único que cabe es
+    **sustituir** su contenido (`sustituir_con_motivo`), que conserva el `id` y por tanto
+    el ancla. Si `documento` no es el principal no hace nada.
+
+    Es la guarda del servicio y no de la interfaz a propósito: la ruta JSON de edición
+    masiva y cualquier cliente que reenvíe campos sueltos llegan aquí igual que el
+    formulario del inspector. Devolver al llamador el estado «sin ancla» sería fabricar
+    justo lo que el alta ya no deja producir.
     """
-    anterior = proyecto.documento_principal_id
-    if anterior is None:
-        raise ValueError('Este proyecto no tiene documento principal anclado.')
-
-    proyecto.documento_principal = None   # por la relación, para que el backref caiga
-    db.session.flush()
-
-    bitacora_svc.registrar(
-        usuario_id, 'BORRAR', 'proyectos', proyecto.id,
-        columna='documento_principal_id',
-        detalle={'de': anterior, 'a': None},
-    )
-    log.info('Proyecto principal desanclado: proyecto=%s (era doc=%s)', proyecto.id, anterior)
+    proyecto = documento.expediente.proyecto if documento.expediente else None
+    if proyecto is None or proyecto.documento_principal_id != documento.id:
+        return
+    if not es_principal or not es_doc_proyecto(documento):
+        raise ValueError(MENSAJE_PRINCIPAL_FIJO)
 
 
 def sincronizar_principal(documento, *, es_principal: bool, usuario_id: int) -> None:
     """Deja el ancla como dice la respuesta del usuario (sin commit).
 
-    Mismo criterio que `sincronizar_reformado`: si el documento ha dejado de ser un
-    DOC_PROYECTO, la marca no se interpreta y el ancla se retira — un proyecto no
-    puede materializarse en un documento que ya no es el proyecto.
+    Solo **ancla**: el principal no se suelta (`exigir_principal_intacto`, #1040). Mismo
+    criterio que `sincronizar_reformado` para lo demás: si el documento no es un
+    DOC_PROYECTO, la marca no se interpreta — un proyecto no puede materializarse en un
+    documento que no lo es.
     """
-    proyecto = documento.expediente.proyecto if documento.expediente else None
-    era_principal = proyecto is not None and proyecto.documento_principal_id == documento.id
+    exigir_principal_intacto(documento, es_principal=es_principal)
 
     if not es_doc_proyecto(documento):
-        if era_principal:
-            desanclar_principal(proyecto, usuario_id=usuario_id)
         return
 
+    proyecto = documento.expediente.proyecto if documento.expediente else None
+    era_principal = proyecto is not None and proyecto.documento_principal_id == documento.id
     if es_principal and not era_principal:
         anclar_principal(documento, usuario_id=usuario_id)
-    elif not es_principal and era_principal:
-        desanclar_principal(proyecto, usuario_id=usuario_id)
 
 
 def reformados_de(expediente_id: int) -> list:

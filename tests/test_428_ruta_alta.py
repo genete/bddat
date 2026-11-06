@@ -19,6 +19,7 @@ import pytest
 
 RUTA = '/expedientes/nuevo/'
 CONTENIDO = b'%PDF-1.4 escrito de solicitud de prueba de ruta'
+CONTENIDO_PROYECTO = b'%PDF-1.4 proyecto tecnico de prueba de ruta'
 
 
 def _catalogo(app):
@@ -62,8 +63,11 @@ def _hoy(app):
         return hoy()
 
 
-def _formulario(app, cat, *, con_fichero=True, **cambios):
-    """Cuerpo multipart de un alta válida, con lo que se quiera romper encima."""
+def _formulario(app, cat, *, con_fichero=True, con_proyecto=True, **cambios):
+    """Cuerpo multipart de un alta válida, con lo que se quiera romper encima.
+
+    Lleva los dos ficheros del alta —el escrito de solicitud y, desde #1040, el
+    proyecto técnico que queda anclado—; `con_fichero` y `con_proyecto` quitan cada uno."""
     hoy = _hoy(app)
     datos = {
         'tipo_expediente_id': str(cat['tipo_expediente_id']),
@@ -82,6 +86,8 @@ def _formulario(app, cat, *, con_fichero=True, **cambios):
     }
     if con_fichero:
         datos['documento_solicitud'] = (io.BytesIO(CONTENIDO), 'solicitud_ruta.pdf')
+    if con_proyecto:
+        datos['documento_proyecto'] = (io.BytesIO(CONTENIDO_PROYECTO), 'proyecto_ruta.pdf')
     datos.update(cambios)
     return datos
 
@@ -92,6 +98,8 @@ def _borrar_expediente(app, numero_at):
     Mismo orden que `limpiar_reciclables.py`, y por la misma razón: el escrito de
     solicitud lo referencian dos tablas —la solicitud que ancla y el interesado
     TITULAR al que acredita— y solo la segunda se puede neutralizar con un UPDATE.
+    El proyecto técnico lo referencia el ancla del proyecto (#1040): se suelta antes
+    de borrar los documentos.
     """
     with app.app_context():
         from app import db
@@ -106,6 +114,9 @@ def _borrar_expediente(app, numero_at):
         db.session.execute(db.text(
             'UPDATE public.interesados_expediente SET documento_acreditativo_id = NULL '
             'WHERE expediente_id = :eid'), p)
+        db.session.execute(db.text(
+            'UPDATE public.proyectos SET documento_principal_id = NULL '
+            'WHERE id = :pid'), {'pid': proyecto_id})
         for sql in (
             'DELETE FROM public.historico_titulares_expediente WHERE expediente_id = :eid',
             'DELETE FROM public.interesados_expediente WHERE expediente_id = :eid',
@@ -158,6 +169,31 @@ class TestRechazos:
 
         assert r.status_code == 422
         assert 'adjuntar el escrito de solicitud'.encode() in r.data
+
+    def test_sin_proyecto_no_crea_el_expediente(self, usuario_supervisor, app, almacen_tmp):
+        """El formulario exige el proyecto técnico en un expediente no heredado (#1040).
+
+        Fallo silencioso que evita: si la ruta dejara pasar un alta sin el fichero del
+        proyecto, o la repintara sin avisar, se crearía un expediente sin ancla que
+        nadie sabría que lo está hasta el bloqueo del motor en plena instrucción.
+        """
+        from app import db
+
+        cat = _catalogo(app)
+        with app.app_context():
+            antes = db.session.execute(
+                db.text('SELECT valor FROM public.contador_numero_at')).scalar()
+
+        r = usuario_supervisor.post(
+            RUTA, data=_formulario(app, cat, con_proyecto=False),
+            content_type='multipart/form-data')
+
+        assert r.status_code == 422
+        assert 'Debe adjuntar el proyecto técnico'.encode() in r.data
+        with app.app_context():
+            despues = db.session.execute(
+                db.text('SELECT valor FROM public.contador_numero_at')).scalar()
+        assert despues == antes
 
     def test_sin_fecha_de_registro_tampoco(self, usuario_supervisor, app, almacen_tmp):
         cat = _catalogo(app)
@@ -315,6 +351,15 @@ def test_alta_completa_crea_el_expediente_anclado(usuario_supervisor, app, almac
             # #930, el de cada acto de la solicitud).
             plazos = plazos_de_la_solicitud(solicitud)
             assert plazos and all(p.estado != 'SIN_PLAZO' for p in plazos)
+
+            # …y el proyecto subido con el alta, anclado como principal (#1040), con
+            # la fecha del proyecto como fecha administrativa del documento.
+            principal = exp.proyecto.documento_principal
+            assert principal is not None
+            assert principal.id != solicitud.documento_solicitud_id
+            assert principal.tipo_doc.codigo == 'DOC_PROYECTO'
+            assert principal.fecha_administrativa == _hoy(app)
+            assert leer(principal).datos == CONTENIDO_PROYECTO
     finally:
         _borrar_expediente(app, siguiente)
 

@@ -18,6 +18,11 @@ scripts de expediente-tipo.
 Solo multipart, sin explorador in situ (ADR-032 §1): al crear el expediente su
 carpeta `AT-N/` todavía no existe, así que la vía «el fichero ya está en su sitio»
 no tiene sitio al que apuntar.
+
+El formulario sube dos ficheros: el escrito de solicitud y el proyecto técnico, que
+queda anclado como proyecto principal (#1040, ADR-044 §D). El proyecto es obligatorio
+salvo en un expediente heredado; la fecha del proyecto es también la fecha
+administrativa de su documento.
 """
 from datetime import date
 
@@ -32,7 +37,7 @@ from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.usuarios import Usuario
 from app.services.almacenamiento.adaptador import AlmacenNoDisponible, MENSAJE_ALMACEN_NO_DISPONIBLE
 from app.services.alta_expediente import (
-    DatosAlta, DocumentoSolicitud, alta_expediente,
+    MENSAJE_SIN_PROYECTO, DatosAlta, DocumentoProyecto, DocumentoSolicitud, alta_expediente,
 )
 
 bp = Blueprint('alta_expediente', __name__, url_prefix='/expedientes/nuevo')
@@ -117,6 +122,14 @@ def nuevo():
 
     ia_id = _entero(request.form.get('ia_id'))
 
+    # El proyecto técnico, que queda anclado como principal. Obligatorio salvo en un
+    # expediente heredado, igual que lo exige el servicio (el mensaje es el mismo).
+    fichero_proyecto = request.files.get('documento_proyecto')
+    contenido_proyecto = (fichero_proyecto.read()
+                          if fichero_proyecto and fichero_proyecto.filename else b'')
+    if not contenido_proyecto and not heredado:
+        errores.append(MENSAJE_SIN_PROYECTO)
+
     municipios_ids = [_entero(x) for x in request.form.getlist('municipios_ids[]')]
     municipios_ids = [x for x in municipios_ids if x is not None]
     if not municipios_ids:
@@ -185,6 +198,10 @@ def nuevo():
                 nombre_original=fichero.filename,
                 fecha_registro=fecha_registro,
             ),
+            documento_proyecto=DocumentoProyecto(
+                contenido=contenido_proyecto,
+                nombre_original=fichero_proyecto.filename,
+            ) if contenido_proyecto else None,
         ))
     except ValueError as exc:
         # Validación de negocio del servicio: falta de ancla, catálogo ausente,

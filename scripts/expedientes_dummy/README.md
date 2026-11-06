@@ -336,6 +336,9 @@ Lo que significa al escribir o leer un expediente-tipo:
   `tipo_doc_id` no es el tipo `codigo`.
 - **Entregar el contenido a otro servicio** (el alta de expediente lleva dentro el escrito de
   solicitud): `_comun.pdf_de_tipo('MODELO_SOLICITUD')` devuelve los bytes.
+- **El proyecto técnico entra con el alta** (#1040): `documento_proyecto=_comun.documento_proyecto_del_alta()`
+  en el `DatosAlta`. Queda anclado como proyecto principal, así que ningún guion lo sube con
+  `subir`; lo que sí sube `subir` es el reformado, con `abre_reformado=True`.
 - **Dos documentos distintos del mismo tipo:** el parámetro `variante` de `subir`.
   `variante='reformado'` en `DOC_PROYECTO` da el segundo proyecto de un reformado
   (`reformado_analisis_y_consultas`). Una variante que el tipo no tiene lanza `ValueError`.

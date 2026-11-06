@@ -49,7 +49,10 @@
 
                 <div class="col-12">
                     <label class="form-label fw-semibold small" for="pe_tipo">Tipo de documento</label>
-                    <select class="form-select form-select-sm" id="pe_tipo" name="tipo_doc_id">
+                    {# El proyecto principal no se reclasifica (#1040): el selector va deshabilitado, no
+                       viaja, y el servidor conserva el tipo. La razón se explica en su bloque, más abajo. #}
+                    <select class="form-select form-select-sm" id="pe_tipo" name="tipo_doc_id"
+                            {%- if es_principal %} disabled{% endif %}>
                         {% for t in tipos_doc %}
                         <option value="{{ t.id }}" data-codigo="{{ t.codigo }}"
                                 {%- if t.codigo in tipos_fecha %} data-fecha-obligatoria="1" data-ayuda-fecha="{{ tipos_fecha[t.codigo] }}"{% endif %}
@@ -93,10 +96,11 @@
                    enviado con la casilla desmarcada porque estaba deshabilitada», que el servidor leería
                    como «el usuario la desmarcó» y retiraría el ancla o el corte sin que nadie lo pidiera. #}
 
-                {# El ancla del proyecto (ADR-044 §D). Solo existe mientras el tipo elegido es DOC_PROYECTO;
-                   desmarcarla retira el ancla. #}
+                {# El ancla del proyecto (ADR-044 §D). Solo existe mientras el tipo elegido es DOC_PROYECTO.
+                   Si este documento YA es el principal (#1040) se enseña marcado y bloqueado: el principal
+                   sale del alta y no se suelta ni se reclasifica, solo se sustituye su fichero. #}
                 <fieldset class="col-12{% if not ver_principal %} d-none{% endif %}" data-pool-bloque="principal"
-                          {%- if not ver_principal %} disabled{% endif %}>
+                          {%- if not ver_principal or es_principal %} disabled{% endif %}>
                     <input type="hidden" name="principal_activo" value="1">
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="pe_principal" name="es_principal"
@@ -107,6 +111,12 @@
                         <i class="fas fa-anchor me-1"></i>
                         De este documento cuelga saber sobre qué proyecto se instruye. Si ya había
                         otro anclado, el ancla se mueve a este.
+                    </div>
+                    <div class="ms-4 mt-1 small text-secondary{% if not es_principal %} d-none{% endif %}" data-pool-bloqueo="principal">
+                        <i class="fas fa-lock me-1"></i>
+                        Este documento es el proyecto principal del expediente: no se puede
+                        reclasificar ni dejar de serlo. Si el fichero no es el correcto,
+                        sustitúyalo indicando el motivo.
                     </div>
                 </fieldset>
 

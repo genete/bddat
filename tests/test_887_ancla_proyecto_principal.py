@@ -1,7 +1,8 @@
 """Tests #887 — el ancla del proyecto principal y su regla de motor (ADR-044 §D).
 
 Cinco bloques:
-  A) El ancla: anclar, mover el ancla y desanclar, cada acto con su bitácora.
+  A) El ancla: anclar y mover el ancla, cada acto con su bitácora; y que el principal
+     no se suelta (#1040).
   B) La bifurcación de la ingesta (§C): la rama la decide el estado del ancla, no el
      cliente, así que en un lote el primer DOC_PROYECTO puede anclar y el siguiente
      ya se encuentra la otra pregunta.
@@ -96,61 +97,44 @@ def test_solo_un_doc_proyecto_puede_ser_el_principal(app_ctx, arbol_esftt, usuar
         anclar_principal(otro, usuario_id=usuario_id)
 
 
-def test_desanclar_deja_el_proyecto_sin_documento(app_ctx, arbol_esftt, usuario_id):
-    from app.services.reformados import anclar_principal, desanclar_principal
+def test_el_principal_no_se_reclasifica(app_ctx, arbol_esftt, usuario_id):
+    """El proyecto principal sale del alta y no cambia de tipo: solo se sustituye su
+    fichero (#1040, ADR-044 §D). Reclasificarlo se rechaza y el ancla sigue donde estaba.
 
-    sol = arbol_esftt.solicitud_nueva()
-    doc = _proyecto_doc(arbol_esftt, sol.expediente_id, 'desancla')
-    proyecto = anclar_principal(doc, usuario_id=usuario_id)
-
-    desanclar_principal(proyecto, usuario_id=usuario_id)
-
-    assert proyecto.documento_principal_id is None
-    assert _anotaciones(proyecto.id)[-1].operacion == 'BORRAR'
-
-
-def test_dejar_de_ser_proyecto_suelta_el_ancla(app_ctx, arbol_esftt, usuario_id):
-    """Cambiar el tipo es desmarcar por la puerta de atrás: un proyecto no puede
-    materializarse en un documento que ya no es el proyecto."""
+    Fallo silencioso que evita: si reclasificar el principal dejara el ancla en un
+    documento que ya no es proyecto, `proyecto_sin_principal` seguiría diciendo que hay
+    principal y el motor no bloquearía nada, con un expediente cuyo proyecto no existe.
+    """
     from app import db
     from app.models.tipos_documentos import TipoDocumento
-    from app.services.reformados import anclar_principal, sincronizar_principal
+    from app.services.reformados import (
+        MENSAJE_PRINCIPAL_FIJO, anclar_principal, sincronizar_principal)
 
-    sol = arbol_esftt.solicitud_nueva()
+    sol = arbol_esftt.solicitud_nueva(sin_ancla=True)
     doc = _proyecto_doc(arbol_esftt, sol.expediente_id, 'cambia-tipo')
     proyecto = anclar_principal(doc, usuario_id=usuario_id)
 
     doc.tipo_doc_id = TipoDocumento.query.filter_by(codigo='MODELO_SOLICITUD').first().id
     db.session.flush()
     db.session.expire(doc, ['tipo_doc'])
-    sincronizar_principal(doc, es_principal=True, usuario_id=usuario_id)
 
-    assert proyecto.documento_principal_id is None
+    with pytest.raises(ValueError) as exc:
+        sincronizar_principal(doc, es_principal=True, usuario_id=usuario_id)
+
+    assert str(exc.value) == MENSAJE_PRINCIPAL_FIJO
+    assert proyecto.documento_principal_id == doc.id
 
 
 # ---------------------------------------------------------------------------
 # B) La bifurcación de la ingesta
 # ---------------------------------------------------------------------------
 
-def test_la_rama_la_decide_el_estado_del_ancla(app_ctx, arbol_esftt, usuario_id):
-    from app.services.reformados import (
-        RAMA_PRINCIPAL, RAMA_REFORMADO, anclar_principal, rama_de_la_ingesta)
-
-    sol = arbol_esftt.solicitud_nueva()
-    expediente = sol.expediente
-    doc = _proyecto_doc(arbol_esftt, sol.expediente_id, 'rama')
-
-    assert rama_de_la_ingesta(expediente) == RAMA_PRINCIPAL
-    anclar_principal(doc, usuario_id=usuario_id)
-    assert rama_de_la_ingesta(expediente) == RAMA_REFORMADO
-
-
 def test_en_la_rama_del_principal_la_marca_de_reformado_no_cuenta(app_ctx, arbol_esftt, usuario_id):
     """El control del reformado no existía en la interfaz: lo que llegue no es la
     declaración de nadie."""
     from app.services.reformados import declarar_desde_metadatos
 
-    sol = arbol_esftt.solicitud_nueva()
+    sol = arbol_esftt.solicitud_nueva(sin_ancla=True)
     doc = _proyecto_doc(arbol_esftt, sol.expediente_id, 'rama-marca')
 
     declarar_desde_metadatos(doc, {'abre_reformado': True}, usuario_id=usuario_id)
@@ -164,7 +148,7 @@ def test_en_un_lote_el_primero_ancla_y_el_siguiente_ya_es_reformado(app_ctx, arb
     ancla en el momento de procesar cada documento."""
     from app.services.reformados import declarar_desde_metadatos
 
-    sol = arbol_esftt.solicitud_nueva()
+    sol = arbol_esftt.solicitud_nueva(sin_ancla=True)
     primero = _proyecto_doc(arbol_esftt, sol.expediente_id, 'lote-1', dias_atras=20)
     segundo = _proyecto_doc(arbol_esftt, sol.expediente_id, 'lote-2', dias_atras=10)
 
@@ -186,7 +170,7 @@ def test_en_un_lote_el_primero_ancla_y_el_siguiente_ya_es_reformado(app_ctx, arb
 def _solicitud_de(arbol, siglas):
     from app import db
     from app.models.tipos_solicitudes import TipoSolicitud
-    sol = arbol.solicitud_nueva()
+    sol = arbol.solicitud_nueva(sin_ancla=True)
     tipo = TipoSolicitud.query.filter_by(siglas=siglas).first()
     assert tipo is not None, f'la semilla debe traer el TipoSolicitud {siglas}'
     sol.tipo_solicitud_id = tipo.id
@@ -212,7 +196,7 @@ def test_la_variable_dice_si_falta_el_ancla(app_ctx, arbol_esftt, usuario_id):
     from app.services.assembler import ExpedienteContext
     from app.services.reformados import anclar_principal
 
-    sol = arbol_esftt.solicitud_nueva()
+    sol = arbol_esftt.solicitud_nueva(sin_ancla=True)
     doc = _proyecto_doc(arbol_esftt, sol.expediente_id, 'variable')
     fn = _variable('proyecto_sin_principal')
 

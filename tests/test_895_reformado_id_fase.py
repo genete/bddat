@@ -264,7 +264,7 @@ class TestPayloadArbol:
     def test_con_reformado_agrupa_las_fases_por_version(self, app_ctx, arbol_esftt):
         from app import db
         from app.services.arbol_expediente import _serializar_solicitud, ID_VERSION_INICIAL_BASE
-        sol = arbol_esftt.solicitud_nueva()
+        sol = arbol_esftt.solicitud_nueva(sin_ancla=True)
         inicial = arbol_esftt.fase('INFORMACION_PUBLICA', solicitud=sol)
         reformado = arbol_esftt.reformado(sol.expediente_id)
         posterior = arbol_esftt.fase('CONSULTAS', solicitud=sol)

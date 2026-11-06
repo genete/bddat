@@ -26,6 +26,7 @@ from lxml import html as lxml_html
 from app import db
 from app.models.documentos import Documento
 from app.models.reformados_proyecto import ReformadoProyecto
+from app.models.tipos_documentos import TipoDocumento
 from app.services.reloj_simulado import hoy
 
 
@@ -175,9 +176,10 @@ def test_lo_ausente_se_conserva_y_lo_vacio_se_vacia(arbol_aislado, usuario_super
     assert estado['asunto'] == 'Asunto de partida', 'un campo ausente se borró (#832)'
 
 
-def test_desmarcar_el_ancla_con_su_marcador_la_retira_y_sin_el_no(arbol_aislado, usuario_supervisor):
+def test_el_principal_no_se_suelta_con_su_marcador_y_sin_el_no_cuenta(arbol_aislado, usuario_supervisor):
     """El marcador `principal_activo` es lo que dice «el control existía y esta es la respuesta»:
-    sin él, que la casilla no viaje no significa nada."""
+    sin él, que la casilla no viaje no significa nada; con él y la casilla sin enviar es
+    «desmarcada», y el proyecto principal no se suelta (#1040): 422 y el ancla sigue."""
     expediente_id, doc = _caso_proyecto_anclado(arbol_aislado)
     doc_id = doc.id
 
@@ -186,8 +188,35 @@ def test_desmarcar_el_ancla_con_su_marcador_la_retira_y_sin_el_no(arbol_aislado,
     assert _estado(doc_id)['anclado'], 'un cuerpo sin el marcador retiró el ancla del proyecto'
 
     r = _guardar(usuario_supervisor, expediente_id, doc_id, {'principal_activo': '1'})
-    assert r.status_code == 200, r.get_json()
-    assert not _estado(doc_id)['anclado'], 'desmarcar el ancla en el formulario no la retiró'
+    assert r.status_code == 422, r.get_json()
+    assert _estado(doc_id)['anclado'], 'desmarcar el principal en el formulario lo soltó'
+
+
+def test_reclasificar_el_principal_por_json_se_rechaza_aunque_no_hable_del_ancla(
+        arbol_aislado, usuario_supervisor):
+    """La ruta JSON de edición no puede dejar el ancla en un documento que ya no es proyecto
+    (#1040), tampoco con un cuerpo que cambia el tipo y habla del reformado pero no de `es_principal`.
+
+    Fallo silencioso que evita: ese cuerpo se salta la guarda que solo mira `es_principal`, el ancla
+    queda sobre un documento que no es proyecto y `proyecto_sin_principal` sigue diciendo que hay
+    principal, así que el motor no bloquea nada con un expediente cuyo proyecto no existe.
+    """
+    expediente_id, doc = _caso_proyecto_anclado(arbol_aislado)
+    doc_id = doc.id
+    # El 422 hace `rollback` de la sesión, y con el SAVEPOINT de `app_ctx` eso deshace todo lo que
+    # el test preparó sin confirmar: se confirma antes, como ya hace el `200` de los otros tests.
+    db.session.commit()
+    antes = _estado(doc_id)
+    otro_tipo = TipoDocumento.query.filter_by(codigo='MODELO_SOLICITUD').one().id
+
+    r = usuario_supervisor.post(
+        f'/expedientes/{expediente_id}/documentos/{doc_id}/editar',
+        json={'tipo_doc_id': otro_tipo, 'abre_reformado': False})
+
+    assert r.status_code == 422, r.get_json()
+    despues = _estado(doc_id)
+    assert despues['anclado'], 'reclasificar el principal le soltó el ancla'
+    assert despues['tipo_doc_id'] == antes['tipo_doc_id'], 'el 422 no deshizo el cambio de tipo'
 
 
 # ---------------------------------------------------------------------------
