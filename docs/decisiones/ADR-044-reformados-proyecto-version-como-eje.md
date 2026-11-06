@@ -5,8 +5,9 @@
 **Depende de:** ADR-011 (vinculación trámites↔organismos) · ADR-016 (vista de árbol) · ADR-032 (ingesta y almacenamiento) · ADR-036 (sellado de fase cerrada) · ADR-041 §D bis (anclas documentales) · ADR-042 (sub-procesos de cardinalidad variable) · ADR-043 (certificado de fin de instrucción)
 **Enmienda:** ADR-016 §1 (modelo de niveles del árbol) · ADR-043 §E (el registry por tipo de fase deja de ser necesario para el ámbito)
 **Origen:** sesiones de análisis del 2026-09-07 y 2026-09-08. Análisis completo, con el barrido fase a fase y las alternativas descartadas, en `docs/referencia/ANALISIS_REFORMADOS_PROYECTO.md`.
-**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F, aún diferido) · #885 (R1) · #887 (R2) · #895 (R3) · #899 (R4) · #901 (R5, absorbe #848) · #903 (R6, y de paso #896)
+**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F, aún diferido) · #885 (R1) · #887 (R2) · #895 (R3) · #899 (R4) · #901 (R5, absorbe #848) · #903 (R6, y de paso #896) · #1040 (el proyecto principal sale del alta, enmienda de §D)
 **Enmendado por:** ADR-049 §F (#996, 2026-10-01). R5: la solicitud está resuelta cuando están cerradas todas las finalizadoras que **debe** tener (una por acto, `actos_solicitud.actos_sin_resolver`), no solo las que tiene. Mientras falte la de algún acto, aunque no se haya creado, sigue `EN_TRAMITE`. El filtro por estado del seguimiento sigue la misma regla.
+**Enmendado por:** #1040 (2026-11-06). §D: el proyecto principal sale del alta de expediente y no se reclasifica ni se suelta; solo se sustituye su fichero. Ver la enmienda al final de §D.
 
 ---
 
@@ -123,6 +124,36 @@ El ancla es además **la fuente** frente al requisito documental del checklist: 
 `RequisitoDocumental` de tipo `DOC_PROYECTO`, su cobertura apunta al mismo documento por otra vía,
 en otro momento y con otro ámbito —el requisito es por solicitud, el ancla por expediente—. El
 checklist se valida contra el ancla y avisa si divergen.
+
+> **Enmienda (#1040, 2026-11-06).** El proyecto principal sale del **alta de expediente**, no
+> del pool. El formulario sube, junto al escrito de solicitud, el documento proyecto
+> (`DatosAlta.documento_proyecto`), y `alta_expediente` lo ingesta como `DOC_PROYECTO` y lo
+> ancla en `proyectos.documento_principal_id` en la misma transacción, con la `fecha_proyecto` del
+> alta como fecha administrativa. Es obligatorio en el servicio y en la ruta, salvo en un
+> expediente **heredado**, cuyo tratamiento queda por estudiar (la regla de motor ya lo exime por
+> su cuenta); si un heredado trae el fichero, se ancla igual. El formulario avisa de que ese
+> documento es el proyecto principal y no un modificado ni un reformado, que se aportan después
+> desde Documentos. El ancla inicial no escribe en la bitácora: forma parte de crear el proyecto.
+>
+> Por eso `documento_principal_id` sigue siendo `nullable`, pero ya no «porque en el alta el único
+> documento que entra es el escrito de solicitud»: solo lo es para el expediente heredado sin
+> proyecto. El alta no puede fabricar un expediente que no se pueda tramitar más allá del
+> análisis, y la fábrica de expedientes de los tests tampoco.
+>
+> Consecuencias:
+>
+> - **El principal no se reclasifica ni se suelta.** La edición de un documento lo rechaza (422)
+>   si se pide desmarcarlo o cambiarle el tipo, venga por el formulario del inspector o por la
+>   ruta JSON (`exigir_principal_intacto`). Lo único que cabe es **sustituir** su contenido
+>   (`sustituir_con_motivo`, ADR-050 §F), que conserva el `id` y con él el ancla. El inspector lo
+>   enseña marcado y bloqueado. Se retira `desanclar_principal`, que dejó de tener uso.
+> - **La rama «¿Es este el proyecto?» de la puerta de ingesta (§C)** solo se encuentra ya en un
+>   expediente heredado sin proyecto *(interpretación: los expedientes anteriores a este cambio no
+>   se migran; en desarrollo se borran)*.
+> - **Queda pendiente, en #1089,** retirar el gesto de **mover** el ancla a otro documento
+>   (`anclar-principal`, y el botón de React del aviso de divergencia del checklist) y decidir qué
+>   hace ese aviso cuando ya no hay botón que lo resuelva. Hasta entonces el gesto sigue
+>   existiendo, aunque ningún mensaje lo aconseje.
 
 ### E — El enganche: `fases.reformado_id`, y lo que necesita cada fase
 
@@ -349,7 +380,8 @@ de expediente heredado (variable nueva en catálogo); validación del checklist 
   ausente de sus primas del checklist. `heredado` es nullable y NULL significa «no heredado».
 - Con esta regla, **tener proyecto identificado pasa a formar parte del estado mínimo para
   avanzar**, igual que ya lo era cubrir la tasa (#582). Todo test que pase del análisis lo declara
-  con `arbol.anclar_proyecto()`; el alta real sigue sin traerlo, a propósito. Cuenta para R3-R6:
+  con `arbol.anclar_proyecto()`; el alta real sigue sin traerlo, a propósito *(ya no: desde #1040 lo
+  trae, ver la enmienda de §D)*. Cuenta para R3-R6:
   cada regla nueva del motor mueve ese mínimo y alcanza a los tests que lo dan por supuesto.
 
 ### R3 — `fases.reformado_id`, el nodo del árbol y la regla genérica
