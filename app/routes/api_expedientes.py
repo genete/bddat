@@ -41,6 +41,7 @@ from app.services import mutaciones_arbol as svc
 from app.services.almacenamiento.adaptador import AlmacenNoDisponible, MENSAJE_ALMACEN_NO_DISPONIBLE
 from app.services.almacenamiento.contenido import ContenidoNoUtilizable, comprobar_para_vincular
 from app.services import consultas_organismos as svc_consultas
+from app.services import ciclo_organismo
 from app.utils.api_respuestas import leer_bypass
 from app.utils.formularios import leer_json
 from app.services.assembler import build, build_sujeto
@@ -1637,8 +1638,8 @@ def get_analizar(expediente_id, tarea_id):
     """
     GET .../nodo/tarea/<tarea_id>/analizar — payload del contenedor de #442/#677.
 
-    {resultado, resultado_previsto, documento_producido: {...}|null,
-     secciones_extendidas: bool, es_ronda_subsanacion: bool, defectos_consolidado: [...],
+    {resultado, resultado_previsto, documento_producido: {..., sentido}|null,
+     pide_sentido: bool, aviso_ciclo: str|null, secciones_extendidas: bool, es_ronda_subsanacion: bool, defectos_consolidado: [...],
      defectos_resueltos: [...], completo: bool, checklist_documental: [...],
      checklist_tecnico: [...], notas}
 
@@ -1676,10 +1677,15 @@ def get_analizar(expediente_id, tarea_id):
             'diagnostico_id': diag.id,
             'resultado': diag.resultado,
             'defectos': diag.defectos or [],
+            'sentido': diag.sentido,
             'nombre': doc.tipo_doc.nombre if doc.tipo_doc else 'Diagnóstico',
         }
 
     return jsonify({
+        # #652: en la respuesta de un organismo un desfavorable pide su sentido; y, si en su
+        # ciclo ya hubo oposiciones o reparos, un texto declarativo para quien tramita.
+        'pide_sentido': ciclo_organismo.es_respuesta_de_organismo(tarea),
+        'aviso_ciclo': ciclo_organismo.aviso_de_ciclo(tarea),
         'resultado': resultado,
         'resultado_previsto': _resultado_derivado(consolidado),
         'documento_producido': documento_producido,
@@ -1701,7 +1707,9 @@ def post_analizar(expediente_id, tarea_id):
     """
     POST .../nodo/tarea/<tarea_id>/analizar — produce el documento de diagnóstico.
 
-    Body JSON: {resultado?, justificacion?}. En ANALIZAR extendido (ADR-033 §3)
+    Body JSON: {resultado?, justificacion?, sentido?}. `sentido` (oposicion | reparos,
+    #652) es obligatorio en el diagnóstico desfavorable de la respuesta de un organismo
+    y se rechaza (422) en cualquier otro. En ANALIZAR extendido (ADR-033 §3)
     `resultado` no es una elección libre: se deriva del borrador agregado
     (favorable si vacío, desfavorable si hay defectos) e ignora lo que mande el
     cliente — "condicionado" deja de ser representable por construcción. En
@@ -1724,6 +1732,7 @@ def post_analizar(expediente_id, tarea_id):
 
     data = request.get_json(silent=True) or {}
     justificacion = (data.get('justificacion') or '').strip() or None
+    sentido = data.get('sentido') or None   # oposicion | reparos (#652); lo valida crear_diagnostico
 
     consolidado = consolidar_defectos(tarea)
 
@@ -1743,7 +1752,8 @@ def post_analizar(expediente_id, tarea_id):
         }), 422
 
     try:
-        doc = crear_diagnostico(tarea, resultado, consolidado['items'], justificacion=justificacion)
+        doc = crear_diagnostico(tarea, resultado, consolidado['items'],
+                                justificacion=justificacion, sentido=sentido)
     except FaseCerradaError as e:
         return jsonify({'error': 'Fase cerrada', 'motivo': str(e), 'puede_escapar': False}), 422
     except ValueError as e:

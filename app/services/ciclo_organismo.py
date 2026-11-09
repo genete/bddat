@@ -84,3 +84,73 @@ def ultimo_traslado_al_titular(oe, despues_de: Tramite) -> Optional[Tramite]:
     posteriores = [t for t in tramites_del_organismo(oe, (CODIGO_TRASLADO_TITULAR,))
                    if t.id > despues_de.id]
     return posteriores[-1] if posteriores else None
+
+
+# ---------------------------------------------------------------------------
+# Sentido de la respuesta y aviso de las vueltas (#652)
+# ---------------------------------------------------------------------------
+
+# A partir de cuántas respuestas del mismo sentido «debería archivarse». Son dos datos
+# del código y no de catálogo: la ley no dice cuántas vueltas caben, y la decisión es de
+# quien tramita (DISEÑO_CONSULTAS_ORGANISMOS.md §6, «Limitación del bucle»). Se miran
+# aparte porque la oposición (rechazo) y los reparos (aclaración) no son lo mismo.
+UMBRAL_OPOSICIONES = 2
+UMBRAL_REPAROS = 2
+
+
+def es_respuesta_de_organismo(tarea) -> bool:
+    """¿La tarea (una ANALIZAR) analiza la respuesta del organismo, en una separata o en
+    un traslado al organismo? Solo ahí un diagnóstico desfavorable indica su sentido."""
+    tramite = tarea.tramite
+    return (tramite is not None and tramite.tipo_tramite is not None
+            and tramite.tipo_tramite.codigo in CODIGOS_RESPUESTA_ORGANISMO)
+
+
+def diagnostico_del_analisis(tramite):
+    """Diagnóstico que produjo la `ANALIZAR` de `tramite`, o None si aún no lo hay."""
+    analisis = _tarea_de(tramite, 'ANALIZAR')
+    producido = analisis.documento_producido if analisis is not None else None
+    return producido.diagnostico if producido is not None else None
+
+
+def _frase_de_sentido(n: int, singular: str, plural: str, umbral: int) -> str:
+    cuantas = f'{n} {singular if n == 1 else plural}'
+    return (f'Ya hubo {cuantas} de este organismo, debería archivarse.' if n >= umbral
+            else f'Ya hubo {cuantas} de este organismo.')
+
+
+def aviso_de_ciclo(tarea) -> Optional[str]:
+    """Texto que se enseña en la `ANALIZAR` de la respuesta de un organismo si en su ciclo
+    ya hubo oposiciones o reparos, o None si no hay nada que decir (#652).
+
+    Declarativo, no predictivo: cuenta lo que ya consta en los diagnósticos anteriores
+    del mismo organismo, sin la respuesta que se está analizando (aún no tiene sentido) y
+    sin adivinar qué pasará. Al llegar a un umbral añade «debería archivarse». No es una
+    regla del motor ni bloquea nada: decide quien tramita, y lo razona en sus
+    observaciones. No deja registro si se ignora.
+    """
+    if not es_respuesta_de_organismo(tarea):
+        return None
+    vinculo = TramiteOrganismo.query.filter_by(tramite_id=tarea.tramite_id).first()
+    if vinculo is None:
+        return None
+
+    oposiciones = reparos = 0
+    for tramite in tramites_del_organismo(vinculo.organismo_expediente,
+                                          CODIGOS_RESPUESTA_ORGANISMO):
+        if tramite.id == tarea.tramite_id:
+            continue
+        diagnostico = diagnostico_del_analisis(tramite)
+        if diagnostico is None:
+            continue
+        if diagnostico.sentido == 'oposicion':
+            oposiciones += 1
+        elif diagnostico.sentido == 'reparos':
+            reparos += 1
+
+    frases = []
+    if oposiciones:
+        frases.append(_frase_de_sentido(oposiciones, 'oposición', 'oposiciones', UMBRAL_OPOSICIONES))
+    if reparos:
+        frases.append(_frase_de_sentido(reparos, 'reparo', 'reparos', UMBRAL_REPAROS))
+    return ' '.join(frases) or None

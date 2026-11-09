@@ -22,6 +22,14 @@ class Diagnostico(db.Model):
             "resultado IN ('favorable', 'condicionado', 'desfavorable')",
             name='ck_diagnostico_resultado',
         ),
+        db.CheckConstraint(
+            "sentido IS NULL OR sentido IN ('oposicion', 'reparos')",
+            name='ck_diagnostico_sentido',
+        ),
+        db.CheckConstraint(
+            "sentido IS NULL OR resultado = 'desfavorable'",
+            name='ck_diagnostico_sentido_desfavorable',
+        ),
         {'schema': 'public'},
     )
 
@@ -39,6 +47,13 @@ class Diagnostico(db.Model):
         db.String(20),
         nullable=False,
         comment='Resultado: favorable, condicionado o desfavorable',
+    )
+
+    sentido = db.Column(
+        db.String(10),
+        nullable=True,
+        comment='Solo en la respuesta de un organismo con resultado desfavorable: '
+                'oposicion o reparos (#652)',
     )
 
     defectos = db.Column(
