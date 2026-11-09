@@ -34,7 +34,17 @@ class ExpedienteContext:
       - Un dict para CREAR:
           {'solicitud': s, 'tipo_fase': tf}          → crear Fase
           {'fase': f, 'tipo_tramite': tt}             → crear Tramite
+          {'fase': f, 'tipo_tramite': tt,
+           'organismo_expediente': oe}                → crear traslado (#652)
       - None: solo el expediente en contexto
+
+    El sujeto de crear un trámite tiene cuatro segmentos (tipo de expediente / tipo de
+    solicitud / fase / trámite), como el de un trámite existente y como el que construye
+    la interfaz del supervisor (#170): el dict lleva la fase, y de ella sale la solicitud.
+    Hasta #652 compilaba tres (sin solicitud, #895), y las reglas escritas con cuatro
+    segmentos —como las de los traslados o la comunicación de inicio— nunca casaban.
+    Solo el dict de crear trámite se completa así: el de crear tarea y el de crear o
+    borrar organismo siguen compilando menos segmentos de los que tienen.
     """
 
     def __init__(self, expediente: Any, objeto: Any = None) -> None:
@@ -57,7 +67,11 @@ class ExpedienteContext:
         if obj is None:
             return None
         if isinstance(obj, dict):
-            return obj.get('solicitud')
+            solicitud = obj.get('solicitud')
+            # Crear un trámite (#652): el dict trae la fase, no la solicitud.
+            if solicitud is None and 'tipo_tramite' in obj and obj.get('fase') is not None:
+                return obj['fase'].solicitud
+            return solicitud
         if hasattr(obj, 'fases') and not hasattr(obj, 'solicitud'):
             return obj                        # es Solicitud
         if hasattr(obj, 'solicitud') and hasattr(obj, 'tramites'):
@@ -96,6 +110,20 @@ class ExpedienteContext:
             return obj                        # es Tramite
         if hasattr(obj, 'tramite'):
             return obj.tramite                # es Tarea
+        return None
+
+    @property
+    def organismo_expediente(self) -> Optional[Any]:
+        """Organismo de la consulta sobre el que se actúa, o None (#652).
+
+        Solo lo trae el dict de crear un traslado (`crear_traslado`): es lo que permite
+        a las variables mirar «este organismo» y no todos los del expediente. Los
+        nodos organismo del árbol son presentación (ADR-042 §A) y no forman parte del
+        sujeto: el organismo llega por variable, no por camino.
+        """
+        obj = self._objeto
+        if isinstance(obj, dict):
+            return obj.get('organismo_expediente')
         return None
 
     @property
