@@ -486,38 +486,6 @@ def _(ctx) -> bool:
     return all(org.resultado in _RESULTADOS_TERMINALES_CONSULTAS for org in organismos)
 
 
-@variable('organismo_supera_iteraciones')
-def _(ctx) -> bool:
-    """
-    True si algún organismo acumula ≥ 1 CONSULTA_TRASLADO_ORGANISMO en tramites_organismos,
-    lo que indica que se va a crear una segunda iteración.
-
-    Devuelve False mientras #471 (vincular tramites TRASLADO a tramites_organismos)
-    no esté implementado, ya que la tabla no tendrá entradas para TRASLADOs.
-
-    Evaluar al CREAR CONSULTA_TRASLADO_ORGANISMO (motor: ADVERTIR).
-    """
-    from app.models.tramites_organismos import TramiteOrganismo
-    from app.models.tramites import Tramite as _Tramite
-    from app.models.tipos_tramites import TipoTramite
-    from app import db
-
-    for org in ctx.expediente.organismos:
-        count = (
-            db.session.query(TramiteOrganismo)
-            .join(_Tramite, TramiteOrganismo.tramite_id == _Tramite.id)
-            .join(TipoTramite, _Tramite.tipo_tramite_id == TipoTramite.id)
-            .filter(
-                TramiteOrganismo.organismo_expediente_id == org.id,
-                TipoTramite.codigo == 'CONSULTA_TRASLADO_ORGANISMO',
-            )
-            .count()
-        )
-        if count >= 1:
-            return True
-    return False
-
-
 @variable('existe_fase_consultas_previa')
 def _(ctx) -> bool:
     """
