@@ -37,6 +37,16 @@ export function postHijo(expedienteId, padreTipo, padreId, body) {
   return api.post(`/api/expedientes/${expedienteId}/nodo/${padreTipo}/${padreId}/hijos`, body)
 }
 
+// Crear un traslado bajo un organismo (POST, ADR-042 §D, #652): es el «crear hijo» del nodo
+// organismo, con ruta propia porque el traslado lo crea `consultas_organismos.crear_traslado`
+// (lo vincula al organismo) y no el alta genérica de trámites. body: {tipo: 'TITULAR'|'ORGANISMO'}
+// y, para forzar un bloqueo del motor, {bypass:true, justificacion}. Respuesta éxito:
+// {ok:true, ids:[id del trámite], advertencia?} 201. 422: {error} o, si es un bloqueo del motor,
+// {error, motivo, url_norma, puede_escapar}.
+export function postCrearTraslado(expedienteId, organismoId, body) {
+  return api.post(`/api/expedientes/${expedienteId}/nodo/organismo/${organismoId}/traslados`, body)
+}
+
 // Pool de documentos del expediente (GET, S3b-3). Respuesta: {documentos:[fila]}, donde cada
 // fila es la fila común de documento (ADR-053 §E, `detalle_nodo.documento_fila`): id, nombre,
 // tipo_doc, tipo_doc_codigo, fecha (ISO AAAA-MM-DD o null), asunto, marcas [{codigo, texto}],

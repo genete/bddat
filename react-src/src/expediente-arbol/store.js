@@ -7,11 +7,19 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCrearOrganismo, postCertificarFinInstruccion, deleteCertFinInstruccion, postCertificarCumplimiento, deleteCertCumplimiento, postCerrarFaseFinalizadora, postCertificarCierreSolicitud, deleteCertCierreSolicitud, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, postCrearTraslado, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCrearOrganismo, postCertificarFinInstruccion, deleteCertFinInstruccion, postCertificarCumplimiento, deleteCertCumplimiento, postCerrarFaseFinalizadora, postCertificarCierreSolicitud, deleteCertCierreSolicitud, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
 import { showToast, showAvisos } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
 let _detalleAbort = null
+
+// Qué `tipo` espera la ruta de traslados (#652) para cada trámite que ofrece la despensa del
+// organismo. Los nombres que se ven salen del catálogo; esto solo traduce el código que ya
+// llega en la lista de tipos.
+const TIPO_TRASLADO = {
+  CONSULTA_TRASLADO_TITULAR: 'TITULAR',
+  CONSULTA_TRASLADO_ORGANISMO: 'ORGANISMO',
+}
 
 export const useArbolStore = create((set, get) => ({
   // --- estado servidor ---
@@ -794,9 +802,18 @@ export const useArbolStore = create((set, get) => ({
     set({ creando: true })
     try {
       const esMulti = creacionPadre.tipo === 'expediente'
-      const body = esMulti
-        ? { tipo_ids: [tipoCreacionPendiente.tipo_id] }
-        : { tipo_id: tipoCreacionPendiente.tipo_id }
+      // Bajo un organismo lo que se crea es un traslado, por su ruta propia (#652).
+      const esTraslado = creacionPadre.tipo === 'organismo'
+      let body
+      if (esTraslado) {
+        const tipoTraslado = TIPO_TRASLADO[tipoCreacionPendiente.codigo]
+        if (!tipoTraslado) throw new Error(`El tipo ${tipoCreacionPendiente.codigo} no es un traslado`)
+        body = { tipo: tipoTraslado }
+      } else {
+        body = esMulti
+          ? { tipo_ids: [tipoCreacionPendiente.tipo_id] }
+          : { tipo_id: tipoCreacionPendiente.tipo_id }
+      }
       // Bajo expediente se crea una solicitud, y toda solicitud nace anclada a su
       // escrito (#428). Se manda tal cual: quien decide si vale es el servicio, no
       // esta isla — y el bypass del motor no lo exime, porque es integridad.
@@ -807,7 +824,9 @@ export const useArbolStore = create((set, get) => ({
         body.bypass = true
         body.justificacion = justificacionForzar.trim()
       }
-      const data = await postHijo(expedienteId, creacionPadre.tipo, creacionPadre.id, body)
+      const data = esTraslado
+        ? await postCrearTraslado(expedienteId, creacionPadre.id, body)
+        : await postHijo(expedienteId, creacionPadre.tipo, creacionPadre.id, body)
       const nuevoTipo = tiposCreables?.tipo_hijo   // 'solicitud', 'fase', 'tramite', 'tarea'
       const nuevoId = (data.ids || [])[0]
 
@@ -825,6 +844,10 @@ export const useArbolStore = create((set, get) => ({
       })
       await get().refrescarArbol()
       if (nuevoId && nuevoTipo) {
+        // El detalle que hay cargado es el del padre (refrescarArbol lo acaba de recargar) y
+        // entrarEdicion no lo cambia: sin esto el inspector del nodo nuevo pinta los datos del
+        // padre y sus tarjetas piden por el id del padre (p. ej. las notificaciones de un trámite).
+        get().cargarDetalle({ tipo: nuevoTipo, id: nuevoId })
         await get().entrarEdicion({ tipo: nuevoTipo, id: nuevoId })
       }
     } catch (e) {
