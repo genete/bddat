@@ -486,6 +486,65 @@ def _(ctx) -> bool:
     return all(org.resultado in _RESULTADOS_TERMINALES_CONSULTAS for org in organismos)
 
 
+@variable('organismo_respuesta_analizada')
+def _(ctx):
+    """
+    True si el organismo del traslado que se intenta crear ha respondido de verdad y su
+    respuesta ya está analizada: el trámite más reciente en el que responde (separata o
+    traslado al organismo) tiene un `RESPUESTA_ORGANISMO` en su `ESPERAR_PLAZO` y la
+    `ANALIZAR` ya produjo su diagnóstico (#652, ADR-042 §D).
+
+    Sostiene la regla de `CONSULTA_TRASLADO_TITULAR` (RD 1955/2000 arts. 127.3, 131.3 y
+    147.1): el titular conoce y se pronuncia sobre lo que el organismo ha respondido. Si
+    el organismo calló no hay respuesta que trasladar (conformidad por silencio, arts.
+    127.2, 131.1 y 146.1), y lo que vale como silencio no es un `RESPUESTA_ORGANISMO`.
+
+    `None` si el contexto no trae organismo (no es la creación de un traslado): así la
+    condición `EQ false` de la regla no dispara en ninguna otra evaluación.
+    """
+    from app.services import ciclo_organismo as ciclo
+
+    oe = ctx.organismo_expediente
+    if oe is None:
+        return None
+    ultima = ciclo.ultima_respuesta_del_organismo(oe)
+    if ultima is None:
+        return False
+    return ciclo.diagnostico_de_respuesta(ultima, ciclo.DOC_RESPUESTA_ORGANISMO) is not None
+
+
+@variable('traslado_organismo_procede')
+def _(ctx):
+    """
+    True si procede dar traslado al organismo de la respuesta del titular: la última
+    respuesta del organismo fue desfavorable (oposición o reparos) y el traslado al
+    titular posterior ya tiene la respuesta del titular, analizada (#652, ADR-042 §D).
+
+    Sostiene la regla de `CONSULTA_TRASLADO_ORGANISMO` (RD 1955/2000 arts. 127.4, 131.4 y
+    147.2). Si el organismo no se opuso, el traslado al titular cierra el ciclo y no hay
+    nada que devolverle; si el titular aún no ha contestado, no hay respuesta que
+    trasladar. Que sea el segundo traslado al organismo no lo decide esta variable: es un
+    aviso declarativo en la `ANALIZAR` (la ley no limita las vueltas).
+
+    `None` si el contexto no trae organismo, por la misma razón que la anterior.
+    """
+    from app.services import ciclo_organismo as ciclo
+
+    oe = ctx.organismo_expediente
+    if oe is None:
+        return None
+    ultima = ciclo.ultima_respuesta_del_organismo(oe)
+    if ultima is None:
+        return False
+    diagnostico = ciclo.diagnostico_de_respuesta(ultima, ciclo.DOC_RESPUESTA_ORGANISMO)
+    if diagnostico is None or diagnostico.resultado != 'desfavorable':
+        return False
+    traslado = ciclo.ultimo_traslado_al_titular(oe, ultima)
+    if traslado is None:
+        return False
+    return ciclo.diagnostico_de_respuesta(traslado, ciclo.DOC_RESPUESTA_TITULAR) is not None
+
+
 @variable('existe_fase_consultas_previa')
 def _(ctx) -> bool:
     """
