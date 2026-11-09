@@ -844,6 +844,10 @@ export const useArbolStore = create((set, get) => ({
       })
       await get().refrescarArbol()
       if (nuevoId && nuevoTipo) {
+        // El detalle que hay cargado es el del padre (refrescarArbol lo acaba de recargar) y
+        // entrarEdicion no lo cambia: sin esto el inspector del nodo nuevo pinta los datos del
+        // padre y sus tarjetas piden por el id del padre (p. ej. las notificaciones de un trámite).
+        get().cargarDetalle({ tipo: nuevoTipo, id: nuevoId })
         await get().entrarEdicion({ tipo: nuevoTipo, id: nuevoId })
       }
     } catch (e) {
