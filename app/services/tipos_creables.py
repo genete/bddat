@@ -17,6 +17,9 @@ Niveles (padre → hijo):
                             de creación — nunca aparecen aquí, ni en "resto")
   tramite    → tarea        canónicos: patrón de tramites_tareas, con la siguiente
                             marcada (es_siguiente, #719); resto: tipos fuera del patrón
+  organismo  → tramite      los dos traslados (CONSULTA_TRASLADO_*), con el nombre del
+                            catálogo (ADR-042 §D, #652). Se crean por `crear_traslado`
+                            (ruta propia), no por el alta genérica de trámites
 
 Defensivo ante catálogo no disponible (REGLAS_DESARROLLO §Servicios con catálogo).
 """
@@ -27,6 +30,7 @@ import logging
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.models.solicitudes import Solicitud
+from app.models.organismos_expediente import OrganismoExpediente
 from app.models.fases import Fase
 from app.models.tramites import Tramite
 from app.models.tipos_solicitudes import TipoSolicitud
@@ -70,11 +74,7 @@ def tipos_creables_de_nodo(expediente, tipo_nodo: str, nodo_id: int) -> dict:
         if tipo_nodo == 'tramite':
             return _creables_tarea(expediente, nodo_id)
         if tipo_nodo == 'organismo':
-            # ADR-042 §D (#652, no construido todavía): "crear traslado" vía
-            # despensa del nodo organismo. Hasta entonces, vacío en vez de 404 —
-            # Despensa.jsx lo pide siempre al entrar en edición de cualquier nodo.
-            return {'nodo': {'tipo': 'organismo', 'id': nodo_id}, 'tipo_hijo': None,
-                    'canonicos': [], 'resto': []}
+            return _creables_traslado(expediente, nodo_id)
     except (OperationalError, ProgrammingError) as exc:
         log.warning('tipos_creables: catálogo no disponible — %s', exc)
         return {'nodo': {'tipo': tipo_nodo, 'id': nodo_id}, 'tipo_hijo': None,
@@ -129,6 +129,40 @@ def _creables_tramite(expediente, fase_id: int) -> dict:
 
     return {'nodo': {'tipo': 'fase', 'id': fase_id}, 'tipo_hijo': 'tramite',
             'canonicos': canonicos, 'resto': resto}
+
+
+# --- organismo → tramite: los traslados (ADR-042 §D, #652) -------------------
+
+# En el orden en que se dan en el ciclo: primero al titular, después al organismo.
+_CODIGOS_TRASLADO = ('CONSULTA_TRASLADO_TITULAR', 'CONSULTA_TRASLADO_ORGANISMO')
+
+
+def _creables_traslado(expediente, oe_id: int) -> dict:
+    """Los dos traslados que se pueden crear bajo un organismo de la fase CONSULTAS.
+
+    Es vocabulario (ADR-037 §D): no mira si procede crearlos ahora —eso lo decide el
+    motor al intentarlo, en `consultas_organismos.crear_traslado`— y el nombre sale del
+    catálogo. Lanza ValueError si el organismo no existe o es de otro expediente: sin
+    esa comprobación, cualquier id obtendría la lista como si existiera.
+    """
+    oe = OrganismoExpediente.query.get(oe_id)
+    if oe is None or oe.expediente_id != expediente.id:
+        raise ValueError(f'Organismo {oe_id} no encontrado en el expediente {expediente.id}')
+
+    por_codigo = {
+        tt.codigo: tt
+        for tt in TipoTramite.query.filter(TipoTramite.codigo.in_(_CODIGOS_TRASLADO)).all()
+    }
+    tipos = []
+    for codigo in _CODIGOS_TRASLADO:
+        tt = por_codigo.get(codigo)
+        if tt is None:
+            log.warning("tipos_creables: TipoTramite %s no encontrado en catálogo", codigo)
+            continue
+        tipos.append(_item(tt.id, tt.codigo, tt.nombre))
+
+    return {'nodo': {'tipo': 'organismo', 'id': oe_id}, 'tipo_hijo': 'tramite',
+            'canonicos': tipos, 'resto': []}
 
 
 # --- tramite → tarea (patrón no vinculante, #719/ADR-037 §C) ----------------

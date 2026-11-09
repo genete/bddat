@@ -413,7 +413,7 @@ def get_tipos_creables(expediente_id, tipo, nodo_id):
     """
     GET .../nodo/<tipo>/<nodo_id>/tipos-creables — tipos de hijo creables (ADR-016 §16, §8).
 
-    <tipo> ∈ {expediente, solicitud, fase, tramite}. Fuente única para la despensa
+    <tipo> ∈ {expediente, solicitud, fase, organismo, tramite}. Fuente única para la despensa
     de tipos del inspector y el submenú 'Crear hijo' del menú contextual. Listado
     puramente didáctico (ADR-037 §D): 'canonicos' (vocabulario) y 'resto' (el resto
     del catálogo, tras un 'ver todos'). No evalúa el motor — el veredicto de permiso
@@ -1387,9 +1387,9 @@ def enviar_consultas_nodo(expediente_id, nodo_id):
 
 
 # =============================================================================
-# ENDPOINT 8quinquies: Crear traslado a organismo/titular (ADR-042 §D, la mitad
-# de titular es obra de #396 bloque 5 — el traslado a organismo vía despensa
-# del nodo queda para #652, ver ADR-042 §D)
+# ENDPOINT 8quinquies: Crear traslado a organismo/titular (ADR-042 §D). Lo llama
+# la despensa y el menú contextual del nodo organismo (#652) en lugar del alta
+# genérica de hijos (ENDPOINT 6): `tipos-creables` del organismo lista los dos.
 # =============================================================================
 
 @api_bp.route('/expedientes/<int:expediente_id>/nodo/organismo/<int:nodo_id>/traslados',
