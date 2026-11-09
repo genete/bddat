@@ -68,9 +68,9 @@ function DespensaTipos() {
   const hayResto   = resto.length > 0
   const tipoHijo   = ETIQUETA_TIPO_HIJO[tiposCreables.tipo_hijo] || tiposCreables.tipo_hijo || 'hijo'
 
-  // Nada que crear bajo este nodo (hoy el organismo: el backend devuelve la lista vacía hasta #652,
-  // crear traslado): ni zona de arrastrar ni «Crear» gris, que serían un panel muerto (#1043,
-  // decisión de Carlos, 13/10). Reaparece solo cuando el nodo tenga tipos.
+  // Nada que crear bajo este nodo (el catálogo no trae los tipos): ni zona de arrastrar ni «Crear»
+  // gris, que serían un panel muerto (#1043, decisión de Carlos, 13/10). Reaparece solo cuando el
+  // nodo tenga tipos. Bajo un organismo salen los dos traslados (#652).
   if (canonicos.length + resto.length === 0 && !tipoCreacionPendiente) {
     return <div className="p-2 text-muted small fst-italic">No hay tipos disponibles</div>
   }

@@ -65,11 +65,8 @@ export function puedeCrearHijoDe(tipoPadre) {
   // El permiso depende del tipo de HIJO: bajo trámite se crean tareas (hoja →
   // gestionar_tareas); bajo expediente/solicitud/fase se crea estructura.
   if (tipoPadre === 'tramite') return tienePermiso('gestionar_tareas')
-  // organismo (ADR-042 §D, #652): "crear traslado" vía despensa del nodo organismo
-  // no está construido todavía — tipos_creables.py no reconoce este ámbito y
-  // devolvería 404. Explícito en false para no ofrecer un "Crear hijo" que no
-  // lleva a nada hasta que #652 lo cierre.
-  if (tipoPadre === 'organismo') return false
+  // organismo (ADR-042 §D, #652): lo que se crea bajo él son los traslados (trámites), así
+  // que el permiso es el de estructura, igual que bajo una fase; sigue el `else` de abajo.
   // version (ADR-044 §G, #895): las fases se crean bajo la solicitud, nunca bajo
   // el grupo de versión — el enganche es automático (crear_fase, versión vigente).
   if (tipoPadre === 'version') return false
