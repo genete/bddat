@@ -16,7 +16,7 @@
 import React from 'react'
 import { useAnalisisTarea } from '../analizarEstado.js'
 import { TarjetaDatos, CampoDato, ValorSoloLectura } from './TarjetaDatos.jsx'
-import { ETIQUETA_RESULTADO } from './AnalizarEditor.jsx'
+import { ETIQUETA_RESULTADO, ETIQUETA_SENTIDO } from './AnalizarEditor.jsx'
 
 export function TarjetaResultadoDiagnostico({ expedienteId, tareaId }) {
   const cargar = useAnalisisTarea((s) => s.cargar)
@@ -39,6 +39,22 @@ export function TarjetaResultadoDiagnostico({ expedienteId, tareaId }) {
             ? (ETIQUETA_RESULTADO[producido.resultado] || producido.resultado)
             : 'Pendiente de producir'} />
       </CampoDato>
+      {producido && producido.sentido && (
+        <CampoDato rotulo="Sentido">
+          <ValorSoloLectura
+            rotulo="Sentido"
+            valor={ETIQUETA_SENTIDO[producido.sentido] || producido.sentido} />
+        </CampoDato>
+      )}
+      {/* Lo que ya consta en el ciclo de este organismo (#652): declarativo, sin bloquear nada;
+          decide quien tramita y lo razona en las observaciones. */}
+      {payload.aviso_ciclo && (
+        <div className="col-12">
+          <div className="alert alert-warning py-2 px-3 small mb-0" role="note">
+            <i className="fas fa-triangle-exclamation me-1" />{payload.aviso_ciclo}
+          </div>
+        </div>
+      )}
       {producido && (
         <>
           <CampoDato rotulo="Defectos">
