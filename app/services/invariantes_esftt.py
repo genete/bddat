@@ -1440,6 +1440,12 @@ def _diagnosticos_vigentes_query(fase_id: int):
     ninguno supera a otro—; dentro de la cadena, solo el último, porque cada
     vuelta revisa lo mismo que la anterior y la supera.
 
+    Lo paralelo son los **organismos**, no los diagnósticos (#1097): dentro del ciclo de
+    un mismo organismo (separata, traslados) cada análisis supera al anterior, y vale el
+    último. Sin esto, una oposición ya resuelta bloquearía cerrar la fase como favorable.
+    «El último» es el del trámite más reciente con diagnóstico, el mismo orden que usa
+    `ciclo_organismo`; los trámites sin organismo siguen contando todos.
+
     Base común de las dos ramas de `_check_cierre_fase` (#765): ambas dependen
     de qué diagnóstico "manda" y deben leerlo del mismo sitio, por el mismo
     motivo que `ultima_tarea_cadena_subsanacion` se hizo pública en #714 —lo que
@@ -1451,13 +1457,36 @@ def _diagnosticos_vigentes_query(fase_id: int):
     from app.models.documentos_tarea import DocumentoTarea
     from app.models.diagnosticos import Diagnostico
 
+    from app.models.tramites_organismos import TramiteOrganismo
+
     ultima_cadena_id = ultima_tarea_cadena_subsanacion(fase_id)
+
+    # Último trámite con diagnóstico de cada organismo (#1097). Correlacionada con el
+    # vínculo del trámite que se está evaluando: un trámite sin organismo no tiene vínculo
+    # y esta condición no le aplica.
+    TO_otro = db.aliased(TramiteOrganismo)
+    Tarea_otra = db.aliased(Tarea)
+    TipoTarea_otra = db.aliased(TipoTarea)
+    DT_otro = db.aliased(DocumentoTarea)
+    Diagnostico_otro = db.aliased(Diagnostico)
+    ultimo_tramite_del_organismo = (
+        db.session.query(db.func.max(Tarea_otra.tramite_id))
+        .join(TO_otro, TO_otro.tramite_id == Tarea_otra.tramite_id)
+        .join(TipoTarea_otra, Tarea_otra.tipo_tarea_id == TipoTarea_otra.id)
+        .join(DT_otro, db.and_(DT_otro.tarea_id == Tarea_otra.id, DT_otro.rol == 'PRODUCIDO'))
+        .join(Diagnostico_otro, Diagnostico_otro.documento_id == DT_otro.documento_id)
+        .filter(TipoTarea_otra.codigo == 'ANALIZAR',
+                TO_otro.organismo_expediente_id == TramiteOrganismo.organismo_expediente_id)
+        .correlate(TramiteOrganismo)
+        .scalar_subquery()
+    )
 
     return (
         db.session.query(Tarea, Diagnostico)
         .join(Tramite, Tarea.tramite_id == Tramite.id)
         .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
         .join(TipoTramite, Tramite.tipo_tramite_id == TipoTramite.id)
+        .outerjoin(TramiteOrganismo, TramiteOrganismo.tramite_id == Tramite.id)
         .join(DocumentoTarea, db.and_(
             DocumentoTarea.tarea_id == Tarea.id,
             DocumentoTarea.rol == 'PRODUCIDO',
@@ -1472,6 +1501,11 @@ def _diagnosticos_vigentes_query(fase_id: int):
             db.or_(
                 TipoTramite.codigo.notin_(TRAMITES_CADENA_SUBSANACION),
                 Tarea.id == ultima_cadena_id,
+            ),
+            # Dentro del ciclo de un organismo, solo el último de ese organismo.
+            db.or_(
+                TramiteOrganismo.id.is_(None),
+                Tramite.id == ultimo_tramite_del_organismo,
             ),
         )
     )

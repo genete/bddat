@@ -117,6 +117,24 @@ def test_otra_vuelta_saca_al_organismo_de_audiencia_previa(app_ctx, arbol_esftt)
     assert _resultado(oe) is None
 
 
+@pytest.mark.parametrize('segundo_organismo, bloquea', [
+    pytest.param(None, False, id='oposicion_resuelta_en_el_ciclo'),
+    pytest.param(_OPOSICION, True, id='otro_organismo_en_oposicion'),
+])
+def test_cierre_de_consultas_cuenta_el_ultimo_diagnostico_de_cada_organismo(
+        app_ctx, arbol_esftt, segundo_organismo, bloquea):
+    from app.services.invariantes_esftt import _check_cierre_fase
+    sol = arbol_esftt.solicitud_nueva()
+    fase = arbol_esftt.fase('CONSULTAS', solicitud=sol)
+    oe = _organismo(fase)
+    for paso in (_OPOSICION, _TITULAR_CONFORME, _ORGANISMO_RECTIFICA, _TITULAR_CONFORME):
+        _vuelta(arbol_esftt, fase, oe, *paso)
+    if segundo_organismo is not None:
+        _vuelta(arbol_esftt, fase, _organismo(fase, n=1), *segundo_organismo)
+
+    assert (_check_cierre_fase(fase.id, 'FAVORABLE') is not None) is bloquea
+
+
 @pytest.mark.parametrize('resultados, terminados', [
     pytest.param(['audiencia_previa', 'cerrado_favorable'], True, id='rondas_todas_terminadas'),
     pytest.param(['cerrado_favorable', None], False, id='en_curso_en_la_ultima_ronda'),
