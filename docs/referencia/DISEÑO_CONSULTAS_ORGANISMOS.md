@@ -2,6 +2,7 @@
 
 **Fecha:** 20/03/2026
 **Estado:** Decisiones tomadas — pendiente implementación y análisis DUP
+**Actualizado:** 10/11/2026 (#652): reglas de orden de los traslados, sentido del diagnóstico y aviso de las vueltas (§4, §6, §7 y §8); `reparos_titular` deja de ser un resultado OK (§4 y §7)
 
 ---
 
@@ -175,6 +176,16 @@ no hay nada que trasladar y no se crea TRASLADO_TITULAR.
 
 Esta regla aplica tanto tras CONSULTA_SEPARATA como tras CONSULTA_TRASLADO_ORGANISMO.
 
+**Reglas del motor (#652).** El orden de los traslados lo vigilan dos reglas `BLOQUEAR`, forzables
+con justificación (RD 1955/2000 arts. 127.3, 127.4, 131.3, 131.4, 147.1 y 147.2; DUP se comporta
+como AAC, así que no hay una regla por tipo de solicitud):
+
+- **Traslado al titular:** no se puede crear si el organismo no ha respondido de verdad o su
+  respuesta no está analizada. Una respuesta real es el documento `RESPUESTA_ORGANISMO` en el
+  `ESPERAR_PLAZO`; un certificado de plazo cumplido no lo es (el silencio no se traslada).
+- **Traslado al organismo:** no procede si su última respuesta no fue desfavorable, si el titular
+  aún no ha contestado al traslado o si la respuesta del titular no está analizada.
+
 ### Cadena de tareas en los trámites de traslado
 
 Los trámites `CONSULTA_TRASLADO_TITULAR` y `CONSULTA_TRASLADO_ORGANISMO` incluyen la siguiente cadena de tareas:
@@ -209,8 +220,18 @@ Una tarea como ANALIZAR no solo produce un documento sino que su resultado (regi
 |---|---|---|
 | SEPARATA / TRASLADO_ORGANISMO | `conformidad`, `condicionado`, `sin_respuesta` | **OK** |
 | SEPARATA / TRASLADO_ORGANISMO | `oposicion`, `reparos_organismo` | **NOK** |
-| TRASLADO_TITULAR | `conformidad`, `reparos_titular` | **OK** |
+| TRASLADO_TITULAR | `conformidad` | **OK** |
+| TRASLADO_TITULAR | `reparos_titular` | **NOK** — estado intermedio: solo se da ante un NOK del organismo y necesita después una respuesta OK del organismo o su silencio |
 | TRASLADO_TITULAR | `sin_respuesta` | **NOK** (ver §7 para casos especiales) |
+
+> **Corrección (#652).** Hasta esta fecha `reparos_titular` figuraba como OK, igual que en
+> ADR-011 §5 y §6 (caso B), que conservan ese texto y están pendientes de enmienda.
+
+**Cómo se registra hoy (#652).** No existe un campo con estos seis valores: el resultado de cada
+trámite se guarda en el diagnóstico de su `ANALIZAR` (`favorable`, `condicionado` o
+`desfavorable`) y, en la respuesta de un organismo, un `desfavorable` lleva además su `sentido`:
+`oposicion` o `reparos`. El silencio del organismo no es un valor: se cierra con el certificado de
+plazo cumplido en el `ESPERAR_PLAZO` y un diagnóstico favorable (ver §7, caso A).
 
 ---
 
@@ -259,7 +280,22 @@ Los flujos están documentados en diagramas SVG en `docs/diagramas_flujo/`:
 
 ### Limitación del bucle de reparos
 
-El ciclo traslado-titular → reparos → traslado-organismo → nueva respuesta está acotado a **1 iteración**. El diamante de reparos en los diagramas puede recibir entradas tanto del flujo inicial como del flujo de segunda ronda del organismo. La anotación "1 VEZ?" en los diagramas indica que si ya se ha realizado una iteración completa y el organismo vuelve a responder con reparos u oposición, se corta el ciclo.
+La ley no dice cuántas vueltas caben, así que **no hay una regla del motor que las limite**. Lo que
+hay (#652) es un aviso en la `ANALIZAR` de la respuesta de un organismo: un texto declarativo que
+cuenta lo que ya consta en el ciclo de ese organismo —«ya hubo n oposición(es)», «ya hubo n
+reparo(s)»— y, al llegar al umbral, añade «debería archivarse». Los umbrales son dos constantes del
+código (2 oposiciones y 2 reparos). El aviso no bloquea ni deja registro: decide quien tramita y, si
+no lo sigue, anota en las observaciones por qué. Si decide archivar, produce el diagnóstico
+desfavorable correspondiente: con él la fase CONSULTAS no cierra favorable y se puede abrir la
+RESOLUCION con audiencia previa.
+
+La oposición y los reparos se cuentan aparte; por eso el diagnóstico desfavorable de la respuesta de
+un organismo lleva su `sentido`. El aviso solo cuenta lo que ya consta (no predice la respuesta que
+se está analizando).
+
+*Antes de #652:* «el ciclo está acotado a 1 iteración» y la anotación «1 VEZ?» de los diagramas
+indicaban que, tras una iteración completa, se cortaba el ciclo. Esa limitación no se implementa
+como regla.
 
 ### AAP+AAC unificado
 
@@ -364,9 +400,16 @@ en `tramites_organismos`.
 | Caso | Condición | Cierre |
 |---|---|---|
 | **A** | Trámite de organismo = `sin_respuesta` (conformidad por silencio) | Favorable. No se crea TRASLADO_TITULAR |
-| **B** | Trámite de organismo OK ≠ `sin_respuesta` + TRASLADO_TITULAR OK (`conformidad` o `reparos_titular`) | Favorable |
-| **C** | Trámite de organismo NOK → trámite de organismo OK + TRASLADO_TITULAR `conformidad` (máx. 1 iteración) | Favorable |
+| **B** | Trámite de organismo OK ≠ `sin_respuesta` + TRASLADO_TITULAR OK (`conformidad`) | Favorable |
+| **C** | Trámite de organismo NOK → trámite de organismo OK + TRASLADO_TITULAR `conformidad` (las vueltas no se limitan por regla, ver §6) | Favorable |
 | **D** | Trámite de organismo `condicionado` + TRASLADO_TITULAR `sin_respuesta` en AAC + `condicionados_doc_id` poblado | Favorable con condicionados de oficio |
+
+**Caso A, cómo se cierra (#652).** El `ESPERAR_PLAZO` de la separata no recibe ningún documento del
+organismo: se llena con un certificado de plazo cumplido (lo que certifica el motor de plazos), que
+consume la `ANALIZAR`, y su diagnóstico favorable cierra la separata. Ese certificado hace falta para
+el certificado de fin de instrucción. Hoy `CERT_PLAZO_CUMPLIDO` no está catalogado para las esperas de
+consultas ni tiene pantalla (#982, #1088); emitirlo a demanda y ofrecerlo al vencer el plazo, en toda
+espera de un documento externo, queda para un issue propio.
 
 Fuera de alcance (#456): TRASLADO_TITULAR `sin_respuesta` con organismo NOK
 (audiencia previa a archivo en AAP) se gestiona en la fase RESOLUCION.
@@ -413,3 +456,5 @@ El motor comprueba sobre los trámites de la fase:
 - **Tabla `tramites_organismos` + `condicionados_doc_id` + tipo `CONDICIONADO_OFICIO`:** implementar en #456 (ADR-011).
 - ~~**CBs de traslado** (`ContextoConsultaTrasladoTitular`, `ContextoConsultaTrasladoOrganismo`): implementar en #457, tras #456.~~ **HECHO** — #457.
 - **Certificado de consultas:** el cierre favorable de la fase requiere `CERT_FIN_IP_CONSULTAS` con `favorable=True` validado por el motor — issue pendiente de crear (alcance a definir junto con #462).
+- **Cierre del organismo por diagnóstico y certificado de consultas (#652):** hoy `organismos_expediente.resultado` se escribe a mano (`editar_organismo` solo comprueba que el valor esté en la lista) y `organismos_todos_terminados` lee ese campo; `cert_fin_ip_consultas` solo comprueba que las fases de información pública y consultas estén finalizadas y no mira los organismos. El nivel semántico de §7 (lee el último `ANALIZAR`) no está implementado. Sin issue.
+- **Trámite de audiencia previa a archivo:** no existe. `COMUNICACION_AUDIENCIA` es otra cosa (la comunicación de Medio Ambiente por incompatibilidad ambiental, instanciada por un documento externo). Carlos se inclina por que viva en `RESOLUCION_*` y no en CONSULTAS; sin decidir.

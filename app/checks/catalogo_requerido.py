@@ -86,7 +86,11 @@ REGISTROS_REQUERIDOS: dict = {
                       'CERT_CIERRE_FASE',
                       # #996 (N6, ADR-049 §F) — cert_cierre_solicitud lo emite y
                       # sellos lo lee por código
-                      'CERT_CIERRE_SOLICITUD'],
+                      'CERT_CIERRE_SOLICITUD',
+                      # #652 (ADR-042 §D) — ciclo_organismo distingue una respuesta real
+                      # del certificado de plazo cumplido por el tipo de documento que
+                      # produce el ESPERAR_PLAZO de los trámites de consulta
+                      'RESPUESTA_ORGANISMO', 'RESPUESTA_TITULAR'],
     # Rol usa 'nombre' como identificador estable — anclado en PERMISOS (app/utils/permisos.py)
     'Rol': ['ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'],
 }

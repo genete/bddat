@@ -44,6 +44,13 @@ export const ETIQUETA_RESULTADO = {
   desfavorable: 'Desfavorable',
 }
 
+// Sentido de un desfavorable en la respuesta de un organismo (#652): se cuentan aparte
+// para avisar de cuándo debería archivarse la consulta.
+export const ETIQUETA_SENTIDO = {
+  oposicion: 'Oposición',
+  reparos: 'Reparos',
+}
+
 // Acordeón genérico (ADR-033 §1/§6): cabecera clicable con resumen de estado +
 // cuerpo colapsable. `abiertaInicial` solo se lee al montar: el padre fuerza
 // un remount (key) cuando cambia el estado producido/no-producido para que la
@@ -1120,17 +1127,24 @@ function BloqueDefectos({ producido, items, resueltos, resultado }) {
 // propio título.
 function NucleoResultado({
   expedienteId, tareaId, completo, derivado, resultadoPrevisto, onProducido, titulo = 'Resultado',
+  pideSentido = false,
 }) {
   const [resultado, setResultado] = React.useState('favorable')
+  const [sentido, setSentido] = React.useState('')
   const [confirmando, setConfirmando] = React.useState(false)
   const [justificacion, setJustificacion] = React.useState('')
   const [enviando, setEnviando] = React.useState(false)
+
+  // En la respuesta de un organismo, un desfavorable pide su sentido (#652): sin elegirlo no se
+  // puede producir; el servidor lo exige igual.
+  const faltaSentido = !derivado && pideSentido && resultado === 'desfavorable' && !sentido
 
   const producir = async () => {
     setEnviando(true)
     try {
       const body = {}
       if (!derivado) body.resultado = resultado
+      if (!derivado && pideSentido && resultado === 'desfavorable') body.sentido = sentido
       const just = justificacion.trim()
       if (just) body.justificacion = just
       await postAnalizar(expedienteId, tareaId, body)
@@ -1171,11 +1185,36 @@ function NucleoResultado({
                 </label>
               </div>
             ))}
+            {pideSentido && resultado === 'desfavorable' && (
+              <div className="ms-4 mt-1 mb-1 border-start ps-2">
+                <div className="small text-muted mb-1">
+                  ¿Oposición o reparos? <span className="text-danger">*</span>
+                </div>
+                {['oposicion', 'reparos'].map((s) => (
+                  <div className="form-check" key={s}>
+                    <input
+                      type="radio"
+                      className="form-check-input"
+                      id={`analizar-sentido-${s}`}
+                      name="analizar-sentido"
+                      checked={sentido === s}
+                      disabled={confirmando}
+                      onChange={() => setSentido(s)}
+                    />
+                    <label className="form-check-label small" htmlFor={`analizar-sentido-${s}`}>
+                      {ETIQUETA_SENTIDO[s]}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {!confirmando ? (
-          <button type="button" className="btn btn-primary btn-sm w-100" onClick={() => setConfirmando(true)}>
+          <button type="button" className="btn btn-primary btn-sm w-100" disabled={faltaSentido}
+                  title={faltaSentido ? 'Indica si es oposición o reparos' : undefined}
+                  onClick={() => setConfirmando(true)}>
             Producir documento de diagnóstico
           </button>
         ) : (
@@ -1341,6 +1380,7 @@ export function AccionProducirDiagnostico({ expedienteId, tareaId }) {
       completo={payload.completo}
       derivado={payload.secciones_extendidas}
       resultadoPrevisto={payload.resultado_previsto}
+      pideSentido={!!payload.pide_sentido}
       onProducido={alProducir}
     />
   )

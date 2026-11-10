@@ -208,11 +208,17 @@ def _reglas_disparadas(solicitud, tipo_fase, *, contiene):
 
 
 def _reglas_disparadas_tramite(fase, tipo_tramite, *, contiene):
+    """Igual que `_reglas_disparadas`: desde #652 el sujeto de crear un trámite lleva
+    el tipo de solicitud, así que en una AAP+AAC `auditar_multi` evalúa una vez por
+    tipo simple y acumula. Dedupe por `regla_id`: no es una duplicación real."""
     from app.services.assembler import auditar_multi
     resultado = auditar_multi('CREAR', fase.solicitud.expediente,
                               {'fase': fase, 'tipo_tramite': tipo_tramite})
-    return [r for r in resultado.reglas_evaluadas
-            if contiene in (r.descripcion or '') and r.disparada]
+    vistas = {}
+    for r in resultado.reglas_evaluadas:
+        if contiene in (r.descripcion or '') and r.disparada:
+            vistas[r.regla_id] = r
+    return list(vistas.values())
 
 
 # ---------------------------------------------------------------------------

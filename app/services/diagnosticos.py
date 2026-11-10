@@ -19,6 +19,7 @@ from app.models.documentos import Documento
 from app.models.documentos_tarea import DocumentoTarea
 from app.models.diagnosticos import Diagnostico
 from app.services import bitacora as bitacora_svc
+from app.services import ciclo_organismo
 from app.services.invariantes_esftt import (
     TRAMITES_CADENA_SUBSANACION,
     ultima_tarea_cadena_subsanacion,
@@ -425,10 +426,20 @@ def revertir_diagnostico(tarea: Tarea, *, justificacion: Optional[str] = None) -
 
 
 def crear_diagnostico(tarea: Tarea, resultado: str, defectos: list,
-                       *, justificacion: Optional[str] = None) -> Documento:
+                       *, justificacion: Optional[str] = None,
+                       sentido: Optional[str] = None) -> Documento:
     """
     Produce el documento de diagnóstico de una tarea ANALIZAR y lo vincula
     como PRODUCIDO.
+
+    `sentido` (#652): `oposicion` o `reparos`. Es obligatorio en el diagnóstico
+    desfavorable de la respuesta de un organismo (separata o traslado al organismo),
+    porque la oposición y los reparos se cuentan aparte para avisar de cuándo debería
+    archivarse la consulta (`ciclo_organismo.aviso_de_ciclo`), y no se puede deducir de
+    otro sitio: solo lo lee quien tramita en el escrito del organismo. En cualquier
+    otro diagnóstico —otro trámite u otro resultado— se rechaza, con un mensaje que lo
+    dice: el resultado general no cambia de significado fuera de las consultas. Lanza
+    ValueError en los dos casos, antes de crear nada.
 
     Un solo tiro por tarea: lanza ValueError si `tarea.documento_producido`
     ya existe (mismo criterio que crear_cert). `defectos` es la foto
@@ -450,6 +461,16 @@ def crear_diagnostico(tarea: Tarea, resultado: str, defectos: list,
     if tarea.documento_producido is not None:
         raise ValueError(f'La tarea {tarea.id} ya tiene documento producido')
 
+    pide_sentido = ciclo_organismo.es_respuesta_de_organismo(tarea) and resultado == 'desfavorable'
+    if pide_sentido and sentido not in ('oposicion', 'reparos'):
+        raise ValueError(
+            'En la respuesta de un organismo, un diagnóstico desfavorable debe indicar su '
+            'sentido: oposición o reparos.')
+    if sentido is not None and not pide_sentido:
+        raise ValueError(
+            'El sentido (oposición o reparos) solo se indica en el diagnóstico desfavorable '
+            'de la respuesta de un organismo.')
+
     tipo_doc = _obtener_tipo_documento('DIAGNOSTICO')
     expediente_id = tarea.tramite.fase.solicitud.expediente_id
 
@@ -461,7 +482,8 @@ def crear_diagnostico(tarea: Tarea, resultado: str, defectos: list,
     db.session.add(doc)
     db.session.flush()
 
-    diagnostico = Diagnostico(documento_id=doc.id, resultado=resultado, defectos=defectos)
+    diagnostico = Diagnostico(documento_id=doc.id, resultado=resultado, defectos=defectos,
+                              sentido=sentido)
     db.session.add(diagnostico)
     db.session.flush()
 
