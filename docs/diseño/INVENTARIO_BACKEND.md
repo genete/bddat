@@ -1,7 +1,7 @@
 # Inventario de backend — Fase 2.5
 
 > Insumo neutro para la fase 3 del revamping de UI. Datos objetivos sobre modelos, motor, servicios, ADRs e issues abiertos. Sin propuestas de cambio.
-> Fecha del corte: 2026-05-28. Actualizado el 2026-10-03 (#1007, ADR-050 fase 1) solo en §1.3, §8 y §10.6.4, el 2026-10-05 (#1007, PR 3) en §6.2 y el 2026-11-01 (#881) en §6.1 y §6.2; el resto sigue siendo el corte de mayo.
+> Fecha del corte: 2026-05-28. Actualizado el 2026-10-03 (#1007, ADR-050 fase 1) solo en §1.3, §8 y §10.6.4, el 2026-10-05 (#1007, PR 3) en §6.2 el 2026-11-01 (#881) en §6.1 y §6.2 y el 2026-11-10 (#652) en §1.3 (diagnósticos), §3.3 y §3.4; el resto sigue siendo el corte de mayo.
 
 ---
 
@@ -44,7 +44,7 @@
 | ReformadoProyecto | `reformados_proyecto` | El corte que parte el proyecto en versiones: `documento_id` (UNIQUE, el ancla) + `origen` VOLUNTARIO/REQUERIDO. Una versión es el tramo entre cortes (ADR-044 §C) |
 | DocumentoTarea | `documentos_tarea` | Vínculo N:M con rol (ver §1.1) |
 | Notificacion | `notificaciones` | "Documento vitaminado" para tarea NOTIFICAR (ADR-008): `resultado` (CORRECTA/INCORRECTA/INDIFERENTE), `numero_intento`, `fecha_intento` |
-| Diagnostico | `diagnosticos` | "Documento vitaminado" para tarea ANALIZAR (ADR-005): `resultado` (favorable/condicionado/desfavorable), `defectos` (JSONB) |
+| Diagnostico | `diagnosticos` | "Documento vitaminado" para tarea ANALIZAR (ADR-005): `resultado` (favorable/condicionado/desfavorable), `sentido` (opcional: oposicion/reparos, solo con desfavorable y solo en la respuesta de un organismo, #652), `defectos` (JSONB) |
 | Resolucion | `resoluciones` | Documento de resolución (formaliza cierre de fase RESOLUCION) |
 | Certificado | `certificados` | Certificados internos generados por el motor (CERT_PLAZO_CUMPLIDO, CERT_FIN_INSTRUCCION, CERT_FIN_IP_CONSULTAS). URL `bddat://certificados/<id>` |
 | CertificadoFase | `certificados_fase` | Variante por fase |
@@ -175,7 +175,7 @@ Recibe `(accion, sujeto, variables: dict)` y evalúa reglas en BD. No conoce dom
 
 `build(expediente, objeto)` produce `(sujeto, variables)`. Acepta como `objeto`:
 - instancia existente (Solicitud, Fase, Tramite, Tarea)
-- dict para CREAR: `{'solicitud': s, 'tipo_fase': tf}`
+- dict para CREAR: `{'solicitud': s, 'tipo_fase': tf}` (fase); `{'fase': f, 'tipo_tramite': tt}` (trámite; desde #652 la solicitud se deriva de la fase y el sujeto compila **cuatro** tramos, como el de un trámite existente y como el que construye el editor del supervisor; crear tarea y crear o borrar organismo siguen compilando menos); `{'fase', 'tipo_tramite', 'organismo_expediente'}` (traslado, #652: el organismo llega por `ctx.organismo_expediente`, no por el camino)
 - `None`
 
 Helpers: `build_sujeto` (solo sujeto, barato), `evaluar_multi` y `auditar_multi` (para tipos combinados: AAP+AAC se evalúa una vez por tipo simple).
@@ -186,7 +186,7 @@ Decorador `@variable('nombre')` en módulos `dato.py`, `calculado.py`, `plazo.py
 
 Variables registradas actualmente:
 - **dato** (3): `sin_linea_aerea`, `max_tension_nominal_kv`, `solo_suelo_urbano_urbanizable`. Lectura directa de campos del Proyecto.
-- **calculado** (15+): `fase_ip_finalizada`, `tramite_publicar_existe`, `existe_fase_finalizadora_cerrada`, `tiene_solicitud_aap_favorable`, `tipo_sujeto_solicitado`, `tipo_solicitud`, `es_solicitud_aac_pura`, `tramite_analisis_con_deficiencias`, `tramite_requerimiento_sin_respuesta`, `organismos_todos_terminados`, `organismo_supera_iteraciones`, `tipo_expediente`, `es_expediente_produccion`, `tiene_aac_resuelta_favorable`, `traslado_organismo_titular_vencido`, `version_ya_cubierta` (§F, #895).
+- **calculado** (15+): `fase_ip_finalizada`, `tramite_publicar_existe`, `existe_fase_finalizadora_cerrada`, `tiene_solicitud_aap_favorable`, `tipo_sujeto_solicitado`, `tipo_solicitud`, `es_solicitud_aac_pura`, `tramite_analisis_con_deficiencias`, `tramite_requerimiento_sin_respuesta`, `organismos_todos_terminados`, `organismo_respuesta_analizada` y `traslado_organismo_procede` (#652, miran solo el organismo del traslado que se crea; `organismo_supera_iteraciones` se retiró), `tipo_expediente`, `es_expediente_produccion`, `tiene_aac_resuelta_favorable`, `traslado_organismo_titular_vencido`, `version_ya_cubierta` (§F, #895).
 - **plazo**: variables `estado_plazo` y `efecto_plazo` consumidas por reglas del motor — calculadas por `obtener_estado_plazo` y enlazadas al ciclo de vida del expediente.
 
 ### 3.5 Invariantes ESFTT (`services/invariantes_esftt.py`)
