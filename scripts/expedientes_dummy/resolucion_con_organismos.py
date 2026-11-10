@@ -18,12 +18,10 @@ AAP+AAC, exenta de instrumento ambiental) para que el foco quede en la mecánica
 de N5, no en variedad administrativa. A diferencia de aquel, aquí las tres
 consultas se cierran de verdad:
 
-    Ayuntamiento   silencio, vencido y sin ANALIZAR — conformidad tácita
-                   reconocida a mano (Caso A de ADR-011 §6). Sin vía limpia en
-                   el catálogo actual: cerrar la fase exige forzar el escape
-                   de `editar_fase` (ver #982, detectado al escribir este
-                   expediente-tipo; #971 sigue adelante con él, decisión de
-                   Carlos).
+    Ayuntamiento   silencio, plazo vencido — conformidad tácita (Caso A de
+                   ADR-011 §6): certificado de plazo cumplido en la espera,
+                   ANALIZAR que lo consume con diagnóstico favorable y organismo
+                   cerrado_favorable. La fase se cierra sin forzar (#982).
     ADIF           responde con condicionados dentro de plazo; traslado
                    notificado y aceptado por el titular — cerrado_con_condicionados.
     Diputación     responde favorable dentro de plazo; traslado notificado y
@@ -86,7 +84,7 @@ CODIGO = 'RESOLUCION_CON_ORGANISMOS'
 PROPOSITO = (
     'Expediente que llega hasta cerrar la fase RESOLUCION: consultas todas '
     'cerradas (favorable, condicionado con traslado aceptado, y silencio '
-    'reconocido), resolución notificada al solicitante representado y a los '
+    'con certificado de plazo cumplido), resolución notificada al solicitante representado y a los '
     'tres organismos consultados, con sus certificados de cumplimiento y '
     'cierre de fase.'
 )
@@ -439,6 +437,7 @@ def main(app=None, *, efectos_desarrollo=True, sin_notificar_resolucion=False):
     from app.services import consultas_organismos as svc_consultas
     from app.services import cert_fin_instruccion, cert_cumplimiento_fase, cert_cierre_fase
     from app.services import reloj_simulado
+    from app.services.certificados import crear_cert
     from app.models.fases import Fase
     from app.models.tramites import Tramite
     from app.models.tareas import Tarea
@@ -639,20 +638,8 @@ def main(app=None, *, efectos_desarrollo=True, sin_notificar_resolucion=False):
             espera_por_clave[clave] = tarea_esp
             print(f"CONSULTA_SEPARATA {abrev}: elaborada, notificada por SIR y en espera.")
 
-        # --- Ayuntamiento: silencio, conformidad tácita (Caso A ADR-011 §6) -
-        # Ni ANALIZAR ni traslado: es justo lo que el caso A no lleva. Su
-        # ESPERAR_PLAZO se queda sin documento producido y el plazo vence
-        # solo. Sin vía limpia de cierre en el catálogo actual (#982): la
-        # consulta se da por buena a mano y el cierre de CONSULTAS más abajo
-        # necesita forzar el escape.
-        _comun.check(
-            svc.editar_organismo(oe_por_clave['ayuntamiento'], via='consulta',
-                                 resultado='cerrado_favorable',
-                                 direccion_notificacion_id=organismos['ayuntamiento'][1],
-                                 documento_id=None),
-            'editar_organismo Ayto. Jerez (conformidad tácita)')
-        print("CONSULTA_SEPARATA Ayto. Jerez: sin respuesta, plazo vencido — "
-              "conformidad tácita reconocida (Caso A, ADR-011 §6).")
+        # El Ayuntamiento no contesta: su silencio se reconoce más abajo, una vez
+        # vencido su plazo.
 
         def _responder_organismo(clave, abrev, margen, resultado_analizar, asunto):
             tarea_esp = espera_por_clave[clave]
@@ -762,21 +749,55 @@ def main(app=None, *, efectos_desarrollo=True, sin_notificar_resolucion=False):
         print("Dip. Cádiz: respuesta favorable, traslado aceptado por el representante — "
               "organismo cerrado_favorable.")
 
-        # --- Cierre de CONSULTAS: escape por el silencio del Ayuntamiento ---
-        fecha_actual = max(fecha_titular_adif, fecha_titular_dip)
+        # --- Ayuntamiento: silencio, conformidad tácita (Caso A ADR-011 §6) -
+        # Al vencer su plazo sin respuesta, la espera de la separata se cierra con
+        # el certificado de plazo cumplido (lo emite `crear_cert`, que comprueba el
+        # vencimiento con el motor de plazos), la ANALIZAR lo consume y su
+        # diagnóstico favorable cierra la separata (criterio de Carlos en #652,
+        # DISEÑO_CONSULTAS_ORGANISMOS.md §7 caso A). Sin traslado al titular: no hay
+        # respuesta que trasladar (ADR-011 §4). Es el desenlace legal previsto, así
+        # que CONSULTAS se cierra después sin forzar nada (#982).
+        tarea_esp_ayto = espera_por_clave['ayuntamiento']
+        tramite_sep_ayto = separata_por_clave['ayuntamiento']
+        fecha_actual = _comun.fecha_tras_vencimiento(
+            tarea_esp_ayto, 'separata Ayto. Jerez',
+            desde=max(fecha_titular_adif, fecha_titular_dip))
+        _fijar_reloj(fecha_actual)
+
+        try:
+            doc_cert_id = crear_cert(tarea_esp_ayto).id
+        except ValueError as exc:
+            print(f"ABORTADO al emitir CERT_PLAZO_CUMPLIDO del Ayuntamiento: {exc}")
+            sys.exit(1)
+
+        tarea_an_ayto = Tarea.query.get(_comun.check(
+            svc.crear_tarea(tramite_sep_ayto, cat['tarea_analizar']),
+            'crear_tarea ANALIZAR separata Ayto. Jerez'))
+        _editar_conservando_consumidos(
+            tarea_an_ayto, [doc_cert_id], None,
+            'vincular consumido ANALIZAR separata Ayto. Jerez')
+        _comun.producir_diagnostico(client, exp_id, tarea_an_ayto.id,
+                                    'separata Ayto. Jerez', resultado='favorable')
+        _comun.check(
+            svc.editar_organismo(oe_por_clave['ayuntamiento'], via='consulta',
+                                 resultado='cerrado_favorable',
+                                 direccion_notificacion_id=organismos['ayuntamiento'][1],
+                                 documento_id=None),
+            'editar_organismo Ayto. Jerez (conformidad tácita)')
+        print("Ayto. Jerez: sin respuesta, plazo vencido — certificado de plazo cumplido, "
+              "diagnóstico favorable y organismo cerrado_favorable (Caso A, ADR-011 §6).")
+
+        # --- Cierre de CONSULTAS: sin escape ---------------------------------
+        # Los tres organismos tienen su trámite finalizado, así que `editar_fase`
+        # no necesita `justificacion`.
         fecha_actual = _comun.avanzar_habiles(fecha_actual, 1)
         _fijar_reloj(fecha_actual)
         _comun.check(
             svc.editar_fase(
                 fase_consultas, resultado_fase_id=cat['resultado_favorable'].id,
-                documento_resultado_id=doc_resp_adif_id, observaciones=None,
-                justificacion=(
-                    'Ayuntamiento de Jerez de la Frontera: conformidad tácita por '
-                    'silencio (ADR-011 §6, Caso A). Sin CERT_PLAZO_CUMPLIDO '
-                    'catalogado para CONSULTA_SEPARATA — ver #982.'
-                )),
-            'cerrar fase CONSULTAS (escape: silencio Ayuntamiento)')
-        print("CONSULTAS: cerrada (con el escape del Ayuntamiento en bitácora).")
+                documento_resultado_id=doc_resp_adif_id, observaciones=None),
+            'cerrar fase CONSULTAS')
+        print("CONSULTAS: cerrada.")
 
         # --- Fin de instrucción ----------------------------------------------
         fecha_actual = _comun.avanzar_habiles(fecha_actual, 1)

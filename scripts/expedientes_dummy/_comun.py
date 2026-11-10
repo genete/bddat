@@ -457,3 +457,33 @@ def fecha_respuesta_en_plazo(tarea_espera, etiqueta, margen_habiles):
           f"({estado.norma_origen}) — disparo {estado.fecha_disparo}, "
           f"vence {estado.fecha_limite}, responde {fecha}.")
     return fecha
+
+
+def fecha_tras_vencimiento(tarea_espera, etiqueta, desde=None):
+    """Primer día hábil posterior al vencimiento REAL de la ESPERAR_PLAZO — y no
+    anterior a `desde`, si se da.
+
+    Es la fecha del silencio: cuando nadie contesta y hay que emitir el
+    certificado de plazo cumplido (`certificados.crear_cert`), que comprueba con
+    el motor de plazos que el plazo está vencido a la fecha de "hoy". Mismo patrón
+    que `fecha_respuesta_en_plazo`: sale del plazo que devuelve el servicio, no de
+    un número de días, y aborta si no cabe en la ventana del escenario.
+
+    `desde` es la fecha a la que el escenario ya ha llegado: si el vencimiento es
+    anterior, no se retrocede el reloj.
+    """
+    from app.services.plazos import obtener_estado_plazo_tarea
+
+    estado = obtener_estado_plazo_tarea(tarea_espera)
+    if estado.fecha_limite is None:
+        print(f"ABORTADO: la ESPERAR_PLAZO de {etiqueta} no tiene plazo aplicable en "
+              f"catálogo (estado {estado.estado}); no se puede situar su vencimiento.")
+        sys.exit(1)
+
+    fecha = avanzar_habiles(max(estado.fecha_limite, desde or estado.fecha_limite), 1)
+    if fecha > date.today():
+        print(f"ABORTADO: el silencio de {etiqueta} se reconocería el {fecha}, posterior a "
+              f"hoy. El escenario no cabe en la ventana que se ha reservado — ampliarla.")
+        sys.exit(1)
+    print(f"  plazo {etiqueta}: vence {estado.fecha_limite}, silencio reconocido {fecha}.")
+    return fecha

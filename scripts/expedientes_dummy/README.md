@@ -19,7 +19,7 @@ Cada uno tiene doble vida (#849):
 | `ANALISIS_DOC_DOS_VUELTAS` | Análisis documental con respuesta del titular dentro de plazo y dos vueltas de subsanación | Termina con `ANALISIS_SOLICITUD` completa y pendiente de cierre |
 | `CONSULTAS_VARIOS_ESTADOS` | Fase de consultas con las tres separatas enviadas y cada organismo en un estado distinto | Termina con `CONSULTAS` abierta — expediente incompleto a propósito |
 | `REFORMADO_ANALISIS_Y_CONSULTAS` | Dos versiones de proyecto (ADR-044): `ANALISIS_SOLICITUD` y `CONSULTAS` cortadas por el mismo reformado | Un organismo enquistado en la `CONSULTAS` de la v1 (hueco vivo, §I) que ninguna fase posterior salda; la v2 (reformado) repite ese organismo y añade uno nuevo, ambas fases limpias (§F) |
-| `RESOLUCION_CON_ORGANISMOS` | Consultas cerradas (favorable, condicionado con traslado aceptado, silencio reconocido), resolución notificada a solicitante representado y a los tres organismos | Único que llega a cerrar `RESOLUCION`: `CERT_FIN_INSTRUCCION`, botón «añadir los que faltan», `CERT_CUMPLIMIENTO_FASE` y `CERT_CIERRE_FASE`. Con `--sin-notificar-resolucion` se detiene antes de notificar (`RESOLUCION` abierta, cuatro `NOTIFICAR` sin enviar) |
+| `RESOLUCION_CON_ORGANISMOS` | Consultas cerradas (favorable, condicionado con traslado aceptado, silencio con certificado de plazo cumplido), resolución notificada a solicitante representado y a los tres organismos | Único que llega a cerrar `RESOLUCION`: `CERT_FIN_INSTRUCCION`, botón «añadir los que faltan», `CERT_CUMPLIMIENTO_FASE` y `CERT_CIERRE_FASE`. Con `--sin-notificar-resolucion` se detiene antes de notificar (`RESOLUCION` abierta, cuatro `NOTIFICAR` sin enviar) |
 
 ### ANALISIS_DOC_DOS_VUELTAS
 
@@ -159,16 +159,18 @@ Las tres consultas se cierran, con los tres desenlaces del Caso A-D de ADR-011 �
 
 | Organismo | Desenlace |
 |---|---|
-| Ayuntamiento de Jerez | Silencio, plazo vencido, sin `ANALIZAR` — conformidad tácita (Caso A) |
+| Ayuntamiento de Jerez | Silencio, plazo vencido — `CERT_PLAZO_CUMPLIDO` en la espera, `ANALIZAR` favorable y `cerrado_favorable` (conformidad tácita, Caso A) |
 | ADIF | Responde con condicionados; traslado notificado y aceptado por el representante — `cerrado_con_condicionados` |
 | Diputación de Cádiz | Responde favorable; traslado notificado y aceptado por el representante — `cerrado_favorable` |
 
-**El silencio del Ayuntamiento no tiene vía limpia de cierre en el catálogo actual**
-(#982, detectado al escribir este expediente-tipo): no existe `CERT_PLAZO_CUMPLIDO`
-para `CONSULTA_SEPARATA`, así que su `ESPERAR_PLAZO` nunca llega a `ejecutada` y cerrar
-`CONSULTAS` exige forzar el escape de `editar_fase` con `justificacion`. Queda en
-bitácora, documentado en el propio script. #971 sigue adelante con él (decisión de
-Carlos); #982 es la mejora de catálogo pendiente para que deje de hacer falta.
+**El silencio del Ayuntamiento se cierra por la vía limpia** (#982, #652): al vencer su
+plazo, `certificados.crear_cert` emite el `CERT_PLAZO_CUMPLIDO` en la `ESPERAR_PLAZO` de
+la separata, la `ANALIZAR` lo consume con diagnóstico favorable y `CONSULTAS` se cierra con
+`editar_fase` **sin `justificacion`**: no queda ningún escape en la bitácora. El reloj
+se sitúa tras el vencimiento real de ese plazo (`_comun.fecha_tras_vencimiento`), no antes
+(antes se reconocía el silencio con el plazo aún abierto). `crear_cert` no mira el catálogo,
+así que no hizo falta catalogar nada; lo que una persona no puede hacer hoy desde el
+navegador es emitir ese certificado: no tiene botón (#1088, #1098).
 
 `ANALISIS_SOLICITUD` y `CONSULTAS` se cierran de verdad (`editar_fase`) — a diferencia
 de los otros tres expedientes-tipo, que no lo hacen. Después: `CERT_FIN_INSTRUCCION`
