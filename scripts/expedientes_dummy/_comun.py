@@ -286,11 +286,15 @@ def casar_requisitos(client, exp_id, tarea_analizar_id, pares, etiqueta):
     print(f"  checklist {etiqueta}: casados {', '.join(c for c, _ in pares)}.")
 
 
-def producir_diagnostico(client, exp_id, tarea_analizar_id, etiqueta, resultado=None):
+def producir_diagnostico(client, exp_id, tarea_analizar_id, etiqueta, resultado=None,
+                         sentido=None):
     """Produce el diagnóstico por el circuito real (`POST .../analizar`, ADR-033).
 
     `resultado` solo se manda en el ANALIZAR simple (consultas y traslados), donde
     el sentido es elección del tramitador: favorable | condicionado | desfavorable.
+    `sentido` (oposicion | reparos) es obligatorio en un desfavorable que analiza la
+    respuesta de un organismo (#652) y el endpoint lo rechaza si falta; en el resto
+    no se manda.
     En el ANALIZAR extendido (ANALISIS_DOCUMENTAL, REQUERIMIENTO_SUBSANACION) se
     omite: el sentido no se elige, se deriva del borrador consolidado —favorable si
     no queda ningún defecto, desfavorable si queda alguno— y el endpoint ignora lo
@@ -300,6 +304,8 @@ def producir_diagnostico(client, exp_id, tarea_analizar_id, etiqueta, resultado=
     Devuelve el `documento_id` del diagnóstico.
     """
     cuerpo = {} if resultado is None else {'resultado': resultado}
+    if sentido is not None:
+        cuerpo['sentido'] = sentido
     r = client.post(f'/api/expedientes/{exp_id}/nodo/tarea/{tarea_analizar_id}/analizar',
                     json=cuerpo)
     body = r.get_json() or {}

@@ -572,12 +572,15 @@ def main(app=None, *, efectos_desarrollo=True):
         print("CONSULTA_SEPARATA Ayto. Jerez: sin respuesta — plazo vencido, "
               "pendiente de analizar el silencio.")
 
-        def _responder_organismo(clave, abrev, margen, resultado_analizar, asunto):
+        def _responder_organismo(clave, abrev, margen, resultado_analizar, asunto,
+                                 sentido=None):
             """Respuesta del organismo dentro de plazo + su ANALIZAR.
 
-            Devuelve (documento de la respuesta, fecha). El sentido del
+            Devuelve (documento de la respuesta, fecha). El resultado del
             diagnóstico se declara aquí: en el ANALIZAR de una separata no hay
-            checklist del que derivarlo (ADR-033 §3), lo elige el tramitador.
+            checklist del que derivarlo (ADR-033 §3), lo elige el tramitador. Si
+            es desfavorable lleva además su `sentido` (oposicion | reparos), que
+            la respuesta de un organismo exige desde #652.
             """
             tarea_esp = espera_por_clave[clave]
             fecha = _comun.fecha_respuesta_en_plazo(tarea_esp, f'separata {abrev}', margen)
@@ -595,7 +598,7 @@ def main(app=None, *, efectos_desarrollo=True):
             _editar_conservando_consumidos(
                 tarea_an, [doc_resp_id], None, f'vincular consumido ANALIZAR separata {abrev}')
             _comun.producir_diagnostico(client, exp_id, tarea_an.id, f'separata {abrev}',
-                                        resultado=resultado_analizar)
+                                        resultado=resultado_analizar, sentido=sentido)
             return doc_resp_id, fecha
 
         def _traslado_al_titular(clave, abrev, doc_respuesta_id, fecha_respuesta):
@@ -679,7 +682,8 @@ def main(app=None, *, efectos_desarrollo=True):
         doc_resp_dip_id, fecha_resp_dip = _responder_organismo(
             'diputacion', 'Dip. Cádiz', MARGEN_DIPUTACION_HABILES, 'desfavorable',
             'Informe de la Diputación Provincial de Cádiz: desfavorable al cruce '
-            'de la carretera provincial en el trazado propuesto')
+            'de la carretera provincial en el trazado propuesto',
+            sentido='oposicion')
         _traslado_al_titular('diputacion', 'Dip. Cádiz', doc_resp_dip_id, fecha_resp_dip)
         # Su ESPERAR_PLAZO se queda abierto: el titular no ha contestado y el plazo
         # de 15 días hábiles sigue corriendo a fecha de hoy. El organismo se queda
