@@ -135,6 +135,8 @@ def _cargar_catalogo():
         # Anexos que el titular aporta en las vueltas de subsanación: cada uno
         # cubre un requisito del checklist documental (#495). La clave sigue el
         # patrón doc_<codigo en minúsculas> — `aportes_por_vuelta` la compone así.
+        # Los requisitos que el catálogo añada después y el escenario no prevea se
+        # resuelven al vuelo en `main` (ver `previstos`).
         'doc_nif_titular': _doc('NIF_TITULAR'),
         'doc_escrituras_sociedad': _doc('ESCRITURAS_SOCIEDAD'),
         'doc_poder_representacion': _doc('PODER_REPRESENTACION'),
@@ -293,6 +295,23 @@ def main(app=None, *, efectos_desarrollo=True):
             [('MODELO_046', 'Modelo 046 de autoliquidación de tasa'),
              ('MODELO_909', 'Modelo 909 carta de pago')],
         ]
+        # Esa lista es lo que el escenario PREVÉ, no lo que el catálogo exige: se
+        # contrasta con el evaluador real (el mismo que alimenta el checklist) y lo
+        # que aplique y no esté previsto lo aporta la última vuelta, que es la que
+        # completa. Sin esto, cada requisito que entra en el catálogo —o cuya
+        # condición cambia: así pasó con DR_NO_DUP en #863— deja un defecto en la
+        # 2.ª vuelta, el diagnóstico sale desfavorable y COMUNICACION_INICIO_ADMISION
+        # se bloquea, y con ella se cae la semilla entera.
+        previstos = {'MODELO_SOLICITUD', 'DOC_PROYECTO', 'JUSTIFICANTE_PAGO_TASA'}
+        previstos |= {codigo for aportes in aportes_por_vuelta for codigo, _ in aportes}
+        for codigo in _comun.requisitos_aplicables(solicitud, fase):
+            if codigo in previstos:
+                continue
+            # El tipo existe siempre: el requisito lo referencia por FK no nula.
+            tipo_doc = _comun.tipo_documento(codigo)
+            cat[f'doc_{codigo.lower()}'] = tipo_doc
+            aportes_por_vuelta[-1].append((codigo, tipo_doc.nombre))
+            print(f"  requisito {codigo} no previsto en el escenario: lo aporta la 2.ª vuelta.")
         fecha_actual = FECHA_BASE
 
         for vuelta in (1, 2):
