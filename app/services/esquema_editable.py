@@ -30,7 +30,7 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_resultados_fases import TipoResultadoFase
-from app.models.organismos_expediente import OrganismoExpediente, VIAS_ORGANISMO, RESULTADOS_ORGANISMO
+from app.models.organismos_expediente import OrganismoExpediente, VIAS_ORGANISMO
 from app.models.direccion_notificacion import DireccionNotificacion
 from app.services import marcas_edicto
 from app.services import notificaciones as notif_svc
@@ -215,11 +215,8 @@ def _esquema_organismo(exp, organismo_id: int) -> dict:
         raise ValueError(f'Organismo {organismo_id} no encontrado en el expediente {exp.id}')
 
     opciones_via = [{'valor': v, 'texto': v} for v in VIAS_ORGANISMO]
-    # 'exonerado' no se ofrece: lo deriva la vía (mutaciones_arbol.editar_organismo),
-    # no se elige campo a campo (DISEÑO_CONSULTAS_ORGANISMOS.md §2).
-    opciones_resultado = [
-        {'valor': r, 'texto': r} for r in RESULTADOS_ORGANISMO if r != 'exonerado'
-    ]
+    # El resultado no se edita (#1097): lo deriva el ciclo del organismo
+    # (ciclo_organismo.sincronizar_resultado) y el inspector lo muestra en lectura.
     direcciones = DireccionNotificacion.query.filter(
         DireccionNotificacion.entidad_id == oe.organismo_id,
         DireccionNotificacion.tipo_rol.op('&')(2) > 0,  # bit CONSULTADO
@@ -234,7 +231,6 @@ def _esquema_organismo(exp, organismo_id: int) -> dict:
         'nodo': {'tipo': 'organismo', 'id': oe.id},
         'campos': [
             _campo_select('via', 'Vía', oe.via, opciones_via),
-            _campo_select('resultado', 'Resultado', oe.resultado, opciones_resultado),
             _campo_select('direccion_notificacion_id', 'Dirección de notificación',
                           oe.direccion_notificacion_id, opciones_direccion),
             _campo_select('documento_id', 'Documento (declaración responsable)',

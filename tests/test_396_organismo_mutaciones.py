@@ -180,26 +180,10 @@ class TestCrearOrganismo:
 
 class TestEditarOrganismo:
 
-    def test_cambia_resultado(self, app_ctx):
-        from app.services import mutaciones_arbol as svc
-        oe = _crear_organismo()
-        res = svc.editar_organismo(oe, via='consulta', resultado='cerrado_favorable',
-                                    direccion_notificacion_id=None, documento_id=None)
-        assert res.ok, res.error
-        assert oe.resultado == 'cerrado_favorable'
-
-    def test_resultado_exonerado_con_via_consulta_bloquea(self, app_ctx):
-        from app.services import mutaciones_arbol as svc
-        oe = _crear_organismo()
-        res = svc.editar_organismo(oe, via='consulta', resultado='exonerado',
-                                    direccion_notificacion_id=None, documento_id=None)
-        assert not res.ok
-        assert 'solo aplica a la vía declaracion_responsable' in res.error
-
     def test_cambiar_a_declaracion_responsable_sin_documento_bloquea(self, app_ctx):
         from app.services import mutaciones_arbol as svc
         oe = _crear_organismo()
-        res = svc.editar_organismo(oe, via='declaracion_responsable', resultado=None,
+        res = svc.editar_organismo(oe, via='declaracion_responsable',
                                     direccion_notificacion_id=None, documento_id=None)
         assert not res.ok
         assert 'documento_id es obligatorio' in res.error
@@ -208,19 +192,10 @@ class TestEditarOrganismo:
         from app.services import mutaciones_arbol as svc
         oe = _crear_organismo()
         doc = _documento_expediente(oe.expediente_id)
-        # Pide 'cerrado_favorable' a propósito: la vía manda, no lo que se pida.
-        res = svc.editar_organismo(oe, via='declaracion_responsable', resultado='cerrado_favorable',
+        res = svc.editar_organismo(oe, via='declaracion_responsable',
                                     direccion_notificacion_id=None, documento_id=doc.id)
         assert res.ok, res.error
         assert oe.resultado == 'exonerado'
-
-    def test_resultado_invalido_bloquea(self, app_ctx):
-        from app.services import mutaciones_arbol as svc
-        oe = _crear_organismo()
-        res = svc.editar_organismo(oe, via='consulta', resultado='tramitado',
-                                    direccion_notificacion_id=None, documento_id=None)
-        assert not res.ok
-        assert 'resultado debe ser' in res.error
 
     def test_fase_cerrada_bloquea(self, app_ctx):
         from app import db
@@ -229,7 +204,7 @@ class TestEditarOrganismo:
         oe.fase.documento_resultado_id = _documento_expediente(oe.expediente_id).id
         db.session.flush()
 
-        res = svc.editar_organismo(oe, via='consulta', resultado='cerrado_favorable',
+        res = svc.editar_organismo(oe, via='consulta',
                                     direccion_notificacion_id=None, documento_id=None)
         assert not res.ok
         assert res.bloqueo is not None

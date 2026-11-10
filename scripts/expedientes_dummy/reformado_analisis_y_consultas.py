@@ -448,7 +448,7 @@ def main(app=None, *, efectos_desarrollo=True):
             'crear_organismo Ayto. Jerez v1')
         oe_ayto_v1 = OrganismoExpediente.query.get(oe_ayto_v1_id)
         _comun.check(
-            svc.editar_organismo(oe_ayto_v1, via='consulta', resultado=None,
+            svc.editar_organismo(oe_ayto_v1, via='consulta',
                                  direccion_notificacion_id=dir_ayto_id, documento_id=None),
             'editar_organismo Ayto. Jerez v1 (dirección)')
 
@@ -568,7 +568,7 @@ def main(app=None, *, efectos_desarrollo=True):
                 f"crear_organismo {org['abrev']} v2")
             oe = OrganismoExpediente.query.get(oe_id)
             _comun.check(
-                svc.editar_organismo(oe, via='consulta', resultado=None,
+                svc.editar_organismo(oe, via='consulta',
                                      direccion_notificacion_id=dir_id, documento_id=None),
                 f"editar_organismo {org['abrev']} v2 (dirección)")
             oe_v2_por_clave[org['clave']] = oe
@@ -708,10 +708,8 @@ def main(app=None, *, efectos_desarrollo=True):
             _comun.producir_diagnostico(client, exp_id, tarea_an_tr.id, f'traslado {abrev} v2',
                                         resultado='favorable')
 
-            _comun.check(
-                svc.editar_organismo(oe, via='consulta', resultado='cerrado_favorable',
-                                     direccion_notificacion_id=dir_id, documento_id=None),
-                f'editar_organismo {abrev} v2 (resultado)')
+            # El desenlace lo deriva el diagnóstico del traslado (#1097).
+            _comun.exigir_resultado_organismo(oe, 'cerrado_favorable', f'{abrev} v2')
             print(f"{abrev} (v2): respuesta favorable, traslado aceptado por el titular — "
                   f"organismo cerrado_favorable.")
 

@@ -420,6 +420,8 @@ def revertir_diagnostico(tarea: Tarea, *, justificacion: Optional[str] = None) -
                      'motivo': bloqueo.motivo},
         )
 
+    # Sin su diagnóstico, el organismo de este trámite puede haber dejado de estar cerrado (#1097).
+    ciclo_organismo.sincronizar_desde_tarea(tarea)
     db.session.commit()
     log.info('Diagnóstico revertido para tarea %s (doc %s)%s',
              tarea.id, doc.id, ' [forzado con justificación]' if bloqueo else '')
@@ -501,6 +503,8 @@ def crear_diagnostico(tarea: Tarea, resultado: str, defectos: list,
             detalle={'escape': True, 'justificacion': justificacion},
         )
 
+    # El diagnóstico de una consulta es lo que cierra, o no, al organismo (#1097).
+    ciclo_organismo.sincronizar_desde_tarea(tarea)
     db.session.commit()
     log.info(
         'Diagnóstico producido para tarea %s (doc %s, diagnostico %s, resultado %s)',

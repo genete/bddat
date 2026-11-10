@@ -7,10 +7,12 @@ traslados al titular y al organismo que haga falta. Cada uno termina en una `ANA
 que produce un diagnóstico (favorable, condicionado o desfavorable); ese diagnóstico es
 lo que dice cómo sigue el ciclo.
 
-Este módulo solo lee: hace falta tanto para las reglas del motor que gobiernan la
-creación de los traslados (variables `organismo_respuesta_analizada` y
-`traslado_organismo_procede`) como para el aviso de la `ANALIZAR`. Las dos consultas
-comparten estas definiciones para no discrepar:
+Este módulo lee, y en un solo sitio escribe: `sincronizar_resultado` (#1097) es la única
+que pone `organismos_expediente.resultado`, que ya no lo teclea nadie. Hace falta tanto
+para las reglas del motor que gobiernan la creación de los traslados (variables
+`organismo_respuesta_analizada` y `traslado_organismo_procede`) como para el aviso de la
+`ANALIZAR` y para el cierre del organismo. Todas comparten estas definiciones para no
+discrepar:
 
 - **Respuesta real**: el `ESPERAR_PLAZO` del trámite produjo un documento de tipo
   `RESPUESTA_ORGANISMO` (o `RESPUESTA_TITULAR`). Contar el tipo y no «cualquier
@@ -154,3 +156,103 @@ def aviso_de_ciclo(tarea) -> Optional[str]:
     if reparos:
         frases.append(_frase_de_sentido(reparos, 'reparo', 'reparos', UMBRAL_REPAROS))
     return ' '.join(frases) or None
+
+
+# ---------------------------------------------------------------------------
+# Cómo terminó el ciclo y quién lo escribe (#1097)
+# ---------------------------------------------------------------------------
+
+DOC_CERT_PLAZO_CUMPLIDO = 'CERT_PLAZO_CUMPLIDO'
+
+
+def _documento_de_espera(tramite) -> Optional[str]:
+    """Código del tipo documental que produjo el `ESPERAR_PLAZO` de `tramite`, o None.
+
+    Es lo que separa una respuesta real (`RESPUESTA_ORGANISMO`, `RESPUESTA_TITULAR`) de un
+    silencio (`CERT_PLAZO_CUMPLIDO`): el silencio no es un valor del diagnóstico."""
+    espera = _tarea_de(tramite, 'ESPERAR_PLAZO')
+    documento = espera.documento_producido if espera is not None else None
+    if documento is None or documento.tipo_doc is None:
+        return None
+    return documento.tipo_doc.codigo
+
+
+def resultado_del_ciclo(oe) -> Optional[str]:
+    """Resultado legal del organismo según su ciclo (ADR-011 §6, casos A-D), o None si el
+    ciclo sigue en curso. Mismo vocabulario que `RESULTADOS_ORGANISMO`. Solo lee.
+
+    Lo decide el diagnóstico de la `ANALIZAR`, que elige a mano quien tramita; esta función
+    no lo adivina ni lo corrige. El último trámite en que el organismo responde (separata o
+    traslado al organismo) manda:
+
+    - Vía `declaracion_responsable`: `exonerado`, desde el inicio.
+    - Sin trámite de respuesta, o su `ANALIZAR` aún sin diagnóstico: en curso.
+    - Diagnóstico `desfavorable`: `audiencia_previa` mientras nadie dé traslado al titular.
+      Los contadores de `aviso_de_ciclo` solo sugieren; seguir con otra vuelta es decisión de
+      quien tramita, y crear el traslado devuelve el organismo a «en curso».
+    - Silencio (la espera produjo el certificado de plazo cumplido) con diagnóstico
+      favorable: `cerrado_favorable`, sin traslado (caso A).
+    - Respuesta real favorable o `condicionado`: hace falta el traslado al titular, con su
+      respuesta real y su diagnóstico favorable. Entonces `cerrado_favorable`, o
+      `cerrado_con_condicionados` si el organismo respondió `condicionado` (casos B, C, D).
+
+    Lo que la ley o el diseño aún no resuelven queda en curso —el silencio del titular, un
+    traslado al titular desfavorable, una respuesta sin documento reconocible—: se cierra con
+    el escape de la regla de motor que bloquea abrir la `RESOLUCION`, con justificación en
+    bitácora. Mejor en curso que cerrado por adivinación.
+    """
+    if oe.via == 'declaracion_responsable':
+        return 'exonerado'
+
+    respuesta = ultima_respuesta_del_organismo(oe)
+    if respuesta is None:
+        return None
+    del_organismo = diagnostico_del_analisis(respuesta)
+    if del_organismo is None:
+        return None
+    traslado = ultimo_traslado_al_titular(oe, respuesta)
+
+    if del_organismo.resultado == 'desfavorable':
+        return 'audiencia_previa' if traslado is None else None
+
+    documento = _documento_de_espera(respuesta)
+    if documento == DOC_CERT_PLAZO_CUMPLIDO:
+        return 'cerrado_favorable' if del_organismo.resultado == 'favorable' else None
+    if documento != DOC_RESPUESTA_ORGANISMO or traslado is None:
+        return None
+
+    del_titular = diagnostico_de_respuesta(traslado, DOC_RESPUESTA_TITULAR)
+    if del_titular is None or del_titular.resultado != 'favorable':
+        return None
+    return ('cerrado_con_condicionados' if del_organismo.resultado == 'condicionado'
+            else 'cerrado_favorable')
+
+
+def sincronizar_resultado(oe) -> None:
+    """Pone en `oe.resultado` lo que dice su ciclo (`resultado_del_ciclo`). Sin commit: va
+    en la transacción de quien llama, que es quien cambió el ciclo.
+
+    Es la única escritura de ese campo. Se llama donde cambia lo que lo decide: crear o
+    revertir un diagnóstico, crear o borrar un trámite del organismo, cambiar su vía. Un
+    punto que se olvide deja el campo desfasado; `organismos_todos_terminados` y los
+    certificados lo leen tal cual."""
+    db.session.flush()
+    nuevo = resultado_del_ciclo(oe)
+    if oe.resultado != nuevo:
+        oe.resultado = nuevo
+
+
+def organismos_de_tramite(tramite) -> list:
+    """Los organismos a los que pertenece `tramite` (uno, o ninguno si no es de consultas)."""
+    vinculos = TramiteOrganismo.query.filter_by(tramite_id=tramite.id).all()
+    return [v.organismo_expediente for v in vinculos]
+
+
+def sincronizar_desde_tarea(tarea) -> None:
+    """Sincroniza el organismo del trámite de `tarea`, si lo tiene. Para quien acaba de
+    producir o quitar el documento de una tarea: su relación `vinculos_documento` pudo
+    cargarse antes del cambio, así que se recarga para que el ciclo lea lo que hay."""
+    db.session.flush()
+    db.session.expire(tarea, ['vinculos_documento'])
+    for oe in organismos_de_tramite(tarea.tramite):
+        sincronizar_resultado(oe)

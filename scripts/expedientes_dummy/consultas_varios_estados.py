@@ -498,7 +498,7 @@ def main(app=None, *, efectos_desarrollo=True):
             # La dirección de notificación no es parámetro del alta: se fija
             # editando, que es como lo hace la UI (ADR-042 §C).
             _comun.check(
-                svc.editar_organismo(oe, via='consulta', resultado=None,
+                svc.editar_organismo(oe, via='consulta',
                                      direccion_notificacion_id=direccion_id,
                                      documento_id=None),
                 f"editar_organismo {org['abrev']} (dirección)")
@@ -668,13 +668,9 @@ def main(app=None, *, efectos_desarrollo=True):
         _comun.producir_diagnostico(client, exp_id, tarea_an_tr_adif.id, 'traslado ADIF',
                                     resultado='favorable')
         # Desenlace legal del organismo (ADR-011 §6, caso B): el ciclo se cierra
-        # con los condicionados de ADIF incorporados.
-        _comun.check(
-            svc.editar_organismo(oe_por_clave['adif'], via='consulta',
-                                 resultado='cerrado_con_condicionados',
-                                 direccion_notificacion_id=organismos['adif'][1],
-                                 documento_id=None),
-            'editar_organismo ADIF (resultado)')
+        # con los condicionados de ADIF incorporados. Lo deriva el diagnóstico (#1097).
+        _comun.exigir_resultado_organismo(
+            oe_por_clave['adif'], 'cerrado_con_condicionados', 'ADIF')
         print("ADIF: respuesta con condicionados, traslado aceptado por el titular — "
               "organismo cerrado_con_condicionados.")
 

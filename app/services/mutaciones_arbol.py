@@ -31,10 +31,11 @@ from app.models.documentos import Documento
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.documentos_tarea import DocumentoTarea
 from app.models.notificaciones import Notificacion
-from app.models.organismos_expediente import OrganismoExpediente, VIAS_ORGANISMO, RESULTADOS_ORGANISMO
+from app.models.organismos_expediente import OrganismoExpediente, VIAS_ORGANISMO
 from app.models.direccion_notificacion import DireccionNotificacion
 from app.services.assembler import build, build_sujeto
 from app.services import bitacora as bitacora_svc
+from app.services import ciclo_organismo
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
 from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
 from app.services.invariantes_esftt import (
@@ -1556,16 +1557,21 @@ def reabrir_fase(fase, *, justificacion: str) -> ResultadoMutacion:
         return ResultadoMutacion(ok=False, error=str(e))
 
 
-def editar_organismo(oe, *, via: str, resultado: Optional[str],
+def editar_organismo(oe, *, via: str,
                       direccion_notificacion_id: Optional[int],
                       documento_id: Optional[int]) -> ResultadoMutacion:
-    """Edita un organismo consultado: vía, resultado y datos de contacto.
+    """Edita un organismo consultado: vía y datos de contacto.
 
     `organismo_id` (a qué entidad se consulta) no es editable — cambiarlo es
     dar de baja y dar de alta otro, no una edición. Sin `justificacion`: el
     único invariante que protege esta mutación (sellado de fase) no es
     forzable (`_check_mutar`, puerta cerrada — reabrir la fase es el único
     camino, igual que `editar_tramite`).
+
+    `resultado` no es parámetro (#1097): lo deriva el ciclo del organismo
+    (`ciclo_organismo.sincronizar_resultado`), y la vía lo condiciona —
+    `exonerado` es terminal desde el inicio para declaración responsable, y
+    volver a la vía de consulta devuelve el ciclo que haya.
     """
     res_inv = check_invariante('MUTAR', 'ORGANISMO', oe.id)
     if res_inv:
@@ -1574,19 +1580,9 @@ def editar_organismo(oe, *, via: str, resultado: Optional[str],
     if via not in VIAS_ORGANISMO:
         return ResultadoMutacion(ok=False, error=f'via debe ser uno de {VIAS_ORGANISMO}')
 
-    if via == 'declaracion_responsable':
-        if not documento_id:
-            return ResultadoMutacion(
-                ok=False, error='documento_id es obligatorio para la vía declaracion_responsable')
-        # Terminal desde el inicio (DISEÑO_CONSULTAS_ORGANISMOS.md §2) — el
-        # resultado no lo decide el tramitador campo a campo, lo fija la vía.
-        resultado = 'exonerado'
-    else:
-        if resultado == 'exonerado':
-            return ResultadoMutacion(
-                ok=False, error="resultado 'exonerado' solo aplica a la vía declaracion_responsable")
-        if resultado is not None and resultado not in RESULTADOS_ORGANISMO:
-            return ResultadoMutacion(ok=False, error=f'resultado debe ser uno de {RESULTADOS_ORGANISMO} o vacío')
+    if via == 'declaracion_responsable' and not documento_id:
+        return ResultadoMutacion(
+            ok=False, error='documento_id es obligatorio para la vía declaracion_responsable')
 
     expediente = oe.expediente
     if documento_id:
@@ -1600,9 +1596,9 @@ def editar_organismo(oe, *, via: str, resultado: Optional[str],
 
     try:
         oe.via = via
-        oe.resultado = resultado
         oe.direccion_notificacion_id = direccion_notificacion_id
         oe.documento_id = documento_id
+        ciclo_organismo.sincronizar_resultado(oe)
         db.session.commit()
         return ResultadoMutacion(ok=True)
     except Exception as e:
@@ -1954,7 +1950,13 @@ def borrar_tramite(tr, *, justificacion: Optional[str] = None) -> ResultadoMutac
             detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
         )
 
+    # Si el trámite es de un organismo, su ciclo cambia al borrarlo (#1097): se toma antes,
+    # porque el vínculo se va con el trámite.
+    organismos = ciclo_organismo.organismos_de_tramite(tr)
     db.session.delete(tr)
+    db.session.flush()
+    for oe in organismos:
+        ciclo_organismo.sincronizar_resultado(oe)
     db.session.commit()
     return ResultadoMutacion(ok=True)
 
