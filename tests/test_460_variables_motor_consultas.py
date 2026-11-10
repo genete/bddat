@@ -9,13 +9,19 @@ class _StubOrganismo:
     def __init__(self, resultado, id=1): self.resultado = resultado; self.id = id
 
 
-class _StubExpediente:
+class _StubFase:
     def __init__(self, organismos): self.organismos = organismos
 
 
+class _StubSolicitud:
+    def __init__(self, organismos): self.fases = [_StubFase(organismos)]
+
+
 class _StubCtx:
+    """Contexto con la solicitud que se resuelve (#1097: la variable mira la solicitud,
+    no el expediente), con una ronda de consultas que trae los organismos dados."""
     def __init__(self, organismos):
-        self.expediente = _StubExpediente(organismos)
+        self.solicitud = _StubSolicitud(organismos)
 
 
 # ---------------------------------------------------------------------------

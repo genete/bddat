@@ -475,15 +475,29 @@ _RESULTADOS_TERMINALES_CONSULTAS = frozenset({
 @variable('organismos_todos_terminados')
 def _(ctx) -> bool:
     """
-    True si todos los organismos del expediente tienen resultado (#396: la fase
-    CONSULTAS puede repetirse por modificado de proyecto — se agregan TODAS las
-    rondas del expediente, no solo la última, porque antes de resolver deben
-    estar cerradas todas). Precondición del cierre de fase CONSULTAS (ver #470).
+    True si ningún organismo de la solicitud en contexto sigue en curso (#1097).
+
+    Mira los organismos de **todas** las rondas de CONSULTAS de la solicitud (la fase puede
+    repetirse por modificado de proyecto, #396), y de esta solicitud solo: el expediente
+    puede tener otras (ADR-043 §C). Terminado es cualquier resultado, también
+    `audiencia_previa`: un organismo que acabó en desfavorable no impide resolver, lo que
+    impide es que siga abierto. El estado de rondas anteriores no se sobresee: si un
+    organismo quedó en curso en una ronda anterior, las consultas siguen en curso y el
+    sistema protesta; quien tramita lo cierra con las herramientas de siempre (escape de
+    la regla, o enlazando documentos con comentario).
+
+    `resultado` lo escribe el sistema a partir de los diagnósticos
+    (`ciclo_organismo.sincronizar_resultado`). Precondición de abrir la resolución (#470).
+    Sin solicitud en contexto no hay nada que resolver: True, la salida que no bloquea.
     """
-    organismos = ctx.expediente.organismos
-    if not organismos:
+    solicitud = ctx.solicitud
+    if solicitud is None:
         return True
-    return all(org.resultado in _RESULTADOS_TERMINALES_CONSULTAS for org in organismos)
+    return all(
+        org.resultado in _RESULTADOS_TERMINALES_CONSULTAS
+        for fase in solicitud.fases
+        for org in fase.organismos
+    )
 
 
 @variable('organismo_respuesta_analizada')

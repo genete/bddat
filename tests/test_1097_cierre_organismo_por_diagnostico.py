@@ -115,3 +115,40 @@ def test_otra_vuelta_saca_al_organismo_de_audiencia_previa(app_ctx, arbol_esftt)
     assert res.ok, res.error or (res.bloqueo and res.bloqueo.motivo)
 
     assert _resultado(oe) is None
+
+
+@pytest.mark.parametrize('resultados, terminados', [
+    pytest.param(['audiencia_previa', 'cerrado_favorable'], True, id='rondas_todas_terminadas'),
+    pytest.param(['cerrado_favorable', None], False, id='en_curso_en_la_ultima_ronda'),
+    pytest.param([None, 'cerrado_favorable'], False, id='en_curso_en_una_ronda_anterior'),
+])
+def test_organismos_todos_terminados_recorre_todas_las_rondas(
+        app_ctx, arbol_esftt, resultados, terminados):
+    from app import db
+    from app.services.assembler import ExpedienteContext
+    from app.services.variables import get_registry
+    sol = arbol_esftt.solicitud_nueva()
+    for n, resultado in enumerate(resultados):
+        _organismo(arbol_esftt.fase('CONSULTAS', solicitud=sol), n=n).resultado = resultado
+    db.session.flush()
+    db.session.expire_all()
+
+    variable = get_registry()['organismos_todos_terminados']
+
+    assert variable(ExpedienteContext(sol.expediente, objeto=sol)) is terminados
+
+
+def test_organismos_todos_terminados_no_mira_otras_solicitudes(app_ctx, arbol_esftt):
+    from app import db
+    from app.services.assembler import ExpedienteContext
+    from app.services.variables import get_registry
+    sol = arbol_esftt.solicitud_nueva()
+    otra = arbol_esftt.solicitud_nueva()   # mismo expediente: la semilla cuelga ambas del primero
+    assert otra.expediente_id == sol.expediente_id
+    _organismo(arbol_esftt.fase('CONSULTAS', solicitud=otra))   # en curso, de la otra solicitud
+    db.session.flush()
+    db.session.expire_all()
+
+    variable = get_registry()['organismos_todos_terminados']
+
+    assert variable(ExpedienteContext(sol.expediente, objeto=sol)) is True
