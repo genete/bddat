@@ -37,6 +37,12 @@ invariante de precedencia de #823 abrirla con la fase anterior sin cerrar está 
 | `DIAS_ESCENARIO` | 45 | Días naturales que dura el escenario completo. Dos vueltas de requerimiento son unos 20; el resto es holgura para tramos con muchos festivos |
 | `MARGEN_RESPUESTA_HABILES` | 3 | Días hábiles antes del vencimiento **real** en que responde el titular. El margen es lo único fijo: la fecha sale del plazo que diga el catálogo, no de un número escrito a mano |
 
+**Qué aporta cada vuelta.** La 1.ª, `NIF_TITULAR`, `ESCRITURAS_SOCIEDAD` y `PODER_REPRESENTACION`;
+la 2.ª, `MODELO_046` y `MODELO_909`. Esa lista es lo que el escenario prevé, no lo que el catálogo
+exige: se contrasta con el evaluador real (`_comun.requisitos_aplicables`) y lo que aplique y no esté
+previsto —`DR_NO_DUP`, desde #863— lo aporta la última vuelta, que es la que completa. Sin esto, un
+requisito nuevo deja un defecto en la 2.ª vuelta, el análisis no se cierra y la semilla entera se cae.
+
 Al terminar **deja fijado el reloj de desarrollo** en la última fecha de su escenario — al
 revés que `CONSULTAS_VARIOS_ESTADOS`, que lo borra. Es deliberado: el escenario se lee desde
 su propio presente. El síntoma de haberlo olvidado es que la aplicación no deja fechar en el
