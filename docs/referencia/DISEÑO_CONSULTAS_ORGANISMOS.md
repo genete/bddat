@@ -2,7 +2,7 @@
 
 **Fecha:** 20/03/2026
 **Estado:** Decisiones tomadas — pendiente implementación y análisis DUP
-**Actualizado:** 10/11/2026 (#652): reglas de orden de los traslados, sentido del diagnóstico y aviso de las vueltas (§4, §6, §7 y §8); `reparos_titular` deja de ser un resultado OK (§4 y §7)
+**Actualizado:** 10/11/2026 (#652): reglas de orden de los traslados, sentido del diagnóstico y aviso de las vueltas (§4, §6, §7 y §8); `reparos_titular` deja de ser un resultado OK (§4 y §7). 10/11/2026 (#982): cómo se emite hoy el certificado del silencio (§7, caso A)
 
 ---
 
@@ -407,9 +407,17 @@ en `tramites_organismos`.
 **Caso A, cómo se cierra (#652).** El `ESPERAR_PLAZO` de la separata no recibe ningún documento del
 organismo: se llena con un certificado de plazo cumplido (lo que certifica el motor de plazos), que
 consume la `ANALIZAR`, y su diagnóstico favorable cierra la separata. Ese certificado hace falta para
-el certificado de fin de instrucción. Hoy `CERT_PLAZO_CUMPLIDO` no está catalogado para las esperas de
-consultas ni tiene pantalla (#982, #1088); emitirlo a demanda y ofrecerlo al vencer el plazo, en toda
-espera de un documento externo, queda para un issue propio.
+el certificado de fin de instrucción.
+
+**Cómo se emite hoy (#982).** `certificados.crear_cert` lo emite en cualquier `ESPERAR_PLAZO` cuyo plazo
+esté vencido según el motor de plazos, y **no mira el catálogo** (`tramites_tareas_documentos`): este solo
+orienta —la sugerencia de tipo de la Despensa y los candidatos de un documento huérfano—, de modo que
+que `CERT_PLAZO_CUMPLIDO` no figure como salida de las esperas de consultas no impide cerrar el silencio
+por esta vía. El expediente-tipo `RESOLUCION_CON_ORGANISMOS` cierra así al Ayuntamiento (certificado,
+`ANALIZAR` favorable y fase `CONSULTAS` sin forzar). Lo que falta es que una persona pueda emitirlo desde
+el navegador: no tiene pantalla (#1088). Catalogarlo en las esperas de documento externo, emitirlo a demanda
+y ofrecerlo al vencer el plazo es #1098. Coste conocido de catalogarlo: con dos tipos exactos de salida en
+la espera, la sugerencia de la Despensa deja de proponer `RESPUESTA_*` al subir la respuesta (#935).
 
 Fuera de alcance (#456): TRASLADO_TITULAR `sin_respuesta` con organismo NOK
 (audiencia previa a archivo en AAP) se gestiona en la fase RESOLUCION.
