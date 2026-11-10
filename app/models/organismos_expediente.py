@@ -131,8 +131,11 @@ class OrganismoExpediente(db.Model):
 
         Para declaracion_responsable: completa cuando resultado es exonerado.
         Para consulta ordinaria: completa cuando el ciclo alcanzó un resultado de cierre.
-        La evaluación detallada por resultado de cada trámite (casos A-D del ADR)
-        se implementará cuando TramiteOrganismo.resultado esté disponible (#460).
+        La evaluación de los casos A-D del ADR-011 §6 a partir del diagnóstico del
+        último ANALIZAR de cada trámite del organismo no está implementada: hoy
+        `resultado` lo escribe a mano quien tramita (`editar_organismo`) y no se
+        contrasta con los trámites. #460 se cerró sin añadir `TramiteOrganismo.resultado`;
+        lo pendiente es #1097.
         """
         if self.via == 'declaracion_responsable':
             return self.resultado == 'exonerado'
