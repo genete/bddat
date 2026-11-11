@@ -99,7 +99,8 @@
     // Dock: localStorage es la fuente de verdad; la cookie es su espejo para que
     // el servidor pueda renderizar is-dock-closed en el HTML inicial y no se
     // produzca el parpadeo abrir→cerrar al cargar cada vista (#539).
-    var dockClosed = readLS(LS.dockOpen) === 'false';
+    // Cerrado por defecto: solo se abre si el usuario lo abrió antes ('true').
+    var dockClosed = readLS(LS.dockOpen) !== 'true';
     shell.classList.toggle('is-dock-closed', dockClosed);
     setCookie(COOKIE_DOCK, dockClosed ? '1' : '0');
   }

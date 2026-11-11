@@ -52,8 +52,9 @@
 
   {% set _sidebar_collapsed = request.cookies.get('bddat_sidebar_collapsed') == '1' %}
   {# Estado del dock en cookie (espejo de localStorage) para renderizarlo cerrado
-     ya en el HTML inicial y evitar el parpadeo abrir→cerrar al cargar (#539). #}
-  {% set _dock_closed = request.cookies.get('bddat_dock_closed') == '1' %}
+     ya en el HTML inicial y evitar el parpadeo abrir→cerrar al cargar (#539).
+     Cerrado por defecto: solo se pinta abierto si la cookie dice '0' (el usuario lo abrió). #}
+  {% set _dock_closed = request.cookies.get('bddat_dock_closed') != '0' %}
 
   <div class="app-shell
               {%- if _sidebar_collapsed %} is-sidebar-collapsed{% endif -%}
