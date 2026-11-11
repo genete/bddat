@@ -8,6 +8,7 @@ y por eso está aislado aquí. Casi todo son `<label for>` e ids; lo difícil so
 CREA UN EXPEDIENTE REAL en la BD a la que apunte la aplicación y deja fijado el reloj de desarrollo
 («Usar fecha real» en la barra superior lo quita).
 """
+import json
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -33,7 +34,7 @@ class DatosAlta:
     provincia: str = 'Sevilla'
     municipio: str = 'Mairena del Aljarafe'
     tipo_solicitud: str = 'AAP+AAC'
-    responsable: str | None = None   # None → el primero real del desplegable (el 0 es «Sin asignar»)
+    responsable: str | None = None   # None → el usuario del login (si no está en el desplegable, falla)
     titular: str | None = None       # None → el primero de la lista
 
 
@@ -115,7 +116,15 @@ def alta(c, datos, fecha_base):
         if datos.responsable:
             combo.select_option(label=next(o for o in opciones if datos.responsable in o))
         else:
-            combo.select_option(index=1)
+            # Por defecto, el usuario del login: la aplicación lo publica como JSON en `data-user` de la isla de la
+            # paleta de comandos (id, siglas), y el `value` de cada <option> es el id del usuario.
+            usuario = json.loads(page.locator('[data-user]').first.get_attribute('data-user'))
+            if combo.locator(f'option[value="{usuario["id"]}"]').count() == 0:
+                raise RuntimeError(
+                    f'El usuario del login ({usuario["siglas"]}) no está en el desplegable de responsables; '
+                    'elige otro con --responsable "Apellido, Nombre".')
+            combo.select_option(value=str(usuario['id']))
+            print(f'     responsable: el usuario del login ({usuario["siglas"]})')
 
     with s.paso('título, descripción, finalidad, emplazamiento', 'get_by_label (cadenas, no regex ancladas)'):
         page.get_by_label('Título del proyecto').fill(datos.titulo)

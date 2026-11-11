@@ -131,8 +131,8 @@ CHROMIUM_PATH=/opt/pw-browsers/chromium ~/.venvs/bddat/bin/python -m scripts.exp
 ```
 
 Necesita las plantillas DEMO de `REQUERIMIENTO_SUBSANACION` y `COMUNICACION_INICIO_ADMISION`, que la semilla de la nube
-ya registra. Por defecto el responsable es el primero real del desplegable del alta, que en la semilla puede no ser
-el tramitador que se quiere: `--responsable "Tramitador, Tomás"`. **Sin probar todavía en la nube**: el guion se ha
+ya registra. Por defecto el responsable es el usuario del login (si no está en el desplegable del alta, el guion
+falla y pide `--responsable "Apellido, Nombre"`). **Sin probar todavía en la nube**: el guion se ha
 ejecutado entero en el PC (Windows); el spike anterior sí se probó en Linux hasta el escrito generado. Detalle y
 requisitos en `scripts/expedientes_dummy/interfaz/README.md`.
 
