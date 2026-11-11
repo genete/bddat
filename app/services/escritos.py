@@ -27,9 +27,9 @@ USO:
 import importlib
 import logging
 import re
-from datetime import date
 
 from app.services import notificaciones as notif_svc
+from app.services.reloj_simulado import hoy
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,8 @@ class ContextoBaseExpediente:
             municipios          — Lista de nombres de municipios afectados (list[str])
 
         Fecha:
-            fecha_hoy           — Fecha actual en formato DD/MM/YYYY
+            fecha_hoy           — Fecha de trabajo en formato DD/MM/YYYY (la del reloj de
+                                  desarrollo si está activo; en producción, la real)
 
     Destinatario (#968, ADR-051 §H) — solo con tarea, en `construir_contexto`:
         destinatario_nombre       — A quién va el escrito. Al solicitante, siempre
@@ -138,7 +139,7 @@ class ContextoBaseExpediente:
             'municipios': self._municipios(),
 
             # Fecha
-            'fecha_hoy': date.today().strftime('%d/%m/%Y'),
+            'fecha_hoy': hoy().strftime('%d/%m/%Y'),
         }
         return ctx
 
