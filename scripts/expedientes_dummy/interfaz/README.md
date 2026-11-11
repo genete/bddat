@@ -42,7 +42,7 @@ venv/Scripts/python.exe -m scripts.expedientes_dummy.interfaz.analisis_doc_dos_v
 | `--url` | dirección de la aplicación (`http://127.0.0.1:5000`) |
 | `--visible`, `--lento MS` | ver el navegador y pausar entre acciones (por defecto, en segundo plano) |
 | `--dias N` | cuántos días atrás empieza el calendario (45); la fecha base es hoy − N |
-| `--responsable`, `--titular` | texto del desplegable o de la lista del alta (por defecto, el primero real) |
+| `--responsable`, `--titular` | texto del desplegable o de la lista del alta (por defecto, el responsable es el usuario del login y el titular, el primero de la lista) |
 
 Salidas: `docs_prueba/ui_dummy/<tipo>/` (git la ignora): `estado.json` (el expediente y los pasos hechos, con los ids
 de lo creado), `diario.json`, `capturas/` (una por paso y una `FALLO-…` si algo falla) y `aria-*.yml`.

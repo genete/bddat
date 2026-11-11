@@ -34,7 +34,7 @@ def _parser(escenario):
     p.add_argument('--hasta', help='último paso a ejecutar (por defecto, el último)')
     p.add_argument('--dias', type=int, default=escenario.DIAS_ESCENARIO,
                    help='cuántos días atrás se fija el reloj (fecha base = hoy − dias); por defecto %(default)s')
-    p.add_argument('--responsable', help='texto del responsable en el desplegable del alta (por defecto, el 1.º real)')
+    p.add_argument('--responsable', help='texto del responsable en el desplegable del alta (por defecto, el usuario del login)')
     p.add_argument('--titular', help='texto del titular en la lista del alta (por defecto, el primero)')
     return p
 
