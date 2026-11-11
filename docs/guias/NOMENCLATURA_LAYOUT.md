@@ -127,7 +127,7 @@ html { font-size: 15px; }   /* a 15px: datos de tabla ~13px, chrome ~14px */
 |---|---|---|
 | `bddat.sidebar.collapsed` | boolean | Estado del sidebar (expandido/colapsado) |
 | `bddat.inspector.width` | number (px) | Ancho del inspector persistido tras resize (default 900) |
-| `bddat.dock.open` | boolean | Última elección del usuario sobre el dock |
+| `bddat.dock.open` | boolean | Última elección del usuario sobre el dock. Sin valor guardado, el dock arranca **cerrado** |
 
 > `bddat.inspector.open` ha quedado en desuso (ADR-023 #534): el inspector ya no se
 > "deja abierto vacío"; se abre al seleccionar un ítem y se cierra al deseleccionar.
