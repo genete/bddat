@@ -26,6 +26,7 @@ from app.models.tramites_organismos import TramiteOrganismo
 from app.models.tipos_tramites import TipoTramite
 from app.services.assembler import build_sujeto
 from app.services import bitacora as bitacora_svc
+from app.services import ciclo_organismo
 from app.services.motor_reglas import PERMITIDO
 from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
 from app.services.invariantes_esftt import check_invariante
@@ -254,6 +255,9 @@ def crear_traslado(fase, form) -> ResultadoMutacion:
     db.session.add(tramite)
     db.session.flush()
     db.session.add(TramiteOrganismo(tramite_id=tramite.id, organismo_expediente_id=oe.id))
+    # Otra vuelta del ciclo: si el organismo figuraba en `audiencia_previa`, vuelve a estar
+    # en curso (#1097).
+    ciclo_organismo.sincronizar_resultado(oe)
 
     if justificacion:
         sujeto = build_sujeto(expediente, objeto_sujeto)

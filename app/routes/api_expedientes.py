@@ -769,7 +769,6 @@ def editar_nodo(expediente_id, tipo, nodo_id):
         res = svc.editar_organismo(
             nodo,
             via=leer_json(data, 'via', nodo.via),
-            resultado=leer_json(data, 'resultado', nodo.resultado) or None,
             direccion_notificacion_id=leer_json(data, 'direccion_notificacion_id',
                                                 nodo.direccion_notificacion_id),
             documento_id=leer_json(data, 'documento_id', nodo.documento_id),

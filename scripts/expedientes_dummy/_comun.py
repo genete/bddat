@@ -207,6 +207,17 @@ def check(res, etiqueta):
     return res.ids[0] if res.ids else None
 
 
+def exigir_resultado_organismo(oe, esperado, etiqueta):
+    """El resultado de un organismo lo deriva su ciclo (#1097): nadie lo teclea. Si no es el
+    que el escenario describe, el escenario está mal montado y se aborta, como en cualquier
+    otro paso."""
+    from app import db
+    db.session.refresh(oe)
+    if oe.resultado != esperado:
+        print(f"ABORTADO: {etiqueta} debería quedar {esperado} y queda {oe.resultado}.")
+        sys.exit(1)
+
+
 def requisito_id(codigo_tipo_doc):
     """`RequisitoDocumental.id` activo para un código de tipo de documento."""
     from app.models.requisitos_documentales import RequisitoDocumental

@@ -2,7 +2,7 @@
 
 **Fecha:** 20/03/2026
 **Estado:** Decisiones tomadas — pendiente implementación y análisis DUP
-**Actualizado:** 10/11/2026 (#652): reglas de orden de los traslados, sentido del diagnóstico y aviso de las vueltas (§4, §6, §7 y §8); `reparos_titular` deja de ser un resultado OK (§4 y §7). 10/11/2026 (#982): cómo se emite hoy el certificado del silencio (§7, caso A)
+**Actualizado:** 10/11/2026 (#1097): el resultado del organismo lo deriva el diagnóstico (§2 y §7). 10/11/2026 (#652): reglas de orden de los traslados, sentido del diagnóstico y aviso de las vueltas (§4, §6, §7 y §8); `reparos_titular` deja de ser un resultado OK (§4 y §7). 10/11/2026 (#982): cómo se emite hoy el certificado del silencio (§7, caso A)
 
 ---
 
@@ -46,13 +46,13 @@ Inicialmente se contempló separar `organismos_afectados` y `organismos_consulta
 | `organismo_id` | FK `entidades.id` (donde `rol_consultado = True`) |
 | `via` | enum: `consulta` / `declaracion_responsable` |
 | `documento_id` | FK `documentos.id` (solo si `via = declaracion_responsable`) |
-| `resultado` | Resultado legal de la consulta, NULL mientras está en curso (ver más abajo). Actualización manual por tramitador, con puerta abierta al motor de reglas |
+| `resultado` | Resultado legal de la consulta, NULL mientras está en curso (ver más abajo). Lo escribe el sistema a partir del diagnóstico de la `ANALIZAR` de sus trámites (#1097); nadie lo edita a mano |
 | `condicionados_doc_id` | FK `documentos.id` (nullable). Solo no nulo cuando el organismo respondió con `condicionado` y el titular no respondió al TRASLADO_TITULAR en un expediente AAC. Contiene el documento `CONDICIONADO_OFICIO` producido por el tramitador; consumido por el CB de resolución |
 | `plazo_legal_dias` | INTEGER (nullable). Plazo legal aplicable capturado en el momento de crear la separata. 30 días con carácter general; 15 si existe AAP previa y la tramitación es solo AAC sin DUP |
 
 **Sobre `organismo_id`:** la tabla `entidades` centraliza todas las entidades del sistema con roles booleanos. Los organismos consultables tienen `rol_consultado = True`. No existe tabla de organismos separada.
 
-**Sobre `resultado`:** se actualiza manualmente por el tramitador al registrar el resultado de la tarea ANALIZAR de cada trámite. El campo está diseñado para que el motor de reglas pueda actualizarlo automáticamente en el futuro sin cambios de modelo (cierre automático por casos A–D de ADR-011 §6, fuera de alcance de #396).
+**Sobre `resultado`:** lo escribe el sistema (#1097), sin cambios de modelo: `ciclo_organismo.sincronizar_resultado` lo recalcula donde cambia lo que lo decide —crear o revertir un diagnóstico, crear o borrar un trámite del organismo, cambiar su vía— según los casos A–D de ADR-011 §6 (ver §7). Hasta #1097 lo tecleaba quien tramita (`editar_organismo`) y no se contrastaba con los trámites.
 
 **Sobre `condicionados_doc_id`:** ver ADR-011 §2. Solo aplica al cruce `condicionado` de organismo + `sin_respuesta` de titular en AAC.
 
@@ -435,6 +435,26 @@ participan en la evaluación de trámites.
 El nivel estructural garantiza que no hay trámites abiertos; el semántico que el
 resultado es favorable. Ambos deben cumplirse para que el certificado sea emitible.
 
+#### Cierre del organismo por su diagnóstico (#1097)
+
+El nivel semántico lo implementa `ciclo_organismo.resultado_del_ciclo` y lo escribe `sincronizar_resultado`
+en `organismos_expediente.resultado`. Criterios de Carlos (10/11/2026):
+
+- **El diagnóstico `desfavorable` lo elige a mano quien tramita.** Los contadores de §6 («Limitación del bucle»)
+  solo sugieren. Un `desfavorable` sin otra vuelta deja al organismo en `audiencia_previa`; crear otro traslado
+  siempre es posible y lo devuelve a «en curso».
+- **Cuenta el último diagnóstico del ciclo.** También para cerrar la fase CONSULTAS (`_check_cierre_fase`): una
+  oposición ya resuelta en una vuelta posterior no impide cerrarla como favorable.
+- **`organismos_todos_terminados` mira la solicitud que se resuelve y todas sus rondas.** «Terminado» es cualquier
+  resultado, también `audiencia_previa`; lo único que bloquea es un organismo en curso. Un organismo no puede
+  estar en curso y reaparecer en la ronda siguiente: si ocurre, el sistema protesta y quien tramita lo cierra con
+  las herramientas de siempre (escape de la regla, o enlazar documentos con comentario). Es lo que dice ADR-044 §I
+  (*interpretación*: ninguna ronda posterior sobresee a una anterior en curso).
+- **Lo no resuelto queda en curso** (*interpretación*): el silencio del titular y su traslado desfavorable, diferidos
+  en #652, no cierran al organismo; se cierran con ese mismo escape.
+- `CERT_FIN_IP_CONSULTAS` no es la puerta: se emite al crear la `RESOLUCION`, después de la regla que lee
+  `organismos_todos_terminados`.
+
 ### Fase de análisis técnico
 El motor comprueba sobre los trámites de la fase:
 - Ningún `REQUERIMIENTO_DE_MEJORA` tiene la tarea `ESPERAR_PLAZO` sin documento producido (el titular ha respondido a todos los requerimientos).
@@ -464,5 +484,5 @@ El motor comprueba sobre los trámites de la fase:
 - **Tabla `tramites_organismos` + `condicionados_doc_id` + tipo `CONDICIONADO_OFICIO`:** implementar en #456 (ADR-011).
 - ~~**CBs de traslado** (`ContextoConsultaTrasladoTitular`, `ContextoConsultaTrasladoOrganismo`): implementar en #457, tras #456.~~ **HECHO** — #457.
 - **Certificado de consultas:** el cierre favorable de la fase requiere `CERT_FIN_IP_CONSULTAS` con `favorable=True` validado por el motor — issue pendiente de crear (alcance a definir junto con #462).
-- **Cierre del organismo por diagnóstico y certificado de consultas (#652):** hoy `organismos_expediente.resultado` se escribe a mano (`editar_organismo` solo comprueba que el valor esté en la lista) y `organismos_todos_terminados` lee ese campo; `cert_fin_ip_consultas` solo comprueba que las fases de información pública y consultas estén finalizadas y no mira los organismos. El nivel semántico de §7 (lee el último `ANALIZAR`) no está implementado. Sin issue.
+- ~~**Cierre del organismo por diagnóstico y certificado de consultas (#652).**~~ **HECHO** — #1097: el resultado del organismo lo deriva el diagnóstico (§7) y `organismos_todos_terminados` lo lee por solicitud. `cert_fin_ip_consultas` no cambia: no es la puerta.
 - **Trámite de audiencia previa a archivo:** no existe. `COMUNICACION_AUDIENCIA` es otra cosa (la comunicación de Medio Ambiente por incompatibilidad ambiental, instanciada por un documento externo). Carlos se inclina por que viva en `RESOLUCION_*` y no en CONSULTAS; sin decidir.

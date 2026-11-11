@@ -578,7 +578,7 @@ def main(app=None, *, efectos_desarrollo=True, sin_notificar_resolucion=False):
                 f"crear_organismo {org['abrev']}")
             oe = OrganismoExpediente.query.get(oe_id)
             _comun.check(
-                svc.editar_organismo(oe, via='consulta', resultado=None,
+                svc.editar_organismo(oe, via='consulta',
                                      direccion_notificacion_id=direccion_id,
                                      documento_id=None),
                 f"editar_organismo {org['abrev']} (dirección)")
@@ -723,12 +723,9 @@ def main(app=None, *, efectos_desarrollo=True, sin_notificar_resolucion=False):
         tramite_tr_adif, espera_adif = _traslado_al_titular(
             'adif', 'ADIF', doc_resp_adif_id, fecha_resp_adif)
         fecha_titular_adif = _titular_acepta(espera_adif, 'ADIF', MARGEN_TITULAR_HABILES)
-        _comun.check(
-            svc.editar_organismo(oe_por_clave['adif'], via='consulta',
-                                 resultado='cerrado_con_condicionados',
-                                 direccion_notificacion_id=organismos['adif'][1],
-                                 documento_id=None),
-            'editar_organismo ADIF (resultado)')
+        # El desenlace lo deriva el diagnóstico del traslado (#1097).
+        _comun.exigir_resultado_organismo(
+            oe_por_clave['adif'], 'cerrado_con_condicionados', 'ADIF')
         print("ADIF: respuesta con condicionados, traslado aceptado por el representante — "
               "organismo cerrado_con_condicionados.")
 
@@ -740,12 +737,8 @@ def main(app=None, *, efectos_desarrollo=True, sin_notificar_resolucion=False):
         tramite_tr_dip, espera_dip = _traslado_al_titular(
             'diputacion', 'Dip. Cádiz', doc_resp_dip_id, fecha_resp_dip)
         fecha_titular_dip = _titular_acepta(espera_dip, 'Dip. Cádiz', MARGEN_TITULAR_HABILES)
-        _comun.check(
-            svc.editar_organismo(oe_por_clave['diputacion'], via='consulta',
-                                 resultado='cerrado_favorable',
-                                 direccion_notificacion_id=organismos['diputacion'][1],
-                                 documento_id=None),
-            'editar_organismo Dip. Cádiz (resultado)')
+        _comun.exigir_resultado_organismo(
+            oe_por_clave['diputacion'], 'cerrado_favorable', 'Dip. Cádiz')
         print("Dip. Cádiz: respuesta favorable, traslado aceptado por el representante — "
               "organismo cerrado_favorable.")
 
@@ -778,12 +771,8 @@ def main(app=None, *, efectos_desarrollo=True, sin_notificar_resolucion=False):
             'vincular consumido ANALIZAR separata Ayto. Jerez')
         _comun.producir_diagnostico(client, exp_id, tarea_an_ayto.id,
                                     'separata Ayto. Jerez', resultado='favorable')
-        _comun.check(
-            svc.editar_organismo(oe_por_clave['ayuntamiento'], via='consulta',
-                                 resultado='cerrado_favorable',
-                                 direccion_notificacion_id=organismos['ayuntamiento'][1],
-                                 documento_id=None),
-            'editar_organismo Ayto. Jerez (conformidad tácita)')
+        _comun.exigir_resultado_organismo(
+            oe_por_clave['ayuntamiento'], 'cerrado_favorable', 'Ayto. Jerez (conformidad tácita)')
         print("Ayto. Jerez: sin respuesta, plazo vencido — certificado de plazo cumplido, "
               "diagnóstico favorable y organismo cerrado_favorable (Caso A, ADR-011 §6).")
 
