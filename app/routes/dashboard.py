@@ -6,11 +6,16 @@ bp = Blueprint('dashboard', __name__, url_prefix='')
 @bp.route('/')
 @bp.route('/dashboard')
 @bp.route('/dashboard/')
-@login_required
 def index():
     """
     Dashboard principal V1 - Vista con layout fullwidth y grid de cards
     """
+    # Sin `@login_required`: entrar por la raíz sin sesión es lo normal, no un acceso denegado.
+    # Va al login sin el aviso «Debe iniciar sesión…» ni `?next=/` (tras el login el destino por
+    # defecto ya es esta misma pantalla). Las demás rutas conservan el aviso y el `next`.
+    if not current_user.is_authenticated:
+        return redirect(url_for('auth.login'))
+
     # V1 usa template simplificado sin lógica de bloques
     # Los permisos están en el template (más simple para V1)
     return render_template('dashboard/index_v1.html')
