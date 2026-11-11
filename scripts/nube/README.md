@@ -120,6 +120,22 @@ ruta real (`POST /api/escritos/generar`). Para registrarlas (o quitarlas) a mano
 del `.env`: `python scripts/plantillas_demo.py [--claves …] [--prefijo …] [--quitar]`. Dos límites: la tarea tiene que estar en una
 fase **abierta** (en una cerrada el sellado de fase lo impide), y solo hay `.odt`.
 
+## Expedientes-tipo por la interfaz (#1106)
+
+`scripts/expedientes_dummy/interfaz/` recrea un expediente-tipo con Playwright **para Python** (el de Node de arriba
+solo sirve a `captura.mjs`). En el contenedor, con la app arrancada y los usuarios de la semilla:
+
+```bash
+~/.venvs/bddat/bin/python -m pip install playwright      # una vez; el Chromium ya está en el contenedor
+CHROMIUM_PATH=/opt/pw-browsers/chromium ~/.venvs/bddat/bin/python -m scripts.expedientes_dummy.interfaz.analisis_doc_dos_vueltas --nuevo --usuario TTRA --password test
+```
+
+Necesita las plantillas DEMO de `REQUERIMIENTO_SUBSANACION` y `COMUNICACION_INICIO_ADMISION`, que la semilla de la nube
+ya registra. Por defecto el responsable es el primero real del desplegable del alta, que en la semilla puede no ser
+el tramitador que se quiere: `--responsable "Tramitador, Tomás"`. **Sin probar todavía en la nube**: el guion se ha
+ejecutado entero en el PC (Windows); el spike anterior sí se probó en Linux hasta el escrito generado. Detalle y
+requisitos en `scripts/expedientes_dummy/interfaz/README.md`.
+
 ## Lo que sigue necesitando el PC (#949 §D)
 
 Datos reales de la BD de desarrollo, rutas de Windows y plantillas reales, el MCP
