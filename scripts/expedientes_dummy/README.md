@@ -232,6 +232,26 @@ venv/Scripts/python.exe scripts/expedientes_dummy/resolucion_con_organismos.py
 
 ---
 
+## Por la interfaz (#1106)
+
+Además de por la API, un expediente-tipo se puede recrear **por la interfaz**, con un guion Playwright que lo tramita
+como lo haría una persona: [`interfaz/`](interfaz/README.md). Hoy solo `ANALISIS_DOC_DOS_VUELTAS`
+(`interfaz/analisis_doc_dos_vueltas/`).
+
+| | Por la API (los módulos de esta carpeta) | Por la interfaz (`interfaz/`) |
+|---|---|---|
+| Circuito | servicios y endpoints desde Python | formulario de alta, árbol, despensa e inspector en un navegador |
+| Necesita | la BD en la misma máquina (`app`) | solo la URL de la aplicación |
+| En la semilla de tests | sí (`_modulos_expediente_tipo()`) | **no**: herramienta a demanda |
+| Marca en las observaciones | `[DUMMY:<CODIGO>]` | `[DUMMY:<CODIGO>_UI]` (el `]` impide que la semilla la tome por la suya) |
+| Sirve para | tener el expediente a mano y alimentar la semilla | saber si lo tocado se estropea en la interfaz, tener un expediente a mano sin tocar la BD por debajo y, a futuro, grabar tutoriales |
+
+Las dos vías no deben divergir: con la misma historia han de dar el mismo árbol (la receta de comprobación, en el README
+de `interfaz/`). `limpiar_reciclables.py` sirve para las dos, porque trabaja sobre `[RECICLAR]` y no conoce ningún
+expediente-tipo.
+
+---
+
 ## Cómo localizar un expediente-tipo en la base
 
 No hay catálogo de ejecuciones que mantener: **la base es la fuente de verdad**. Cada expediente
