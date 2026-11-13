@@ -114,7 +114,10 @@ No se repuntan a las bases las plantillas que crean las migraciones (`RESOLUCION
 por ellas. Con la fase 4 de ADR-050 (#1009) la semilla registra, con su propio código,
 **plantillas de demostración** (`scripts/plantillas_demo.py`): sintéticas, hechas desde
 las bases con unos marcadores (`numero_at`, `titular_nombre`, `fecha_hoy`) y la cita al
-fragmento `DEMO_Pie`, y con el tipo de documento y el contexto ESFTT de cada trámite.
+fragmento `DEMO_Pie`, y con el tipo de documento y el contexto ESFTT de cada trámite. Las
+dos del análisis de la solicitud (`REQUERIMIENTO_SUBSANACION` y `COMUNICACION_INICIO_ADMISION`)
+declaran además su Context Builder y escriben sus tokens (`defectos_*`; `actos` y
+`fecha_recepcion_solicitud`).
 Con ellas se puede generar un escrito de punta a punta desde un expediente dummy, por la
 ruta real (`POST /api/escritos/generar`). Para registrarlas (o quitarlas) a mano en la BD
 del `.env`: `python scripts/plantillas_demo.py [--claves …] [--prefijo …] [--quitar]`. Dos límites: la tarea tiene que estar en una
