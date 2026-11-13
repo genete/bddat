@@ -12,6 +12,7 @@ desarrollo. Origen: #949. **Nada de esto actúa en el PC**: cada script comprueb
 | **Arrancar la app** | `bash scripts/nube/arrancar_app.sh` | antes de verificar la interfaz |
 | Parar la app | `bash scripts/nube/arrancar_app.sh --parar` | |
 | **Verificar en el navegador** | `node scripts/nube/captura.mjs <ruta> [--usuario X --rol Y]` | con la app arrancada |
+| **Expediente-tipo por la interfaz (#1106)** | `bash scripts/nube/guion_interfaz.sh --nuevo` | a demanda; arranca la app y prepara Playwright |
 | **Consultar legislación con `/legalize`** | `bash scripts/nube/preparar_legalize.sh` | una vez por contenedor; a demanda, no en el hook |
 
 ## Ficheros
@@ -21,6 +22,7 @@ desarrollo. Origen: #949. **Nada de esto actúa en el PC**: cada script comprueb
 | `preparar_entorno.sh` | Parte A de #949: Python 3.14 en `~/.venvs/bddat`, PostgreSQL 16, roles, `.env`, BD de tests y LibreOffice Writer. Lo llama el hook (`.claude/hooks/session-start.sh`). Idempotente, ~2 s si ya está todo. Detalle en `tests/README.md` §Fuera del PC. |
 | `preparar_bd_desarrollo.py` | BD `bddat` desde las migraciones más la semilla de tests: 4 expedientes y 7 usuarios. **Se niega a correr fuera de la nube**, sin opción de forzarlo: en el PC sembraría usuarios con contraseña `test` en la BD de desarrollo real. |
 | `arrancar_app.sh` | Entorno → BD de desarrollo → build de React si faltan bundles → `python run.py` en segundo plano (`127.0.0.1:5000`, log en `~/.cache/bddat-app.log`). |
+| `guion_interfaz.sh` | Preparador del guion de interfaz de #1106: `arrancar_app.sh`, `playwright` para Python en el venv si falta, `CHROMIUM_PATH` y las credenciales de la semilla (`BDDAT_UI_USUARIO`/`BDDAT_UI_PASSWORD`, solo si no vienen puestas) y el guion con los argumentos que se le pasen. No duplica el guion: es el mismo módulo que en el PC. |
 | `preparar_legalize.sh` / `legalize_patrones.py` | Clon reducido de legalize-es para `/legalize` (ver más abajo). A demanda. |
 | `captura.mjs` | Login, navegación y captura con el Playwright para Node del contenedor. Informa de peticiones fallidas por host, respuestas 4xx/5xx de la app y errores de consola. |
 
@@ -126,18 +128,30 @@ fase **abierta** (en una cerrada el sellado de fase lo impide), y solo hay `.odt
 ## Expedientes-tipo por la interfaz (#1106)
 
 `scripts/expedientes_dummy/interfaz/` recrea un expediente-tipo con Playwright **para Python** (el de Node de arriba
-solo sirve a `captura.mjs`). En el contenedor, con la app arrancada y los usuarios de la semilla:
+solo sirve a `captura.mjs`). Un solo comando, que prepara lo que falte y pasa los argumentos al guion:
 
 ```bash
-~/.venvs/bddat/bin/python -m pip install playwright      # una vez; el Chromium ya está en el contenedor
-CHROMIUM_PATH=/opt/pw-browsers/chromium ~/.venvs/bddat/bin/python -m scripts.expedientes_dummy.interfaz.analisis_doc_dos_vueltas --nuevo --usuario TTRA --password test
+bash scripts/nube/guion_interfaz.sh --nuevo
 ```
 
+Qué hace por debajo, por si hay que hacerlo a mano: `arrancar_app.sh`; `uv pip install --python ~/.venvs/bddat/bin/python
+playwright` (el venv lo crea `uv` y **no tiene `pip`**: `-m pip` da «No module named pip»); `CHROMIUM_PATH=/opt/pw-browsers/chromium`
+(sin él, Playwright busca su propio Chromium y falla con «Executable doesn't exist»; `playwright install` no sirve aquí) y
+las credenciales de la semilla, que el guion lee de `BDDAT_UI_USUARIO` / `BDDAT_UI_PASSWORD` (el script usa `TTRA` /
+`test` si no están puestas; con otro usuario, exportarlas o pasar `--usuario` / `--password`).
+
 Necesita las plantillas DEMO de `REQUERIMIENTO_SUBSANACION` y `COMUNICACION_INICIO_ADMISION`, que la semilla de la nube
-ya registra. Por defecto el responsable es el usuario del login (si no está en el desplegable del alta, el guion
-falla y pide `--responsable "Apellido, Nombre"`). **Sin probar todavía en la nube**: el guion se ha
-ejecutado entero en el PC (Windows); el spike anterior sí se probó en Linux hasta el escrito generado. Detalle y
-requisitos en `scripts/expedientes_dummy/interfaz/README.md`.
+ya registra. Por defecto el responsable es el usuario del login (con TTRA está en el desplegable del alta; si no
+estuviera, el guion falla y pide `--responsable "Apellido, Nombre"`).
+
+**Probado en la nube (2026-11-13), contenedor limpio:** 79/79 acciones (80/80 con `--nuevo` sobre un expediente anterior,
+que añade el reciclado), fase «pendiente de cierre» y reloj de desarrollo fijado en la fecha de la última respuesta del
+titular. Tiempos: `arrancar_app.sh` ~75 s la primera vez (BD y semilla ~20 s, bundles de React ~9 s, arranque ~40 s);
+Playwright ~26 s (51 MB); el guion ~90 s. Resolvió Playwright 1.65.1 con el Chromium 153 de la imagen (Playwright espera el
+158): funciona con `CHROMIUM_PATH`; fijar `playwright==1.63.0`, la versión del Playwright de Node de la imagen, también
+encuentra el Chromium sin esa variable (probado el arranque, no el guion entero). Cada ejecución deja datos en la BD de
+desarrollo de la nube y el reloj fijado: «Usar fecha real» en la barra superior lo quita. Detalle y requisitos en
+`scripts/expedientes_dummy/interfaz/README.md`.
 
 ## Lo que sigue necesitando el PC (#949 §D)
 

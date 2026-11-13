@@ -19,7 +19,10 @@ Herramienta **a demanda**: fuera de pytest y de la semilla de tests.
 
 ## Ejecutar
 
-Desde la **raíz del repositorio**, con la aplicación arrancada. Una sola vez, `playwright` (no está en
+**En una sesión en la nube**, un solo comando que lo prepara todo (app, Playwright, Chromium y credenciales de la semilla):
+`bash scripts/nube/guion_interfaz.sh --nuevo` (acepta las mismas opciones que la tabla de abajo; ver `scripts/nube/README.md`).
+
+**En el PC (Windows)**, desde la **raíz del repositorio**, con la aplicación arrancada. Una sola vez, `playwright` (no está en
 `requirements.txt` a propósito) y su navegador:
 
 ```bash
@@ -67,8 +70,9 @@ como hecho en `estado.json`) antes de reanudar.
 - El tipo de expediente «Distribución», instrumento `EXENTO`, provincia Sevilla, municipio «Mairena del Aljarafe», tipo
   de solicitud `AAP+AAC` y un titular. Si faltan, el paso del alta falla con un mensaje y una captura.
 
-En la nube: `CHROMIUM_PATH=/opt/pw-browsers/chromium` (el Chromium del contenedor) y, tras
-`bash scripts/nube/arrancar_app.sh`, los usuarios de la semilla de la nube.
+En la nube: `bash scripts/nube/guion_interfaz.sh` (arranca la app y fija `CHROMIUM_PATH=/opt/pw-browsers/chromium`, el
+Chromium del contenedor, y los usuarios de la semilla de la nube, `TTRA` / `test`). Para lanzar el módulo a mano en la nube,
+esas variables hay que ponerlas tú (`CHROMIUM_PATH`, `BDDAT_UI_USUARIO`, `BDDAT_UI_PASSWORD`).
 
 ## Estructura
 
