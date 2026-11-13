@@ -17,7 +17,11 @@ pasa por otro ELABORAR, se añade una entrada a `PLANTILLAS`.
 **Qué llevan.** Las bases son esqueletos sin marcadores. A cada una se le sustituye el párrafo de
 ejemplo por uno con datos del expediente (`numero_at`, `titular_nombre`, `fecha_hoy`) y por la cita
 a un fragmento, para que un escrito generado demuestre que se renderiza y que el fragmento se
-inserta. Solo Capa 1 (sin `contexto_clase`): lo que se prueba es el circuito, no un Context Builder.
+inserta. Casi todas son solo Capa 1 (sin `contexto_clase`): lo que se prueba es el circuito. Las dos del
+análisis de la solicitud (`REQUERIMIENTO_SUBSANACION` y `COMUNICACION_INICIO_ADMISION`) declaran además su
+Context Builder y usan sus tokens (`defectos_*`, `actos`, `fecha_recepcion_solicitud`) con las etiquetas de bloque
+`{%p … %}` del motor `.odt`, para que un escrito generado demuestre que la capa 2 llega al documento. El guion de
+interfaz (`scripts/expedientes_dummy/interfaz/`) comprueba esos textos contra los datos del expediente.
 
 **Solo `.odt`.** El motor `.docx` se mantiene mientras la ADA no decida (ADR-050 §J) y tiene su test
 (`test_1009_motor_docx`), pero no hay bases canónicas `.docx` de las que partir.
@@ -56,16 +60,47 @@ _EJEMPLO = {
 
 # clave → qué es la plantilla. La clave se añade al prefijo para formar el código. `fase` y
 # `tramite` son códigos de `tipos_fases` y `tipos_tramites`; `documento`, de `tipos_documentos`.
+#
+# Claves opcionales: `contexto` es el Context Builder (capa 2) que declara la plantilla (`contexto_clase`) y
+# `cuerpo` los párrafos que van entre el encabezado y la cita al fragmento, con los tokens de ese builder.
+# Una etiqueta `{%p … %}` repite o quita el párrafo que la contiene; la de cierre va en el párrafo siguiente
+# (que sale vacío) y es la que cierra antes de él (ver `_elevar_etiquetas_de_bloque` del motor).
+# Los rótulos de los apartados («Defectos documentales:»…) los espera el guion de interfaz
+# (`APARTADO_POR_ORIGEN` de su escenario): si cambian aquí, cambian allí.
+
+
+def _bloque_de_defectos(titulo: str, lista: str) -> list[str]:
+    """Un apartado del requerimiento: el título (solo si hay defectos de ese origen) y un párrafo por defecto."""
+    return [
+        '{%p if ' + lista + ' %}' + titulo,
+        '{%p for defecto in ' + lista + ' %}• {{ defecto }}',
+        '{%p endfor %}{%p endif %}',
+    ]
+
+
 PLANTILLAS = {
     'REQUERIMIENTO_SUBSANACION': {
         'etiqueta': 'Requerimiento de subsanación', 'base': 'carta_base.odt',
         'documento': 'OFICIO_REQUERIMIENTO', 'fase': 'ANALISIS_SOLICITUD',
         'tramite': 'REQUERIMIENTO_SUBSANACION',
+        'contexto': 'ContextoSubsanacion',
+        'cuerpo': [
+            *_bloque_de_defectos('Defectos documentales:', 'defectos_documentales'),
+            *_bloque_de_defectos('Defectos técnicos:', 'defectos_tecnicos'),
+            *_bloque_de_defectos('Otros defectos:', 'defectos_libres'),
+        ],
     },
     'COMUNICACION_INICIO_ADMISION': {
         'etiqueta': 'Comunicación de inicio y admisión a trámite', 'base': 'carta_base.odt',
         'documento': 'OFICIO_INICIO_ADMISION', 'fase': 'ANALISIS_SOLICITUD',
         'tramite': 'COMUNICACION_INICIO_ADMISION',
+        'contexto': 'ContextoComunicacionInicioAdmision',
+        'cuerpo': [
+            'Solicitud recibida el {{ fecha_recepcion_solicitud }}. Plazo máximo para resolver y notificar:',
+            '{%p for acto in actos %}• {{ acto.nombre }}: {{ acto.plazo_maximo_resolucion }} {{ acto.unidad_plazo }} '
+            '({{ acto.norma_plazo }}); silencio: {{ acto.efecto_silencio }}',
+            '{%p endfor %}',
+        ],
     },
     'CONSULTA_SEPARATA': {
         'etiqueta': 'Separata a organismo', 'base': 'carta_base.odt',
@@ -125,6 +160,7 @@ def odt_de_plantilla(clave: str, prefijo: str = PREFIJO) -> bytes:
     return _odt_con_cuerpo(datos['base'], [
         f'[DEMO] {datos["etiqueta"]}. Expediente {{{{ numero_at }}}}, titular '
         f'{{{{ titular_nombre }}}}, a {{{{ fecha_hoy }}}}.',
+        *datos.get('cuerpo', []),
         f'{{{{r {nombre_fragmento(prefijo)} }}}}',
     ])
 
@@ -185,6 +221,7 @@ def registrar(prefijo: str = PREFIJO, claves=None) -> dict[str, int]:
         plantilla.nombre = f'{datos["etiqueta"]} (demostración)'
         plantilla.descripcion = ('Plantilla sintética de la semilla (#1009): sirve para probar un '
                                  'expediente de punta a punta. No es una plantilla real.')
+        plantilla.contexto_clase = datos.get('contexto')   # None = solo capa 1
         plantilla.tipo_documento_id = _id_del_catalogo(
             TipoDocumento, TipoDocumento.codigo, datos['documento'], 'el tipo de documento')
         plantilla.tipo_fase_id = _id_del_catalogo(

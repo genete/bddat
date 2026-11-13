@@ -20,8 +20,11 @@ Se ejecuta desde la raíz del repositorio:
 CREA DATOS REALES en la BD a la que apunte la aplicación y DEJA FIJADO el reloj de desarrollo en la fecha de la
 última respuesta del titular («Usar fecha real» en la barra superior lo quita). Necesita la BD con las migraciones al
 día y las plantillas DEMO de REQUERIMIENTO_SUBSANACION y COMUNICACION_INICIO_ADMISION
-(`scripts/plantillas_demo.py --claves REQUERIMIENTO_SUBSANACION COMUNICACION_INICIO_ADMISION`).
+(`scripts/plantillas_demo.py --claves REQUERIMIENTO_SUBSANACION COMUNICACION_INICIO_ADMISION`), que declaran el Context
+Builder de su trámite: el guion comprueba que los defectos del diagnóstico y los plazos de la solicitud llegan al escrito.
 """
+from datetime import date
+
 from ..lib import pasos
 from ..lib.alta import DatosAlta
 from ..lib.arbol import fecha_reloj, subir_al_pool
@@ -72,6 +75,18 @@ PRESENTADOS = ('MODELO_SOLICITUD', 'DOC_PROYECTO', 'JUSTIFICANTE_PAGO_TASA')
 # «Pendiente» (como el script de la API): así un requisito nuevo del catálogo —o cuya condición cambia, como
 # DR_NO_DUP en #863— no deja un defecto de más en el diagnóstico final.
 APORTES_VUELTA_1 = ('NIF_TITULAR', 'ESCRITURAS_SOCIEDAD', 'PODER_REPRESENTACION')
+
+# Lo que las plantillas DEMO de los dos escritos con Context Builder (`scripts/plantillas_demo.py`) escriben delante de
+# los datos de cada apartado. Si se cambian allí, hay que cambiarlos aquí.
+# REQUERIMIENTO_SUBSANACION (`ContextoSubsanacion`): un apartado por origen de los defectos del diagnóstico anterior.
+APARTADO_POR_ORIGEN = {
+    'documental': 'Defectos documentales:',
+    'tecnico': 'Defectos técnicos:',
+    'requerimiento': 'Otros defectos:',
+}
+# COMUNICACION_INICIO_ADMISION (`ContextoComunicacionInicioAdmision`): un renglón por acto de la solicitud, que es
+# AAP+AAC (el tipo de solicitud por defecto del alta).
+ACTOS = ('AAP', 'AAC')
 
 
 def datos_alta(fecha_base, opts):
@@ -134,7 +149,13 @@ def vuelta(n):
         pasos.crear_en(c, f'{k}_tramite', 'ELABORAR', 'la tarea ELABORAR', f'{k}_elaborar')
 
     def generar(c):
-        pasos.generar_escrito(c, f'{k}_elaborar', esperados=('Pie de demostración',))
+        # El requerimiento lista los defectos del diagnóstico del ANALIZAR anterior (el de ANALISIS_DOCUMENTAL en la
+        # 1.ª vuelta; el de la vuelta anterior en la 2.ª): se leen de la API y han de salir TODOS en el escrito, bajo
+        # el apartado de su origen.
+        defectos = pasos.defectos_del_diagnostico(c, 'analizar' if n == 1 else f'v{n - 1}_analizar')
+        apartados = {APARTADO_POR_ORIGEN[d['origen']] for d in defectos}
+        pasos.generar_escrito(c, f'{k}_elaborar', prohibidos=('None',),
+                              esperados=('Pie de demostración', *sorted(apartados), *(d['texto'] for d in defectos)))
 
     def elaborar(c):
         pasos.elaborar_oficio(c, f'{k}_elaborar', oficio, f'Requerimiento de subsanación #{n}')
@@ -175,7 +196,14 @@ def paso_adm_tramite(c):
 
 
 def paso_adm_generar(c):
-    pasos.generar_escrito(c, 'adm_elaborar', esperados=('Pie de demostración',))
+    # La comunicación informa de la fecha de recepción de la solicitud (la del registro del alta) y del plazo máximo
+    # de cada acto: un renglón «AAP: 3 meses (norma); silencio: …» por acto. Los valores del plazo salen del catálogo,
+    # así que solo se exige que haya un número y una unidad, y que ningún dato salga vacío («None»).
+    registro = date.fromisoformat(c.estado['fecha_registro']).strftime('%d/%m/%Y')
+    pasos.generar_escrito(
+        c, 'adm_elaborar', prohibidos=('None',),
+        esperados=('Pie de demostración', f'Solicitud recibida el {registro}', *(f'{a}:' for a in ACTOS)),
+        patrones=tuple(rf'{a}: \d+ [^(]+ \(' for a in ACTOS))
 
 
 def paso_adm_oficio(c):

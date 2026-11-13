@@ -59,6 +59,11 @@ como hecho en `estado.json`) antes de reanudar.
 - Las plantillas DEMO que usa el escenario (las registra el script, se quitan con `--quitar`; ver
   `scripts/plantillas_demo.py`):
   `venv/Scripts/python.exe scripts/plantillas_demo.py --claves REQUERIMIENTO_SUBSANACION COMUNICACION_INICIO_ADMISION`
+  Estas dos declaran su Context Builder (`ContextoSubsanacion` y `ContextoComunicacionInicioAdmision`) y el guion
+  comprueba su contenido: el requerimiento ha de listar **todos** los defectos que congeló el diagnóstico anterior (los
+  lee de la API del contenedor de ANALIZAR) bajo el apartado de su origen, y la comunicación, la fecha de recepción de
+  la solicitud y un renglón de plazo por acto (`AAP`, `AAC`). Si las tenías registradas de antes, vuelve a ejecutar el
+  comando: pone al día su contenido y su `contexto_clase`.
 - El tipo de expediente «Distribución», instrumento `EXENTO`, provincia Sevilla, municipio «Mairena del Aljarafe», tipo
   de solicitud `AAP+AAC` y un titular. Si faltan, el paso del alta falla con un mensaje y una captura.
 
@@ -170,9 +175,10 @@ JOIN expedientes e ON e.id = s.expediente_id
 WHERE e.numero_at IN (<AT_API>, <AT_UI>) GROUP BY 1, 2, 3 ORDER BY 1;
 ```
 
-## Fuera de este guion (decisiones aplazadas)
+## Límites conocidos
 
-- `fecha_hoy` de los escritos generados sale de `date.today()`, no del reloj de desarrollo: el borrador de la 2.ª
-  vuelta dice la fecha de hoy aunque el reloj esté semanas atrás.
-- Las plantillas `DEMO_` solo usan la capa 1 (`numero_at`, `titular_nombre`, `fecha_hoy`): no ejercitan los tokens del
-  context builder (`defectos_*`, `actos`).
+- Las otras tres plantillas `DEMO_` (separata, traslado al titular y resolución) siguen siendo solo capa 1: ningún
+  expediente-tipo de este guion pasa por ellas todavía.
+- En el requerimiento, el guion solo ve defectos **documentales**: el escenario no hace revisión técnica ni
+  requerimientos libres, así que los apartados «Defectos técnicos» y «Otros defectos» de la plantilla no se ejercitan
+  (el guion ya sabe comprobarlos si algún diagnóstico los congelara: `APARTADO_POR_ORIGEN`).

@@ -6,6 +6,7 @@ cómo se hace por la interfaz.
 Todas reciben el `Contexto` y, cuando actúan sobre un nodo ya creado, la CLAVE con la que se anotó su id
 (`c.ids`); las que lo crean la reciben para anotarlo. Cada una abre sus propios pasos con `c.s.paso(...)`.
 """
+import html
 import io
 import re
 import zipfile
@@ -144,10 +145,37 @@ def aportar_y_vincular(c, clave, tipos):
 # ELABORAR: escrito generado y oficio
 # ---------------------------------------------------------------------------------------------------------
 
-def generar_escrito(c, clave, esperados=(), plantilla='demostraci'):
+def defectos_del_diagnostico(c, clave_analizar):
+    """Los defectos que congeló el diagnóstico de una ANALIZAR ya producida (`clave_analizar`), tal como los da la API
+    del contenedor (`documento_producido.defectos`: `[{texto, origen, …}]`). Son lo que el requerimiento siguiente ha de
+    listar por el Context Builder `ContextoSubsanacion`. Falla si no hay ninguno: un requerimiento sin defectos no
+    comprobaría nada."""
+    with c.s.paso('leer los defectos del diagnóstico anterior', 'GET …/nodo/tarea/<id>/analizar (page.request)'):
+        tarea = c.ids[clave_analizar].split('-', 1)[1]
+        r = c.page.request.get(f'{c.url}/api/expedientes/{c.id}/nodo/tarea/{tarea}/analizar')
+        if not r.ok:
+            raise RuntimeError(f'el contenedor de {clave_analizar} responde {r.status}')
+        producido = r.json().get('documento_producido')
+        defectos = (producido or {}).get('defectos') or []
+        if not defectos:
+            raise RuntimeError(f'el diagnóstico de {clave_analizar} no congeló ningún defecto')
+        por_origen = {}
+        for d in defectos:
+            por_origen[d.get('origen')] = por_origen.get(d.get('origen'), 0) + 1
+        print(f'     {len(defectos)} defecto(s) congelados:', ', '.join(f'{n} {o}' for o, n in por_origen.items()))
+        return defectos
+
+
+def _normalizado(texto):
+    """Texto en una sola línea y con espacios simples: el .odt no conserva los saltos ni los espacios repetidos."""
+    return ' '.join(texto.split())
+
+
+def generar_escrito(c, clave, esperados=(), prohibidos=(), patrones=(), plantilla='demostraci'):
     """Genera el escrito de una ELABORAR desde la plantilla cuyo nombre contenga `plantilla` (por defecto, las
-    `DEMO_` que registra `scripts/plantillas_demo.py`) y comprueba su contenido: el código del expediente y
-    cada texto de `esperados`, sin `{{ }}` sin sustituir. El .odt se lee como zip (`unzip` no existe en Windows)."""
+    `DEMO_` que registra `scripts/plantillas_demo.py`) y comprueba su contenido: el código del expediente, cada texto
+    de `esperados`, cada expresión regular de `patrones` y ninguno de `prohibidos` (un token vacío saldría como
+    «None»), sin `{{ }}` sin sustituir. El .odt se lee como zip (`unzip` no existe en Windows)."""
     page, insp = c.page, c.insp
     with c.s.paso('elegir la plantilla y generar', 'get_by_role(combobox) de «Generar escrito» + «Generar»'):
         c.ir(clave)
@@ -178,13 +206,18 @@ def generar_escrito(c, clave, esperados=(), plantilla='demostraci'):
         cuerpo = page.request.get(f'{c.url}{hrefs[-1]}').body()
         with zipfile.ZipFile(io.BytesIO(cuerpo)) as z:
             xml = z.read('content.xml').decode('utf-8')
-        texto = ' '.join(re.sub(r'<[^>]+>', ' ', xml).split())
+        # El motor escapa los datos (`'` → `&#39;`, `&` → `&amp;`): se desescapa para compararlos con lo esperado.
+        texto = _normalizado(html.unescape(re.sub(r'<[^>]+>', ' ', xml)))
         print('     texto del borrador:', texto[:300])
         for esperado in (c.at, *esperados):
-            if esperado not in texto:
+            if _normalizado(esperado) not in texto:
                 raise RuntimeError(f'el borrador no contiene «{esperado}»')
-        if '{{' in texto:
-            raise RuntimeError('quedan marcadores {{ }} sin sustituir')
+        for patron in patrones:
+            if not re.search(patron, texto):
+                raise RuntimeError(f'el borrador no contiene nada que case con «{patron}»')
+        for prohibido in ('{{', *prohibidos):
+            if prohibido in texto:
+                raise RuntimeError(f'el borrador contiene «{prohibido}» (un marcador sin sustituir o un dato vacío)')
 
 
 def elaborar_oficio(c, clave, tipo_oficio, asunto):
