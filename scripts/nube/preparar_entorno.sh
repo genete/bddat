@@ -178,3 +178,4 @@ fi
 echo "preparar_entorno: listo — $(IFS=';'; echo "${RESUMEN[*]}" | sed 's/;/; /g')"
 echo "Tests: pytest (el venv ya está en el PATH). Si PostgreSQL se para: bash scripts/nube/preparar_entorno.sh"
 echo "Interfaz: bash scripts/nube/arrancar_app.sh y node scripts/nube/captura.mjs <ruta> (ver scripts/nube/README.md)"
+echo "Expediente-tipo por la interfaz (#1106): bash scripts/nube/guion_interfaz.sh --nuevo (prepara la app y Playwright; ~3 min la primera vez)"
