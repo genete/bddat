@@ -176,6 +176,7 @@ def alta(c, datos, fecha_base):
         c.estado['at'] = f'AT-{n}'
         c.estado['id'] = str(_id_de_expediente(page, c.url, n))
         c.estado['creado'] = datetime.now().isoformat()
+        c.estado['fecha_registro'] = datos.fecha_registro.isoformat()   # la de la solicitud: la leerán los escritos
         c.guardar()
         print(f'     expediente creado: {c.at} (id {c.id})')
 
