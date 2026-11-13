@@ -61,5 +61,7 @@ en la raíz del repo.
 **En una sesión en la nube** no hay Playwright MCP ni memorias locales: arrancar la app
 con `bash scripts/nube/arrancar_app.sh` y verificar con
 `node scripts/nube/captura.mjs <ruta> [--usuario X --rol Y]`, que hace el login de dos pasos
-y guarda la captura en `.playwright-mcp/`. Datos sintéticos, no los del PC. Detalle y
-límites en `scripts/nube/README.md`.
+y guarda la captura en `.playwright-mcp/`. Datos sintéticos, no los del PC. Para el
+expediente-tipo por la interfaz (#1106): `bash scripts/nube/guion_interfaz.sh --nuevo`
+(prepara la app, Playwright y las credenciales de la semilla). Detalle y límites en
+`scripts/nube/README.md`.
