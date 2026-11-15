@@ -27,7 +27,7 @@ Documentos vivos: se actualizan a medida que avanza el trabajo, no se congelan.
 - [DECISIONES_UI.md](diseño/DECISIONES_UI.md) — estado del revamping de interfaz
 - [INVENTARIO_BACKEND.md](diseño/INVENTARIO_BACKEND.md) — inventario de modelos, servicios y rutas
 - [ESTUDIO_EDICION_ESCRITOS_M365.md](diseño/ESTUDIO_EDICION_ESCRITOS_M365.md) — estudio abierto (2026-11-01): qué pasa con ADR-035 y ADR-050 (formato `.odt`, edición con LibreOffice por WebDAV, PDF para firma, almacén) si los puestos de la Junta pasan a Microsoft 365 en el navegador; a la espera de la ADA
-- `PRE-ADR-*.md` — decisiones en borrador, todavía sin ADR (supervisor, workbench de listados, navegación administrativa, matriz de cobertura rol/motor); el de interfaz de vistas y documentos ya tiene ADR-053 (adoptado) y queda congelado
+- `PRE-ADR-*.md` — decisiones en borrador, todavía sin ADR (supervisor, workbench de listados, navegación administrativa, matriz de cobertura rol/motor); el de interfaz de vistas y documentos ya tiene ADR-053 (adoptado) y queda congelado; [PRE-ADR-054](diseño/PRE-ADR-054-certificados-internos.md) — revisión legal de los certificados internos (#1057), vivo y con el número ya reservado
 - `ANALISIS_CRITICO.md`, `AUDITORIA_UI.md`, `ESTUDIO_USUARIO.md` — análisis de partida del revamping de interfaz
 
 ## referencia/
