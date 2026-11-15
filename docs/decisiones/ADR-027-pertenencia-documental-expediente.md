@@ -5,6 +5,13 @@
 **Issue:** #572
 **Relacionado con:** ADR-004 (recepción externa = producido de ESPERAR_PLAZO) · ADR-005 (DIAGNOSTICO sin efecto jurídico) · ADR-006 (URIs `bddat://`) · ADR-010 (N:M documento-tarea) · ADR-017 §5 (radar de huérfanos / "Mi trabajo"). Desbloquea el generador del expediente de remisión (#573). Fuentes afectadas: `app/models/tipos_documentos.py`, `app/models/documentos.py`, `docs/referencia/TIPOS_DOCUMENTOS_CATALOGO.md`.
 
+> **Corrección (2026-11-15, [PRE-ADR-054](../diseño/PRE-ADR-054-certificados-internos.md), revisión de #1057).** Dos afirmaciones de este ADR no se sostienen:
+>
+> 1. La Alternativa A dice que `CERT_FIN_INSTRUCCION`, `CERT_PLAZO_CUMPLIDO` y `CERT_FIN_IP_CONSULTAS` «son expediente (diligencias de los arts. 82 y 22 LPACAP)». El art. 82 regula la audiencia y no menciona diligencia ni certificado alguno, y estos certificados son información auxiliar (art. 70.4): sin firma ni CSV, generados por BDDAT con datos que ya constan. `CERT_FIN_INSTRUCCION` y `CERT_PLAZO_CUMPLIDO` entran con `integra_expediente = false` cuando se haga #572. Los otros cuatro certificados internos siguen pendientes de revisión.
+> 2. El §2 dice que los registros internos nacen vinculados a una tarea y que nunca son huérfanos. No siempre: `CERT_FIN_INSTRUCCION` (hoy un PDF del almacén, no un `bddat://`) solo se ancla por `solicitudes.documento_fin_instruccion_id` y no crea ningún `DocumentoTarea`.
+>
+> El resto (los dos requisitos, el flag como propiedad del tipo, el huérfano como estado derivado) sigue vigente. El texto original no se ha reescrito: las dos afirmaciones llevan una marca.
+
 ---
 
 ## Contexto
@@ -47,7 +54,7 @@ El vínculo es necesario pero **no suficiente**: hay un caso vinculado que no es
   de fila en `documentos_tarea`) **no dependía** de `integra_expediente` (#572, sin empezar
   todavía) — la consulta se construyó sin esperar. Detalle completo (candidatas por
   `tramites_tareas_documentos`, vinculación vía árbol o directa, borrado) en ADR-038.
-- Los registros internos `bddat://` (diagnósticos, certificados) **nacen vinculados por construcción** (producidos por una tarea) → **nunca son huérfanos**. El huérfano es siempre un fichero.
+- Los registros internos `bddat://` (diagnósticos, certificados) **nacen vinculados por construcción** (producidos por una tarea) → **nunca son huérfanos**. El huérfano es siempre un fichero. *[Corregido el 2026-11-15: ver el bloque de corrección al inicio.]*
 
 ### 3. `integra_expediente` es propiedad del TIPO, no del documento ni de la fecha
 
@@ -98,7 +105,7 @@ Resumen; detalle y checklist en **#572**.
 
 ### A. `fecha_administrativa NOT NULL` como criterio de pertenencia
 
-Descartada. El campo está sobrecargado con tres semánticas (pendiente de triaje, sin efecto jurídico, registro `bddat://` forzado a NULL) y solo una equivale a "no es expediente". Usarlo **excluiría los certificados internos** (`CERT_FIN_INSTRUCCION`, `CERT_PLAZO_CUMPLIDO`, `CERT_FIN_IP_CONSULTAS`), que **son** expediente (diligencias de los arts. 82 y 22 LPACAP). El criterio confundiría el **mecanismo de almacenamiento** con la **naturaleza jurídica**.
+Descartada. El campo está sobrecargado con tres semánticas (pendiente de triaje, sin efecto jurídico, registro `bddat://` forzado a NULL) y solo una equivale a "no es expediente". Usarlo **excluiría los certificados internos** (`CERT_FIN_INSTRUCCION`, `CERT_PLAZO_CUMPLIDO`, `CERT_FIN_IP_CONSULTAS`), que **son** expediente (diligencias de los arts. 82 y 22 LPACAP). *[Corregido el 2026-11-15: ver el bloque de corrección al inicio.]* El criterio confundiría el **mecanismo de almacenamiento** con la **naturaleza jurídica**.
 
 ### B. `origen` (INTERNO/EXTERNO) como criterio
 
