@@ -1,7 +1,7 @@
 # Análisis: Listado Inteligente de Expedientes
 
 > Fuente de verdad: `ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-03-26
+> Última sincronización: 2026-11-15
 
 **Issues:** #169 (análisis/infraestructura) · #262 (implementación vista) · #263 (bugs UI 1ª it.) · #265 (bugs responsive 2ª it.)
 **Estado:** Implementado y cerrado — vista operativa en `/expedientes/seguimiento/`

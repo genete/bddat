@@ -231,7 +231,7 @@ class TestLosCuatroFinales:
         entrada = _entrada(
             'ANY/ANY/ANY/TABLON_AYUNTAMIENTOS/ESPERAR_PLAZO',
             {'rol': 'PRODUCIDO', 'tipo_documento': 'CERT_PLAZO_TABLON'},
-            cumplimiento=None, plazo_valor=30, plazo_unidad='DIAS_NATURALES',
+            cumplimiento=None, plazo_valor=30, plazo_unidad='DIAS_HABILES',
         )
         tarea = _tarea(tramite_codigo='TABLON_AYUNTAMIENTOS',
                        fase_codigo='INFORMACION_PUBLICA',

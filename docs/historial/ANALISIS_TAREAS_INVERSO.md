@@ -1,7 +1,7 @@
 # Tabla Inversa de Tareas Atómicas — ESFTT
 
 > Fuente de verdad: `ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-05-17
+> Última sincronización: 2026-11-15
 
 **Propósito de este documento:**
 
