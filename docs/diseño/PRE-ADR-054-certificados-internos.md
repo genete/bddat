@@ -1,10 +1,10 @@
 # PRE-ADR-054 — Certificados internos: qué documentan, cuáles son expediente y dónde vive la motivación
 
-**Estado:** Borrador vivo. Revisión de #1057 en curso: 2 de 6 certificados cerrados, más un certificado nuevo por crear.
+**Estado:** Borrador vivo. Revisión de #1057 en curso: 3 de 6 certificados cerrados (uno de ellos se retira), más un certificado nuevo por crear.
 **Fecha:** 2026-11-15
 **Issue:** #1057
 **Número:** reservado. Pasará a ADR-054 conservándolo, cuando estén revisados los seis certificados.
-**Relacionados:** ADR-027 (pertenencia al expediente) · ADR-043 (fin de instrucción) · ADR-049 (certificados de cierre) · #572 · #614 · #435 · #403
+**Relacionados:** ADR-027 (pertenencia al expediente) · ADR-043 (fin de instrucción) · ADR-049 (certificados de cierre) · #572 · #614 · #435 · #403 · #1113
 
 > Solo recoge decisiones de Carlos. Lo que es interpretación va marcado como tal.
 
@@ -62,9 +62,21 @@ Cada certificado, del más antiguo al más moderno, pasa por estas preguntas. No
 - **Lo crea y lo enlaza el técnico**, voluntariamente. Si el documento llega después, ocupa el hueco que cubría. El context builder avisa del caso y el técnico decide qué relato pasa a la resolución.
 - *[Por decidir, interpretación mía: el nombre del tipo; si debe pasar las cuatro preguntas por su cuenta (su contenido no derivable sería la declaración de que no ha llegado respuesta); si debe registrar quién y cuándo lo emite, porque la decisión de no registrarlo se tomó para el certificado de fin de plazo; cómo se emite (el de fin de plazo hoy no tiene botón) y cómo se retira.]*
 
-### 3 a 6. Pendientes de revisar
+### 3. `CERT_FIN_IP_CONSULTAS` (#470) — cerrado: se retira
 
-`CERT_FIN_IP_CONSULTAS` (#470) · `CERT_CUMPLIMIENTO_FASE` (#947) · `CERT_CIERRE_FASE` (#956) · `CERT_CIERRE_SOLICITUD` (#996), en ese orden.
+- **Se retira entero**, no solo de `RESOLUCION`. En `RESOLUCION` solapa con el fin de instrucción y se emite después de crear la fase, así que no tiene sentido certificar como requisito para crearla algo que ya se comprobó.
+- Tampoco hace falta para la AAU integrada. La Instrucción Conjunta 1/2022 (IV.4.5) pide que el órgano sustantivo **comunique** al ambiental, concluidas la IP y las consultas, sus resultados: es el trámite `REMISION_RESULTADO_IP_CONSULTAS`. No pide ningún certificado. El único certificado de la instrucción es el del Ayuntamiento (IV.4.3), ya existente como `CERT_PLAZO_TABLON`.
+- Lo que falta son las **guardas de creación** de `AAU_AAUS_INTEGRADA`, que hoy no tiene ninguna. Dos reglas de motor, escapables, parecidas a las de `RESOLUCION` pero no copias:
+  1. Consultas concluidas (`organismos_todos_terminados = false` bloquea), para AAU y para AAUS.
+  2. IP finalizada (`fase_ip_finalizada = false` con `instrumento_ambiental = 'AAU'` bloquea), solo para AAU.
+- **No lleva la guarda de DUP** de las resoluciones: la IP de la DUP no tiene que ver con esta fase.
+- La AAU lleva siempre IP (art. 71 Ley 2/2026). La AAUS no la lleva (art. 82 Ley 2/2026), y por la DF 4.ª del DL 26/2021 la AAUS sin DUP no tiene IP, *siempre que se confirme que la AAUS nunca lleva IP*. Las reglas de motor, que solo miran `'AAU'`, son correctas.
+- `ESTRUCTURA_ESF.md` (nota ³ de la AAP) dice `ia.siglas ∉ {AAU, AAUS}`: hay que corregirla a `∉ {AAU}`.
+- El detalle, los puntos a estudiar y la tabla de consumidores están en el issue #1113.
+
+### 4 a 6. Pendientes de revisar
+
+`CERT_CUMPLIMIENTO_FASE` (#947) · `CERT_CIERRE_FASE` (#956) · `CERT_CIERRE_SOLICITUD` (#996), en ese orden.
 
 ## Asuntos nuevos que han salido
 
@@ -73,6 +85,7 @@ Cada certificado, del más antiguo al más moderno, pasa por estas preguntas. No
 3. **Bitácora.** El detalle del escape no guarda `solicitud_id`, así que un escape sobre algo borrado es irrecuperable para el informe. Se arregla dentro de #614 (que no se divide), por trozos y sin esperar al ADR del log, que forma parte de #614. #530 no cubre esto: es la API del dock.
 4. **La espera no pinta «tarde».** El tratamiento de la llegada fuera de plazo existe solo en el plazo de resolver del acto. En `ESPERAR_PLAZO` la barra queda verde sin distinguir y el plazo de la tarea no lleva `cumplido_fuera_de_plazo`. Mejora pequeña pendiente.
 5. **Vía de retirada del certificado** cuando llega el documento tardío (caso C), cerrada una vez notificada la resolución. Hoy no existe.
+6. **Plazo del tablón de la DUP.** `TABLON_AYUNTAMIENTOS` es el tablón de la DUP (art. 144 RD 1955/2000) y está sembrado como 30 días naturales; son 30 hábiles (el RD es un reglamento y la LPACAP, art. 30.2, presume hábiles). Afecta a una fila: issue corto aparte, en otro hilo. El tablón ambiental (Ley 21/2013, art. 9.4) no está modelado.
 
 ## Documentos afectados
 
@@ -85,6 +98,9 @@ Cada certificado, del más antiguo al más moderno, pasa por estas preguntas. No
 | #572 | Tipos que entran con `integra_expediente = false` | Pendiente (GitHub) |
 | #1057, #614, #435 | Comentario que enlace aquí | Pendiente (GitHub) |
 | Issue `[DISEÑO]` de resolución asistida | Crearlo | Pendiente (GitHub) |
+| #1113 (guardas de `AAU_AAUS_INTEGRADA` y retirada de `CERT_FIN_IP_CONSULTAS`) | Crearlo | Hecho |
+| `ESTRUCTURA_ESF.md` nota ³ (AAUS) y su JSON derivado | Corregir a `∉ {AAU}` | En #1113 |
+| Issue del plazo del tablón de la DUP | Abrirlo en hilo aparte | Pendiente (tarea lanzada) |
 | `INVENTARIO_BACKEND.md` l.283 y ADR-030 §5 («los 9 valores no-nulos») | Al añadir la fila del efecto | Al implementar |
 | `TIPOS_DOCUMENTOS_CATALOGO.md` l.64 y l.70, y la descripción sembrada en BD (migración 377) | Incoherencias de #1057: el fin de instrucción no es automático | Al implementar #1057 |
 | `app/models/certificados.py` (docstring) | Lista `CERT_FIN_INSTRUCCION` entre los tipos con `datos` | Al implementar #1057 |
