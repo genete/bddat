@@ -256,7 +256,7 @@ Con organismos (BANDEJA, SIR) hay una sola fecha, así que **solo cambian los pl
 | `CONSULTA_TRASLADO_ORGANISMO`, `SOLICITUD_INFORME` (organismos por BANDEJA o SIR) | Arts. 127, 131 y 114 RD 1955/2000 | La misma (una sola fecha) | No |
 | `CONSULTA_SEPARATA` | Arts. 127.2 y 131.1 RD 1955/2000 | Por BANDEJA o SIR: la misma (una sola fecha). **Por NOTIFICA:** efectos, para el plazo del organismo (la suspensión, aparte: #796) | **Solo si va por NOTIFICA.** POSTAL, muy improbable |
 | `ANUNCIO_BOE` / `BOP` / `PRENSA` · ESPERAR_PLAZO (30 d) | Arts. 125.1 y 144 RD 1955/2000 | La publicación | No |
-| `TABLON_AYUNTAMIENTOS` · ESPERAR_PLAZO (30 d naturales) | Art. 125 RD 1955/2000 | Inicio de la exposición | No |
+| `TABLON_AYUNTAMIENTOS` · ESPERAR_PLAZO (30 d hábiles) | Art. 144 RD 1955/2000 | Inicio de la exposición | No |
 | `COMUNICACION_INICIO_ADMISION` · ELABORAR (10 d) | Art. 21.4 LPACAP | Igual | No |
 | `NOTIFICAR` (10 d hábiles, «Art. 40 LPACAP») | 40.2 | — | **No se toca** (D7) |
 | `SOLICITUD` (11 filas) y `FASE` (DUP, AAP, AAC) | Arts. 128, 131.7, 148.1 | Cumplimiento = `{"calculado": "documento_cumplimiento"}` | **Sí** (arregla también la deuda de #892) |
