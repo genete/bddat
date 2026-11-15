@@ -6,7 +6,7 @@
 **Número:** reservado. Pasará a ADR-054 conservándolo, cuando estén revisados los seis certificados.
 **Relacionados:** ADR-027 (pertenencia al expediente) · ADR-043 (fin de instrucción) · ADR-049 (certificados de cierre) · #572 · #614 · #435 · #403 · #1113
 
-> Solo recoge decisiones de Carlos. Lo que es interpretación va marcado como tal.
+> Recoge decisiones de Carlos. La interpretación y lo verificado que queda sin decidir van marcados como tales.
 
 ---
 
@@ -74,9 +74,13 @@ Cada certificado, del más antiguo al más moderno, pasa por estas preguntas. No
 - `ESTRUCTURA_ESF.md` (nota ³ de la AAP) dice `ia.siglas ∉ {AAU, AAUS}`: hay que corregirla a `∉ {AAU}`.
 - El detalle, los puntos a estudiar y la tabla de consumidores están en el issue #1113.
 
-### 4 a 6. Pendientes de revisar
+### 4. `CERT_CUMPLIMIENTO_FASE` (#947) — en revisión
 
-`CERT_CUMPLIMIENTO_FASE` (#947) · `CERT_CIERRE_FASE` (#956) · `CERT_CIERRE_SOLICITUD` (#996), en ese orden.
+Presentado (qué certifica y desde dónde se emite); **sin preguntas respondidas todavía**. *[Verificado, sin decidir]* Constata que consta la notificación al solicitante de lo que resuelve una fase finalizadora, citando el documento que la acredita (`datos = {"documento_id": N}`, sin fecha propia). Se emite a mano desde el inspector de la fase. El plazo de resolver de cada acto lo lee, `CERT_CIERRE_FASE` lo **exige** para cerrar la fase y `CERT_CIERRE_SOLICITUD` lee su documento sellado. Lo que dice se deriva del cálculo del cumplimiento (`calcular_documento_cumplimiento_fase`); el certificado solo lo fija y protege el documento citado.
+
+### 5 y 6. Pendientes de revisar
+
+`CERT_CIERRE_FASE` (#956) · `CERT_CIERRE_SOLICITUD` (#996), en ese orden.
 
 ## Asuntos nuevos que han salido
 
@@ -86,6 +90,9 @@ Cada certificado, del más antiguo al más moderno, pasa por estas preguntas. No
 4. **La espera no pinta «tarde».** El tratamiento de la llegada fuera de plazo existe solo en el plazo de resolver del acto. En `ESPERAR_PLAZO` la barra queda verde sin distinguir y el plazo de la tarea no lleva `cumplido_fuera_de_plazo`. Mejora pequeña pendiente.
 5. **Vía de retirada del certificado** cuando llega el documento tardío (caso C), cerrada una vez notificada la resolución. Hoy no existe.
 6. **Plazo del tablón de la DUP.** `TABLON_AYUNTAMIENTOS` es el tablón de la DUP (art. 144 RD 1955/2000) y está sembrado como 30 días naturales; son 30 hábiles (el RD es un reglamento y la LPACAP, art. 30.2, presume hábiles). Afecta a una fila: issue corto aparte, en otro hilo. El tablón ambiental (Ley 21/2013, art. 9.4) no está modelado.
+7. **Regla de `RESOLUCION_DUP` sin orientación.** De las cinco reglas del art. 82.1 que impiden crear una finalizadora sin el fin de instrucción, cuatro dicen «Pida el certificado desde la solicitud»; la de `RESOLUCION_DUP` (regla 24) conserva el texto antiguo sin esa frase. Dato de catálogo. *[Verificado, sin decidir]*
+8. **La entrada «obligatoria» no se hace cumplir.** El catálogo declara `CERT_FIN_INSTRUCCION` entrada obligatoria del `ELABORAR` de la resolución, y el ADR-043 la da por obligatoria, pero el código trata la entrada del `ELABORAR` como opcional al finalizar (`routes.py` l.483). *[Verificado, sin decidir]*
+9. **`NORMATIVA_EXCEPCIONES_AT.md` §4.2 y §9.4** dicen que la Ley 2/2026 (arts. 67.4 y 79.4) recoge la declaración automática de interés general de las instalaciones eléctricas. El art. 67.4 solo menciona las actuaciones «declaradas de utilidad e interés general» y las promovidas por la Junta; el 79.4 no se ha leído. *[Verificado, sin confirmar]*
 
 ## Documentos afectados
 
@@ -101,6 +108,8 @@ Cada certificado, del más antiguo al más moderno, pasa por estas preguntas. No
 | #1113 (guardas de `AAU_AAUS_INTEGRADA` y retirada de `CERT_FIN_IP_CONSULTAS`) | Crearlo | Hecho |
 | `ESTRUCTURA_ESF.md` nota ³ (AAUS) y su JSON derivado | Corregir a `∉ {AAU}` | En #1113 |
 | Issue del plazo del tablón de la DUP | Abrirlo en hilo aparte | Pendiente (tarea lanzada) |
+| Regla 24 de `RESOLUCION_DUP` | Añadir la orientación al texto (dato de catálogo) | Al implementar #1057 |
+| `NORMATIVA_EXCEPCIONES_AT.md` §4.2 y §9.4 | Revisar lo dicho sobre el art. 67.4 de la Ley 2/2026 | Pendiente |
 | `INVENTARIO_BACKEND.md` l.283 y ADR-030 §5 («los 9 valores no-nulos») | Al añadir la fila del efecto | Al implementar |
 | `TIPOS_DOCUMENTOS_CATALOGO.md` l.64 y l.70, y la descripción sembrada en BD (migración 377) | Incoherencias de #1057: el fin de instrucción no es automático | Al implementar #1057 |
 | `app/models/certificados.py` (docstring) | Lista `CERT_FIN_INSTRUCCION` entre los tipos con `datos` | Al implementar #1057 |
