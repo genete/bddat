@@ -1,6 +1,6 @@
 # PRE-ADR-054 — Certificados internos: qué documentan, cuáles son expediente y dónde vive la motivación
 
-**Estado:** Borrador vivo. Revisión de #1057 en curso: 2 de 6 certificados cerrados.
+**Estado:** Borrador vivo. Revisión de #1057 en curso: 2 de 6 certificados cerrados, más un certificado nuevo por crear.
 **Fecha:** 2026-11-15
 **Issue:** #1057
 **Número:** reservado. Pasará a ADR-054 conservándolo, cuando estén revisados los seis certificados.
@@ -44,17 +44,23 @@ Cada certificado, del más antiguo al más moderno, pasa por estas preguntas. No
 - Auxiliar y no expediente. Es deducible (copia lo que ya calcula `plazos`) y no es legalmente necesario: ni el RD 1955/2000 (arts. 127.2, 127.4, 131.1 y 131.4) ni la LPACAP (arts. 68, 73 y 80) exigen un documento. El efecto lo produce el transcurso del plazo o, cuando el afectado es el titular, una resolución (arts. 68.1 y 73.3). Su relato es antecedente de hecho de la resolución.
 - Para BDDAT, la espera necesita un documento producido para que avance la tramitación, y el certificado cubre ese hueco. Se distinguen tres casos por el **efecto del vencimiento** que ya lleva el catálogo (`efectos_plazo`):
 
-| Caso | Efecto en el catálogo | Qué hace el certificado |
+| Caso | Efecto en el catálogo | Certificado y qué hace |
 |---|---|---|
-| A. No se espera documento | `SIN_EFECTO_AUTOMATICO` | Cubre un hueco estructural de BDDAT |
-| B. Se espera, pero se puede proseguir sin él | `CONFORMIDAD_PRESUNTA` | Cierra el trámite y permite continuar |
-| C. Se espera y su ausencia tiene efecto desfavorable | `TENER_POR_DESISTIDO` (titular); `DISCONFORMIDAD_PRESUNTA` (organismo, nuevo) | Cubre el hueco; el context builder avisa al técnico |
+| A. No se espera documento | `SIN_EFECTO_AUTOMATICO` | `CERT_PLAZO_CUMPLIDO`: cubre un hueco estructural de BDDAT |
+| B. Se espera, pero se puede proseguir sin él | `CONFORMIDAD_PRESUNTA` | `CERT_PLAZO_CUMPLIDO`: cierra el trámite y permite continuar |
+| C. Se espera y su ausencia tiene efecto desfavorable | `TENER_POR_DESISTIDO` (titular); `DISCONFORMIDAD_PRESUNTA` (organismo, nuevo) | **Certificado nuevo de ausencia de respuesta en plazo** (ver más abajo) |
 
-- **Un solo certificado, sin tipo nuevo.** El aviso del context builder sale de comprobar a qué fase o trámite pertenece la ausencia de respuesta.
-- Si en el caso C el documento llega después, ocupa el hueco que cubría el certificado. El técnico decide en la resolución; BDDAT no automatiza esa decisión. *[Interpretación: el documento puede ocupar el hueco hasta que se notifique la resolución, art. 73.3.]*
+- **El caso C necesita un certificado nuevo**: el de ausencia de respuesta en plazo. El aviso del context builder (por ejemplo, `ausencia_informe_lista_en_plazo`) sale de comprobar a qué fase o trámite pertenece esa ausencia de respuesta. No hace falta un certificado propio de LISTA.
+- Si en el caso C el documento llega después, ocupa el hueco que cubría el certificado de ausencia. El técnico decide en la resolución; BDDAT no automatiza esa decisión. *[Interpretación: el documento puede ocupar el hueco hasta que se notifique la resolución, art. 73.3.]*
 - En el caso B, el documento tardío es otra cosa que se tratará más adelante (art. 80.4: «podrá no ser tenido en cuenta»). Sin issue por ahora.
-- No hace falta registrar quién emite el certificado: el relato es lo importante y se genera con la información de ese momento.
-- *[Interpretación: queda por decidir si el texto del certificado debe distinguir «plazo cumplido» (caso A) de «ausencia de respuesta» (casos B y C).]*
+- No hace falta registrar quién emite el certificado de fin de plazo: el relato es lo importante y se genera con la información de ese momento.
+
+### Nuevo. Certificado de ausencia de respuesta en plazo — por crear
+
+- **Para qué.** Cubre el hueco de la espera cuando el plazo está cumplido y el documento esperado no ha llegado, y permite continuar hasta la resolución. Sin él, la `ESPERAR_PLAZO` queda bloqueada y obliga a escapar.
+- **Es el comodín del caso C**: el titular que no subsana, el organismo con silencio negativo. El certificado de fin de plazo no sirve para esto, porque tapa el hueco sin decir nada sobre si el documento llegó.
+- **Lo crea y lo enlaza el técnico**, voluntariamente. Si el documento llega después, ocupa el hueco que cubría. El context builder avisa del caso y el técnico decide qué relato pasa a la resolución.
+- *[Por decidir, interpretación mía: el nombre del tipo; si debe pasar las cuatro preguntas por su cuenta (su contenido no derivable sería la declaración de que no ha llegado respuesta); si debe registrar quién y cuándo lo emite, porque la decisión de no registrarlo se tomó para el certificado de fin de plazo; cómo se emite (el de fin de plazo hoy no tiene botón) y cómo se retira.]*
 
 ### 3 a 6. Pendientes de revisar
 
@@ -82,3 +88,4 @@ Cada certificado, del más antiguo al más moderno, pasa por estas preguntas. No
 | `INVENTARIO_BACKEND.md` l.283 y ADR-030 §5 («los 9 valores no-nulos») | Al añadir la fila del efecto | Al implementar |
 | `TIPOS_DOCUMENTOS_CATALOGO.md` l.64 y l.70, y la descripción sembrada en BD (migración 377) | Incoherencias de #1057: el fin de instrucción no es automático | Al implementar #1057 |
 | `app/models/certificados.py` (docstring) | Lista `CERT_FIN_INSTRUCCION` entre los tipos con `datos` | Al implementar #1057 |
+| Certificado de ausencia de respuesta en plazo | Tipo documental, servicio de emisión, ruta y botón | Por diseñar |
