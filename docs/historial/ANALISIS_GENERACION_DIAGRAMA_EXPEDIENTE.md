@@ -1,7 +1,7 @@
 # Análisis: Generación dinámica de diagrama de un expediente
 
 > Fuente de verdad: `ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-03-30
+> Última sincronización: 2026-11-15
 
 **Estado:** Diseño cerrado — pendiente de implementación (#285)
 **Relacionado con:** `GUIA_DIAGRAMAS_ESFTT.md` (diagramas estáticos de documentación) · #274 (revisión visual vista tramitación)
