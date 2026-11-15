@@ -190,6 +190,8 @@ El efecto del vencimiento determina la gravedad de la alerta y quién resulta pe
 | **Prescripción del derecho condicionado** | Administrado — el derecho otorgado por resolución propia caduca | No (requiere declaración) | Normal (naranja) | Ver §2.8 |
 | **Sin efecto automático** | Ninguno — plazo de trámite interno sin consecuencia legal directa | No | Normal (naranja) | — |
 
+> **Hueco conocido (2026-11-15, [PRE-ADR-054](../diseño/PRE-ADR-054-certificados-internos.md)).** El silencio negativo de un organismo consultado (informe de la Ley de Impulso para la Sostenibilidad del Territorio de Andalucía, LISTA), que equivale a una **disconformidad presunta**, no tiene efecto en el catálogo: no es sin efecto automático, ni conformidad presunta, ni tener por desistido. Se prevé `DISCONFORMIDAD_PRESUNTA`, pareja de `CONFORMIDAD_PRESUNTA`. Es un dato de la tabla maestra `efectos_plazo`, no un ENUM: se añadirá por migración con el trámite LISTA, que también necesitará su fila de plazo. A confirmar con la norma. Esta tabla tampoco recoge `CONFORMIDAD_PRESUNTA`, que sí existe.
+
 > **Art. 25.1.b** (caducidad de procedimientos de oficio): no aplica en BDDAT — todos los expedientes son a instancia de parte. Si en el futuro se incorporan procedimientos de oficio, revisar.
 
 > **Art. 95 — Caducidad por inactividad del interesado**: aplica íntegramente en BDDAT. El flujo es: inactividad > 3 meses → la Administración advierte → si persiste → resolución de archivo. Un procedimiento caducado no interrumpe la prescripción del derecho, pero si el derecho no ha prescrito, el interesado puede iniciar un nuevo procedimiento incorporando actos y trámites del anterior (ver §7 — reutilización de trámites entre expedientes).

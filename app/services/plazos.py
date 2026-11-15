@@ -181,6 +181,10 @@ class EstadoPlazo:
                                        # | 'TENER_POR_DESISTIDO' | 'PERDIDA_TRAMITE' | 'APERTURA_RECURSO'
                                        # | 'PRESCRIPCION_CONDICIONADO' | 'CONFORMIDAD_PRESUNTA'
                                        # | 'SIN_EFECTO_AUTOMATICO'
+                                       # El vocabulario es la tabla `efectos_plazo` (datos, no ENUM). Hueco
+                                       # conocido: el silencio negativo de un organismo consultado (informe
+                                       # LISTA) no tiene valor; se prevé 'DISCONFORMIDAD_PRESUNTA', aún sin
+                                       # fila (PRE-ADR-054, docs/diseño/).
     fecha_limite: Optional[date]       # el VENCIMIENTO (nombre histórico, §3.5 del
                                        # diseño): último día hábil dentro del plazo.
                                        # En el acto, ya con las suspensiones
