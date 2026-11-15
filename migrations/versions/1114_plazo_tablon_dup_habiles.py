@@ -24,9 +24,9 @@ Alcance. Una fila de `catalogo_plazos`, la de la DUP. El tablón ambiental (Ley 
 art. 9.4) no está modelado y no entra aquí.
 
 Cómo se localiza la fila. Por su `camino`, nunca por `id` (los ids no son estables entre
-instalaciones). Si no hay exactamente una fila se aborta: un UPDATE que afecta a cero
-filas no da error y dejaría el catálogo equivocado sin avisar. No se toca la 416, que ya
-está aplicada.
+instalaciones). Si no hay exactamente una fila se aborta antes de escribir: un UPDATE que
+afecta a cero filas no da error y dejaría el catálogo equivocado sin avisar. No se toca
+la 416, que ya está aplicada.
 """
 from alembic import op
 import sqlalchemy as sa
@@ -42,19 +42,28 @@ _CAMINO = 'ANY/ANY/ANY/TABLON_AYUNTAMIENTOS/ESPERAR_PLAZO'
 
 
 def _fijar(unidad, norma):
-    resultado = op.get_bind().execute(sa.text("""
+    conn = op.get_bind()
+
+    # Se cuenta ANTES de escribir: con 0 o 2 filas no se toca nada, sin depender
+    # de que la transacción de la migración se deshaga.
+    filas = conn.execute(sa.text("""
+        SELECT count(*) FROM public.catalogo_plazos
+        WHERE camino = :camino
+          AND tipo_elemento = 'TAREA'
+    """), {'camino': _CAMINO}).scalar()
+    if filas != 1:
+        raise RuntimeError(
+            f"Se esperaba exactamente 1 fila de catalogo_plazos con camino "
+            f"{_CAMINO!r} y hay {filas}; no se cambia nada."
+        )
+
+    conn.execute(sa.text("""
         UPDATE public.catalogo_plazos
         SET plazo_unidad = :unidad,
             norma_origen = :norma
         WHERE camino = :camino
           AND tipo_elemento = 'TAREA'
     """), {'unidad': unidad, 'norma': norma, 'camino': _CAMINO})
-
-    if resultado.rowcount != 1:
-        raise RuntimeError(
-            f"Se esperaba exactamente 1 fila de catalogo_plazos con camino "
-            f"{_CAMINO!r} y hay {resultado.rowcount}; no se cambia nada."
-        )
 
 
 def upgrade():
