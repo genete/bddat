@@ -36,8 +36,9 @@ REDACTADO, NO MAQUETADO
 `Bloque.relato` y `Bloque.pendiente` son párrafos de texto llano, sin markup. Sus
 destinos son tres y ninguno comparte motor de render: el PDF del certificado
 (reportlab), el modal del inspector (HTML) y —previsto desde ahora— el contexto
-del escrito de resolución, que convertirá estos mismos párrafos en tokens de
-plantilla en vez de recomponer el relato por su cuenta (#430, ADR-035). Si el
+del escrito de resolución, que ofrecerá estos mismos párrafos al técnico (no
+necesariamente en la plantilla) en vez de recomponer el relato por su cuenta
+(previsto, sin issue aún: PRE-ADR-054, docs/diseño/). Si el
 nodo maquetara, se ataría al primero de los tres.
 
 LAS TRES CATEGORÍAS (§E)
