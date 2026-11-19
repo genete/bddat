@@ -1,6 +1,6 @@
 # PRE-ADR-054 — Certificados internos: qué documentan, cuáles son expediente y dónde vive la motivación
 
-**Estado:** Borrador vivo. Revisión de #1057 en curso: 3 de 6 certificados cerrados (uno de ellos se retira), más un certificado nuevo por crear.
+**Estado:** Borrador vivo. Revisión de #1057 en curso: 4 de 6 certificados cerrados (uno de ellos se retira), más un certificado nuevo por crear.
 **Fecha:** 2026-11-15
 **Issue:** #1057
 **Número:** reservado. Pasará a ADR-054 conservándolo, cuando estén revisados los seis certificados.
@@ -74,13 +74,21 @@ Cada certificado, del más antiguo al más moderno, pasa por estas preguntas. No
 - `ESTRUCTURA_ESF.md` (nota ³ de la AAP) dice `ia.siglas ∉ {AAU, AAUS}`: hay que corregirla a `∉ {AAU}`.
 - El detalle, los puntos a estudiar y la tabla de consumidores están en el issue #1113.
 
-### 4. `CERT_CUMPLIMIENTO_FASE` (#947) — en revisión
+### 4. `CERT_CUMPLIMIENTO_FASE` (#947) — cerrado: se conserva como sello interno
 
-Presentado (qué certifica y desde dónde se emite); **sin preguntas respondidas todavía**. *[Verificado, sin decidir]* Constata que consta la notificación al solicitante de lo que resuelve una fase finalizadora, citando el documento que la acredita (`datos = {"documento_id": N}`, sin fecha propia). Se emite a mano desde el inspector de la fase. El plazo de resolver de cada acto lo lee, `CERT_CIERRE_FASE` lo **exige** para cerrar la fase y `CERT_CIERRE_SOLICITUD` lee su documento sellado. Lo que dice se deriva del cálculo del cumplimiento (`calcular_documento_cumplimiento_fase`); el certificado solo lo fija y protege el documento citado.
+Constata que consta la notificación al solicitante de lo que resuelve una fase finalizadora, citando el documento que la acredita (`datos = {"documento_id": N}`, sin fecha propia). Se emite a mano desde el inspector de la fase. El plazo de resolver de cada acto lo lee, `CERT_CIERRE_FASE` lo **exige** para cerrar la fase y `CERT_CIERRE_SOLICITUD` lee su documento sellado.
+
+- **No es documento del expediente.** Sin firma, CSV ni PDF, y sin fecha propia; lo que consta en el expediente es el documento que cita (acuse, puesta a disposición o anuncio). Entra con `integra_expediente = false`.
+- **Todo lo que dice se deduce** del cálculo del cumplimiento (`calcular_documento_cumplimiento_fase`). Solo añade el momento de emisión y la fijación.
+- **No es legalmente necesario.** La ley exige notificar en plazo y que el intento esté acreditado (LPACAP arts. 21.1-21.2, 40.4, 43.3 y 44); la acreditación es el justificante, no un certificado.
+- **No es un resumen: es un candado y una puerta.** Fija qué documento cuenta, protege su fecha, tipo y fichero, y es requisito del cierre de la fase. Sin él, el cumplimiento volvería a calcularse en cada lectura y la ventana entre «consta la notificación» y el cierre quedaría sin fijar. La protección general de los datos de los documentos de una fase cerrada es #954 (abierto).
+- **Decisión de Carlos:** conservarlo como sello interno.
+- *[Interpretación]* Su `asunto` dice «Cumplimiento del plazo de resolver», pero el certificado no trae veredicto de plazo; conviene que el asunto no sugiera uno. Queda por decidir al implementar.
+- *[Alternativa no decidida]* Más adelante podría retirarse como documento y guardar la fijación como puntero en la fase (el criterio de anclar con FK de ADR-041 §D bis, que ADR-049 §E reinterpretó). Toca unos diez sitios (plazo, cierres de fase y solicitud, invariantes, `test_947`).
 
 ### 5 y 6. Pendientes de revisar
 
-`CERT_CIERRE_FASE` (#956) · `CERT_CIERRE_SOLICITUD` (#996), en ese orden.
+`CERT_CIERRE_FASE` (#956, en revisión) · `CERT_CIERRE_SOLICITUD` (#996), en ese orden.
 
 ## Asuntos nuevos que han salido
 
@@ -93,6 +101,8 @@ Presentado (qué certifica y desde dónde se emite); **sin preguntas respondidas
 7. **Regla de `RESOLUCION_DUP` sin orientación.** De las cinco reglas del art. 82.1 que impiden crear una finalizadora sin el fin de instrucción, cuatro dicen «Pida el certificado desde la solicitud»; la de `RESOLUCION_DUP` (regla 24) conserva el texto antiguo sin esa frase. Dato de catálogo. *[Verificado, sin decidir]*
 8. **La entrada «obligatoria» no se hace cumplir.** El catálogo declara `CERT_FIN_INSTRUCCION` entrada obligatoria del `ELABORAR` de la resolución, y el ADR-043 la da por obligatoria, pero el código trata la entrada del `ELABORAR` como opcional al finalizar (`routes.py` l.483). *[Verificado, sin decidir]*
 9. **`NORMATIVA_EXCEPCIONES_AT.md` §4.2 y §9.4** dicen que la Ley 2/2026 (arts. 67.4 y 79.4) recoge la declaración automática de interés general de las instalaciones eléctricas. El art. 67.4 solo menciona las actuaciones «declaradas de utilidad e interés general» y las promovidas por la Junta; el 79.4 no se ha leído. *[Verificado, sin confirmar]*
+
+10. **Typo en un texto de interfaz.** `cert_cierre_fase.py` l.243, el pendiente del bloque «Notificación al solicitante»: «No consta certificado el cumplimiento» debe decir «No consta el certificado de cumplimiento». Una sola aparición; ningún test la cita. *[Verificado]*
 
 ## Documentos afectados
 
@@ -110,6 +120,8 @@ Presentado (qué certifica y desde dónde se emite); **sin preguntas respondidas
 | Plazo del tablón de la DUP (30 días hábiles) | Issue aparte | Hecho (#1114, PR #1115) |
 | Regla 24 de `RESOLUCION_DUP` | Añadir la orientación al texto (dato de catálogo) | Al implementar #1057 |
 | `NORMATIVA_EXCEPCIONES_AT.md` §4.2 y §9.4 | Revisar lo dicho sobre el art. 67.4 de la Ley 2/2026 | Pendiente |
+| `cert_cierre_fase.py` l.243 | Corregir el typo del texto de interfaz | Al implementar #1057 |
+| Asunto de `CERT_CUMPLIMIENTO_FASE` («Cumplimiento del plazo de resolver») | Que no sugiera un veredicto de plazo | Al implementar #1057 |
 | `INVENTARIO_BACKEND.md` l.283 y ADR-030 §5 («los 9 valores no-nulos») | Al añadir la fila del efecto | Al implementar |
 | `TIPOS_DOCUMENTOS_CATALOGO.md` l.64 y l.70, y la descripción sembrada en BD (migración 377) | Incoherencias de #1057: el fin de instrucción no es automático | Al implementar #1057 |
 | `app/models/certificados.py` (docstring) | Lista `CERT_FIN_INSTRUCCION` entre los tipos con `datos` | Al implementar #1057 |
