@@ -89,7 +89,7 @@ Presentado (qué certifica y desde dónde se emite); **sin preguntas respondidas
 3. **Bitácora.** El detalle del escape no guarda `solicitud_id`, así que un escape sobre algo borrado es irrecuperable para el informe. Se arregla dentro de #614 (que no se divide), por trozos y sin esperar al ADR del log, que forma parte de #614. #530 no cubre esto: es la API del dock.
 4. **La espera no pinta «tarde».** El tratamiento de la llegada fuera de plazo existe solo en el plazo de resolver del acto. En `ESPERAR_PLAZO` la barra queda verde sin distinguir y el plazo de la tarea no lleva `cumplido_fuera_de_plazo`. Mejora pequeña pendiente.
 5. **Vía de retirada del certificado** cuando llega el documento tardío (caso C), cerrada una vez notificada la resolución. Hoy no existe.
-6. **Plazo del tablón de la DUP.** `TABLON_AYUNTAMIENTOS` es el tablón de la DUP (art. 144 RD 1955/2000) y está sembrado como 30 días naturales; son 30 hábiles (el RD es un reglamento y la LPACAP, art. 30.2, presume hábiles). Afecta a una fila: issue corto aparte, en otro hilo. El tablón ambiental (Ley 21/2013, art. 9.4) no está modelado.
+6. **Plazo del tablón de la DUP.** `TABLON_AYUNTAMIENTOS` es el tablón de la DUP (art. 144 RD 1955/2000) y está sembrado como 30 días naturales; son 30 hábiles (el RD es un reglamento y la LPACAP, art. 30.2, presume hábiles). Afectaba a una fila. **Corregido en #1114 (PR #1115, ya en `develop`).** El tablón ambiental (Ley 21/2013, art. 9.4) no está modelado.
 7. **Regla de `RESOLUCION_DUP` sin orientación.** De las cinco reglas del art. 82.1 que impiden crear una finalizadora sin el fin de instrucción, cuatro dicen «Pida el certificado desde la solicitud»; la de `RESOLUCION_DUP` (regla 24) conserva el texto antiguo sin esa frase. Dato de catálogo. *[Verificado, sin decidir]*
 8. **La entrada «obligatoria» no se hace cumplir.** El catálogo declara `CERT_FIN_INSTRUCCION` entrada obligatoria del `ELABORAR` de la resolución, y el ADR-043 la da por obligatoria, pero el código trata la entrada del `ELABORAR` como opcional al finalizar (`routes.py` l.483). *[Verificado, sin decidir]*
 9. **`NORMATIVA_EXCEPCIONES_AT.md` §4.2 y §9.4** dicen que la Ley 2/2026 (arts. 67.4 y 79.4) recoge la declaración automática de interés general de las instalaciones eléctricas. El art. 67.4 solo menciona las actuaciones «declaradas de utilidad e interés general» y las promovidas por la Junta; el 79.4 no se ha leído. *[Verificado, sin confirmar]*
@@ -107,7 +107,7 @@ Presentado (qué certifica y desde dónde se emite); **sin preguntas respondidas
 | Issue `[DISEÑO]` de resolución asistida | Crearlo | Pendiente (GitHub) |
 | #1113 (guardas de `AAU_AAUS_INTEGRADA` y retirada de `CERT_FIN_IP_CONSULTAS`) | Crearlo | Hecho |
 | `ESTRUCTURA_ESF.md` nota ³ (AAUS) y su JSON derivado | Corregir a `∉ {AAU}` | En #1113 |
-| Issue del plazo del tablón de la DUP | Abrirlo en hilo aparte | Pendiente (tarea lanzada) |
+| Plazo del tablón de la DUP (30 días hábiles) | Issue aparte | Hecho (#1114, PR #1115) |
 | Regla 24 de `RESOLUCION_DUP` | Añadir la orientación al texto (dato de catálogo) | Al implementar #1057 |
 | `NORMATIVA_EXCEPCIONES_AT.md` §4.2 y §9.4 | Revisar lo dicho sobre el art. 67.4 de la Ley 2/2026 | Pendiente |
 | `INVENTARIO_BACKEND.md` l.283 y ADR-030 §5 («los 9 valores no-nulos») | Al añadir la fila del efecto | Al implementar |
