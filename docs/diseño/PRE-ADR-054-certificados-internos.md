@@ -102,7 +102,7 @@ Constata que consta la notificación al solicitante de lo que resuelve una fase 
 8. **La entrada «obligatoria» no se hace cumplir.** El catálogo declara `CERT_FIN_INSTRUCCION` entrada obligatoria del `ELABORAR` de la resolución, y el ADR-043 la da por obligatoria, pero el código trata la entrada del `ELABORAR` como opcional al finalizar (`routes.py` l.483). *[Verificado, sin decidir]*
 9. **`NORMATIVA_EXCEPCIONES_AT.md` §4.2 y §9.4** dicen que la Ley 2/2026 (arts. 67.4 y 79.4) recoge la declaración automática de interés general de las instalaciones eléctricas. El art. 67.4 solo menciona las actuaciones «declaradas de utilidad e interés general» y las promovidas por la Junta; el 79.4 no se ha leído. *[Verificado, sin confirmar]*
 
-10. **Typo en un texto de interfaz.** `cert_cierre_fase.py` l.243, el pendiente del bloque «Notificación al solicitante»: «No consta certificado el cumplimiento» debe decir «No consta el certificado de cumplimiento». Una sola aparición; ningún test la cita. *[Verificado]*
+10. **Typo en un texto de interfaz, dos veces.** «No consta certificado el cumplimiento» debe decir «No consta el certificado de cumplimiento»: en `cert_cierre_fase.py` l.243 (pendiente del bloque «Notificación al solicitante») y en `invariantes_esftt.py` l.492 (mensaje de la puerta cerrada, donde además dice «al titular» y desde #968 es «al solicitante»). Ningún test cita ninguno de los dos textos. *[Verificado]*
 
 ## Documentos afectados
 
@@ -120,7 +120,7 @@ Constata que consta la notificación al solicitante de lo que resuelve una fase 
 | Plazo del tablón de la DUP (30 días hábiles) | Issue aparte | Hecho (#1114, PR #1115) |
 | Regla 24 de `RESOLUCION_DUP` | Añadir la orientación al texto (dato de catálogo) | Al implementar #1057 |
 | `NORMATIVA_EXCEPCIONES_AT.md` §4.2 y §9.4 | Revisar lo dicho sobre el art. 67.4 de la Ley 2/2026 | Pendiente |
-| `cert_cierre_fase.py` l.243 | Corregir el typo del texto de interfaz | Al implementar #1057 |
+| `cert_cierre_fase.py` l.243 e `invariantes_esftt.py` l.492 | Corregir el typo del texto de interfaz (y «titular» por «solicitante» en el segundo) | Al implementar #1057 |
 | Asunto de `CERT_CUMPLIMIENTO_FASE` («Cumplimiento del plazo de resolver») | Que no sugiera un veredicto de plazo | Al implementar #1057 |
 | `INVENTARIO_BACKEND.md` l.283 y ADR-030 §5 («los 9 valores no-nulos») | Al añadir la fila del efecto | Al implementar |
 | `TIPOS_DOCUMENTOS_CATALOGO.md` l.64 y l.70, y la descripción sembrada en BD (migración 377) | Incoherencias de #1057: el fin de instrucción no es automático | Al implementar #1057 |
