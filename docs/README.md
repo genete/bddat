@@ -36,6 +36,7 @@ Consultar cuando se trabaja ese subsistema. No cargar por defecto.
 ### Motor de reglas y plazos
 - [DISEÑO_CONTEXT_ASSEMBLER.md](referencia/DISEÑO_CONTEXT_ASSEMBLER.md)
 - [DISEÑO_FECHAS_PLAZOS.md](referencia/DISEÑO_FECHAS_PLAZOS.md)
+- [ESTUDIO_FLEXIBILIDAD_PROCESOS.md](referencia/ESTUDIO_FLEXIBILIDAD_PROCESOS.md) — procedencia académica del enfoque permisivo: cuatro artículos sobre rigidez y flexibilidad en sistemas de tramitación (case handling, declarativo, taxonomía, hospital); solo enlaces y DOI, sin copias
 
 ### Subsistema documental y escritos
 - [DISEÑO_SUBSISTEMA_DOCUMENTAL.md](referencia/DISEÑO_SUBSISTEMA_DOCUMENTAL.md)

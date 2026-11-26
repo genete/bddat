@@ -270,7 +270,7 @@ Esta arquitectura mantiene la base de datos **limpia, adaptable y alineada con l
 
 #### Principios Fundamentales
 
-**1. Enfoque permisivo:** En cualquier estado del expediente, es posible hacer cualquier cosa que no esté expresamente prohibida. En lugar de listar lo únicamente permitido, se listan las prohibiciones expresas, permitiendo flexibilidad operativa dentro del marco legal.
+**1. Enfoque permisivo:** En cualquier estado del expediente, es posible hacer cualquier cosa que no esté expresamente prohibida. En lugar de listar lo únicamente permitido, se listan las prohibiciones expresas, permitiendo flexibilidad operativa dentro del marco legal. Procedencia académica del enfoque: [ESTUDIO_FLEXIBILIDAD_PROCESOS.md](../referencia/ESTUDIO_FLEXIBILIDAD_PROCESOS.md).
 
 **2. Separación de datos y reglas:** Las tablas estructurales (`EXPEDIENTES`, `SOLICITUDES`, `PROYECTOS`, `FASES`, `TRAMITES`, `TAREAS`) contienen **únicamente datos sobre lo que existe y ha ocurrido**. Las prohibiciones, validaciones y flujos procedimentales se definen en **tablas separadas** de configuración de reglas.
 
